@@ -2,8 +2,22 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { TenantProvider } from "@/contexts/TenantContext";
+
+import LoginPage from "./pages/Login";
+import AppLayout from "./layouts/AppLayout";
+import Dashboard from "./pages/Dashboard";
+import CustomersPage from "./pages/Customers";
+import InboxPage from "./pages/Inbox";
+import AppointmentsPage from "./pages/Appointments";
+import LeadsPage from "./pages/Leads";
+import DealsPage from "./pages/Deals";
+import CampaignsPage from "./pages/Campaigns";
+import HRDashboard from "./pages/hr/HRDashboard";
+import EmployeesPage from "./pages/hr/Employees";
+import SettingsPage from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -11,15 +25,31 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+      <AuthProvider>
+        <TenantProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route element={<AppLayout />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/customers" element={<CustomersPage />} />
+                <Route path="/inbox" element={<InboxPage />} />
+                <Route path="/appointments" element={<AppointmentsPage />} />
+                <Route path="/leads" element={<LeadsPage />} />
+                <Route path="/deals" element={<DealsPage />} />
+                <Route path="/campaigns" element={<CampaignsPage />} />
+                <Route path="/hr/dashboard" element={<HRDashboard />} />
+                <Route path="/hr/employees" element={<EmployeesPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+              </Route>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TenantProvider>
+      </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
