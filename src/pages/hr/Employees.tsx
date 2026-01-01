@@ -1,21 +1,24 @@
+import { useTenant } from '@/contexts/TenantContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Users, Plus, Search } from 'lucide-react';
 
 export default function EmployeesPage() {
+  const { t } = useTenant();
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Employees</h1>
+          <h1 className="text-3xl font-bold">{t('staffs')}</h1>
           <p className="text-muted-foreground mt-1">
             Manage your team members
           </p>
         </div>
         <Button>
           <Plus className="h-4 w-4 mr-2" />
-          Add Employee
+          Add {t('staff')}
         </Button>
       </div>
 
@@ -31,8 +34,8 @@ export default function EmployeesPage() {
         <CardContent>
           <div className="text-center py-12 text-muted-foreground">
             <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No employees added yet</p>
-            <p className="text-sm">Add your first employee to get started</p>
+            <p>No {t('staffs').toLowerCase()} added yet</p>
+            <p className="text-sm">Add your first {t('staff').toLowerCase()} to get started</p>
           </div>
         </CardContent>
       </Card>

@@ -6,20 +6,20 @@ import { Briefcase, Plus } from 'lucide-react';
 const stages = ['Discovery', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'];
 
 export default function DealsPage() {
-  const { translate } = useTenant();
+  const { t } = useTenant();
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">{translate('deals')}</h1>
+          <h1 className="text-3xl font-bold">{t('deals')}</h1>
           <p className="text-muted-foreground mt-1">
-            Pipeline view of your {translate('deals').toLowerCase()}
+            Pipeline view of your {t('deals').toLowerCase()}
           </p>
         </div>
         <Button>
           <Plus className="h-4 w-4 mr-2" />
-          New {translate('deal')}
+          New {t('deal')}
         </Button>
       </div>
 
@@ -36,7 +36,7 @@ export default function DealsPage() {
             <CardContent className="min-h-48">
               <div className="text-center py-8 text-muted-foreground">
                 <Briefcase className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-xs">No {translate('deals').toLowerCase()}</p>
+                <p className="text-xs">No {t('deals').toLowerCase()}</p>
               </div>
             </CardContent>
           </Card>

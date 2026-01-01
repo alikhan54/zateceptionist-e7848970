@@ -5,20 +5,20 @@ import { Target, Plus, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
 export default function LeadsPage() {
-  const { translate } = useTenant();
+  const { t } = useTenant();
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">{translate('leads')}</h1>
+          <h1 className="text-3xl font-bold">{t('leads')}</h1>
           <p className="text-muted-foreground mt-1">
-            Track and manage your {translate('leads').toLowerCase()}
+            Track and manage your {t('leads').toLowerCase()}
           </p>
         </div>
         <Button>
           <Plus className="h-4 w-4 mr-2" />
-          Add {translate('lead')}
+          Add {t('lead')}
         </Button>
       </div>
 
@@ -27,15 +27,15 @@ export default function LeadsPage() {
           <div className="flex items-center gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder={`Search ${translate('leads').toLowerCase()}...`} className="pl-10" />
+              <Input placeholder={`Search ${t('leads').toLowerCase()}...`} className="pl-10" />
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <div className="text-center py-12 text-muted-foreground">
             <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No {translate('leads').toLowerCase()} yet</p>
-            <p className="text-sm">Add your first {translate('lead').toLowerCase()} to get started</p>
+            <p>No {t('leads').toLowerCase()} yet</p>
+            <p className="text-sm">Add your first {t('lead').toLowerCase()} to get started</p>
           </div>
         </CardContent>
       </Card>
