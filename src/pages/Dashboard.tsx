@@ -45,11 +45,11 @@ function StatCard({ title, value, change, icon }: StatCardProps) {
 }
 
 export default function Dashboard() {
-  const { tenantConfig, translate } = useTenant();
+  const { tenantConfig, t } = useTenant();
 
   const stats = [
     {
-      title: `Total ${translate('customers')}`,
+      title: `Total ${t('customers')}`,
       value: '1,248',
       change: 12.5,
       icon: <Users className="h-5 w-5" />,
@@ -61,13 +61,13 @@ export default function Dashboard() {
       icon: <MessageSquare className="h-5 w-5" />,
     },
     {
-      title: translate('appointments'),
+      title: t('appointments'),
       value: '89',
       change: -3.1,
       icon: <Calendar className="h-5 w-5" />,
     },
     {
-      title: `Active ${translate('leads')}`,
+      title: `Active ${t('leads')}`,
       value: '156',
       change: 24.3,
       icon: <TrendingUp className="h-5 w-5" />,
@@ -119,7 +119,7 @@ export default function Dashboard() {
 
         <Card className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
           <CardHeader>
-            <CardTitle>Upcoming {translate('appointments')}</CardTitle>
+            <CardTitle>Upcoming {t('appointments')}</CardTitle>
             <CardDescription>Your schedule for today</CardDescription>
           </CardHeader>
           <CardContent>

@@ -58,13 +58,24 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut } = useAuth();
-  const { tenantConfig, translate } = useTenant();
+  const { tenantConfig, t } = useTenant();
 
   const isActive = (path: string) => location.pathname === path;
 
   const handleLogout = async () => {
     await signOut();
     navigate('/login');
+  };
+
+  // Get translated nav items
+  const getNavLabel = (title: string) => {
+    const translations: Record<string, string> = {
+      'Customers': t('customers'),
+      'Appointments': t('appointments'),
+      'Leads': t('leads'),
+      'Deals': t('deals'),
+    };
+    return translations[title] || title;
   };
 
   const NavItem = ({ item }: { item: { title: string; url: string; icon: React.ComponentType<{ className?: string }> } }) => (
@@ -78,9 +89,7 @@ export function AppSidebar() {
       >
         <item.icon className="h-4 w-4 shrink-0" />
         {!collapsed && (
-          <span>
-            {item.title === 'Customers' ? translate('customers') : item.title}
-          </span>
+          <span>{getNavLabel(item.title)}</span>
         )}
         {!collapsed && isActive(item.url) && (
           <ChevronRight className="h-4 w-4 ml-auto" />
