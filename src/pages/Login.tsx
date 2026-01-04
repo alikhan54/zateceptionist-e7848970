@@ -13,7 +13,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { user, signIn, signUp } = useAuth();
+  const { user, login, signUp } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -27,7 +27,7 @@ export default function LoginPage() {
 
     try {
       const { error } = isLogin
-        ? await signIn(email, password)
+        ? await login(email, password)
         : await signUp(email, password);
 
       if (error) {
