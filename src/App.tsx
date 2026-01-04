@@ -18,6 +18,7 @@ import LeadsPage from "./pages/Leads";
 import DealsPage from "./pages/Deals";
 import SalesAutomationPage from "./pages/SalesAutomation";
 import MarketingEnginePage from "./pages/MarketingEngine";
+import ContentStudioPage from "./pages/marketing/ContentStudio";
 import HRDashboard from "./pages/hr/HRDashboard";
 import EmployeesPage from "./pages/hr/Employees";
 import SettingsPage from "./pages/Settings";
@@ -50,6 +51,7 @@ const App = () => (
                 <Route path="/deals" element={<DealsPage />} />
                 <Route path="/sales/*" element={<SalesAutomationPage />} />
                 <Route path="/marketing" element={<MarketingEnginePage />} />
+                <Route path="/marketing/content" element={<ContentStudioPage />} />
                 <Route path="/marketing/*" element={<MarketingEnginePage />} />
                 <Route path="/hr/dashboard" element={<HRDashboard />} />
                 <Route path="/hr/employees" element={<EmployeesPage />} />
