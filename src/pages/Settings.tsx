@@ -14,11 +14,6 @@ const industries: { value: IndustryType; label: string }[] = [
   { value: 'real_estate', label: 'Real Estate' },
   { value: 'restaurant', label: 'Restaurant' },
   { value: 'salon', label: 'Salon & Spa' },
-  { value: 'retail', label: 'Retail' },
-  { value: 'construction', label: 'Construction' },
-  { value: 'hospitality', label: 'Hospitality' },
-  { value: 'education', label: 'Education' },
-  { value: 'manufacturing', label: 'Manufacturing' },
   { value: 'general', label: 'General Business' },
 ];
 
@@ -26,7 +21,7 @@ export default function SettingsPage() {
   const { tenantConfig, tenantId } = useTenant();
   const { user } = useAuth();
   const { toast } = useToast();
-  const [businessName, setBusinessName] = useState(tenantConfig?.business_name || '');
+  const [businessName, setBusinessName] = useState(tenantConfig?.company_name || '');
   const [industry, setIndustry] = useState<IndustryType>(tenantConfig?.industry || 'general');
 
   const handleSave = () => {

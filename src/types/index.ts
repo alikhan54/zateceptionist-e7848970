@@ -5,21 +5,31 @@ export type IndustryType =
   | 'real_estate' 
   | 'restaurant' 
   | 'salon' 
-  | 'retail' 
-  | 'construction' 
-  | 'hospitality' 
-  | 'education' 
-  | 'manufacturing' 
   | 'general';
 
 export interface TenantConfig {
   id: string;
   tenant_id: string;
-  business_name: string;
+  company_name: string | null;
   industry: IndustryType;
-  settings: Record<string, unknown>;
-  created_at: string;
-  updated_at: string;
+  logo_url: string | null;
+  primary_color: string | null;
+  ai_name: string | null;
+  ai_role: string | null;
+  timezone: string | null;
+  currency: string | null;
+  working_days: string[] | null;
+  opening_time: string | null;
+  closing_time: string | null;
+  vocabulary: Record<string, string> | null;
+  has_whatsapp: boolean;
+  has_email: boolean;
+  has_voice: boolean;
+  has_instagram: boolean;
+  has_facebook: boolean;
+  has_linkedin: boolean;
+  features: Record<string, boolean> | null;
+  subscription_status: string | null;
 }
 
 export interface Customer {
