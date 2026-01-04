@@ -159,12 +159,15 @@ const industryDealStages: Record<IndustryType, string[]> = {
   ],
 };
 
+export type UserRole = 'master_admin' | 'admin' | 'manager' | 'staff';
+
 interface TenantContextType {
   tenantId: string | null;
   tenantConfig: TenantConfig | null;
   isLoading: boolean;
   error: string | null;
   setTenantId: (id: string) => void;
+  setUserTenantInfo: (tenantId: string | null, role: UserRole) => void;
   canSwitchTenant: boolean;
   translate: (term: string) => string;
   t: (term: string) => string;
@@ -201,12 +204,28 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const [tenantConfig, setTenantConfig] = useState<TenantConfig | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isMasterAdmin, setIsMasterAdmin] = useState(false);
+  const [userRole, setUserRole] = useState<UserRole>('staff');
 
   const setTenantId = useCallback((id: string) => {
     localStorage.setItem(TENANT_ID_KEY, id);
     setTenantIdState(id);
   }, []);
+
+  // Called by AuthContext after authentication to set user's tenant and role
+  const setUserTenantInfo = useCallback((newTenantId: string | null, role: UserRole) => {
+    setUserRole(role);
+    if (newTenantId && role !== 'master_admin') {
+      // Non-master admins are locked to their tenant
+      localStorage.setItem(TENANT_ID_KEY, newTenantId);
+      setTenantIdState(newTenantId);
+    } else if (newTenantId) {
+      // Master admins can have a default tenant but can switch
+      if (!tenantId) {
+        localStorage.setItem(TENANT_ID_KEY, newTenantId);
+        setTenantIdState(newTenantId);
+      }
+    }
+  }, [tenantId]);
 
   const fetchTenantConfig = useCallback(async () => {
     if (!tenantId) {
@@ -293,16 +312,8 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     }
   }, [tenantId]);
 
-  // Check if user is master admin
-  useEffect(() => {
-    const checkMasterAdmin = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user?.user_metadata?.role === 'master_admin') {
-        setIsMasterAdmin(true);
-      }
-    };
-    checkMasterAdmin();
-  }, []);
+  // Determine if user can switch tenants (only master_admin)
+  const canSwitchTenant = userRole === 'master_admin';
 
   const industry = useMemo(() => tenantConfig?.industry || 'general', [tenantConfig?.industry]);
 
@@ -350,7 +361,8 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         error,
         setTenantId,
-        canSwitchTenant: isMasterAdmin,
+        setUserTenantInfo,
+        canSwitchTenant,
         translate,
         t: translate,
         getVocabulary,
