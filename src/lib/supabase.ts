@@ -1,14 +1,11 @@
-import { createClient } from '@supabase/supabase-js';
+// Re-export from integrations/supabase for backward compatibility
+export { 
+  supabase, 
+  withTenantFilter, 
+  callWebhook, 
+  createTenantQuery,
+  WEBHOOKS,
+  N8N_WEBHOOK_BASE,
+} from '@/integrations/supabase/client';
 
-const SUPABASE_URL = "https://fncfbywkemsxwuiowxxe.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZuY2ZieXdrZW1zeHd1aW93eHhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY4NjgyNzUsImV4cCI6MjA4MjQ0NDI3NX0.wlccZnaj9Awd03LkDSaSlZFqIiSSOgOedX-aCsqeLek";
-
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    storage: localStorage,
-  },
-});
-
-export type { User, Session } from '@supabase/supabase-js';
+export type { User, Session, WebhookEndpoint } from '@/integrations/supabase/client';
