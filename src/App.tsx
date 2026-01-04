@@ -23,6 +23,7 @@ import CampaignCentralPage from "./pages/marketing/CampaignCentral";
 import HRDashboard from "./pages/hr/HRDashboard";
 import EmployeesPage from "./pages/hr/Employees";
 import SettingsPage from "./pages/Settings";
+import VoiceAISettingsPage from "./pages/VoiceAISettings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -58,6 +59,7 @@ const App = () => (
                 <Route path="/hr/dashboard" element={<HRDashboard />} />
                 <Route path="/hr/employees" element={<EmployeesPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/settings/voice-ai" element={<VoiceAISettingsPage />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
