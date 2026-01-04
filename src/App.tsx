@@ -13,9 +13,11 @@ import Dashboard from "./pages/Dashboard";
 import CustomersPage from "./pages/Customers";
 import InboxPage from "./pages/Inbox";
 import AppointmentsPage from "./pages/Appointments";
+import TasksPage from "./pages/Tasks";
 import LeadsPage from "./pages/Leads";
 import DealsPage from "./pages/Deals";
 import CampaignsPage from "./pages/Campaigns";
+import SalesAutomationPage from "./pages/SalesAutomation";
 import HRDashboard from "./pages/hr/HRDashboard";
 import EmployeesPage from "./pages/hr/Employees";
 import SettingsPage from "./pages/Settings";
@@ -43,9 +45,11 @@ const App = () => (
                 <Route path="/customers" element={<CustomersPage />} />
                 <Route path="/inbox" element={<InboxPage />} />
                 <Route path="/appointments" element={<AppointmentsPage />} />
+                <Route path="/tasks" element={<TasksPage />} />
                 <Route path="/leads" element={<LeadsPage />} />
                 <Route path="/deals" element={<DealsPage />} />
                 <Route path="/campaigns" element={<CampaignsPage />} />
+                <Route path="/sales/*" element={<SalesAutomationPage />} />
                 <Route path="/hr/dashboard" element={<HRDashboard />} />
                 <Route path="/hr/employees" element={<EmployeesPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
