@@ -10,6 +10,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import LoginPage from "./pages/Login";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
+import AdminPanel from "./pages/AdminPanel";
 import CustomersPage from "./pages/Customers";
 import InboxPage from "./pages/Inbox";
 import AppointmentsPage from "./pages/Appointments";
@@ -60,6 +61,11 @@ const App = () => (
                 <Route path="/hr/employees" element={<EmployeesPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/settings/voice-ai" element={<VoiceAISettingsPage />} />
+                <Route path="/admin" element={
+                  <ProtectedRoute requiredRole="master_admin">
+                    <AdminPanel />
+                  </ProtectedRoute>
+                } />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
