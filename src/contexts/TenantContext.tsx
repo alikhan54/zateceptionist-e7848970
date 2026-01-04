@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 
 export type IndustryType =
@@ -6,21 +6,31 @@ export type IndustryType =
   | 'real_estate'
   | 'restaurant'
   | 'salon'
-  | 'retail'
-  | 'construction'
-  | 'hospitality'
-  | 'education'
-  | 'manufacturing'
   | 'general';
 
 export interface TenantConfig {
   id: string;
   tenant_id: string;
-  business_name: string;
+  company_name: string | null;
   industry: IndustryType;
-  settings: Record<string, unknown>;
-  created_at: string;
-  updated_at: string;
+  logo_url: string | null;
+  primary_color: string | null;
+  ai_name: string | null;
+  ai_role: string | null;
+  timezone: string | null;
+  currency: string | null;
+  working_days: string[] | null;
+  opening_time: string | null;
+  closing_time: string | null;
+  vocabulary: Record<string, string> | null;
+  has_whatsapp: boolean;
+  has_email: boolean;
+  has_voice: boolean;
+  has_instagram: boolean;
+  has_facebook: boolean;
+  has_linkedin: boolean;
+  features: Record<string, boolean> | null;
+  subscription_status: string | null;
 }
 
 // Industry-specific vocabulary translations
@@ -81,76 +91,6 @@ const industryVocabulary: Record<IndustryType, Record<string, string>> = {
     lead: 'Client Inquiry',
     leads: 'Client Inquiries',
   },
-  retail: {
-    customer: 'Customer',
-    customers: 'Customers',
-    appointment: 'Appointment',
-    appointments: 'Appointments',
-    product: 'Product',
-    products: 'Products',
-    staff: 'Associate',
-    staffs: 'Associates',
-    deal: 'Order',
-    deals: 'Orders',
-    lead: 'Prospect',
-    leads: 'Prospects',
-  },
-  construction: {
-    customer: 'Client',
-    customers: 'Clients',
-    appointment: 'Site Visit',
-    appointments: 'Site Visits',
-    product: 'Project',
-    products: 'Projects',
-    staff: 'Contractor',
-    staffs: 'Contractors',
-    deal: 'Contract',
-    deals: 'Contracts',
-    lead: 'Project Inquiry',
-    leads: 'Project Inquiries',
-  },
-  hospitality: {
-    customer: 'Guest',
-    customers: 'Guests',
-    appointment: 'Booking',
-    appointments: 'Bookings',
-    product: 'Room',
-    products: 'Rooms',
-    staff: 'Concierge',
-    staffs: 'Staff',
-    deal: 'Reservation',
-    deals: 'Reservations',
-    lead: 'Inquiry',
-    leads: 'Inquiries',
-  },
-  education: {
-    customer: 'Student',
-    customers: 'Students',
-    appointment: 'Session',
-    appointments: 'Sessions',
-    product: 'Course',
-    products: 'Courses',
-    staff: 'Instructor',
-    staffs: 'Instructors',
-    deal: 'Enrollment',
-    deals: 'Enrollments',
-    lead: 'Prospect',
-    leads: 'Prospects',
-  },
-  manufacturing: {
-    customer: 'Client',
-    customers: 'Clients',
-    appointment: 'Meeting',
-    appointments: 'Meetings',
-    product: 'Product',
-    products: 'Products',
-    staff: 'Technician',
-    staffs: 'Technicians',
-    deal: 'Order',
-    deals: 'Orders',
-    lead: 'Inquiry',
-    leads: 'Inquiries',
-  },
   general: {
     customer: 'Customer',
     customers: 'Customers',
@@ -167,14 +107,74 @@ const industryVocabulary: Record<IndustryType, Record<string, string>> = {
   },
 };
 
+// Industry-specific deal stages
+const industryDealStages: Record<IndustryType, string[]> = {
+  healthcare: [
+    'Inquiry',
+    'Consultation Booked',
+    'Consultation Done',
+    'Treatment Plan',
+    'Scheduled',
+    'In Treatment',
+    'Completed',
+    'Follow-up',
+    'Lost',
+  ],
+  real_estate: [
+    'Lead',
+    'Qualified',
+    'Viewing Scheduled',
+    'Viewing Done',
+    'Offer Made',
+    'Negotiation',
+    'Contract',
+    'Closing',
+    'Won',
+    'Lost',
+  ],
+  restaurant: [
+    'Inquiry',
+    'Quote Sent',
+    'Confirmed',
+    'Deposit Received',
+    'In Progress',
+    'Completed',
+    'Cancelled',
+  ],
+  salon: [
+    'Inquiry',
+    'Booked',
+    'In Service',
+    'Completed',
+    'Rebooking',
+    'Lost',
+  ],
+  general: [
+    'Lead',
+    'Qualified',
+    'Proposal',
+    'Negotiation',
+    'Won',
+    'Lost',
+  ],
+};
+
 interface TenantContextType {
   tenantId: string | null;
   tenantConfig: TenantConfig | null;
   isLoading: boolean;
   error: string | null;
   setTenantId: (id: string) => void;
-  translate: (key: string) => string;
-  t: (key: string) => string; // Short alias for translate
+  canSwitchTenant: boolean;
+  translate: (term: string) => string;
+  t: (term: string) => string;
+  getVocabulary: () => Record<string, string>;
+  getDealStages: () => string[];
+  industry: IndustryType;
+  isHealthcare: boolean;
+  isRealEstate: boolean;
+  isRestaurant: boolean;
+  isSalon: boolean;
   refreshConfig: () => Promise<void>;
 }
 
@@ -182,13 +182,26 @@ const TenantContext = createContext<TenantContextType | undefined>(undefined);
 
 const TENANT_ID_KEY = 'zateceptionist_tenant_id';
 
+function getInitialTenantId(): string | null {
+  // Check URL param first
+  if (typeof window !== 'undefined') {
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlTenantId = urlParams.get('tenant');
+    if (urlTenantId) {
+      localStorage.setItem(TENANT_ID_KEY, urlTenantId);
+      return urlTenantId;
+    }
+  }
+  // Fall back to localStorage
+  return localStorage.getItem(TENANT_ID_KEY);
+}
+
 export function TenantProvider({ children }: { children: React.ReactNode }) {
-  const [tenantId, setTenantIdState] = useState<string | null>(() => {
-    return localStorage.getItem(TENANT_ID_KEY);
-  });
+  const [tenantId, setTenantIdState] = useState<string | null>(getInitialTenantId);
   const [tenantConfig, setTenantConfig] = useState<TenantConfig | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isMasterAdmin, setIsMasterAdmin] = useState(false);
 
   const setTenantId = useCallback((id: string) => {
     localStorage.setItem(TENANT_ID_KEY, id);
@@ -215,17 +228,37 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 
       if (data) {
         setTenantConfig(data as TenantConfig);
+        // Update document title
+        if (data.company_name) {
+          document.title = `${data.company_name} | Zateceptionist`;
+        }
       } else {
         // Default config if none exists
-        setTenantConfig({
+        const defaultConfig: TenantConfig = {
           id: '',
           tenant_id: tenantId,
-          business_name: 'My Business',
+          company_name: 'My Business',
           industry: 'general',
-          settings: {},
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
+          logo_url: null,
+          primary_color: null,
+          ai_name: 'Zate',
+          ai_role: 'AI Assistant',
+          timezone: 'UTC',
+          currency: 'USD',
+          working_days: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+          opening_time: '09:00',
+          closing_time: '17:00',
+          vocabulary: null,
+          has_whatsapp: false,
+          has_email: true,
+          has_voice: false,
+          has_instagram: false,
+          has_facebook: false,
+          has_linkedin: false,
+          features: null,
+          subscription_status: 'trial',
+        };
+        setTenantConfig(defaultConfig);
       }
     } catch (err) {
       console.error('Error fetching tenant config:', err);
@@ -234,25 +267,76 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       setTenantConfig({
         id: '',
         tenant_id: tenantId,
-        business_name: 'My Business',
+        company_name: 'My Business',
         industry: 'general',
-        settings: {},
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        logo_url: null,
+        primary_color: null,
+        ai_name: 'Zate',
+        ai_role: 'AI Assistant',
+        timezone: 'UTC',
+        currency: 'USD',
+        working_days: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+        opening_time: '09:00',
+        closing_time: '17:00',
+        vocabulary: null,
+        has_whatsapp: false,
+        has_email: true,
+        has_voice: false,
+        has_instagram: false,
+        has_facebook: false,
+        has_linkedin: false,
+        features: null,
+        subscription_status: 'trial',
       });
     } finally {
       setIsLoading(false);
     }
   }, [tenantId]);
 
+  // Check if user is master admin
+  useEffect(() => {
+    const checkMasterAdmin = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.user_metadata?.role === 'master_admin') {
+        setIsMasterAdmin(true);
+      }
+    };
+    checkMasterAdmin();
+  }, []);
+
+  const industry = useMemo(() => tenantConfig?.industry || 'general', [tenantConfig?.industry]);
+
   const translate = useCallback(
-    (key: string): string => {
-      const industry = tenantConfig?.industry || 'general';
+    (term: string): string => {
+      // Check custom vocabulary first
+      const customVocab = tenantConfig?.vocabulary;
+      if (customVocab && customVocab[term.toLowerCase()]) {
+        return customVocab[term.toLowerCase()];
+      }
+      // Fall back to industry vocabulary
       const vocab = industryVocabulary[industry];
-      return vocab[key.toLowerCase()] || key;
+      return vocab[term.toLowerCase()] || term;
     },
-    [tenantConfig?.industry]
+    [tenantConfig?.vocabulary, industry]
   );
+
+  const getVocabulary = useCallback((): Record<string, string> => {
+    const baseVocab = { ...industryVocabulary[industry] };
+    const customVocab = tenantConfig?.vocabulary;
+    if (customVocab) {
+      return { ...baseVocab, ...customVocab };
+    }
+    return baseVocab;
+  }, [industry, tenantConfig?.vocabulary]);
+
+  const getDealStages = useCallback((): string[] => {
+    return industryDealStages[industry] || industryDealStages.general;
+  }, [industry]);
+
+  const isHealthcare = industry === 'healthcare';
+  const isRealEstate = industry === 'real_estate';
+  const isRestaurant = industry === 'restaurant';
+  const isSalon = industry === 'salon';
 
   useEffect(() => {
     fetchTenantConfig();
@@ -266,8 +350,16 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         error,
         setTenantId,
+        canSwitchTenant: isMasterAdmin,
         translate,
-        t: translate, // Short alias
+        t: translate,
+        getVocabulary,
+        getDealStages,
+        industry,
+        isHealthcare,
+        isRealEstate,
+        isRestaurant,
+        isSalon,
         refreshConfig: fetchTenantConfig,
       }}
     >
@@ -282,4 +374,9 @@ export function useTenant() {
     throw new Error('useTenant must be used within a TenantProvider');
   }
   return context;
+}
+
+export function useVocabulary() {
+  const { translate, t, getVocabulary, getDealStages, industry } = useTenant();
+  return { translate, t, getVocabulary, getDealStages, industry };
 }

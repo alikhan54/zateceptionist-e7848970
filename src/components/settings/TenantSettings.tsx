@@ -19,11 +19,6 @@ const industries: { value: IndustryType; label: string }[] = [
   { value: 'real_estate', label: 'Real Estate' },
   { value: 'restaurant', label: 'Restaurant' },
   { value: 'salon', label: 'Salon & Beauty' },
-  { value: 'retail', label: 'Retail' },
-  { value: 'construction', label: 'Construction' },
-  { value: 'hospitality', label: 'Hospitality' },
-  { value: 'education', label: 'Education' },
-  { value: 'manufacturing', label: 'Manufacturing' },
   { value: 'general', label: 'General Business' },
 ];
 
@@ -31,7 +26,7 @@ export function TenantSettings() {
   const { tenantConfig, tenantId } = useTenant();
   const { toast } = useToast();
 
-  const [businessName, setBusinessName] = useState(tenantConfig?.business_name || '');
+  const [businessName, setBusinessName] = useState(tenantConfig?.company_name || '');
   const [industry, setIndustry] = useState<IndustryType>(tenantConfig?.industry || 'general');
   const [isSaving, setIsSaving] = useState(false);
 

@@ -109,7 +109,7 @@ export function AppSidebar() {
             <div className="flex flex-col">
               <span className="font-semibold text-sm">Zateceptionist</span>
               <span className="text-xs text-muted-foreground truncate max-w-32">
-                {tenantConfig?.business_name || 'Business Hub'}
+                {tenantConfig?.company_name || 'Business Hub'}
               </span>
             </div>
           )}
