@@ -241,21 +241,20 @@ export default function LeadPipeline() {
       {/* Kanban Board */}
       <div className="flex-1 overflow-x-auto">
         <div className="flex gap-4 min-w-max pb-4">
-          {stages.map((stage) => {
-            const stageId = typeof stage === 'string' ? stage : stage.id;
-            const stageName = typeof stage === 'string' ? stage : stage.name;
-            const stageColor = typeof stage === 'string' ? '#3b82f6' : stage.color;
-            const stageDeals = getDealsForStage(stageId);
-            const stageTotal = getStageTotal(stageId);
-            const weightedValue = getWeightedValue(stageId);
+          {stages.map((stage, index) => {
+            const stageColors = ['#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#10b981', '#ef4444'];
+            const stageColor = stageColors[index % stageColors.length];
+            const stageDeals = getDealsForStage(stage);
+            const stageTotal = getStageTotal(stage);
+            const weightedValue = getWeightedValue(stage);
             
             return (
-              <div key={stageId} className="w-72 flex-shrink-0">
+              <div key={stage} className="w-72 flex-shrink-0">
                 <div className="mb-3 p-3 rounded-lg" style={{ backgroundColor: `${stageColor}15` }}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded-full" style={{ backgroundColor: stageColor }} />
-                      <h3 className="font-semibold text-sm">{stageName}</h3>
+                      <h3 className="font-semibold text-sm">{stage}</h3>
                       <Badge variant="secondary" className="text-xs">{stageDeals.length}</Badge>
                     </div>
                     <Button variant="ghost" size="icon" className="h-6 w-6">
