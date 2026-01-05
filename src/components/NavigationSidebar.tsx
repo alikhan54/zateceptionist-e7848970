@@ -41,6 +41,12 @@ import {
   ChevronRight,
   ChevronDown,
   Zap,
+  Clock,
+  CalendarDays,
+  DollarSign,
+  Network,
+  GraduationCap,
+  Bot,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -129,8 +135,16 @@ export function NavigationSidebar() {
     featureKey: 'hr_module',
     items: [
       { title: 'HR Dashboard', url: '/hr/dashboard', icon: Building2 },
-      { title: 'Job Postings', url: '/hr/jobs', icon: FileText },
-      { title: 'Candidates', url: '/hr/candidates', icon: UserCheck },
+      { title: translate('staffs'), url: '/hr/employees', icon: Users, translationKey: 'staffs' },
+      { title: 'Attendance', url: '/hr/attendance', icon: Clock },
+      { title: 'Leave Management', url: '/hr/leave', icon: CalendarDays },
+      { title: 'Payroll', url: '/hr/payroll', icon: DollarSign },
+      { title: 'Departments', url: '/hr/departments', icon: Network },
+      { title: 'Performance', url: '/hr/performance', icon: TrendingUp },
+      { title: 'Training', url: '/hr/training', icon: GraduationCap },
+      { title: 'Documents', url: '/hr/documents', icon: FileText },
+      { title: 'Reports', url: '/hr/reports', icon: BarChart3 },
+      { title: 'HR AI Assistant', url: '/hr/ai-assistant', icon: Bot },
     ],
   };
 
