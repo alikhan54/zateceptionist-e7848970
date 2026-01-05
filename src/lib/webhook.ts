@@ -51,12 +51,27 @@ export const WEBHOOKS = {
   SEND_CAMPAIGN: '/marketing/send-campaign',
   GENERATE_CONTENT: '/marketing/generate-content',
   
-  // HR
+  // HR - Extended
   EMPLOYEE_ONBOARDING: '/hr/employee-onboarding',
   ATTENDANCE_CHECK_IN: '/hr/attendance/check-in',
   ATTENDANCE_CHECK_OUT: '/hr/attendance/check-out',
   LEAVE_REQUEST: '/hr/leave/request',
   LEAVE_APPROVE: '/hr/leave/approve',
+  HR_DASHBOARD: '/hr/dashboard',
+  HR_ATTENDANCE_TODAY: '/hr/attendance/today',
+  HR_LEAVE_BALANCE: '/hr/leave/balance',
+  HR_PAYROLL_SUMMARY: '/hr/payroll/summary',
+  HR_DEPARTMENTS: '/hr/departments',
+  HR_PERFORMANCE_REVIEW: '/hr/performance/review',
+  HR_TRAINING_PROGRAMS: '/hr/training/programs',
+  HR_TRAINING_ENROLLMENTS: '/hr/training/enrollments',
+  HR_DOCUMENTS: '/hr/documents',
+  HR_REPORTS: '/hr/reports',
+  HR_AI_ASSISTANT: '/hr/ai-assistant',
+  HR_GET_EMPLOYEE: '/hr/employee',
+  HR_GET_EMPLOYEES: '/hr/employees',
+  HR_UPDATE_EMPLOYEE: '/hr/employee/update',
+  HR_TERMINATE_EMPLOYEE: '/hr/employee/terminate',
   
   // Main/Operations
   SEND_MESSAGE: '/send-message',

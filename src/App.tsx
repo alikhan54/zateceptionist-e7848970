@@ -29,6 +29,15 @@ const ContentStudioPage = lazy(() => import("./pages/marketing/ContentStudio"));
 const CampaignCentralPage = lazy(() => import("./pages/marketing/CampaignCentral"));
 const HRDashboard = lazy(() => import("./pages/hr/HRDashboard"));
 const EmployeesPage = lazy(() => import("./pages/hr/Employees"));
+const AttendancePage = lazy(() => import("./pages/hr/Attendance"));
+const LeaveManagementPage = lazy(() => import("./pages/hr/LeaveManagement"));
+const PayrollPage = lazy(() => import("./pages/hr/Payroll"));
+const DepartmentsPage = lazy(() => import("./pages/hr/Departments"));
+const PerformancePage = lazy(() => import("./pages/hr/Performance"));
+const TrainingPage = lazy(() => import("./pages/hr/Training"));
+const HRDocumentsPage = lazy(() => import("./pages/hr/Documents"));
+const HRReportsPage = lazy(() => import("./pages/hr/Reports"));
+const HRAIAssistantPage = lazy(() => import("./pages/hr/AIAssistant"));
 const SettingsPage = lazy(() => import("./pages/Settings"));
 const VoiceAISettingsPage = lazy(() => import("./pages/VoiceAISettings"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -103,6 +112,15 @@ const App = () => (
                 <Route path="/hr" element={<Navigate to="/hr/dashboard" replace />} />
                 <Route path="/hr/dashboard" element={<LazyPage><HRDashboard /></LazyPage>} />
                 <Route path="/hr/employees" element={<LazyPage><EmployeesPage /></LazyPage>} />
+                <Route path="/hr/attendance" element={<LazyPage><AttendancePage /></LazyPage>} />
+                <Route path="/hr/leave" element={<LazyPage><LeaveManagementPage /></LazyPage>} />
+                <Route path="/hr/payroll" element={<LazyPage><PayrollPage /></LazyPage>} />
+                <Route path="/hr/departments" element={<LazyPage><DepartmentsPage /></LazyPage>} />
+                <Route path="/hr/performance" element={<LazyPage><PerformancePage /></LazyPage>} />
+                <Route path="/hr/training" element={<LazyPage><TrainingPage /></LazyPage>} />
+                <Route path="/hr/documents" element={<LazyPage><HRDocumentsPage /></LazyPage>} />
+                <Route path="/hr/reports" element={<LazyPage><HRReportsPage /></LazyPage>} />
+                <Route path="/hr/ai-assistant" element={<LazyPage><HRAIAssistantPage /></LazyPage>} />
 
                 {/* Settings */}
                 <Route path="/settings" element={<LazyPage><SettingsPage /></LazyPage>} />
