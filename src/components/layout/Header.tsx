@@ -1,6 +1,4 @@
-import { Bell, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import {
   DropdownMenu,
@@ -13,6 +11,10 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTenant } from '@/contexts/TenantContext';
+import { CommandPalette } from '@/components/global/CommandPalette';
+import { NotificationCenter } from '@/components/global/NotificationCenter';
+import { HelpSupport } from '@/components/global/HelpSupport';
+import { ThemeToggle } from '@/components/global/ThemeToggle';
 
 export function Header() {
   const { user, signOut } = useAuth();
@@ -25,23 +27,13 @@ export function Header() {
       <SidebarTrigger className="mr-2" />
       
       <div className="flex-1 max-w-md">
-        <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search..."
-            className="pl-8 h-9 bg-muted/50"
-          />
-        </div>
+        <CommandPalette />
       </div>
 
-      <div className="flex items-center gap-2 ml-auto">
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5" />
-          <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-[10px] font-medium text-primary-foreground flex items-center justify-center">
-            3
-          </span>
-        </Button>
+      <div className="flex items-center gap-1 ml-auto">
+        <ThemeToggle />
+        <HelpSupport />
+        <NotificationCenter />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
