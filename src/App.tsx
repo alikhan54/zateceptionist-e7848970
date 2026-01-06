@@ -90,9 +90,13 @@ const NotificationSettings = lazy(() => import("./pages/settings/Notifications")
 // Admin Module
 const AdminPanel = lazy(() => import("./pages/admin/Panel"));
 const AllTenants = lazy(() => import("./pages/admin/Tenants"));
+const AdminUsers = lazy(() => import("./pages/admin/Users"));
 const SystemHealth = lazy(() => import("./pages/admin/Health"));
 const AuditLogs = lazy(() => import("./pages/admin/Logs"));
 const FeatureFlags = lazy(() => import("./pages/admin/Features"));
+
+// Onboarding
+const CompanySetup = lazy(() => import("./pages/onboarding/CompanySetup"));
 
 // Other
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -132,6 +136,7 @@ const App = () => (
             <Routes>
               {/* Public routes */}
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/onboarding" element={<LazyPage><CompanySetup /></LazyPage>} />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
               {/* Protected routes with Layout */}
@@ -234,6 +239,14 @@ const App = () => (
                   element={
                     <ProtectedRoute requiredRole="master_admin">
                       <LazyPage><AllTenants /></LazyPage>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/users"
+                  element={
+                    <ProtectedRoute requiredRole="master_admin">
+                      <LazyPage><AdminUsers /></LazyPage>
                     </ProtectedRoute>
                   }
                 />
