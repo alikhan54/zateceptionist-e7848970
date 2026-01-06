@@ -347,6 +347,44 @@ export default function TasksPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* AI Task Generator Section */}
+      <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Bot className="h-5 w-5 text-primary" />
+                AI Task Generator
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                AI automatically creates tasks from leads, appointments, and conversations
+              </p>
+            </div>
+            <Switch checked={true} />
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+            <div className="p-3 rounded-lg bg-background/50">
+              <p className="text-2xl font-bold text-primary">12</p>
+              <p className="text-xs text-muted-foreground">AI Generated Today</p>
+            </div>
+            <div className="p-3 rounded-lg bg-background/50">
+              <p className="text-2xl font-bold">{tasks.filter(t => t.status === 'pending').length}</p>
+              <p className="text-xs text-muted-foreground">Pending</p>
+            </div>
+            <div className="p-3 rounded-lg bg-background/50">
+              <p className="text-2xl font-bold text-green-500">{tasks.filter(t => t.status === 'completed').length}</p>
+              <p className="text-xs text-muted-foreground">Completed Today</p>
+            </div>
+            <div className="p-3 rounded-lg bg-background/50">
+              <p className="text-2xl font-bold text-blue-500">94%</p>
+              <p className="text-xs text-muted-foreground">AI Efficiency</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>

@@ -31,6 +31,9 @@ export interface TenantConfig {
   has_linkedin: boolean;
   features: Record<string, boolean> | null;
   subscription_status: string | null;
+  subscription_plan?: string | null;
+  ai_mode?: 'autonomous' | 'assisted' | 'manual' | null;
+  ai_modules_enabled?: Record<string, boolean> | null;
 }
 
 // Industry-specific vocabulary translations
