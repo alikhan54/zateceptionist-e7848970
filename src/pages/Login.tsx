@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -70,6 +71,49 @@ export default function LoginPage() {
       return;
     }
     toast.info('Password reset functionality coming soon');
+  };
+
+  // Google OAuth Sign In
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        },
+      });
+      if (error) throw error;
+    } catch (error) {
+      toast.error('Google sign-in failed', { 
+        description: error instanceof Error ? error.message : 'Unknown error' 
+      });
+      setIsLoading(false);
+    }
+  };
+
+  // Microsoft OAuth Sign In
+  const handleMicrosoftSignIn = async () => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'azure',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          scopes: 'email profile openid',
+        },
+      });
+      if (error) throw error;
+    } catch (error) {
+      toast.error('Microsoft sign-in failed', { 
+        description: error instanceof Error ? error.message : 'Unknown error' 
+      });
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -168,7 +212,7 @@ export default function LoginPage() {
               variant="outline"
               className="h-11 bg-card hover:bg-muted"
               disabled={isLoading}
-              onClick={() => toast.info('Google login coming soon')}
+              onClick={handleGoogleSignIn}
             >
               <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
                 <path
@@ -195,7 +239,7 @@ export default function LoginPage() {
               variant="outline"
               className="h-11 bg-card hover:bg-muted"
               disabled={isLoading}
-              onClick={() => toast.info('Microsoft login coming soon')}
+              onClick={handleMicrosoftSignIn}
             >
               <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
                 <path fill="#f25022" d="M1 1h10v10H1z" />

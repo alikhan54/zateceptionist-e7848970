@@ -15,6 +15,7 @@ import { CommandPalette } from '@/components/global/CommandPalette';
 import { NotificationCenter } from '@/components/global/NotificationCenter';
 import { HelpSupport } from '@/components/global/HelpSupport';
 import { ThemeToggle } from '@/components/global/ThemeToggle';
+import { AIControlCenter } from '@/components/AIControlCenter';
 
 export function Header() {
   const { user, signOut } = useAuth();
@@ -31,6 +32,7 @@ export function Header() {
       </div>
 
       <div className="flex items-center gap-1 ml-auto">
+        <AIControlCenter />
         <ThemeToggle />
         <HelpSupport />
         <NotificationCenter />

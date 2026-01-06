@@ -98,6 +98,9 @@ const FeatureFlags = lazy(() => import("./pages/admin/Features"));
 // Onboarding
 const CompanySetup = lazy(() => import("./pages/onboarding/CompanySetup"));
 
+// Auth
+const AuthCallback = lazy(() => import("./pages/auth/Callback"));
+
 // Other
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -136,6 +139,7 @@ const App = () => (
             <Routes>
               {/* Public routes */}
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/auth/callback" element={<LazyPage><AuthCallback /></LazyPage>} />
               <Route path="/onboarding" element={<LazyPage><CompanySetup /></LazyPage>} />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
