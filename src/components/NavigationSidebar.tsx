@@ -66,22 +66,24 @@ import {
   Headphones,
   MessageCircle,
   Voicemail,
-  Radio,
   Layers,
   GitBranch,
   ClipboardList,
   UserPlus,
   Truck,
   Mail,
+  Eye,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { useToast } from '@/hooks/use-toast';
 
 interface NavItem {
   title: string;
@@ -97,22 +99,31 @@ interface NavSection {
   collapsible?: boolean;
   featureKey?: string;
   adminOnly?: boolean;
+  managerOnly?: boolean;
+  staffOnly?: boolean;
 }
+
+// Sections that staff cannot see
+const STAFF_RESTRICTED_SECTIONS = ['Sales AI', 'Marketing AI', 'HR AI', 'Operations', 'Analytics & AI'];
 
 export function NavigationSidebar() {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut, isAdmin, isMasterAdmin } = useAuth();
-  const { tenantConfig, translate } = useTenant();
+  const { signOut, isAdmin, isMasterAdmin, authUser, hasPermission } = useAuth();
+  const { tenantConfig, translate, tenantId, setTenantId } = useTenant();
   const { isEnabled } = useFeatureFlags();
+  const { toast } = useToast();
 
   // Collapsible section states - auto-expand based on current route
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
 
   const isActive = (path: string) => location.pathname === path;
   const isInSection = (paths: string[]) => paths.some(p => location.pathname.startsWith(p));
+
+  // Check if user is impersonating (master admin viewing a different tenant)
+  const isImpersonating = isMasterAdmin && authUser?.tenant_id && authUser.tenant_id !== tenantId;
 
   // Auto-expand section when route matches
   useEffect(() => {
@@ -183,6 +194,46 @@ export function NavigationSidebar() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [navigate]);
 
+  // Helper function to check if user can see section
+  const canAccessSection = (section: NavSection): boolean => {
+    if (section.adminOnly && !isAdmin && !isMasterAdmin) return false;
+    if (section.managerOnly && authUser?.role === 'staff') return false;
+    if (section.staffOnly && authUser?.role !== 'staff') return false;
+    if (section.featureKey && !isFeatureEnabled(section.featureKey)) return false;
+    // Staff restrictions
+    if (authUser?.role === 'staff' && STAFF_RESTRICTED_SECTIONS.includes(section.label)) return false;
+    return true;
+  };
+
+  // Get role badge color
+  const getRoleBadgeClass = (role?: string) => {
+    switch (role) {
+      case 'master_admin':
+        return 'border-purple-500 text-purple-500 bg-purple-500/10';
+      case 'admin':
+        return 'border-blue-500 text-blue-500 bg-blue-500/10';
+      case 'manager':
+        return 'border-green-500 text-green-500 bg-green-500/10';
+      case 'staff':
+      default:
+        return 'border-muted-foreground text-muted-foreground bg-muted/50';
+    }
+  };
+
+  // Format role for display
+  const formatRole = (role?: string) => {
+    if (!role) return 'User';
+    return role.replace('_', ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  };
+
+  // Handle exit impersonation
+  const handleExitImpersonation = () => {
+    if (authUser?.tenant_id) {
+      setTenantId(authUser.tenant_id);
+      toast({ title: 'Returned to Admin View' });
+    }
+  };
+
   // Navigation sections
   const mainSection: NavSection = {
     label: 'Main',
@@ -192,6 +243,18 @@ export function NavigationSidebar() {
       { title: translate('appointments'), url: '/appointments', icon: Calendar },
       { title: translate('customers'), url: '/customers', icon: Users },
       { title: 'Tasks', url: '/tasks', icon: CheckSquare },
+    ],
+  };
+
+  // Staff-specific section
+  const staffSection: NavSection = {
+    label: 'My Work',
+    staffOnly: true,
+    items: [
+      { title: 'My Tasks', url: '/tasks', icon: CheckSquare },
+      { title: 'My Inbox', url: '/inbox', icon: MessageSquare },
+      { title: 'My Calendar', url: '/appointments', icon: Calendar },
+      { title: 'My Customers', url: '/customers', icon: Users },
     ],
   };
 
@@ -280,8 +343,8 @@ export function NavigationSidebar() {
     featureKey: 'analytics_module',
     items: [
       { title: 'Analytics Hub', url: '/analytics', icon: Activity },
-      { title: 'Real-time Dashboard', url: '/analytics/realtime', icon: Radio },
-      { title: 'Custom Reports', url: '/analytics/reports', icon: BarChart2 },
+      { title: 'Real-time Dashboard', url: '/analytics/realtime', icon: BarChart2 },
+      { title: 'Custom Reports', url: '/analytics/reports', icon: BarChart3 },
       { title: 'AI Insights', url: '/analytics/ai-insights', icon: Sparkles },
       { title: 'Predictions', url: '/analytics/predictions', icon: TrendingUp },
     ],
@@ -306,8 +369,9 @@ export function NavigationSidebar() {
     adminOnly: true,
     collapsible: true,
     items: [
-      { title: 'Admin Panel', url: '/admin', icon: Shield },
+      { title: 'Admin Dashboard', url: '/admin', icon: Shield },
       { title: 'All Tenants', url: '/admin/tenants', icon: Building2 },
+      { title: 'All Users', url: '/admin/users', icon: Users },
       { title: 'System Health', url: '/admin/health', icon: Activity },
       { title: 'Audit Logs', url: '/admin/logs', icon: ClipboardList },
       { title: 'Feature Flags', url: '/admin/features', icon: Layers },
@@ -453,45 +517,105 @@ export function NavigationSidebar() {
         </div>
       </SidebarHeader>
 
+      {/* User Context Banner */}
+      {!collapsed && authUser && (
+        <div className="mx-2 mt-2 p-3 rounded-lg bg-card border">
+          <div className="flex items-center gap-3">
+            <Avatar className="h-10 w-10">
+              {authUser.avatar_url ? (
+                <AvatarImage src={authUser.avatar_url} alt={authUser.full_name || 'User'} />
+              ) : null}
+              <AvatarFallback className="bg-primary/10 text-primary">
+                {authUser.full_name?.charAt(0) || authUser.email?.charAt(0) || 'U'}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-sm truncate">{authUser.full_name || authUser.email || 'User'}</p>
+              <div className="flex items-center gap-1 mt-0.5">
+                <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0', getRoleBadgeClass(authUser.role))}>
+                  {formatRole(authUser.role)}
+                </Badge>
+              </div>
+            </div>
+          </div>
+          {tenantConfig && (
+            <p className="text-xs text-muted-foreground mt-2 truncate flex items-center gap-1">
+              <Building2 className="h-3 w-3" />
+              {tenantConfig.company_name || 'My Business'}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Impersonation Banner */}
+      {!collapsed && isImpersonating && (
+        <div className="mx-2 mt-2 p-2 rounded-lg bg-amber-500/20 border border-amber-500/50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Eye className="h-4 w-4 text-amber-600" />
+              <span className="text-xs font-medium text-amber-600">IMPERSONATING</span>
+            </div>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-6 text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-500/20 px-2"
+              onClick={handleExitImpersonation}
+            >
+              Exit
+            </Button>
+          </div>
+          <p className="text-[10px] text-amber-600/80 mt-1 truncate">
+            Viewing: {tenantConfig?.company_name}
+          </p>
+        </div>
+      )}
+
       <SidebarContent className="px-2 py-2 space-y-1">
-        {/* Main Section */}
-        <StaticSection section={mainSection} />
+        {/* Staff Section - Only for staff */}
+        {authUser?.role === 'staff' && (
+          <StaticSection section={staffSection} />
+        )}
+
+        {/* Main Section - For non-staff or if not showing staff section */}
+        {authUser?.role !== 'staff' && (
+          <StaticSection section={mainSection} />
+        )}
 
         {/* Sales AI Section */}
-        {isFeatureEnabled(salesSection.featureKey) && (
+        {canAccessSection(salesSection) && (
           <CollapsibleSection section={salesSection} sectionKey="sales" />
         )}
 
         {/* Marketing AI Section */}
-        {isFeatureEnabled(marketingSection.featureKey) && (
+        {canAccessSection(marketingSection) && (
           <CollapsibleSection section={marketingSection} sectionKey="marketing" />
         )}
 
         {/* HR AI Section */}
-        {isFeatureEnabled(hrSection.featureKey) && (
+        {canAccessSection(hrSection) && (
           <CollapsibleSection section={hrSection} sectionKey="hr" />
         )}
 
         {/* Operations Section */}
-        {isFeatureEnabled(operationsSection.featureKey) && (
+        {canAccessSection(operationsSection) && (
           <CollapsibleSection section={operationsSection} sectionKey="operations" />
         )}
 
         {/* Communications Section */}
-        {isFeatureEnabled(communicationsSection.featureKey) && (
+        {canAccessSection(communicationsSection) && (
           <CollapsibleSection section={communicationsSection} sectionKey="communications" />
         )}
 
         {/* Analytics Section */}
-        {isFeatureEnabled(analyticsSection.featureKey) && (
+        {canAccessSection(analyticsSection) && (
           <CollapsibleSection section={analyticsSection} sectionKey="analytics" />
         )}
 
         {/* Settings Section */}
         <CollapsibleSection section={settingsSection} sectionKey="settings" />
 
-        {/* Admin Section */}
-        {(isAdmin || isMasterAdmin) && (
+        {/* Admin Section - Only for admin and master_admin */}
+        {canAccessSection(adminSection) && (
           <CollapsibleSection section={adminSection} sectionKey="admin" />
         )}
       </SidebarContent>

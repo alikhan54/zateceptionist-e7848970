@@ -46,6 +46,11 @@ export const WEBHOOKS = {
   // Analytics
   GET_ANALYTICS: '/analytics',
   GET_REALTIME: '/analytics/realtime',
+  
+  // Onboarding
+  AI_COMPANY_ANALYZE: '/onboarding/analyze-company',
+  ONBOARDING_COMPLETE: '/onboarding/complete',
+  TRAIN_AI_KNOWLEDGE: '/onboarding/train-knowledge',
 } as const;
 
 export type WebhookEndpoint = typeof WEBHOOKS[keyof typeof WEBHOOKS];
