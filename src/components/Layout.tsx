@@ -4,6 +4,8 @@ import { useTenant } from '@/contexts/TenantContext';
 import { NavigationSidebar } from '@/components/NavigationSidebar';
 import { Header } from '@/components/layout/Header';
 import { SidebarProvider } from '@/components/ui/sidebar';
+import { OnboardingFlow } from '@/components/global/OnboardingFlow';
+import { SkipLink } from '@/components/shared/AccessibleComponents';
 import { Loader2 } from 'lucide-react';
 
 export default function Layout() {
@@ -27,22 +29,23 @@ export default function Layout() {
     return <Navigate to="/login" replace />;
   }
 
-  // Apply tenant primary color as CSS variable
   const tenantStyle = tenantConfig?.primary_color
     ? { '--primary': tenantConfig.primary_color } as React.CSSProperties
     : {};
 
   return (
     <SidebarProvider>
+      <SkipLink />
       <div className="min-h-screen flex w-full" style={tenantStyle}>
         <NavigationSidebar />
-        <main className="flex-1 flex flex-col min-w-0">
+        <main id="main-content" className="flex-1 flex flex-col min-w-0">
           <Header />
           <div className="flex-1 p-6 overflow-auto">
             <Outlet />
           </div>
         </main>
       </div>
+      <OnboardingFlow />
     </SidebarProvider>
   );
 }
