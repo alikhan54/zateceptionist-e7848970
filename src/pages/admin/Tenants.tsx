@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog,
   DialogContent,
@@ -57,31 +58,10 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar
 } from 'recharts';
-
-interface Tenant {
-  id: string;
-  company: string;
-  industry: string;
-  plan: string;
-  status: 'active' | 'suspended' | 'trial' | 'churned';
-  users: number;
-  messages: number;
-  calls: number;
-  lastActivity: string;
-  createdAt: string;
-  email: string;
-  mrr: number;
-}
-
-const mockTenants: Tenant[] = [
-  { id: '1', company: 'TechCorp Industries', industry: 'Technology', plan: 'Enterprise', status: 'active', users: 45, messages: 12500, calls: 890, lastActivity: '2 min ago', createdAt: 'Jan 15, 2024', email: 'admin@techcorp.com', mrr: 2500 },
-  { id: '2', company: 'RetailPlus', industry: 'Retail', plan: 'Professional', status: 'active', users: 23, messages: 8200, calls: 456, lastActivity: '15 min ago', createdAt: 'Feb 3, 2024', email: 'ops@retailplus.com', mrr: 800 },
-  { id: '3', company: 'HealthFirst', industry: 'Healthcare', plan: 'Enterprise', status: 'active', users: 67, messages: 34000, calls: 2100, lastActivity: '1 hour ago', createdAt: 'Dec 10, 2023', email: 'it@healthfirst.org', mrr: 3500 },
-  { id: '4', company: 'StartupXYZ', industry: 'Technology', plan: 'Growth', status: 'trial', users: 5, messages: 450, calls: 23, lastActivity: '3 hours ago', createdAt: 'Mar 1, 2024', email: 'founder@startupxyz.io', mrr: 0 },
-  { id: '5', company: 'LegalEase', industry: 'Legal', plan: 'Professional', status: 'active', users: 12, messages: 5600, calls: 234, lastActivity: '30 min ago', createdAt: 'Jan 28, 2024', email: 'admin@legalease.law', mrr: 800 },
-  { id: '6', company: 'OldClient Inc', industry: 'Manufacturing', plan: 'Starter', status: 'churned', users: 3, messages: 120, calls: 5, lastActivity: '45 days ago', createdAt: 'Nov 5, 2023', email: 'info@oldclient.com', mrr: 0 },
-  { id: '7', company: 'EduLearn', industry: 'Education', plan: 'Growth', status: 'suspended', users: 18, messages: 2300, calls: 89, lastActivity: '7 days ago', createdAt: 'Feb 14, 2024', email: 'tech@edulearn.edu', mrr: 400 },
-];
+import { useAllTenants, useUpdateTenantStatus, useCreateAuditLog, TenantData } from '@/hooks/useAdminData';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import { formatDistanceToNow } from 'date-fns';
 
 const usageData = [
   { month: 'Jan', messages: 8500, calls: 450 },
@@ -108,23 +88,55 @@ const features = [
 ];
 
 export default function AllTenants() {
+  const { authUser } = useAuth();
+  const { toast } = useToast();
+  const { data: tenants, isLoading, refetch } = useAllTenants();
+  const updateStatus = useUpdateTenantStatus();
+  const createLog = useCreateAuditLog();
+
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [industryFilter, setIndustryFilter] = useState<string>('all');
   const [planFilter, setPlanFilter] = useState<string>('all');
-  const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
+  const [selectedTenant, setSelectedTenant] = useState<TenantData | null>(null);
   const [showCreateWizard, setShowCreateWizard] = useState(false);
   const [wizardStep, setWizardStep] = useState(1);
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>(['sales', 'marketing']);
 
-  const filteredTenants = mockTenants.filter(tenant => {
-    const matchesSearch = tenant.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          tenant.email.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || tenant.status === statusFilter;
+  const filteredTenants = (tenants || []).filter(tenant => {
+    const matchesSearch = tenant.company_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          tenant.email?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || tenant.subscription_status === statusFilter;
     const matchesIndustry = industryFilter === 'all' || tenant.industry === industryFilter;
-    const matchesPlan = planFilter === 'all' || tenant.plan === planFilter;
+    const matchesPlan = planFilter === 'all' || tenant.subscription_plan === planFilter;
     return matchesSearch && matchesStatus && matchesIndustry && matchesPlan;
   });
+
+  const handleStatusChange = async (tenantId: string, newStatus: string) => {
+    try {
+      await updateStatus.mutateAsync({ tenantId, status: newStatus });
+      await createLog.mutateAsync({
+        tenant_id: tenantId,
+        user_email: authUser?.email || '',
+        action: `tenant.status.${newStatus}`,
+        resource: 'tenant',
+        details: `Tenant status changed to ${newStatus}`,
+        ip_address: 'web-client',
+        level: 'info',
+        metadata: {},
+      });
+      toast({
+        title: 'Status Updated',
+        description: `Tenant status changed to ${newStatus}`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to update tenant status',
+        variant: 'destructive',
+      });
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     const config: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string }> = {

@@ -16,13 +16,14 @@ import {
   XCircle,
   Download,
   Upload,
-  Filter
+  RefreshCw
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Table, 
   TableBody, 
@@ -56,73 +57,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
-
-// Mock data for users
-const mockUsers = [
-  {
-    id: '1',
-    email: 'john@acmecorp.com',
-    full_name: 'John Smith',
-    avatar_url: '',
-    role: 'admin',
-    tenant_id: 'tenant-1',
-    tenant_name: 'Acme Corp',
-    is_active: true,
-    created_at: '2024-01-15T10:00:00Z',
-    last_login: '2024-01-20T14:30:00Z',
-  },
-  {
-    id: '2',
-    email: 'sarah@healthplus.com',
-    full_name: 'Sarah Johnson',
-    avatar_url: '',
-    role: 'manager',
-    tenant_id: 'tenant-2',
-    tenant_name: 'Health Plus',
-    is_active: true,
-    created_at: '2024-01-10T09:00:00Z',
-    last_login: '2024-01-19T11:20:00Z',
-  },
-  {
-    id: '3',
-    email: 'mike@realestate.com',
-    full_name: 'Mike Brown',
-    avatar_url: '',
-    role: 'staff',
-    tenant_id: 'tenant-3',
-    tenant_name: 'Real Estate Pro',
-    is_active: true,
-    created_at: '2024-01-08T08:00:00Z',
-    last_login: '2024-01-18T16:45:00Z',
-  },
-  {
-    id: '4',
-    email: 'emma@salon.com',
-    full_name: 'Emma Wilson',
-    avatar_url: '',
-    role: 'admin',
-    tenant_id: 'tenant-4',
-    tenant_name: 'Glamour Salon',
-    is_active: false,
-    created_at: '2024-01-05T12:00:00Z',
-    last_login: '2024-01-10T09:15:00Z',
-  },
-  {
-    id: '5',
-    email: 'admin@zatesystems.com',
-    full_name: 'System Admin',
-    avatar_url: '',
-    role: 'master_admin',
-    tenant_id: 'master',
-    tenant_name: 'Zate Systems',
-    is_active: true,
-    created_at: '2024-01-01T00:00:00Z',
-    last_login: '2024-01-20T08:00:00Z',
-  },
-];
+import { format, formatDistanceToNow } from 'date-fns';
+import { useAllUsers, useUpdateUserStatus, useCreateAuditLog, useAllTenants } from '@/hooks/useAdminData';
+import { useAuth } from '@/contexts/AuthContext';
 
 const roleColors: Record<string, string> = {
   master_admin: 'bg-purple-500/10 text-purple-500 border-purple-500/30',
@@ -133,11 +71,18 @@ const roleColors: Record<string, string> = {
 
 export default function AdminUsers() {
   const { toast } = useToast();
+  const { authUser } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [tenantFilter, setTenantFilter] = useState<string>('all');
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<typeof mockUsers[0] | null>(null);
+  const [selectedUser, setSelectedUser] = useState<any | null>(null);
+
+  const { data: users, isLoading, refetch } = useAllUsers();
+  const { data: tenants } = useAllTenants();
+  const updateStatus = useUpdateUserStatus();
+  const createLog = useCreateAuditLog();
 
   // New user form state
   const [newUser, setNewUser] = useState({
@@ -147,29 +92,30 @@ export default function AdminUsers() {
     tenant_id: '',
   });
 
-  const filteredUsers = mockUsers.filter(user => {
+  const filteredUsers = (users || []).filter(user => {
     const matchesSearch = 
-      user.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.tenant_name.toLowerCase().includes(searchQuery.toLowerCase());
+      user.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.tenant_name?.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesRole = roleFilter === 'all' || user.role === roleFilter;
     const matchesStatus = statusFilter === 'all' || 
       (statusFilter === 'active' && user.is_active) ||
       (statusFilter === 'inactive' && !user.is_active);
+    const matchesTenant = tenantFilter === 'all' || user.tenant_id === tenantFilter;
     
-    return matchesSearch && matchesRole && matchesStatus;
+    return matchesSearch && matchesRole && matchesStatus && matchesTenant;
   });
 
   const stats = {
-    total: mockUsers.length,
-    active: mockUsers.filter(u => u.is_active).length,
-    admins: mockUsers.filter(u => u.role === 'admin' || u.role === 'master_admin').length,
-    newThisMonth: mockUsers.filter(u => {
+    total: users?.length || 0,
+    active: users?.filter(u => u.is_active).length || 0,
+    admins: users?.filter(u => u.role === 'admin' || u.role === 'master_admin').length || 0,
+    newThisMonth: users?.filter(u => {
       const createdDate = new Date(u.created_at);
       const now = new Date();
       return createdDate.getMonth() === now.getMonth() && createdDate.getFullYear() === now.getFullYear();
-    }).length,
+    }).length || 0,
   };
 
   const handleAddUser = () => {
@@ -181,14 +127,33 @@ export default function AdminUsers() {
     setNewUser({ email: '', full_name: '', role: 'staff', tenant_id: '' });
   };
 
-  const handleToggleStatus = (user: typeof mockUsers[0]) => {
-    toast({
-      title: user.is_active ? 'User deactivated' : 'User activated',
-      description: `${user.full_name} has been ${user.is_active ? 'deactivated' : 'activated'}`,
-    });
+  const handleToggleStatus = async (user: any) => {
+    try {
+      await updateStatus.mutateAsync({ userId: user.id, isActive: !user.is_active });
+      await createLog.mutateAsync({
+        tenant_id: user.tenant_id,
+        user_email: authUser?.email || '',
+        action: user.is_active ? 'user.deactivate' : 'user.activate',
+        resource: 'admin',
+        details: `${user.full_name} has been ${user.is_active ? 'deactivated' : 'activated'}`,
+        ip_address: 'web-client',
+        level: 'info',
+        metadata: { user_id: user.id },
+      });
+      toast({
+        title: user.is_active ? 'User deactivated' : 'User activated',
+        description: `${user.full_name} has been ${user.is_active ? 'deactivated' : 'activated'}`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to update user status',
+        variant: 'destructive',
+      });
+    }
   };
 
-  const handleDeleteUser = (user: typeof mockUsers[0]) => {
+  const handleDeleteUser = (user: any) => {
     toast({
       title: 'User deleted',
       description: `${user.full_name} has been removed`,
@@ -196,12 +161,15 @@ export default function AdminUsers() {
     });
   };
 
-  const handleChangeRole = (user: typeof mockUsers[0], newRole: string) => {
+  const handleChangeRole = (user: any, newRole: string) => {
     toast({
       title: 'Role updated',
       description: `${user.full_name} is now a ${newRole.replace('_', ' ')}`,
     });
   };
+
+  // Get unique tenants for filter dropdown
+  const uniqueTenants = tenants || [];
 
   return (
     <div className="space-y-6">
@@ -212,13 +180,13 @@ export default function AdminUsers() {
           <p className="text-muted-foreground">Manage users across all tenants</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
           <Button variant="outline">
             <Download className="h-4 w-4 mr-2" />
             Export
-          </Button>
-          <Button variant="outline">
-            <Upload className="h-4 w-4 mr-2" />
-            Import
           </Button>
           <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
             <DialogTrigger asChild>
@@ -279,10 +247,11 @@ export default function AdminUsers() {
                       <SelectValue placeholder="Select tenant" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="tenant-1">Acme Corp</SelectItem>
-                      <SelectItem value="tenant-2">Health Plus</SelectItem>
-                      <SelectItem value="tenant-3">Real Estate Pro</SelectItem>
-                      <SelectItem value="tenant-4">Glamour Salon</SelectItem>
+                      {uniqueTenants.map(tenant => (
+                        <SelectItem key={tenant.tenant_id} value={tenant.tenant_id}>
+                          {tenant.company_name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -305,7 +274,11 @@ export default function AdminUsers() {
                 <Users className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{stats.total}</p>
+                {isLoading ? (
+                  <Skeleton className="h-8 w-12" />
+                ) : (
+                  <p className="text-2xl font-bold">{stats.total}</p>
+                )}
                 <p className="text-sm text-muted-foreground">Total Users</p>
               </div>
             </div>
@@ -318,7 +291,11 @@ export default function AdminUsers() {
                 <CheckCircle className="h-5 w-5 text-green-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{stats.active}</p>
+                {isLoading ? (
+                  <Skeleton className="h-8 w-12" />
+                ) : (
+                  <p className="text-2xl font-bold">{stats.active}</p>
+                )}
                 <p className="text-sm text-muted-foreground">Active</p>
               </div>
             </div>
@@ -331,7 +308,11 @@ export default function AdminUsers() {
                 <Shield className="h-5 w-5 text-blue-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{stats.admins}</p>
+                {isLoading ? (
+                  <Skeleton className="h-8 w-12" />
+                ) : (
+                  <p className="text-2xl font-bold">{stats.admins}</p>
+                )}
                 <p className="text-sm text-muted-foreground">Admins</p>
               </div>
             </div>
@@ -344,7 +325,11 @@ export default function AdminUsers() {
                 <Calendar className="h-5 w-5 text-purple-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{stats.newThisMonth}</p>
+                {isLoading ? (
+                  <Skeleton className="h-8 w-12" />
+                ) : (
+                  <p className="text-2xl font-bold">{stats.newThisMonth}</p>
+                )}
                 <p className="text-sm text-muted-foreground">New This Month</p>
               </div>
             </div>
@@ -366,6 +351,19 @@ export default function AdminUsers() {
               />
             </div>
             <div className="flex gap-2">
+              <Select value={tenantFilter} onValueChange={setTenantFilter}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="Tenant" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Tenants</SelectItem>
+                  {uniqueTenants.map(tenant => (
+                    <SelectItem key={tenant.tenant_id} value={tenant.tenant_id}>
+                      {tenant.company_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Select value={roleFilter} onValueChange={setRoleFilter}>
                 <SelectTrigger className="w-[140px]">
                   <SelectValue placeholder="Role" />
@@ -396,122 +394,130 @@ export default function AdminUsers() {
       {/* Users Table */}
       <Card>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Tenant</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Last Login</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredUsers.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar>
-                        {user.avatar_url ? (
-                          <AvatarImage src={user.avatar_url} />
-                        ) : null}
-                        <AvatarFallback>
-                          {user.full_name.split(' ').map(n => n[0]).join('')}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium">{user.full_name}</p>
-                        <p className="text-sm text-muted-foreground">{user.email}</p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge 
-                      variant="outline" 
-                      className={roleColors[user.role]}
-                    >
-                      {user.role.replace('_', ' ')}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4 text-muted-foreground" />
-                      <span>{user.tenant_name}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {user.is_active ? (
-                      <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30">
-                        Active
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/30">
-                        Inactive
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Clock className="h-4 w-4" />
-                      {format(new Date(user.last_login), 'MMM d, yyyy')}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => setSelectedUser(user)}>
-                          <UserCog className="h-4 w-4 mr-2" />
-                          Edit User
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Mail className="h-4 w-4 mr-2" />
-                          Send Email
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleChangeRole(user, 'manager')}>
-                          <Shield className="h-4 w-4 mr-2" />
-                          Change Role
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleToggleStatus(user)}>
-                          {user.is_active ? (
-                            <>
-                              <Ban className="h-4 w-4 mr-2" />
-                              Deactivate
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle className="h-4 w-4 mr-2" />
-                              Activate
-                            </>
-                          )}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem 
-                          className="text-destructive"
-                          onClick={() => handleDeleteUser(user)}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete User
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
+          {isLoading ? (
+            <div className="p-6 space-y-4">
+              {[1, 2, 3, 4, 5].map(i => (
+                <Skeleton key={i} className="h-16 w-full" />
               ))}
-            </TableBody>
-          </Table>
-
-          {filteredUsers.length === 0 && (
-            <div className="p-8 text-center text-muted-foreground">
-              No users found matching your criteria.
+            </div>
+          ) : filteredUsers.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>User</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Tenant</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredUsers.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar>
+                          {user.avatar_url ? (
+                            <AvatarImage src={user.avatar_url} />
+                          ) : null}
+                          <AvatarFallback>
+                            {user.full_name?.split(' ').map(n => n[0]).join('') || user.email?.[0]?.toUpperCase() || 'U'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium">{user.full_name || 'Unnamed'}</p>
+                          <p className="text-sm text-muted-foreground">{user.email}</p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge 
+                        variant="outline" 
+                        className={roleColors[user.role] || roleColors.staff}
+                      >
+                        {user.role?.replace('_', ' ') || 'staff'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4 text-muted-foreground" />
+                        <span>{user.tenant_name || user.tenant_id}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {user.is_active ? (
+                        <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30">
+                          Active
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/30">
+                          Inactive
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Clock className="h-4 w-4" />
+                        {formatDistanceToNow(new Date(user.created_at), { addSuffix: true })}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => setSelectedUser(user)}>
+                            <UserCog className="h-4 w-4 mr-2" />
+                            Edit User
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Mail className="h-4 w-4 mr-2" />
+                            Send Email
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleChangeRole(user, 'manager')}>
+                            <Shield className="h-4 w-4 mr-2" />
+                            Change Role
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleToggleStatus(user)}>
+                            {user.is_active ? (
+                              <>
+                                <Ban className="h-4 w-4 mr-2" />
+                                Deactivate
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle className="h-4 w-4 mr-2" />
+                                Activate
+                              </>
+                            )}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            onClick={() => handleDeleteUser(user)}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete User
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="py-12 text-center text-muted-foreground">
+              <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>No users found</p>
+              <p className="text-sm">Try adjusting your filters or search query</p>
             </div>
           )}
         </CardContent>
