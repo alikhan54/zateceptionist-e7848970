@@ -229,11 +229,11 @@ const App = () => (
                 <Route path="/settings/billing" element={<LazyPage><BillingSettings /></LazyPage>} />
                 <Route path="/settings/notifications" element={<LazyPage><NotificationSettings /></LazyPage>} />
 
-                {/* Admin Module - requires master_admin role */}
+                {/* Admin Module - requires admin or master_admin role */}
                 <Route
                   path="/admin"
                   element={
-                    <ProtectedRoute requiredRole="master_admin">
+                    <ProtectedRoute requiredRole={['admin', 'master_admin']}>
                       <LazyPage><AdminPanel /></LazyPage>
                     </ProtectedRoute>
                   }
@@ -241,7 +241,7 @@ const App = () => (
                 <Route
                   path="/admin/tenants"
                   element={
-                    <ProtectedRoute requiredRole="master_admin">
+                    <ProtectedRoute requiredRole={['admin', 'master_admin']}>
                       <LazyPage><AllTenants /></LazyPage>
                     </ProtectedRoute>
                   }
@@ -249,7 +249,7 @@ const App = () => (
                 <Route
                   path="/admin/users"
                   element={
-                    <ProtectedRoute requiredRole="master_admin">
+                    <ProtectedRoute requiredRole={['admin', 'master_admin']}>
                       <LazyPage><AdminUsers /></LazyPage>
                     </ProtectedRoute>
                   }
@@ -257,7 +257,7 @@ const App = () => (
                 <Route
                   path="/admin/health"
                   element={
-                    <ProtectedRoute requiredRole="master_admin">
+                    <ProtectedRoute requiredRole={['admin', 'master_admin']}>
                       <LazyPage><SystemHealth /></LazyPage>
                     </ProtectedRoute>
                   }
@@ -265,7 +265,7 @@ const App = () => (
                 <Route
                   path="/admin/logs"
                   element={
-                    <ProtectedRoute requiredRole="master_admin">
+                    <ProtectedRoute requiredRole={['admin', 'master_admin']}>
                       <LazyPage><AuditLogs /></LazyPage>
                     </ProtectedRoute>
                   }
@@ -273,7 +273,7 @@ const App = () => (
                 <Route
                   path="/admin/features"
                   element={
-                    <ProtectedRoute requiredRole="master_admin">
+                    <ProtectedRoute requiredRole={['admin', 'master_admin']}>
                       <LazyPage><FeatureFlags /></LazyPage>
                     </ProtectedRoute>
                   }

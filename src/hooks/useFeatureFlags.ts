@@ -19,9 +19,21 @@ export function useFeatureFlags() {
   const { tenantConfig } = useTenant();
 
   const isEnabled = (feature: keyof FeatureFlags | string): boolean => {
-    if (!tenantConfig?.features) return true; // Default to enabled if no config
-    const value = tenantConfig.features[feature];
-    return value !== false; // Treat undefined as enabled
+    if (!tenantConfig) return true; // No config = enable all (for master admin)
+    
+    // First check the features JSONB column
+    if (tenantConfig.features && typeof tenantConfig.features === 'object') {
+      const value = tenantConfig.features[feature];
+      if (typeof value === 'boolean') return value;
+    }
+    
+    // Then check top-level boolean flags (has_whatsapp, has_voice, etc)
+    const config = tenantConfig as unknown as Record<string, unknown>;
+    const topLevelValue = config[feature];
+    if (typeof topLevelValue === 'boolean') return topLevelValue;
+    
+    // Default to enabled
+    return true;
   };
 
   const features: FeatureFlags = {

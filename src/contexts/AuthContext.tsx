@@ -3,6 +3,24 @@ import { supabase, User, Session } from '@/lib/supabase';
 
 export type UserRole = 'master_admin' | 'admin' | 'manager' | 'staff';
 
+export interface StaffPermissions {
+  can_access_inbox: boolean;
+  can_access_appointments: boolean;
+  can_access_customers: boolean;
+  can_access_tasks: boolean;
+  can_access_sales: boolean;
+  can_access_marketing: boolean;
+  can_access_hr: boolean;
+  can_access_operations: boolean;
+  can_access_analytics: boolean;
+  can_access_settings: boolean;
+  can_send_messages: boolean;
+  can_take_over_ai: boolean;
+  can_view_all_conversations: boolean;
+  can_view_leads: boolean;
+  can_use_ai_features: boolean;
+}
+
 export interface AuthUser {
   id: string;
   email: string;
@@ -11,6 +29,7 @@ export interface AuthUser {
   role: UserRole;
   tenant_id: string | null;
   is_active: boolean;
+  staffPermissions?: StaffPermissions;
 }
 
 // Permission definitions per role
@@ -123,14 +142,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('Error fetching user role:', roleError);
       }
 
+      const userRole = (roleData?.role as UserRole) || 'staff';
+
+      // Fetch staff permissions if user is staff
+      let staffPermissions: StaffPermissions | undefined;
+      if (userRole === 'staff') {
+        const { data: permData } = await supabase
+          .from('staff_permissions')
+          .select('*')
+          .eq('user_id', userData.id)
+          .maybeSingle();
+        
+        if (permData) {
+          staffPermissions = {
+            can_access_inbox: permData.can_access_inbox ?? true,
+            can_access_appointments: permData.can_access_appointments ?? true,
+            can_access_customers: permData.can_access_customers ?? false,
+            can_access_tasks: permData.can_access_tasks ?? true,
+            can_access_sales: permData.can_access_sales ?? false,
+            can_access_marketing: permData.can_access_marketing ?? false,
+            can_access_hr: permData.can_access_hr ?? false,
+            can_access_operations: permData.can_access_operations ?? false,
+            can_access_analytics: permData.can_access_analytics ?? false,
+            can_access_settings: permData.can_access_settings ?? false,
+            can_send_messages: permData.can_send_messages ?? true,
+            can_take_over_ai: permData.can_take_over_ai ?? false,
+            can_view_all_conversations: permData.can_view_all_conversations ?? false,
+            can_view_leads: permData.can_view_leads ?? false,
+            can_use_ai_features: permData.can_use_ai_features ?? true,
+          };
+        }
+      }
+
       const authUserData: AuthUser = {
         id: userData.id,
         email: userData.email,
         full_name: userData.full_name,
         avatar_url: userData.avatar_url,
-        role: (roleData?.role as UserRole) || 'staff',
+        role: userRole,
         tenant_id: userData.tenant_id,
         is_active: userData.is_active ?? true,
+        staffPermissions,
       };
 
       return authUserData;
