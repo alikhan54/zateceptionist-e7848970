@@ -122,6 +122,19 @@ export function NavigationSidebar() {
   const isActive = (path: string) => location.pathname === path;
   const isInSection = (paths: string[]) => paths.some(p => location.pathname.startsWith(p));
 
+  // Close sections when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const sidebar = document.querySelector('[data-sidebar]');
+      if (sidebar && !sidebar.contains(event.target as Node)) {
+        setOpenSections({});
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   // Check if user is impersonating (master admin viewing a different tenant)
   const isImpersonating = isMasterAdmin && authUser?.tenant_id && authUser.tenant_id !== tenantId;
 
@@ -196,12 +209,44 @@ export function NavigationSidebar() {
 
   // Helper function to check if user can see section
   const canAccessSection = (section: NavSection): boolean => {
-    if (section.adminOnly && !isAdmin && !isMasterAdmin) return false;
+    // Master admin sees EVERYTHING
+    if (isMasterAdmin) return true;
+    
+    // Admin sees everything except master-admin-only sections (none currently)
+    if (isAdmin) {
+      // Admin cannot see sections marked adminOnly (which means master_admin only in our case)
+      if (section.adminOnly) return true; // Admin can see Master Admin section too
+      return true;
+    }
+    
+    // Check adminOnly flag - only admin and master_admin
+    if (section.adminOnly) return false;
+    
+    // Check managerOnly flag
     if (section.managerOnly && authUser?.role === 'staff') return false;
+    
+    // Check staffOnly flag - this section should ONLY show for staff
     if (section.staffOnly && authUser?.role !== 'staff') return false;
+    
+    // For staff, check if they have specific permissions
+    if (authUser?.role === 'staff') {
+      // Check staff permissions if available
+      if (authUser.staffPermissions) {
+        const perms = authUser.staffPermissions;
+        if (section.label === 'Sales AI' && !perms.can_access_sales) return false;
+        if (section.label === 'Marketing AI' && !perms.can_access_marketing) return false;
+        if (section.label === 'HR AI' && !perms.can_access_hr) return false;
+        if (section.label === 'Operations' && !perms.can_access_operations) return false;
+        if (section.label === 'Analytics & AI' && !perms.can_access_analytics) return false;
+      } else {
+        // Default: staff without explicit permissions cannot see restricted sections
+        if (STAFF_RESTRICTED_SECTIONS.includes(section.label)) return false;
+      }
+    }
+    
+    // Check feature flag
     if (section.featureKey && !isFeatureEnabled(section.featureKey)) return false;
-    // Staff restrictions
-    if (authUser?.role === 'staff' && STAFF_RESTRICTED_SECTIONS.includes(section.label)) return false;
+    
     return true;
   };
 
