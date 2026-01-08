@@ -544,10 +544,10 @@ export default function AllTenants() {
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-8 w-8">
-                        <AvatarFallback className="text-xs">{tenant.company.slice(0, 2).toUpperCase()}</AvatarFallback>
+                        <AvatarFallback className="text-xs">{tenant.company_name?.slice(0, 2).toUpperCase()}</AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-medium">{tenant.company}</p>
+                        <p className="font-medium">{tenant.company_name}</p>
                         <p className="text-xs text-muted-foreground">{tenant.email}</p>
                       </div>
                     </div>
@@ -555,11 +555,11 @@ export default function AllTenants() {
                   <TableCell>{tenant.industry}</TableCell>
                   <TableCell><Badge variant="outline">{tenant.plan}</Badge></TableCell>
                   <TableCell>{getStatusBadge(tenant.status)}</TableCell>
-                  <TableCell className="text-center">{tenant.users}</TableCell>
-                  <TableCell className="text-center">{tenant.messages.toLocaleString()}</TableCell>
-                  <TableCell className="text-center">{tenant.calls}</TableCell>
-                  <TableCell className="text-muted-foreground">{tenant.lastActivity}</TableCell>
-                  <TableCell className="text-right font-medium">${tenant.mrr.toLocaleString()}</TableCell>
+                  <TableCell className="text-center">{tenant.users_count || 0}</TableCell>
+                  <TableCell className="text-center">-</TableCell>
+                  <TableCell className="text-center">-</TableCell>
+                  <TableCell className="text-muted-foreground">{tenant.updated_at ? new Date(tenant.updated_at).toLocaleDateString() : '-'}</TableCell>
+                  <TableCell className="text-right font-medium">-</TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
@@ -592,10 +592,10 @@ export default function AllTenants() {
               <SheetHeader>
                 <div className="flex items-center gap-4">
                   <Avatar className="h-12 w-12">
-                    <AvatarFallback>{selectedTenant.company.slice(0, 2).toUpperCase()}</AvatarFallback>
+                    <AvatarFallback>{selectedTenant.company_name?.slice(0, 2).toUpperCase()}</AvatarFallback>
                   </Avatar>
                   <div>
-                    <SheetTitle>{selectedTenant.company}</SheetTitle>
+                    <SheetTitle>{selectedTenant.company_name}</SheetTitle>
                     <SheetDescription>{selectedTenant.email}</SheetDescription>
                   </div>
                 </div>
@@ -633,7 +633,7 @@ export default function AllTenants() {
                     <Card>
                       <CardContent className="p-4">
                         <p className="text-sm text-muted-foreground">Created</p>
-                        <p className="font-medium mt-1">{selectedTenant.createdAt}</p>
+                        <p className="font-medium mt-1">{selectedTenant.created_at ? new Date(selectedTenant.created_at).toLocaleDateString() : '-'}</p>
                       </CardContent>
                     </Card>
                   </div>
@@ -660,7 +660,7 @@ export default function AllTenants() {
 
                 <TabsContent value="users" className="space-y-4 mt-4">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">{selectedTenant.users} users</p>
+                    <p className="text-sm text-muted-foreground">{selectedTenant.users_count || 0} users</p>
                     <Button size="sm"><Plus className="h-4 w-4 mr-2" />Add User</Button>
                   </div>
                   <div className="space-y-2">
@@ -683,23 +683,23 @@ export default function AllTenants() {
                     <div>
                       <div className="flex justify-between text-sm mb-2">
                         <span>Messages</span>
-                        <span>{selectedTenant.messages.toLocaleString()} / 50,000</span>
+                        <span>- / 50,000</span>
                       </div>
-                      <Progress value={(selectedTenant.messages / 50000) * 100} />
+                      <Progress value={0} />
                     </div>
                     <div>
                       <div className="flex justify-between text-sm mb-2">
                         <span>Voice Minutes</span>
-                        <span>{selectedTenant.calls} / 1,000</span>
+                        <span>- / 1,000</span>
                       </div>
-                      <Progress value={(selectedTenant.calls / 1000) * 100} />
+                      <Progress value={0} />
                     </div>
                     <div>
                       <div className="flex justify-between text-sm mb-2">
                         <span>Users</span>
-                        <span>{selectedTenant.users} / 50</span>
+                        <span>{selectedTenant.users_count || 0} / 50</span>
                       </div>
-                      <Progress value={(selectedTenant.users / 50) * 100} />
+                      <Progress value={((selectedTenant.users_count || 0) / 50) * 100} />
                     </div>
                   </div>
                 </TabsContent>
@@ -710,7 +710,7 @@ export default function AllTenants() {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm text-muted-foreground">Current MRR</p>
-                          <p className="text-2xl font-bold">${selectedTenant.mrr.toLocaleString()}</p>
+                          <p className="text-2xl font-bold">-</p>
                         </div>
                         <CreditCard className="h-8 w-8 text-muted-foreground" />
                       </div>
@@ -722,7 +722,7 @@ export default function AllTenants() {
                       <div key={month} className="flex items-center justify-between p-3 border rounded-lg">
                         <span>{month}</span>
                         <div className="flex items-center gap-2">
-                          <span className="font-medium">${selectedTenant.mrr}</span>
+                          <span className="font-medium">-</span>
                           <Badge variant="default">Paid</Badge>
                         </div>
                       </div>
