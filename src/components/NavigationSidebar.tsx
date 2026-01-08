@@ -69,6 +69,7 @@ import {
   Layers,
   GitBranch,
   ClipboardList,
+  BookOpen,
   UserPlus,
   Truck,
   Mail,
@@ -403,6 +404,7 @@ export function NavigationSidebar() {
       { title: 'Team', url: '/settings/team', icon: UserCog },
       { title: 'Billing', url: '/settings/billing', icon: CreditCard },
       { title: 'Notifications', url: '/settings/notifications', icon: Bell },
+      { title: 'Knowledge Base', url: '/settings/knowledge-base', icon: BookOpen },
     ],
   };
 
