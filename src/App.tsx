@@ -86,6 +86,7 @@ const APIKeys = lazy(() => import("./pages/settings/APIKeys"));
 const TeamSettings = lazy(() => import("./pages/settings/Team"));
 const BillingSettings = lazy(() => import("./pages/settings/Billing"));
 const NotificationSettings = lazy(() => import("./pages/settings/Notifications"));
+const KnowledgeBaseSettings = lazy(() => import("./pages/settings/KnowledgeBase"));
 
 // Admin Module
 const AdminPanel = lazy(() => import("./pages/admin/Panel"));
@@ -228,6 +229,7 @@ const App = () => (
                 <Route path="/settings/team" element={<LazyPage><TeamSettings /></LazyPage>} />
                 <Route path="/settings/billing" element={<LazyPage><BillingSettings /></LazyPage>} />
                 <Route path="/settings/notifications" element={<LazyPage><NotificationSettings /></LazyPage>} />
+                <Route path="/settings/knowledge-base" element={<LazyPage><KnowledgeBaseSettings /></LazyPage>} />
 
                 {/* Admin Module - ONLY for master_admin role */}
                 <Route
