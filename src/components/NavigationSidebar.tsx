@@ -212,15 +212,12 @@ export function NavigationSidebar() {
     // Master admin sees EVERYTHING
     if (isMasterAdmin) return true;
     
-    // Admin sees everything except master-admin-only sections (none currently)
-    if (isAdmin) {
-      // Admin cannot see sections marked adminOnly (which means master_admin only in our case)
-      if (section.adminOnly) return true; // Admin can see Master Admin section too
-      return true;
-    }
-    
-    // Check adminOnly flag - only admin and master_admin
+    // CRITICAL FIX: adminOnly sections (like Master Admin) are ONLY for master_admin
+    // Regular admins should NOT see these sections
     if (section.adminOnly) return false;
+    
+    // Admin can see all non-adminOnly sections
+    if (isAdmin) return true;
     
     // Check managerOnly flag
     if (section.managerOnly && authUser?.role === 'staff') return false;
