@@ -1,21 +1,21 @@
-import { useState, useEffect, useRef } from 'react';
-import { useTenant } from '@/contexts/TenantContext';
-import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Button } from '@/components/ui/button';
-import { RefreshCw, MessageSquare, Volume2, VolumeX } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { useState, useEffect, useRef } from "react";
+import { useTenant } from "@/contexts/TenantContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
+import { RefreshCw, MessageSquare, Volume2, VolumeX } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 
 // Components
-import { EnhancedConversationList } from '@/components/inbox/EnhancedConversationList';
-import { ConversationHeader } from '@/components/inbox/ConversationHeader';
-import { ChatBubble, DateSeparator, TypingIndicator } from '@/components/inbox/ChatBubble';
-import { MessageInput } from '@/components/inbox/MessageInput';
-import { CustomerDetailsPanel } from '@/components/inbox/CustomerDetailsPanel';
+import { EnhancedConversationList } from "@/components/inbox/EnhancedConversationList";
+import { ConversationHeader } from "@/components/inbox/ConversationHeader";
+import { ChatBubble, DateSeparator, TypingIndicator } from "@/components/inbox/ChatBubble";
+import { MessageInput } from "@/components/inbox/MessageInput";
+import { CustomerDetailsPanel } from "@/components/inbox/CustomerDetailsPanel";
 
 interface Conversation {
   id: string;
@@ -57,7 +57,6 @@ export default function InboxPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // State
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [showDetails, setShowDetails] = useState(true);
   const [isTyping, setIsTyping] = useState(false);
@@ -65,210 +64,155 @@ export default function InboxPage() {
   const [newMessageBanner, setNewMessageBanner] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Fetch conversations - FIXED: Proper grouping by customer
   const {
     data: conversations = [],
     isLoading,
     error,
     refetch,
   } = useQuery({
-    queryKey: ['inbox-conversations', tenantId],
+    queryKey: ["inbox-conversations", tenantId],
     queryFn: async () => {
       if (!tenantId) return [];
-
       const { data, error } = await supabase
-        .from('conversations')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .order('last_message_at', { ascending: false, nullsFirst: false });
-
+        .from("conversations")
+        .select("*")
+        .eq("tenant_id", tenantId)
+        .order("last_message_at", { ascending: false, nullsFirst: false });
       if (error) throw error;
-      
-      // Return unique conversations (should already be unique after DB fix)
       return (data || []) as Conversation[];
     },
     enabled: !!tenantId,
-    refetchInterval: 10000, // Refresh every 10 seconds for more real-time feel
+    refetchInterval: 10000,
   });
 
-  // Fetch ALL messages for selected conversation - FIXED
-  const { data: messages = [], isLoading: messagesLoading, refetch: refetchMessages } = useQuery({
-    queryKey: ['conversation-messages', selectedConversation?.id],
+  const { data: messages = [], isLoading: messagesLoading } = useQuery({
+    queryKey: ["conversation-messages", selectedConversation?.id],
     queryFn: async () => {
       if (!selectedConversation?.id) return [];
-
-      // Fetch messages for this conversation
       const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('conversation_id', selectedConversation.id)
-        .order('created_at', { ascending: true });
-
+        .from("messages")
+        .select("*")
+        .eq("conversation_id", selectedConversation.id)
+        .order("created_at", { ascending: true });
       if (error) throw error;
-      
-      console.log(`Loaded ${data?.length || 0} messages for conversation ${selectedConversation.id}`);
       return (data || []) as Message[];
     },
     enabled: !!selectedConversation?.id,
-    refetchInterval: 5000, // Poll for new messages
+    refetchInterval: 5000,
   });
 
-  // Real-time subscription - FIXED
   useEffect(() => {
     if (!tenantId) return;
-
     const channel = supabase
       .channel(`inbox-realtime-${tenantId}-${Date.now()}`)
       .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'conversations',
-          filter: `tenant_id=eq.${tenantId}`,
-        },
+        "postgres_changes",
+        { event: "*", schema: "public", table: "conversations", filter: `tenant_id=eq.${tenantId}` },
         (payload) => {
-          console.log('Conversation change:', payload.eventType);
-          queryClient.invalidateQueries({ queryKey: ['inbox-conversations', tenantId] });
-
-          // Show new message banner
+          queryClient.invalidateQueries({ queryKey: ["inbox-conversations", tenantId] });
           if (
-            payload.eventType === 'UPDATE' &&
+            payload.eventType === "UPDATE" &&
             payload.new &&
             (payload.new as Conversation).id !== selectedConversation?.id &&
             (payload.new as Conversation).unread_count > 0
           ) {
             const newConv = payload.new as Conversation;
-            setNewMessageBanner(
-              `New message from ${newConv.customer_name || newConv.customer_phone || 'Unknown'}`
-            );
+            setNewMessageBanner(`New message from ${newConv.customer_name || newConv.customer_phone || "Unknown"}`);
             setTimeout(() => setNewMessageBanner(null), 5000);
           }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
         },
-        (payload) => {
-          console.log('New message inserted:', payload.new);
-          // Refetch messages if it's for the selected conversation
-          if (selectedConversation?.id && payload.new && 
-              (payload.new as Message).conversation_id === selectedConversation.id) {
-            queryClient.invalidateQueries({
-              queryKey: ['conversation-messages', selectedConversation.id],
-            });
-          }
-          // Also refresh conversation list
-          queryClient.invalidateQueries({ queryKey: ['inbox-conversations', tenantId] });
-        }
       )
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => {
+        if (
+          selectedConversation?.id &&
+          payload.new &&
+          (payload.new as Message).conversation_id === selectedConversation.id
+        ) {
+          queryClient.invalidateQueries({ queryKey: ["conversation-messages", selectedConversation.id] });
+        }
+        queryClient.invalidateQueries({ queryKey: ["inbox-conversations", tenantId] });
+      })
       .subscribe();
-
     return () => {
       supabase.removeChannel(channel);
     };
   }, [tenantId, selectedConversation?.id, queryClient]);
 
-  // Scroll to bottom when messages change
   useEffect(() => {
     if (messages.length > 0) {
       setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
       }, 100);
     }
   }, [messages]);
 
-  // Mutations
   const markAsRead = useMutation({
     mutationFn: async (conversationId: string) => {
       const { error } = await supabase
-        .from('conversations')
+        .from("conversations")
         .update({ unread_count: 0 })
-        .eq('id', conversationId)
-        .eq('tenant_id', tenantId);
-
+        .eq("id", conversationId)
+        .eq("tenant_id", tenantId);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['inbox-conversations', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ["inbox-conversations", tenantId] });
     },
   });
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
       const { error } = await supabase
-        .from('conversations')
+        .from("conversations")
         .update({ status, updated_at: new Date().toISOString() })
-        .eq('id', id)
-        .eq('tenant_id', tenantId);
-
+        .eq("id", id)
+        .eq("tenant_id", tenantId);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['inbox-conversations', tenantId] });
-      toast({ title: 'Status updated' });
+      queryClient.invalidateQueries({ queryKey: ["inbox-conversations", tenantId] });
+      toast({ title: "Status updated" });
     },
   });
 
   const sendMessage = useMutation({
     mutationFn: async (content: string) => {
-      if (!selectedConversation || !tenantId) throw new Error('No conversation');
-
+      if (!selectedConversation || !tenantId) throw new Error("No conversation");
       setIsTyping(true);
-
       const { data, error } = await supabase
-        .from('messages')
+        .from("messages")
         .insert({
           conversation_id: selectedConversation.id,
           tenant_id: tenantId,
-          direction: 'outbound',
+          direction: "outbound",
           content,
-          content_type: 'text',
-          sender_type: 'agent',
-          sender_name: authUser?.full_name || authUser?.email || 'Agent',
+          content_type: "text",
+          sender_type: "agent",
+          sender_name: authUser?.full_name || authUser?.email || "Agent",
           channel: selectedConversation.channel,
-          status: 'sent',
+          status: "sent",
         })
         .select()
         .single();
-
       if (error) throw error;
-
       await supabase
-        .from('conversations')
-        .update({
-          last_message: content,
-          last_message_at: new Date().toISOString(),
-          message_count: (selectedConversation.message_count || 0) + 1,
-        })
-        .eq('id', selectedConversation.id);
-
+        .from("conversations")
+        .update({ last_message: content, last_message_at: new Date().toISOString() })
+        .eq("id", selectedConversation.id);
       return data;
     },
     onSuccess: () => {
       setIsTyping(false);
-      queryClient.invalidateQueries({
-        queryKey: ['conversation-messages', selectedConversation?.id],
-      });
-      queryClient.invalidateQueries({ queryKey: ['inbox-conversations', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ["conversation-messages", selectedConversation?.id] });
+      queryClient.invalidateQueries({ queryKey: ["inbox-conversations", tenantId] });
     },
     onError: (error) => {
       setIsTyping(false);
-      toast({
-        title: 'Failed to send message',
-        description: error.message,
-        variant: 'destructive',
-      });
+      toast({ title: "Failed to send message", description: error.message, variant: "destructive" });
     },
   });
 
-  // Handlers
   const handleSelectConversation = (conv: Conversation) => {
-    console.log('Selected conversation:', conv.id, conv.customer_phone);
     setSelectedConversation(conv);
     if (conv.unread_count > 0) {
       markAsRead.mutate(conv.id);
@@ -277,23 +221,20 @@ export default function InboxPage() {
 
   const handleResolve = () => {
     if (selectedConversation) {
-      updateStatus.mutate({ id: selectedConversation.id, status: 'resolved' });
+      updateStatus.mutate({ id: selectedConversation.id, status: "resolved" });
     }
   };
-
   const handleEscalate = () => {
     if (selectedConversation) {
-      updateStatus.mutate({ id: selectedConversation.id, status: 'escalated' });
+      updateStatus.mutate({ id: selectedConversation.id, status: "escalated" });
     }
   };
 
-  // Group messages by date
   const groupMessagesByDate = (msgs: Message[]) => {
     const groups: { date: string; messages: Message[] }[] = [];
-    let currentDate = '';
-
+    let currentDate = "";
     msgs.forEach((msg) => {
-      const msgDate = format(new Date(msg.created_at), 'yyyy-MM-dd');
+      const msgDate = format(new Date(msg.created_at), "yyyy-MM-dd");
       if (msgDate !== currentDate) {
         currentDate = msgDate;
         groups.push({ date: msg.created_at, messages: [msg] });
@@ -301,27 +242,23 @@ export default function InboxPage() {
         groups[groups.length - 1].messages.push(msg);
       }
     });
-
     return groups;
   };
 
   const messageGroups = groupMessagesByDate(messages);
+  const stats = { total: conversations.length, unread: conversations.filter((c) => c.unread_count > 0).length };
 
-  // Calculate stats
-  const stats = {
-    total: conversations.length,
-    unread: conversations.filter((c) => c.unread_count > 0).length,
-    active: conversations.filter((c) => c.status === 'active').length,
-  };
-
-  // Get display name for customer
   const getCustomerDisplayName = (conv: Conversation) => {
-    if (conv.customer_name && !conv.customer_name.includes('User') && conv.customer_name !== conv.customer_phone) {
+    if (
+      conv.customer_name &&
+      conv.customer_name !== "Facebook User" &&
+      conv.customer_name !== "Instagram User" &&
+      conv.customer_name !== conv.customer_phone
+    ) {
       return conv.customer_name;
     }
-    // Format phone number for display
-    const phone = conv.customer_phone || 'Unknown';
-    return phone.length > 10 ? `${phone.slice(0, 4)}...${phone.slice(-4)}` : phone;
+    const phone = conv.customer_phone || "Unknown";
+    return phone.length > 10 ? `${phone.slice(0, 6)}...${phone.slice(-4)}` : phone;
   };
 
   if (error) {
@@ -336,21 +273,14 @@ export default function InboxPage() {
 
   return (
     <div className="h-[calc(100vh-120px)] flex flex-col">
-      {/* New Message Banner */}
       {newMessageBanner && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 animate-fade-in">
-          <Button
-            variant="secondary"
-            size="sm"
-            className="shadow-lg"
-            onClick={() => setNewMessageBanner(null)}
-          >
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50">
+          <Button variant="secondary" size="sm" className="shadow-lg" onClick={() => setNewMessageBanner(null)}>
             {newMessageBanner}
           </Button>
         </div>
       )}
 
-      {/* Header */}
       <div className="flex items-center justify-between p-4 border-b shrink-0">
         <div>
           <h1 className="text-2xl font-bold">Inbox</h1>
@@ -359,27 +289,17 @@ export default function InboxPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setSoundEnabled(!soundEnabled)}
-          >
-            {soundEnabled ? (
-              <Volume2 className="h-4 w-4" />
-            ) : (
-              <VolumeX className="h-4 w-4" />
-            )}
+          <Button variant="ghost" size="icon" onClick={() => setSoundEnabled(!soundEnabled)}>
+            {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
           </Button>
           <Button variant="outline" size="sm" onClick={() => refetch()}>
-            <RefreshCw className={cn('h-4 w-4 mr-2', isLoading && 'animate-spin')} />
+            <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
             Refresh
           </Button>
         </div>
       </div>
 
-      {/* Main Content - 3 Column Layout */}
       <div className="flex-1 flex min-h-0">
-        {/* Left: Conversation List (30%) */}
         <div className="w-[30%] min-w-[280px] max-w-[400px] border-r">
           <EnhancedConversationList
             conversations={conversations}
@@ -390,28 +310,24 @@ export default function InboxPage() {
           />
         </div>
 
-        {/* Center: Message Thread (50%) */}
         <div className="flex-1 flex flex-col min-w-0 border-r">
           {selectedConversation ? (
             <>
-              {/* Conversation Header */}
               <ConversationHeader
                 conversation={selectedConversation}
                 onResolve={handleResolve}
                 onEscalate={handleEscalate}
-                onCreateTask={() => toast({ title: 'Create task feature coming soon' })}
+                onCreateTask={() => toast({ title: "Create task feature coming soon" })}
                 onSetSource={(source) => toast({ title: `Source set to ${source}` })}
-                onAssignStaff={(id) => toast({ title: 'Staff assigned' })}
-                onMarkAIHandled={() => toast({ title: 'Marked as AI handled' })}
-                onToggleStar={() => toast({ title: 'Star toggled' })}
-                onMarkUnread={() => toast({ title: 'Marked as unread' })}
-                onViewProfile={() => toast({ title: 'View profile' })}
-                onBlockCustomer={() => toast({ title: 'Block feature coming soon' })}
+                onAssignStaff={() => toast({ title: "Staff assigned" })}
+                onMarkAIHandled={() => toast({ title: "Marked as AI handled" })}
+                onToggleStar={() => toast({ title: "Star toggled" })}
+                onMarkUnread={() => toast({ title: "Marked as unread" })}
+                onViewProfile={() => toast({ title: "View profile" })}
+                onBlockCustomer={() => toast({ title: "Block feature coming soon" })}
                 onToggleDetails={() => setShowDetails(!showDetails)}
                 showDetails={showDetails}
               />
-
-              {/* Messages */}
               <ScrollArea className="flex-1 p-4">
                 {messagesLoading ? (
                   <div className="flex items-center justify-center h-full">
@@ -431,32 +347,23 @@ export default function InboxPage() {
                         <div className="space-y-2">
                           {group.messages.map((message, msgIndex) => {
                             const prevMsg = msgIndex > 0 ? group.messages[msgIndex - 1] : null;
-                            const nextMsg =
-                              msgIndex < group.messages.length - 1
-                                ? group.messages[msgIndex + 1]
-                                : null;
-
-                            const isFirstInGroup =
-                              !prevMsg ||
-                              prevMsg.direction !== message.direction ||
-                              prevMsg.sender_type !== message.sender_type;
-
-                            const isLastInGroup =
-                              !nextMsg ||
-                              nextMsg.direction !== message.direction ||
-                              nextMsg.sender_type !== message.sender_type;
-
+                            const nextMsg = msgIndex < group.messages.length - 1 ? group.messages[msgIndex + 1] : null;
+                            const isFirstInGroup = !prevMsg || prevMsg.direction !== message.direction;
+                            const isLastInGroup = !nextMsg || nextMsg.direction !== message.direction;
                             return (
                               <ChatBubble
                                 key={message.id}
                                 content={message.content}
-                                direction={message.direction as 'inbound' | 'outbound'}
-                                senderType={
-                                  message.sender_type as 'customer' | 'agent' | 'ai'
+                                direction={message.direction as "inbound" | "outbound"}
+                                senderType={message.sender_type as "customer" | "agent" | "ai"}
+                                senderName={
+                                  message.sender_name ||
+                                  (message.direction === "inbound"
+                                    ? getCustomerDisplayName(selectedConversation)
+                                    : "AI")
                                 }
-                                senderName={message.sender_name || (message.direction === 'inbound' ? getCustomerDisplayName(selectedConversation) : 'AI')}
                                 timestamp={message.created_at}
-                                status={message.status as any}
+                                status={message.status as "sent" | "delivered" | "read" | "failed"}
                                 isFirstInGroup={isFirstInGroup}
                                 isLastInGroup={isLastInGroup}
                               />
@@ -470,15 +377,13 @@ export default function InboxPage() {
                   </div>
                 )}
               </ScrollArea>
-
-              {/* Message Input */}
               <MessageInput
                 onSend={(msg) => sendMessage.mutate(msg)}
                 disabled={sendMessage.isPending}
                 isSending={sendMessage.isPending}
                 quickReplies={[
-                  "Thank you for reaching out! How can I help you today?",
-                  "I'll look into this and get back to you shortly.",
+                  "Thank you for reaching out!",
+                  "I'll look into this.",
                   "Would you like to schedule an appointment?",
                 ]}
               />
@@ -487,14 +392,11 @@ export default function InboxPage() {
             <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
               <MessageSquare className="h-16 w-16 mb-4 opacity-30" />
               <h3 className="text-lg font-medium">Select a conversation</h3>
-              <p className="text-sm mt-1">
-                Choose a conversation from the list to start messaging
-              </p>
+              <p className="text-sm mt-1">Choose a conversation from the list to start messaging</p>
             </div>
           )}
         </div>
 
-        {/* Right: Customer Details (20%) */}
         {showDetails && selectedConversation && (
           <div className="w-[20%] min-w-[250px] max-w-[350px]">
             <CustomerDetailsPanel
@@ -505,16 +407,15 @@ export default function InboxPage() {
                 email: selectedConversation.customer_email,
                 channel: selectedConversation.channel,
                 tags: selectedConversation.tags || [],
-                temperature: 'warm',
+                temperature: "warm",
                 created_at: selectedConversation.created_at,
               }}
               onClose={() => setShowDetails(false)}
-              onViewProfile={() =>
-                toast({ title: 'View full profile feature coming soon' })
-              }
+              onViewProfile={() => toast({ title: "View full profile feature coming soon" })}
             />
           </div>
         )}
       </div>
     </div>
   );
+}
