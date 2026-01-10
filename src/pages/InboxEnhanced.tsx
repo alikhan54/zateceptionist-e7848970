@@ -6,11 +6,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { RefreshCw, MessageSquare, Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
-// Components
 import { EnhancedConversationList } from "@/components/inbox/EnhancedConversationList";
 import { ConversationHeader } from "@/components/inbox/ConversationHeader";
 import { ChatBubble, DateSeparator, TypingIndicator } from "@/components/inbox/ChatBubble";
@@ -32,6 +36,8 @@ interface Conversation {
   unread_count: number;
   message_count: number;
   tags: string[];
+  marketing_source: string | null;
+  assigned_to: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -51,6 +57,13 @@ interface Message {
   created_at: string;
 }
 
+interface TaskFormData {
+  title: string;
+  description: string;
+  priority: string;
+  due_date: string;
+}
+
 export default function InboxPage() {
   const { tenantId } = useTenant();
   const { authUser } = useAuth();
@@ -63,6 +76,30 @@ export default function InboxPage() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [newMessageBanner, setNewMessageBanner] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Task Dialog State
+  const [showTaskDialog, setShowTaskDialog] = useState(false);
+  const [taskForm, setTaskForm] = useState<TaskFormData>({
+    title: "",
+    description: "",
+    priority: "medium",
+    due_date: "",
+  });
+
+  // Staff for assignment
+  const [staffList, setStaffList] = useState<{ id: string; name: string }[]>([]);
+
+  // Fetch staff list
+  useEffect(() => {
+    if (!tenantId) return;
+    const fetchStaff = async () => {
+      const { data } = await supabase.from("users").select("id, full_name, email").eq("tenant_id", tenantId);
+      if (data) {
+        setStaffList(data.map((u) => ({ id: u.id, name: u.full_name || u.email || "Staff" })));
+      }
+    };
+    fetchStaff();
+  }, [tenantId]);
 
   const {
     data: conversations = [],
@@ -160,18 +197,52 @@ export default function InboxPage() {
     },
   });
 
-  const updateStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+  const updateConversation = useMutation({
+    mutationFn: async (updates: Partial<Conversation> & { id: string }) => {
+      const { id, ...data } = updates;
       const { error } = await supabase
         .from("conversations")
-        .update({ status, updated_at: new Date().toISOString() })
+        .update({ ...data, updated_at: new Date().toISOString() })
         .eq("id", id)
         .eq("tenant_id", tenantId);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inbox-conversations", tenantId] });
-      toast({ title: "Status updated" });
+      toast({ title: "Updated successfully" });
+    },
+    onError: (err) => {
+      toast({ title: "Update failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  // CREATE TASK - saves to tasks table
+  const createTask = useMutation({
+    mutationFn: async (data: TaskFormData) => {
+      if (!selectedConversation || !tenantId) throw new Error("No conversation selected");
+      const { error } = await supabase.from("tasks").insert({
+        tenant_id: tenantId,
+        title: data.title,
+        description: data.description,
+        priority: data.priority,
+        due_date: data.due_date || null,
+        status: "pending",
+        type: "follow_up",
+        customer_id: selectedConversation.customer_id,
+        conversation_id: selectedConversation.id,
+        created_by: authUser?.id,
+        assigned_to: authUser?.id,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setShowTaskDialog(false);
+      setTaskForm({ title: "", description: "", priority: "medium", due_date: "" });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      toast({ title: "Task created", description: "Task added to your task list" });
+    },
+    onError: (err) => {
+      toast({ title: "Failed to create task", description: err.message, variant: "destructive" });
     },
   });
 
@@ -219,14 +290,66 @@ export default function InboxPage() {
     }
   };
 
+  // ACTION HANDLERS - All save to database
   const handleResolve = () => {
     if (selectedConversation) {
-      updateStatus.mutate({ id: selectedConversation.id, status: "resolved" });
+      updateConversation.mutate({ id: selectedConversation.id, status: "resolved" });
     }
   };
+
   const handleEscalate = () => {
     if (selectedConversation) {
-      updateStatus.mutate({ id: selectedConversation.id, status: "escalated" });
+      updateConversation.mutate({ id: selectedConversation.id, status: "escalated", handler_type: "staff" });
+    }
+  };
+
+  const handleCreateTask = () => {
+    if (selectedConversation) {
+      setTaskForm({
+        title: `Follow up with ${selectedConversation.customer_name || selectedConversation.customer_phone || "Customer"}`,
+        description: `Follow up on conversation from ${selectedConversation.channel}`,
+        priority: "medium",
+        due_date: format(new Date(Date.now() + 86400000), "yyyy-MM-dd"), // Tomorrow
+      });
+      setShowTaskDialog(true);
+    }
+  };
+
+  const handleSetSource = (source: string) => {
+    if (selectedConversation) {
+      updateConversation.mutate({ id: selectedConversation.id, marketing_source: source } as any);
+      // Also update customer if exists
+      if (selectedConversation.customer_id) {
+        supabase.from("customers").update({ source }).eq("id", selectedConversation.customer_id);
+      }
+    }
+  };
+
+  const handleAssignStaff = (staffId: string) => {
+    if (selectedConversation) {
+      updateConversation.mutate({ id: selectedConversation.id, assigned_to: staffId, handler_type: "staff" } as any);
+    }
+  };
+
+  const handleMarkAIHandled = () => {
+    if (selectedConversation) {
+      updateConversation.mutate({ id: selectedConversation.id, handler_type: "ai", assigned_to: null } as any);
+    }
+  };
+
+  const handleToggleStar = () => {
+    if (selectedConversation) {
+      const currentTags = selectedConversation.tags || [];
+      const newTags = currentTags.includes("starred")
+        ? currentTags.filter((t) => t !== "starred")
+        : [...currentTags, "starred"];
+      updateConversation.mutate({ id: selectedConversation.id, tags: newTags } as any);
+    }
+  };
+
+  const handleMarkUnread = () => {
+    if (selectedConversation) {
+      updateConversation.mutate({ id: selectedConversation.id, unread_count: 1 } as any);
     }
   };
 
@@ -273,6 +396,68 @@ export default function InboxPage() {
 
   return (
     <div className="h-[calc(100vh-120px)] flex flex-col">
+      {/* Create Task Dialog */}
+      <Dialog open={showTaskDialog} onOpenChange={setShowTaskDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Task</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="title">Title</Label>
+              <Input
+                id="title"
+                value={taskForm.title}
+                onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
+                placeholder="Task title"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={taskForm.description}
+                onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })}
+                placeholder="Task description"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Priority</Label>
+                <Select value={taskForm.priority} onValueChange={(v) => setTaskForm({ ...taskForm, priority: v })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="urgent">Urgent</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="due_date">Due Date</Label>
+                <Input
+                  id="due_date"
+                  type="date"
+                  value={taskForm.due_date}
+                  onChange={(e) => setTaskForm({ ...taskForm, due_date: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowTaskDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => createTask.mutate(taskForm)} disabled={!taskForm.title || createTask.isPending}>
+              {createTask.isPending ? "Creating..." : "Create Task"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {newMessageBanner && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50">
           <Button variant="secondary" size="sm" className="shadow-lg" onClick={() => setNewMessageBanner(null)}>
@@ -317,13 +502,13 @@ export default function InboxPage() {
                 conversation={selectedConversation}
                 onResolve={handleResolve}
                 onEscalate={handleEscalate}
-                onCreateTask={() => toast({ title: "Create task feature coming soon" })}
-                onSetSource={(source) => toast({ title: `Source set to ${source}` })}
-                onAssignStaff={() => toast({ title: "Staff assigned" })}
-                onMarkAIHandled={() => toast({ title: "Marked as AI handled" })}
-                onToggleStar={() => toast({ title: "Star toggled" })}
-                onMarkUnread={() => toast({ title: "Marked as unread" })}
-                onViewProfile={() => toast({ title: "View profile" })}
+                onCreateTask={handleCreateTask}
+                onSetSource={handleSetSource}
+                onAssignStaff={handleAssignStaff}
+                onMarkAIHandled={handleMarkAIHandled}
+                onToggleStar={handleToggleStar}
+                onMarkUnread={handleMarkUnread}
+                onViewProfile={() => window.open(`/customers?id=${selectedConversation.customer_id}`, "_blank")}
                 onBlockCustomer={() => toast({ title: "Block feature coming soon" })}
                 onToggleDetails={() => setShowDetails(!showDetails)}
                 showDetails={showDetails}
@@ -411,7 +596,7 @@ export default function InboxPage() {
                 created_at: selectedConversation.created_at,
               }}
               onClose={() => setShowDetails(false)}
-              onViewProfile={() => toast({ title: "View full profile feature coming soon" })}
+              onViewProfile={() => window.open(`/customers?id=${selectedConversation.customer_id}`, "_blank")}
             />
           </div>
         )}
