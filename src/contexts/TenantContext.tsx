@@ -327,15 +327,15 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       if (customVocab && customVocab[term.toLowerCase()]) {
         return customVocab[term.toLowerCase()];
       }
-      // Fall back to industry vocabulary
-      const vocab = industryVocabulary[industry];
-      return vocab[term.toLowerCase()] || term;
+      // Fall back to industry vocabulary (with fallback to 'general' if industry not found)
+      const vocab = industryVocabulary[industry as IndustryType] || industryVocabulary.general;
+      return vocab?.[term.toLowerCase()] || term;
     },
     [tenantConfig?.vocabulary, industry]
   );
 
   const getVocabulary = useCallback((): Record<string, string> => {
-    const baseVocab = { ...industryVocabulary[industry] };
+    const baseVocab = { ...(industryVocabulary[industry as IndustryType] || industryVocabulary.general) };
     const customVocab = tenantConfig?.vocabulary;
     if (customVocab) {
       return { ...baseVocab, ...customVocab };
