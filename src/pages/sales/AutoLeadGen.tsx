@@ -8,18 +8,41 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useToast } from '@/hooks/use-toast';
+import { useTenant } from '@/contexts/TenantContext';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { 
-  Sparkles, Play, Pause, Settings2, Building2, MapPin, Users, 
-  Briefcase, Search, Plus, X, Check, AlertCircle, Globe,
-  MessageCircle, Twitter, Radio, Zap, Target, TrendingUp,
-  Clock, Loader2, RefreshCw
+  Sparkles, Play, Pause, Building2, MapPin, Users, 
+  Briefcase, Plus, X, Globe,
+  MessageCircle, Twitter, Radio, Zap,
+  Loader2, RefreshCw, Check, ArrowRight, Mail, Phone
 } from 'lucide-react';
 import { GradeBadge } from '@/components/shared';
+import { cn } from '@/lib/utils';
+
+interface GeneratedLead {
+  id: string;
+  company: string;
+  contact: string;
+  email: string;
+  title: string;
+  score: number;
+  grade: 'A' | 'B' | 'C' | 'D';
+  status: 'new' | 'enriching' | 'added' | 'dismissed';
+  source: 'b2b' | 'intent';
+  phone?: string;
+  linkedin?: string;
+  website?: string;
+}
 
 export default function AutoLeadGen() {
+  const { tenantId } = useTenant();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
   const [activeTab, setActiveTab] = useState('b2b');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateCount, setGenerateCount] = useState([25]);
@@ -39,47 +62,97 @@ export default function AutoLeadGen() {
   const [intentKeywords, setIntentKeywords] = useState('');
   const [isMonitoring, setIsMonitoring] = useState(false);
 
-  // Mock generated leads
-  const [generatedLeads, setGeneratedLeads] = useState([
-    { id: '1', company: 'TechStartup Inc', contact: 'John Smith', email: 'john@techstartup.com', title: 'CTO', score: 85, grade: 'A', status: 'new', source: 'b2b' },
+  // Generated leads state
+  const [generatedLeads, setGeneratedLeads] = useState<GeneratedLead[]>([
+    { id: '1', company: 'TechStartup Inc', contact: 'John Smith', email: 'john@techstartup.com', title: 'CTO', score: 85, grade: 'A', status: 'new', source: 'b2b', phone: '+1-555-0123' },
     { id: '2', company: 'GrowthCo', contact: 'Sarah Lee', email: 'sarah@growthco.com', title: 'VP Sales', score: 72, grade: 'B', status: 'new', source: 'b2b' },
     { id: '3', company: 'DataFlow', contact: 'Mike Johnson', email: 'mike@dataflow.io', title: 'CEO', score: 91, grade: 'A', status: 'enriching', source: 'b2b' },
     { id: '4', company: 'CloudNine', contact: 'Emily Chen', email: 'emily@cloudnine.com', title: 'Head of Growth', score: 68, grade: 'B', status: 'new', source: 'intent' },
     { id: '5', company: 'ScaleUp Ltd', contact: 'Alex Brown', email: 'alex@scaleup.io', title: 'Director', score: 55, grade: 'C', status: 'new', source: 'intent' },
   ]);
 
-  // Usage/Credits
-  const credits = {
-    used: 347,
-    total: 500,
-    remaining: 153
-  };
+  // Credits
+  const credits = { used: 347, total: 500, remaining: 153 };
 
   const industries = [
     'Technology', 'Healthcare', 'Finance', 'E-commerce', 'Manufacturing',
     'Real Estate', 'Education', 'Marketing', 'Legal', 'Consulting'
   ];
 
-  const handleGenerate = () => {
-    setIsGenerating(true);
-    setTimeout(() => {
-      setIsGenerating(false);
-      // Add mock leads
-    }, 3000);
-  };
+  // Add lead to pipeline mutation
+  const addToPipelineMutation = useMutation({
+    mutationFn: async (lead: GeneratedLead) => {
+      const { data, error } = await supabase
+        .from('sales_leads')
+        .insert({
+          tenant_id: tenantId,
+          name: lead.contact,
+          company: lead.company,
+          email: lead.email,
+          phone: lead.phone || null,
+          title: lead.title,
+          source: lead.source === 'b2b' ? 'lead_gen' : 'intent_signal',
+          score: lead.score,
+          temperature: lead.grade === 'A' ? 'hot' : lead.grade === 'B' ? 'warm' : 'cold',
+          status: 'new',
+        })
+        .select()
+        .single();
 
-  const handleAddToPipeline = (leadId: string) => {
-    setGeneratedLeads(leads => 
-      leads.map(l => l.id === leadId ? { ...l, status: 'added' } : l)
-    );
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, lead) => {
+      setGeneratedLeads(leads => 
+        leads.map(l => l.id === lead.id ? { ...l, status: 'added' as const } : l)
+      );
+      queryClient.invalidateQueries({ queryKey: ['sales-leads', tenantId] });
+      toast({ title: 'Lead added to pipeline' });
+    },
+    onError: (error) => {
+      toast({ title: 'Failed to add lead', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  const handleGenerate = async () => {
+    setIsGenerating(true);
+    
+    // Simulate API call for lead generation
+    // In production, this would call an n8n webhook or edge function
+    setTimeout(() => {
+      const newLeads: GeneratedLead[] = [
+        { 
+          id: `new-${Date.now()}`, 
+          company: 'NewTech Solutions', 
+          contact: 'Jane Doe', 
+          email: 'jane@newtech.com', 
+          title: 'Marketing Director', 
+          score: 78, 
+          grade: 'B', 
+          status: 'new', 
+          source: 'b2b' 
+        },
+      ];
+      setGeneratedLeads(prev => [...newLeads, ...prev]);
+      setIsGenerating(false);
+      toast({ title: 'Leads generated successfully', description: `${newLeads.length} new leads found` });
+    }, 3000);
   };
 
   const handleDiscard = (leadId: string) => {
     setGeneratedLeads(leads => leads.filter(l => l.id !== leadId));
   };
 
+  const toggleMonitoring = () => {
+    setIsMonitoring(!isMonitoring);
+    toast({ 
+      title: isMonitoring ? 'Monitoring stopped' : 'Monitoring started',
+      description: isMonitoring ? 'Intent signal detection paused' : 'Checking for buying signals every 5 minutes'
+    });
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -133,7 +206,7 @@ export default function AutoLeadGen() {
                         <Badge
                           key={industry}
                           variant={selectedIndustries.includes(industry) ? 'default' : 'outline'}
-                          className="cursor-pointer"
+                          className="cursor-pointer transition-colors"
                           onClick={() => {
                             setSelectedIndustries(prev =>
                               prev.includes(industry)
@@ -209,9 +282,9 @@ export default function AutoLeadGen() {
                     <Slider
                       value={generateCount}
                       onValueChange={setGenerateCount}
-                      min={10}
-                      max={100}
-                      step={5}
+                      min={1}
+                      max={25}
+                      step={1}
                     />
                   </div>
 
@@ -286,26 +359,10 @@ export default function AutoLeadGen() {
                     </p>
                   </div>
 
-                  {/* Sentiment Filter */}
-                  <div className="space-y-2">
-                    <Label>Sentiment Filter</Label>
-                    <Select defaultValue="all">
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Sentiments</SelectItem>
-                        <SelectItem value="positive">Positive Only</SelectItem>
-                        <SelectItem value="neutral">Neutral & Positive</SelectItem>
-                        <SelectItem value="frustrated">Frustrated (High Intent)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
                   <Button 
                     className="w-full" 
                     variant={isMonitoring ? 'destructive' : 'default'}
-                    onClick={() => setIsMonitoring(!isMonitoring)}
+                    onClick={toggleMonitoring}
                   >
                     {isMonitoring ? (
                       <>
@@ -344,7 +401,7 @@ export default function AutoLeadGen() {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>Generated Leads Queue</CardTitle>
-                  <CardDescription>{generatedLeads.length} leads ready for review</CardDescription>
+                  <CardDescription>{generatedLeads.filter(l => l.status !== 'added' && l.status !== 'dismissed').length} leads ready for review</CardDescription>
                 </div>
                 <Button variant="outline" size="sm">
                   <RefreshCw className="h-4 w-4 mr-2" />
@@ -355,14 +412,20 @@ export default function AutoLeadGen() {
             <CardContent>
               <ScrollArea className="h-[calc(100vh-350px)]">
                 <div className="space-y-3">
-                  {generatedLeads.map((lead) => (
-                    <Card key={lead.id} className={lead.status === 'added' ? 'opacity-50' : ''}>
+                  {generatedLeads.filter(l => l.status !== 'dismissed').map((lead) => (
+                    <Card 
+                      key={lead.id} 
+                      className={cn(
+                        'transition-opacity',
+                        lead.status === 'added' && 'opacity-50'
+                      )}
+                    >
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
                               <h4 className="font-medium truncate">{lead.company}</h4>
-                              <GradeBadge grade={lead.grade as 'A' | 'B' | 'C' | 'D'} />
+                              <GradeBadge grade={lead.grade} />
                               <Badge variant={lead.source === 'b2b' ? 'default' : 'secondary'} className="text-xs">
                                 {lead.source === 'b2b' ? 'B2B' : 'Intent'}
                               </Badge>
@@ -379,43 +442,44 @@ export default function AutoLeadGen() {
                             </div>
                             <p className="text-sm text-muted-foreground mt-1">{lead.email}</p>
                             
-                            {/* Enrichment Status */}
                             {lead.status === 'enriching' && (
                               <div className="flex items-center gap-2 mt-2 text-sm text-blue-600">
                                 <Loader2 className="h-3 w-3 animate-spin" />
                                 <span>Enriching data...</span>
                               </div>
                             )}
+
+                            {lead.status === 'added' && (
+                              <div className="flex items-center gap-2 mt-2 text-sm text-green-600">
+                                <Check className="h-3 w-3" />
+                                <span>Added to pipeline</span>
+                              </div>
+                            )}
                           </div>
                           
                           <div className="flex flex-col items-end gap-2">
-                            {/* Score */}
                             <div className="text-right">
                               <p className="text-xs text-muted-foreground">Score</p>
                               <p className="text-lg font-bold">{lead.score}</p>
                             </div>
                             
-                            {/* Actions */}
-                            {lead.status === 'added' ? (
-                              <Badge variant="outline" className="text-green-600">
-                                <Check className="h-3 w-3 mr-1" />
-                                Added
-                              </Badge>
-                            ) : (
-                              <div className="flex gap-2">
+                            {lead.status !== 'added' && (
+                              <div className="flex items-center gap-2">
                                 <Button 
-                                  size="sm" 
-                                  onClick={() => handleAddToPipeline(lead.id)}
-                                >
-                                  <Plus className="h-4 w-4 mr-1" />
-                                  Add
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="ghost"
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-8 w-8"
                                   onClick={() => handleDiscard(lead.id)}
                                 >
                                   <X className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  size="sm"
+                                  onClick={() => addToPipelineMutation.mutate(lead)}
+                                  disabled={addToPipelineMutation.isPending || lead.status === 'enriching'}
+                                >
+                                  <ArrowRight className="h-4 w-4 mr-1" />
+                                  Add to Pipeline
                                 </Button>
                               </div>
                             )}
@@ -425,11 +489,11 @@ export default function AutoLeadGen() {
                     </Card>
                   ))}
 
-                  {generatedLeads.length === 0 && (
+                  {generatedLeads.filter(l => l.status !== 'dismissed').length === 0 && (
                     <div className="text-center py-12 text-muted-foreground">
-                      <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p className="font-medium">No leads in queue</p>
-                      <p className="text-sm">Configure your filters and generate leads</p>
+                      <Sparkles className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No leads in queue</p>
+                      <p className="text-sm mt-1">Generate leads to get started</p>
                     </div>
                   )}
                 </div>
