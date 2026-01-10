@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { supabase, User, Session } from '@/lib/supabase';
+import { useTenant } from '@/contexts/TenantContext';
 
 export type UserRole = 'master_admin' | 'admin' | 'manager' | 'staff';
 
@@ -110,6 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { setUserTenantInfo } = useTenant();
 
   // Fetch user profile and role from database
   const fetchAuthUser = useCallback(async (authId: string) => {
@@ -185,12 +187,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         staffPermissions,
       };
 
+      // Update TenantContext with user's tenant and role
+      setUserTenantInfo(userData.tenant_id, userRole);
+
       return authUserData;
     } catch (error) {
       console.error('Error in fetchAuthUser:', error);
       return null;
     }
-  }, []);
+  }, [setUserTenantInfo]);
 
   const refreshAuthUser = useCallback(async () => {
     if (user?.id) {
