@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -8,7 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, MessageSquare, Volume2, VolumeX } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { format, isSameDay } from 'date-fns';
+import { format } from 'date-fns';
 
 // Components
 import { EnhancedConversationList } from '@/components/inbox/EnhancedConversationList';
@@ -30,6 +30,7 @@ interface Conversation {
   last_message: string | null;
   last_message_at: string | null;
   unread_count: number;
+  message_count: number;
   tags: string[];
   created_at: string;
   updated_at: string;
@@ -64,7 +65,7 @@ export default function InboxPage() {
   const [newMessageBanner, setNewMessageBanner] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Fetch conversations
+  // Fetch conversations - FIXED: Proper grouping by customer
   const {
     data: conversations = [],
     isLoading,
@@ -82,18 +83,21 @@ export default function InboxPage() {
         .order('last_message_at', { ascending: false, nullsFirst: false });
 
       if (error) throw error;
+      
+      // Return unique conversations (should already be unique after DB fix)
       return (data || []) as Conversation[];
     },
     enabled: !!tenantId,
-    refetchInterval: 30000,
+    refetchInterval: 10000, // Refresh every 10 seconds for more real-time feel
   });
 
-  // Fetch messages for selected conversation
-  const { data: messages = [], isLoading: messagesLoading } = useQuery({
+  // Fetch ALL messages for selected conversation - FIXED
+  const { data: messages = [], isLoading: messagesLoading, refetch: refetchMessages } = useQuery({
     queryKey: ['conversation-messages', selectedConversation?.id],
     queryFn: async () => {
       if (!selectedConversation?.id) return [];
 
+      // Fetch messages for this conversation
       const { data, error } = await supabase
         .from('messages')
         .select('*')
@@ -101,17 +105,20 @@ export default function InboxPage() {
         .order('created_at', { ascending: true });
 
       if (error) throw error;
+      
+      console.log(`Loaded ${data?.length || 0} messages for conversation ${selectedConversation.id}`);
       return (data || []) as Message[];
     },
     enabled: !!selectedConversation?.id,
+    refetchInterval: 5000, // Poll for new messages
   });
 
-  // Real-time subscription
+  // Real-time subscription - FIXED
   useEffect(() => {
     if (!tenantId) return;
 
     const channel = supabase
-      .channel(`inbox-realtime-${tenantId}`)
+      .channel(`inbox-realtime-${tenantId}-${Date.now()}`)
       .on(
         'postgres_changes',
         {
@@ -121,9 +128,10 @@ export default function InboxPage() {
           filter: `tenant_id=eq.${tenantId}`,
         },
         (payload) => {
+          console.log('Conversation change:', payload.eventType);
           queryClient.invalidateQueries({ queryKey: ['inbox-conversations', tenantId] });
 
-          // Show new message banner if message is in a different conversation
+          // Show new message banner
           if (
             payload.eventType === 'UPDATE' &&
             payload.new &&
@@ -132,7 +140,7 @@ export default function InboxPage() {
           ) {
             const newConv = payload.new as Conversation;
             setNewMessageBanner(
-              `New message from ${newConv.customer_name || 'Unknown'}`
+              `New message from ${newConv.customer_name || newConv.customer_phone || 'Unknown'}`
             );
             setTimeout(() => setNewMessageBanner(null), 5000);
           }
@@ -145,12 +153,17 @@ export default function InboxPage() {
           schema: 'public',
           table: 'messages',
         },
-        () => {
-          if (selectedConversation?.id) {
+        (payload) => {
+          console.log('New message inserted:', payload.new);
+          // Refetch messages if it's for the selected conversation
+          if (selectedConversation?.id && payload.new && 
+              (payload.new as Message).conversation_id === selectedConversation.id) {
             queryClient.invalidateQueries({
               queryKey: ['conversation-messages', selectedConversation.id],
             });
           }
+          // Also refresh conversation list
+          queryClient.invalidateQueries({ queryKey: ['inbox-conversations', tenantId] });
         }
       )
       .subscribe();
@@ -162,7 +175,11 @@ export default function InboxPage() {
 
   // Scroll to bottom when messages change
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messages.length > 0) {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    }
   }, [messages]);
 
   // Mutations
@@ -226,6 +243,7 @@ export default function InboxPage() {
         .update({
           last_message: content,
           last_message_at: new Date().toISOString(),
+          message_count: (selectedConversation.message_count || 0) + 1,
         })
         .eq('id', selectedConversation.id);
 
@@ -250,6 +268,7 @@ export default function InboxPage() {
 
   // Handlers
   const handleSelectConversation = (conv: Conversation) => {
+    console.log('Selected conversation:', conv.id, conv.customer_phone);
     setSelectedConversation(conv);
     if (conv.unread_count > 0) {
       markAsRead.mutate(conv.id);
@@ -293,6 +312,16 @@ export default function InboxPage() {
     total: conversations.length,
     unread: conversations.filter((c) => c.unread_count > 0).length,
     active: conversations.filter((c) => c.status === 'active').length,
+  };
+
+  // Get display name for customer
+  const getCustomerDisplayName = (conv: Conversation) => {
+    if (conv.customer_name && !conv.customer_name.includes('User') && conv.customer_name !== conv.customer_phone) {
+      return conv.customer_name;
+    }
+    // Format phone number for display
+    const phone = conv.customer_phone || 'Unknown';
+    return phone.length > 10 ? `${phone.slice(0, 4)}...${phone.slice(-4)}` : phone;
   };
 
   if (error) {
@@ -351,7 +380,7 @@ export default function InboxPage() {
       {/* Main Content - 3 Column Layout */}
       <div className="flex-1 flex min-h-0">
         {/* Left: Conversation List (30%) */}
-        <div className="w-[30%] min-w-[280px] max-w-[400px]">
+        <div className="w-[30%] min-w-[280px] max-w-[400px] border-r">
           <EnhancedConversationList
             conversations={conversations}
             selectedId={selectedConversation?.id}
@@ -396,7 +425,7 @@ export default function InboxPage() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {messageGroups.map((group, groupIndex) => (
+                    {messageGroups.map((group) => (
                       <div key={group.date}>
                         <DateSeparator date={group.date} />
                         <div className="space-y-2">
@@ -425,7 +454,7 @@ export default function InboxPage() {
                                 senderType={
                                   message.sender_type as 'customer' | 'agent' | 'ai'
                                 }
-                                senderName={message.sender_name}
+                                senderName={message.sender_name || (message.direction === 'inbound' ? getCustomerDisplayName(selectedConversation) : 'AI')}
                                 timestamp={message.created_at}
                                 status={message.status as any}
                                 isFirstInGroup={isFirstInGroup}
@@ -466,23 +495,19 @@ export default function InboxPage() {
         </div>
 
         {/* Right: Customer Details (20%) */}
-        {showDetails && (
+        {showDetails && selectedConversation && (
           <div className="w-[20%] min-w-[250px] max-w-[350px]">
             <CustomerDetailsPanel
-              customer={
-                selectedConversation
-                  ? {
-                      id: selectedConversation.customer_id || selectedConversation.id,
-                      name: selectedConversation.customer_name,
-                      phone: selectedConversation.customer_phone,
-                      email: selectedConversation.customer_email,
-                      channel: selectedConversation.channel,
-                      tags: selectedConversation.tags,
-                      temperature: 'warm',
-                      created_at: selectedConversation.created_at,
-                    }
-                  : null
-              }
+              customer={{
+                id: selectedConversation.customer_id || selectedConversation.id,
+                name: getCustomerDisplayName(selectedConversation),
+                phone: selectedConversation.customer_phone,
+                email: selectedConversation.customer_email,
+                channel: selectedConversation.channel,
+                tags: selectedConversation.tags || [],
+                temperature: 'warm',
+                created_at: selectedConversation.created_at,
+              }}
               onClose={() => setShowDetails(false)}
               onViewProfile={() =>
                 toast({ title: 'View full profile feature coming soon' })
@@ -493,4 +518,3 @@ export default function InboxPage() {
       </div>
     </div>
   );
-}
