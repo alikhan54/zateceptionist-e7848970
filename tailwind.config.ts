@@ -76,6 +76,19 @@ export default {
           DEFAULT: "hsl(var(--info))",
           foreground: "hsl(var(--info-foreground))",
         },
+        // Inbox channel colors
+        channel: {
+          whatsapp: "hsl(var(--channel-whatsapp))",
+          instagram: "hsl(var(--channel-instagram))",
+          facebook: "hsl(var(--channel-facebook))",
+          email: "hsl(var(--channel-email))",
+          linkedin: "hsl(var(--channel-linkedin))",
+          twitter: "hsl(var(--channel-twitter))",
+          telegram: "hsl(var(--channel-telegram))",
+          sms: "hsl(var(--channel-sms))",
+          voice: "hsl(var(--channel-voice))",
+          web: "hsl(var(--channel-web))",
+        },
         // Chart colors
         chart: {
           1: "hsl(var(--chart-1))",
