@@ -1,12 +1,7 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
-import { supabase } from '@/lib/supabase';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
+import { supabase } from "@/lib/supabase";
 
-export type IndustryType =
-  | 'healthcare'
-  | 'real_estate'
-  | 'restaurant'
-  | 'salon'
-  | 'general';
+export type IndustryType = "healthcare" | "real_estate" | "restaurant" | "salon" | "general";
 
 export interface TenantConfig {
   id: string;
@@ -32,137 +27,124 @@ export interface TenantConfig {
   features: Record<string, boolean> | null;
   subscription_status: string | null;
   subscription_plan?: string | null;
-  ai_mode?: 'autonomous' | 'assisted' | 'manual' | null;
+  ai_mode?: "autonomous" | "assisted" | "manual" | null;
   ai_modules_enabled?: Record<string, boolean> | null;
+  subscription_tier?: "starter" | "professional" | "enterprise" | null;
+  leads_per_month?: number | null;
+  b2b_searches_per_day?: number | null;
+  intent_searches_per_day?: number | null;
+  apollo_api_key?: string | null;
+  hunter_api_key?: string | null;
+  apify_api_key?: string | null;
+  google_api_key?: string | null;
+  google_cx_id?: string | null;
 }
 
 // Industry-specific vocabulary translations
 const industryVocabulary: Record<IndustryType, Record<string, string>> = {
   healthcare: {
-    customer: 'Patient',
-    customers: 'Patients',
-    appointment: 'Consultation',
-    appointments: 'Consultations',
-    product: 'Treatment',
-    products: 'Treatments',
-    staff: 'Practitioner',
-    staffs: 'Practitioners',
-    deal: 'Treatment Plan',
-    deals: 'Treatment Plans',
-    lead: 'Patient Inquiry',
-    leads: 'Patient Inquiries',
+    customer: "Patient",
+    customers: "Patients",
+    appointment: "Consultation",
+    appointments: "Consultations",
+    product: "Treatment",
+    products: "Treatments",
+    staff: "Practitioner",
+    staffs: "Practitioners",
+    deal: "Treatment Plan",
+    deals: "Treatment Plans",
+    lead: "Patient Inquiry",
+    leads: "Patient Inquiries",
   },
   real_estate: {
-    customer: 'Client',
-    customers: 'Clients',
-    appointment: 'Viewing',
-    appointments: 'Viewings',
-    product: 'Property',
-    products: 'Properties',
-    staff: 'Agent',
-    staffs: 'Agents',
-    deal: 'Transaction',
-    deals: 'Transactions',
-    lead: 'Property Inquiry',
-    leads: 'Property Inquiries',
+    customer: "Client",
+    customers: "Clients",
+    appointment: "Viewing",
+    appointments: "Viewings",
+    product: "Property",
+    products: "Properties",
+    staff: "Agent",
+    staffs: "Agents",
+    deal: "Transaction",
+    deals: "Transactions",
+    lead: "Property Inquiry",
+    leads: "Property Inquiries",
   },
   restaurant: {
-    customer: 'Guest',
-    customers: 'Guests',
-    appointment: 'Reservation',
-    appointments: 'Reservations',
-    product: 'Menu Item',
-    products: 'Menu',
-    staff: 'Team Member',
-    staffs: 'Team Members',
-    deal: 'Catering Order',
-    deals: 'Catering Orders',
-    lead: 'Inquiry',
-    leads: 'Inquiries',
+    customer: "Guest",
+    customers: "Guests",
+    appointment: "Reservation",
+    appointments: "Reservations",
+    product: "Menu Item",
+    products: "Menu",
+    staff: "Team Member",
+    staffs: "Team Members",
+    deal: "Catering Order",
+    deals: "Catering Orders",
+    lead: "Inquiry",
+    leads: "Inquiries",
   },
   salon: {
-    customer: 'Client',
-    customers: 'Clients',
-    appointment: 'Booking',
-    appointments: 'Bookings',
-    product: 'Service',
-    products: 'Services',
-    staff: 'Stylist',
-    staffs: 'Stylists',
-    deal: 'Package',
-    deals: 'Packages',
-    lead: 'Client Inquiry',
-    leads: 'Client Inquiries',
+    customer: "Client",
+    customers: "Clients",
+    appointment: "Booking",
+    appointments: "Bookings",
+    product: "Service",
+    products: "Services",
+    staff: "Stylist",
+    staffs: "Stylists",
+    deal: "Package",
+    deals: "Packages",
+    lead: "Client Inquiry",
+    leads: "Client Inquiries",
   },
   general: {
-    customer: 'Customer',
-    customers: 'Customers',
-    appointment: 'Appointment',
-    appointments: 'Appointments',
-    product: 'Product',
-    products: 'Products',
-    staff: 'Staff Member',
-    staffs: 'Staff Members',
-    deal: 'Deal',
-    deals: 'Deals',
-    lead: 'Lead',
-    leads: 'Leads',
+    customer: "Customer",
+    customers: "Customers",
+    appointment: "Appointment",
+    appointments: "Appointments",
+    product: "Product",
+    products: "Products",
+    staff: "Staff Member",
+    staffs: "Staff Members",
+    deal: "Deal",
+    deals: "Deals",
+    lead: "Lead",
+    leads: "Leads",
   },
 };
 
 // Industry-specific deal stages
 const industryDealStages: Record<IndustryType, string[]> = {
   healthcare: [
-    'Inquiry',
-    'Consultation Booked',
-    'Consultation Done',
-    'Treatment Plan',
-    'Scheduled',
-    'In Treatment',
-    'Completed',
-    'Follow-up',
-    'Lost',
+    "Inquiry",
+    "Consultation Booked",
+    "Consultation Done",
+    "Treatment Plan",
+    "Scheduled",
+    "In Treatment",
+    "Completed",
+    "Follow-up",
+    "Lost",
   ],
   real_estate: [
-    'Lead',
-    'Qualified',
-    'Viewing Scheduled',
-    'Viewing Done',
-    'Offer Made',
-    'Negotiation',
-    'Contract',
-    'Closing',
-    'Won',
-    'Lost',
+    "Lead",
+    "Qualified",
+    "Viewing Scheduled",
+    "Viewing Done",
+    "Offer Made",
+    "Negotiation",
+    "Contract",
+    "Closing",
+    "Won",
+    "Lost",
   ],
-  restaurant: [
-    'Inquiry',
-    'Quote Sent',
-    'Confirmed',
-    'Deposit Received',
-    'In Progress',
-    'Completed',
-    'Cancelled',
-  ],
-  salon: [
-    'Inquiry',
-    'Booked',
-    'In Service',
-    'Completed',
-    'Rebooking',
-    'Lost',
-  ],
-  general: [
-    'Lead',
-    'Qualified',
-    'Proposal',
-    'Negotiation',
-    'Won',
-    'Lost',
-  ],
+  restaurant: ["Inquiry", "Quote Sent", "Confirmed", "Deposit Received", "In Progress", "Completed", "Cancelled"],
+  salon: ["Inquiry", "Booked", "In Service", "Completed", "Rebooking", "Lost"],
+  general: ["Lead", "Qualified", "Proposal", "Negotiation", "Won", "Lost"],
 };
 
-export type UserRole = 'master_admin' | 'admin' | 'manager' | 'staff';
+export type UserRole = "master_admin" | "admin" | "manager" | "staff";
 
 interface TenantContextType {
   tenantId: string | null;
@@ -186,13 +168,13 @@ interface TenantContextType {
 
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
 
-const TENANT_ID_KEY = 'zateceptionist_tenant_id';
+const TENANT_ID_KEY = "zateceptionist_tenant_id";
 
 function getInitialTenantId(): string | null {
   // Check URL param first
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     const urlParams = new URLSearchParams(window.location.search);
-    const urlTenantId = urlParams.get('tenant');
+    const urlTenantId = urlParams.get("tenant");
     if (urlTenantId) {
       localStorage.setItem(TENANT_ID_KEY, urlTenantId);
       return urlTenantId;
@@ -207,7 +189,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const [tenantConfig, setTenantConfig] = useState<TenantConfig | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [userRole, setUserRole] = useState<UserRole>('staff');
+  const [userRole, setUserRole] = useState<UserRole>("staff");
 
   const setTenantId = useCallback((id: string) => {
     localStorage.setItem(TENANT_ID_KEY, id);
@@ -215,20 +197,23 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Called by AuthContext after authentication to set user's tenant and role
-  const setUserTenantInfo = useCallback((newTenantId: string | null, role: UserRole) => {
-    setUserRole(role);
-    if (newTenantId && role !== 'master_admin') {
-      // Non-master admins are locked to their tenant
-      localStorage.setItem(TENANT_ID_KEY, newTenantId);
-      setTenantIdState(newTenantId);
-    } else if (newTenantId) {
-      // Master admins can have a default tenant but can switch
-      if (!tenantId) {
+  const setUserTenantInfo = useCallback(
+    (newTenantId: string | null, role: UserRole) => {
+      setUserRole(role);
+      if (newTenantId && role !== "master_admin") {
+        // Non-master admins are locked to their tenant
         localStorage.setItem(TENANT_ID_KEY, newTenantId);
         setTenantIdState(newTenantId);
+      } else if (newTenantId) {
+        // Master admins can have a default tenant but can switch
+        if (!tenantId) {
+          localStorage.setItem(TENANT_ID_KEY, newTenantId);
+          setTenantIdState(newTenantId);
+        }
       }
-    }
-  }, [tenantId]);
+    },
+    [tenantId],
+  );
 
   const fetchTenantConfig = useCallback(async () => {
     if (!tenantId) {
@@ -241,9 +226,9 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const { data, error: fetchError } = await supabase
-        .from('tenant_config')
-        .select('*')
-        .eq('tenant_id', tenantId)
+        .from("tenant_config")
+        .select("*")
+        .eq("tenant_id", tenantId)
         .maybeSingle();
 
       if (fetchError) throw fetchError;
@@ -257,19 +242,19 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       } else {
         // Default config if none exists
         const defaultConfig: TenantConfig = {
-          id: '',
+          id: "",
           tenant_id: tenantId,
-          company_name: 'My Business',
-          industry: 'general',
+          company_name: "My Business",
+          industry: "general",
           logo_url: null,
           primary_color: null,
-          ai_name: 'Zate',
-          ai_role: 'AI Assistant',
-          timezone: 'UTC',
-          currency: 'USD',
-          working_days: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
-          opening_time: '09:00',
-          closing_time: '17:00',
+          ai_name: "Zate",
+          ai_role: "AI Assistant",
+          timezone: "UTC",
+          currency: "USD",
+          working_days: ["monday", "tuesday", "wednesday", "thursday", "friday"],
+          opening_time: "09:00",
+          closing_time: "17:00",
           vocabulary: null,
           has_whatsapp: false,
           has_email: true,
@@ -278,28 +263,28 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
           has_facebook: false,
           has_linkedin: false,
           features: null,
-          subscription_status: 'trial',
+          subscription_status: "trial",
         };
         setTenantConfig(defaultConfig);
       }
     } catch (err) {
-      console.error('Error fetching tenant config:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch tenant config');
+      console.error("Error fetching tenant config:", err);
+      setError(err instanceof Error ? err.message : "Failed to fetch tenant config");
       // Set default config on error
       setTenantConfig({
-        id: '',
+        id: "",
         tenant_id: tenantId,
-        company_name: 'My Business',
-        industry: 'general',
+        company_name: "My Business",
+        industry: "general",
         logo_url: null,
         primary_color: null,
-        ai_name: 'Zate',
-        ai_role: 'AI Assistant',
-        timezone: 'UTC',
-        currency: 'USD',
-        working_days: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
-        opening_time: '09:00',
-        closing_time: '17:00',
+        ai_name: "Zate",
+        ai_role: "AI Assistant",
+        timezone: "UTC",
+        currency: "USD",
+        working_days: ["monday", "tuesday", "wednesday", "thursday", "friday"],
+        opening_time: "09:00",
+        closing_time: "17:00",
         vocabulary: null,
         has_whatsapp: false,
         has_email: true,
@@ -308,7 +293,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         has_facebook: false,
         has_linkedin: false,
         features: null,
-        subscription_status: 'trial',
+        subscription_status: "trial",
       });
     } finally {
       setIsLoading(false);
@@ -316,9 +301,9 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   }, [tenantId]);
 
   // Determine if user can switch tenants (only master_admin)
-  const canSwitchTenant = userRole === 'master_admin';
+  const canSwitchTenant = userRole === "master_admin";
 
-  const industry = useMemo(() => tenantConfig?.industry || 'general', [tenantConfig?.industry]);
+  const industry = useMemo(() => tenantConfig?.industry || "general", [tenantConfig?.industry]);
 
   const translate = useCallback(
     (term: string): string => {
@@ -331,7 +316,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       const vocab = industryVocabulary[industry as IndustryType] || industryVocabulary.general;
       return vocab?.[term.toLowerCase()] || term;
     },
-    [tenantConfig?.vocabulary, industry]
+    [tenantConfig?.vocabulary, industry],
   );
 
   const getVocabulary = useCallback((): Record<string, string> => {
@@ -347,10 +332,10 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     return industryDealStages[industry] || industryDealStages.general;
   }, [industry]);
 
-  const isHealthcare = industry === 'healthcare';
-  const isRealEstate = industry === 'real_estate';
-  const isRestaurant = industry === 'restaurant';
-  const isSalon = industry === 'salon';
+  const isHealthcare = industry === "healthcare";
+  const isRealEstate = industry === "real_estate";
+  const isRestaurant = industry === "restaurant";
+  const isSalon = industry === "salon";
 
   useEffect(() => {
     fetchTenantConfig();
@@ -386,7 +371,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 export function useTenant() {
   const context = useContext(TenantContext);
   if (context === undefined) {
-    throw new Error('useTenant must be used within a TenantProvider');
+    throw new Error("useTenant must be used within a TenantProvider");
   }
   return context;
 }
