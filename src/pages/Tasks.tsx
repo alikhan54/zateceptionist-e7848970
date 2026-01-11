@@ -46,8 +46,6 @@ import {
   User,
   Bot,
   MoreHorizontal,
-  Flag,
-  AlertTriangle,
   Phone,
   Bell,
   MessageSquare,
@@ -66,7 +64,9 @@ import {
   Send,
   UserCircle,
   Building,
-  ChevronRight,
+  Facebook,
+  Instagram,
+  MessageCircle,
 } from "lucide-react";
 import { format, isPast, addDays } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -111,9 +111,10 @@ interface AutomationRule {
 interface Contact {
   id: string;
   name: string;
-  type: "lead" | "prospect" | "customer" | "staff";
+  type: "lead" | "prospect" | "customer" | "staff" | "facebook" | "instagram" | "whatsapp";
   phone: string | null;
   email: string | null;
+  channel?: string;
 }
 
 interface Staff {
@@ -246,6 +247,9 @@ const contactTypeConfig: Record<string, { label: string; icon: React.ReactNode; 
   prospect: { label: "Prospects", icon: <Target className="h-4 w-4" />, color: "text-blue-500" },
   customer: { label: "Customers", icon: <UserCircle className="h-4 w-4" />, color: "text-green-500" },
   staff: { label: "Staff", icon: <Building className="h-4 w-4" />, color: "text-purple-500" },
+  facebook: { label: "Facebook Contacts", icon: <Facebook className="h-4 w-4" />, color: "text-blue-600" },
+  instagram: { label: "Instagram Contacts", icon: <Instagram className="h-4 w-4" />, color: "text-pink-500" },
+  whatsapp: { label: "WhatsApp Contacts", icon: <MessageCircle className="h-4 w-4" />, color: "text-green-500" },
 };
 
 // =====================================================
@@ -302,22 +306,12 @@ export default function SmartTasksPage() {
         .eq("tenant_id", tenantId)
         .order("due_at", { ascending: true, nullsFirst: false });
 
-      if (statusFilter !== "all") {
-        query = query.eq("status", statusFilter);
-      }
-      if (typeFilter !== "all") {
-        query = query.eq("task_type", typeFilter);
-      }
-      if (priorityFilter !== "all") {
-        query = query.eq("priority", priorityFilter);
-      }
-      if (assigneeFilter === "ai") {
-        query = query.eq("assigned_type", "ai");
-      } else if (assigneeFilter === "staff") {
-        query = query.eq("assigned_type", "staff");
-      } else if (assigneeFilter === "me" && authUser?.id) {
-        query = query.eq("assigned_to", authUser.id);
-      }
+      if (statusFilter !== "all") query = query.eq("status", statusFilter);
+      if (typeFilter !== "all") query = query.eq("task_type", typeFilter);
+      if (priorityFilter !== "all") query = query.eq("priority", priorityFilter);
+      if (assigneeFilter === "ai") query = query.eq("assigned_type", "ai");
+      else if (assigneeFilter === "staff") query = query.eq("assigned_type", "staff");
+      else if (assigneeFilter === "me" && authUser?.id) query = query.eq("assigned_to", authUser.id);
 
       const { data, error } = await query;
       if (error) throw error;
@@ -346,15 +340,16 @@ export default function SmartTasksPage() {
     enabled: !!tenantId,
   });
 
-  // Fetch ALL Contacts (Customers, Leads, Prospects from customers table + Staff from users table)
+  // Fetch ALL Contacts - From BOTH customers table AND conversations table
   const { data: allContacts = [] } = useQuery({
     queryKey: ["all-contacts-for-tasks", tenantId],
     queryFn: async () => {
       if (!tenantId) return [];
 
       const contacts: Contact[] = [];
+      const seenIds = new Set<string>();
 
-      // Fetch from customers table
+      // 1. Fetch from customers table (includes leads, prospects, customers)
       const { data: customersData } = await supabase
         .from("customers")
         .select("id, name, phone, email, lead_status, temperature")
@@ -364,15 +359,14 @@ export default function SmartTasksPage() {
 
       if (customersData) {
         customersData.forEach((c: any) => {
-          let contactType: Contact["type"] = "customer";
+          if (seenIds.has(c.id)) return;
+          seenIds.add(c.id);
 
-          // Determine type based on lead_status
+          let contactType: Contact["type"] = "customer";
           if (c.lead_status === "new" || c.lead_status === "contacted" || c.lead_status === "lead") {
             contactType = "lead";
           } else if (c.lead_status === "qualified" || c.lead_status === "prospect") {
             contactType = "prospect";
-          } else if (c.lead_status === "converted" || c.lead_status === "customer" || c.lead_status === "won") {
-            contactType = "customer";
           }
 
           contacts.push({
@@ -385,11 +379,52 @@ export default function SmartTasksPage() {
         });
       }
 
-      // Fetch staff from users table
+      // 2. Fetch from conversations table (Facebook, Instagram, WhatsApp contacts)
+      const { data: conversationsData } = await supabase
+        .from("conversations")
+        .select("id, customer_id, customer_phone, customer_name, channel")
+        .eq("tenant_id", tenantId)
+        .order("updated_at", { ascending: false })
+        .limit(500);
+
+      if (conversationsData) {
+        conversationsData.forEach((conv: any) => {
+          // Use customer_id if available, otherwise use conversation id
+          const contactId = conv.customer_id || conv.id;
+          if (seenIds.has(contactId)) return;
+          seenIds.add(contactId);
+
+          // Determine contact type based on channel
+          let contactType: Contact["type"] = "customer";
+          if (conv.channel === "facebook") contactType = "facebook";
+          else if (conv.channel === "instagram") contactType = "instagram";
+          else if (conv.channel === "whatsapp") contactType = "whatsapp";
+
+          // Build display name
+          let displayName = conv.customer_name;
+          if (!displayName || displayName === "Facebook User" || displayName === "Instagram User") {
+            displayName = `${conv.channel?.charAt(0).toUpperCase()}${conv.channel?.slice(1)} - ${conv.customer_phone?.slice(-6) || "Unknown"}`;
+          }
+
+          contacts.push({
+            id: contactId,
+            name: displayName,
+            type: contactType,
+            phone: conv.customer_phone,
+            email: null,
+            channel: conv.channel,
+          });
+        });
+      }
+
+      // 3. Fetch staff from users table
       const { data: staffData } = await supabase.from("users").select("id, full_name, email").eq("tenant_id", tenantId);
 
       if (staffData) {
         staffData.forEach((s: any) => {
+          if (seenIds.has(s.id)) return;
+          seenIds.add(s.id);
+
           contacts.push({
             id: s.id,
             name: s.full_name || s.email || "Staff Member",
@@ -424,7 +459,6 @@ export default function SmartTasksPage() {
   // MUTATIONS
   // =====================================================
 
-  // Create Task
   const createTaskMutation = useMutation({
     mutationFn: async () => {
       if (!tenantId || !newTask.title.trim()) {
@@ -447,7 +481,6 @@ export default function SmartTasksPage() {
         execution_status: "pending",
       };
 
-      // Add created_by if user is authenticated
       if (authUser?.id) {
         taskData.created_by = authUser.id;
       }
@@ -456,7 +489,7 @@ export default function SmartTasksPage() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: "Task created successfully", description: "Your task has been added to the list." });
+      toast({ title: "Task created successfully" });
       setShowCreateDialog(false);
       resetNewTaskForm();
       queryClient.invalidateQueries({ queryKey: ["smart-tasks"] });
@@ -466,21 +499,14 @@ export default function SmartTasksPage() {
     },
   });
 
-  // Update Task Status
   const updateTaskStatus = useMutation({
     mutationFn: async ({ taskId, status }: { taskId: string; status: string }) => {
-      const updates: Record<string, any> = {
-        status,
-        updated_at: new Date().toISOString(),
-      };
-
+      const updates: Record<string, any> = { status, updated_at: new Date().toISOString() };
       if (status === "completed") {
         updates.completed_at = new Date().toISOString();
         updates.execution_status = "executed";
       }
-
       const { error } = await supabase.from("tasks").update(updates).eq("id", taskId).eq("tenant_id", tenantId);
-
       if (error) throw error;
     },
     onSuccess: () => {
@@ -489,7 +515,6 @@ export default function SmartTasksPage() {
     },
   });
 
-  // Delete Task
   const deleteTask = useMutation({
     mutationFn: async (taskId: string) => {
       const { error } = await supabase.from("tasks").delete().eq("id", taskId).eq("tenant_id", tenantId);
@@ -501,7 +526,6 @@ export default function SmartTasksPage() {
     },
   });
 
-  // Toggle Automation Rule
   const toggleRule = useMutation({
     mutationFn: async ({ ruleId, isActive }: { ruleId: string; isActive: boolean }) => {
       const { error } = await supabase
@@ -513,7 +537,7 @@ export default function SmartTasksPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["automation-rules"] });
-      toast({ title: "Automation rule updated" });
+      toast({ title: "Automation updated" });
     },
   });
 
@@ -534,36 +558,21 @@ export default function SmartTasksPage() {
     });
   };
 
-  const isOverdue = (task: Task) => {
-    return task.due_at && isPast(new Date(task.due_at)) && task.status !== "completed";
-  };
-
-  const getTasksByStatus = (status: string) => {
-    return filteredTasks.filter((t) => t.status === status);
-  };
-
+  const isOverdue = (task: Task) => task.due_at && isPast(new Date(task.due_at)) && task.status !== "completed";
+  const getTasksByStatus = (status: string) => filteredTasks.filter((t) => t.status === status);
   const getRulesByCategory = (categoryId: string) => {
     const category = automationCategories.find((c) => c.id === categoryId);
     if (!category) return [];
     return automationRules.filter((r) => category.triggers.includes(r.trigger_type));
   };
+  const getContactsByType = (type: Contact["type"]) => allContacts.filter((c) => c.type === type);
 
-  const getContactsByType = (type: Contact["type"]) => {
-    return allContacts.filter((c) => c.type === type);
-  };
-
-  // Filter tasks based on active tab
   const filteredTasks = tasks.filter((task) => {
-    if (activeTab === "overdue") {
-      return task.due_at && isPast(new Date(task.due_at)) && task.status !== "completed";
-    }
-    if (activeTab !== "all") {
-      return task.status === activeTab;
-    }
+    if (activeTab === "overdue") return task.due_at && isPast(new Date(task.due_at)) && task.status !== "completed";
+    if (activeTab !== "all") return task.status === activeTab;
     return true;
   });
 
-  // Calculate Stats
   const stats = {
     total: tasks.length,
     pending: tasks.filter((t) => t.status === "pending").length,
@@ -578,9 +587,7 @@ export default function SmartTasksPage() {
   // =====================================================
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* =====================================================
-          HEADER
-          ===================================================== */}
+      {/* HEADER */}
       <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="p-2.5 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl shadow-lg">
@@ -609,9 +616,7 @@ export default function SmartTasksPage() {
         </div>
       </div>
 
-      {/* =====================================================
-          STATS CARDS
-          ===================================================== */}
+      {/* STATS */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <Card>
           <CardContent className="p-4 text-center">
@@ -654,9 +659,7 @@ export default function SmartTasksPage() {
         </Card>
       </div>
 
-      {/* =====================================================
-          FILTERS
-          ===================================================== */}
+      {/* FILTERS */}
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-wrap items-center gap-3">
@@ -727,9 +730,7 @@ export default function SmartTasksPage() {
         </CardContent>
       </Card>
 
-      {/* =====================================================
-          STATUS TABS
-          ===================================================== */}
+      {/* STATUS TABS */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="all">All ({stats.total})</TabsTrigger>
@@ -742,9 +743,7 @@ export default function SmartTasksPage() {
         </TabsList>
       </Tabs>
 
-      {/* =====================================================
-          TASK LIST / KANBAN
-          ===================================================== */}
+      {/* TASK LIST / KANBAN */}
       {tasksLoading ? (
         <div className="space-y-3">
           {[...Array(5)].map((_, i) => (
@@ -752,14 +751,12 @@ export default function SmartTasksPage() {
           ))}
         </div>
       ) : viewMode === "list" ? (
-        /* LIST VIEW */
         <Card>
           <CardContent className="p-0">
             {filteredTasks.length === 0 ? (
               <div className="text-center py-16 text-muted-foreground">
                 <CheckSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p className="font-medium">No tasks found</p>
-                <p className="text-sm mt-1">Create your first task to get started</p>
                 <Button variant="outline" className="mt-4" onClick={() => setShowCreateDialog(true)}>
                   <Plus className="h-4 w-4 mr-2" />
                   Create Task
@@ -777,12 +774,9 @@ export default function SmartTasksPage() {
                   >
                     <Checkbox
                       checked={task.status === "completed"}
-                      onCheckedChange={(checked) => {
-                        updateTaskStatus.mutate({
-                          taskId: task.id,
-                          status: checked ? "completed" : "pending",
-                        });
-                      }}
+                      onCheckedChange={(checked) =>
+                        updateTaskStatus.mutate({ taskId: task.id, status: checked ? "completed" : "pending" })
+                      }
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
@@ -804,9 +798,6 @@ export default function SmartTasksPage() {
                           </Badge>
                         )}
                       </div>
-                      {task.description && (
-                        <p className="text-sm text-muted-foreground mt-1 truncate">{task.description}</p>
-                      )}
                     </div>
                     <div className="flex items-center gap-3">
                       <Badge
@@ -816,7 +807,7 @@ export default function SmartTasksPage() {
                           priorityConfig[task.priority]?.color,
                         )}
                       >
-                        {priorityConfig[task.priority]?.label || task.priority}
+                        {priorityConfig[task.priority]?.label}
                       </Badge>
                       {task.due_at && (
                         <span
@@ -883,7 +874,6 @@ export default function SmartTasksPage() {
           </CardContent>
         </Card>
       ) : (
-        /* KANBAN VIEW */
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {["pending", "in_progress", "completed"].map((status) => (
             <Card key={status} className="bg-muted/30">
@@ -930,7 +920,7 @@ export default function SmartTasksPage() {
                               priorityConfig[task.priority]?.color,
                             )}
                           >
-                            {priorityConfig[task.priority]?.label || task.priority}
+                            {priorityConfig[task.priority]?.label}
                           </Badge>
                           {task.due_at && (
                             <span className={cn("text-xs", isOverdue(task) ? "text-red-600" : "text-muted-foreground")}>
@@ -948,9 +938,7 @@ export default function SmartTasksPage() {
         </div>
       )}
 
-      {/* =====================================================
-          CREATE TASK DIALOG
-          ===================================================== */}
+      {/* CREATE TASK DIALOG */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -960,24 +948,78 @@ export default function SmartTasksPage() {
             </DialogTitle>
             <DialogDescription>Add a manual task or let AI handle it automatically</DialogDescription>
           </DialogHeader>
-
           <div className="space-y-4 py-4">
-            {/* Link to Contact */}
+            {/* Link to Contact - NOW INCLUDES ALL SOURCES */}
             <div className="space-y-2">
               <Label>Link to Contact (Optional)</Label>
               <Select value={newTask.contact_id} onValueChange={(v) => setNewTask({ ...newTask, contact_id: v })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Search and select contact..." />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-[300px]">
                   <SelectItem value="_none_">
                     <span className="text-muted-foreground">No contact linked</span>
                   </SelectItem>
 
+                  {/* Facebook Contacts */}
+                  {getContactsByType("facebook").length > 0 && (
+                    <SelectGroup>
+                      <SelectLabel className="flex items-center gap-2 text-blue-600">
+                        <Facebook className="h-3 w-3" />
+                        Facebook ({getContactsByType("facebook").length})
+                      </SelectLabel>
+                      {getContactsByType("facebook").map((contact) => (
+                        <SelectItem key={contact.id} value={contact.id}>
+                          <div className="flex items-center gap-2">
+                            <Facebook className="h-3 w-3 text-blue-600" />
+                            <span>{contact.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  )}
+
+                  {/* Instagram Contacts */}
+                  {getContactsByType("instagram").length > 0 && (
+                    <SelectGroup>
+                      <SelectLabel className="flex items-center gap-2 text-pink-500">
+                        <Instagram className="h-3 w-3" />
+                        Instagram ({getContactsByType("instagram").length})
+                      </SelectLabel>
+                      {getContactsByType("instagram").map((contact) => (
+                        <SelectItem key={contact.id} value={contact.id}>
+                          <div className="flex items-center gap-2">
+                            <Instagram className="h-3 w-3 text-pink-500" />
+                            <span>{contact.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  )}
+
+                  {/* WhatsApp Contacts */}
+                  {getContactsByType("whatsapp").length > 0 && (
+                    <SelectGroup>
+                      <SelectLabel className="flex items-center gap-2 text-green-500">
+                        <MessageCircle className="h-3 w-3" />
+                        WhatsApp ({getContactsByType("whatsapp").length})
+                      </SelectLabel>
+                      {getContactsByType("whatsapp").map((contact) => (
+                        <SelectItem key={contact.id} value={contact.id}>
+                          <div className="flex items-center gap-2">
+                            <MessageCircle className="h-3 w-3 text-green-500" />
+                            <span>{contact.name}</span>
+                            {contact.phone && <span className="text-xs text-muted-foreground">{contact.phone}</span>}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  )}
+
                   {/* Leads */}
                   {getContactsByType("lead").length > 0 && (
                     <SelectGroup>
-                      <SelectLabel className="flex items-center gap-2 text-orange-600">
+                      <SelectLabel className="flex items-center gap-2 text-orange-500">
                         <Zap className="h-3 w-3" />
                         Leads ({getContactsByType("lead").length})
                       </SelectLabel>
@@ -995,7 +1037,7 @@ export default function SmartTasksPage() {
                   {/* Prospects */}
                   {getContactsByType("prospect").length > 0 && (
                     <SelectGroup>
-                      <SelectLabel className="flex items-center gap-2 text-blue-600">
+                      <SelectLabel className="flex items-center gap-2 text-blue-500">
                         <Target className="h-3 w-3" />
                         Prospects ({getContactsByType("prospect").length})
                       </SelectLabel>
@@ -1013,7 +1055,7 @@ export default function SmartTasksPage() {
                   {/* Customers */}
                   {getContactsByType("customer").length > 0 && (
                     <SelectGroup>
-                      <SelectLabel className="flex items-center gap-2 text-green-600">
+                      <SelectLabel className="flex items-center gap-2 text-green-500">
                         <UserCircle className="h-3 w-3" />
                         Customers ({getContactsByType("customer").length})
                       </SelectLabel>
@@ -1115,7 +1157,6 @@ export default function SmartTasksPage() {
                   </SelectItem>
                 </SelectContent>
               </Select>
-
               {newTask.assigned_type === "staff" && (
                 <Select value={newTask.assigned_to} onValueChange={(v) => setNewTask({ ...newTask, assigned_to: v })}>
                   <SelectTrigger className="mt-2">
@@ -1214,7 +1255,6 @@ export default function SmartTasksPage() {
               />
             </div>
           </div>
-
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
               Cancel
@@ -1230,9 +1270,7 @@ export default function SmartTasksPage() {
         </DialogContent>
       </Dialog>
 
-      {/* =====================================================
-          AUTOMATION SETTINGS DIALOG
-          ===================================================== */}
+      {/* AUTOMATION SETTINGS DIALOG */}
       <Dialog open={showAutomationDialog} onOpenChange={setShowAutomationDialog}>
         <DialogContent className="sm:max-w-4xl max-h-[90vh]">
           <DialogHeader>
@@ -1242,9 +1280,7 @@ export default function SmartTasksPage() {
             </DialogTitle>
             <DialogDescription>Configure AI task generation rules across all departments</DialogDescription>
           </DialogHeader>
-
           <div className="flex gap-4 h-[60vh]">
-            {/* Category Sidebar */}
             <div className="w-56 border-r pr-4 space-y-1">
               {automationCategories.map((cat) => (
                 <Button
@@ -1261,15 +1297,13 @@ export default function SmartTasksPage() {
                 </Button>
               ))}
             </div>
-
-            {/* Rules List */}
             <ScrollArea className="flex-1">
               <div className="space-y-3 pr-4">
                 {getRulesByCategory(automationTab).length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground">
                     <Settings className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p className="font-medium">No automation rules in this category</p>
-                    <p className="text-sm mt-1">Rules will appear here once configured</p>
+                    <p className="text-sm mt-1">Run the SQL to populate rules</p>
                   </div>
                 ) : (
                   getRulesByCategory(automationTab).map((rule) => (
@@ -1295,7 +1329,7 @@ export default function SmartTasksPage() {
                                     priorityConfig[rule.priority]?.color,
                                   )}
                                 >
-                                  {priorityConfig[rule.priority]?.label || rule.priority}
+                                  {priorityConfig[rule.priority]?.label}
                                 </Badge>
                               </div>
                             </div>
@@ -1305,7 +1339,6 @@ export default function SmartTasksPage() {
                               {rule.execution_type === "call" && <Phone className="h-3 w-3 mr-1" />}
                               {rule.execution_type === "whatsapp" && <MessageSquare className="h-3 w-3 mr-1" />}
                               {rule.execution_type === "email" && <Mail className="h-3 w-3 mr-1" />}
-                              {rule.execution_type === "sms" && <MessageSquare className="h-3 w-3 mr-1" />}
                               {rule.execution_type}
                             </Badge>
                           )}
@@ -1317,7 +1350,6 @@ export default function SmartTasksPage() {
               </div>
             </ScrollArea>
           </div>
-
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAutomationDialog(false)}>
               Close
