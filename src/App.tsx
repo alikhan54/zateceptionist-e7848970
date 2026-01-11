@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { TenantProvider } from "@/contexts/TenantContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { PageLoading } from "@/components/shared/PageLoading";
@@ -134,10 +135,11 @@ const App = () => (
     <TooltipProvider>
       <TenantProvider>
         <AuthProvider>
-          <Toaster />
-          <Sonner richColors closeButton position="top-right" />
-          <BrowserRouter>
-            <Routes>
+          <SubscriptionProvider>
+            <Toaster />
+            <Sonner richColors closeButton position="top-right" />
+            <BrowserRouter>
+              <Routes>
               {/* Public routes */}
               <Route path="/login" element={<LoginPage />} />
               <Route path="/auth/callback" element={<LazyPage><AuthCallback /></LazyPage>} />
@@ -283,9 +285,10 @@ const App = () => (
               </Route>
 
               {/* Catch-all */}
-              <Route path="*" element={<LazyPage><NotFound /></LazyPage>} />
-            </Routes>
-          </BrowserRouter>
+                <Route path="*" element={<LazyPage><NotFound /></LazyPage>} />
+              </Routes>
+            </BrowserRouter>
+          </SubscriptionProvider>
         </AuthProvider>
       </TenantProvider>
     </TooltipProvider>
