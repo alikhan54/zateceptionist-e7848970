@@ -1,14 +1,13 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -29,7 +28,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import {
   CheckSquare,
@@ -49,18 +48,22 @@ import {
   Mail,
   Settings,
   Zap,
-  TrendingUp,
-  Calendar,
   Eye,
   Trash2,
-  Play,
-  Pause,
   RefreshCw,
-  Search,
   Filter,
-  ChevronDown,
+  TrendingUp,
+  Users,
+  Megaphone,
+  Briefcase,
+  Target,
+  Calendar,
+  Send,
+  Instagram,
+  Linkedin,
+  Twitter,
 } from "lucide-react";
-import { format, isPast, isToday, addDays } from "date-fns";
+import { format, isPast, addDays } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -78,14 +81,12 @@ interface Task {
   assigned_to: string | null;
   assigned_type: string;
   customer_id: string | null;
-  conversation_id: string | null;
   auto_generated: boolean;
   source: string;
   trigger_type: string | null;
   execution_type: string | null;
   execution_status: string;
   created_at: string;
-  customer_name?: string;
 }
 
 interface AutomationRule {
@@ -110,11 +111,11 @@ interface Staff {
   name: string;
 }
 
-const priorityConfig: Record<string, { color: string; bgColor: string; icon: React.ReactNode }> = {
-  low: { color: "text-slate-600", bgColor: "bg-slate-100", icon: <Flag className="h-3 w-3" /> },
-  medium: { color: "text-blue-600", bgColor: "bg-blue-100", icon: <Flag className="h-3 w-3" /> },
-  high: { color: "text-orange-600", bgColor: "bg-orange-100", icon: <Flag className="h-3 w-3" /> },
-  urgent: { color: "text-red-600", bgColor: "bg-red-100", icon: <AlertTriangle className="h-3 w-3" /> },
+const priorityConfig: Record<string, { color: string; bgColor: string }> = {
+  low: { color: "text-slate-600", bgColor: "bg-slate-100 dark:bg-slate-800" },
+  medium: { color: "text-blue-600", bgColor: "bg-blue-100 dark:bg-blue-900" },
+  high: { color: "text-orange-600", bgColor: "bg-orange-100 dark:bg-orange-900" },
+  urgent: { color: "text-red-600", bgColor: "bg-red-100 dark:bg-red-900" },
 };
 
 const taskTypeConfig: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
@@ -126,20 +127,104 @@ const taskTypeConfig: Record<string, { label: string; icon: React.ReactNode; col
   custom: { label: "Custom", icon: <CheckSquare className="h-4 w-4" />, color: "text-gray-500" },
 };
 
-const executionTypeConfig: Record<string, { label: string; icon: React.ReactNode }> = {
-  call: { label: "Phone Call", icon: <Phone className="h-4 w-4" /> },
-  sms: { label: "SMS", icon: <MessageSquare className="h-4 w-4" /> },
-  whatsapp: { label: "WhatsApp", icon: <MessageSquare className="h-4 w-4" /> },
-  email: { label: "Email", icon: <Mail className="h-4 w-4" /> },
-  internal: { label: "Internal", icon: <FileCheck className="h-4 w-4" /> },
-};
-
-const statusTabs = [
-  { id: "all", label: "All" },
-  { id: "pending", label: "Pending" },
-  { id: "in_progress", label: "In Progress" },
-  { id: "completed", label: "Completed" },
-  { id: "overdue", label: "Overdue" },
+const automationCategories = [
+  {
+    id: "sales",
+    label: "Sales & Leads",
+    icon: <Target className="h-4 w-4" />,
+    color: "text-green-500",
+    triggers: ["new_lead", "hot_lead", "warm_lead", "cold_lead_7d", "quote_sent", "deal_won", "deal_lost"],
+  },
+  {
+    id: "communication",
+    label: "Communication",
+    icon: <MessageSquare className="h-4 w-4" />,
+    color: "text-blue-500",
+    triggers: [
+      "missed_call",
+      "no_response_24h",
+      "no_response_48h",
+      "whatsapp_unread",
+      "email_unopened",
+      "instagram_message",
+      "facebook_message",
+      "linkedin_message",
+      "twitter_mention",
+      "telegram_message",
+    ],
+  },
+  {
+    id: "appointments",
+    label: "Appointments",
+    icon: <Calendar className="h-4 w-4" />,
+    color: "text-purple-500",
+    triggers: [
+      "appointment_tomorrow",
+      "appointment_today",
+      "appointment_completed",
+      "appointment_noshow",
+      "appointment_cancelled",
+    ],
+  },
+  {
+    id: "hr",
+    label: "HR & Recruitment",
+    icon: <Users className="h-4 w-4" />,
+    color: "text-orange-500",
+    triggers: [
+      "hr_new_application",
+      "hr_interview_scheduled",
+      "hr_interview_tomorrow",
+      "hr_interview_completed",
+      "hr_offer_sent",
+      "hr_new_hire",
+      "hr_probation_ending",
+      "hr_annual_review",
+      "hr_leave_request",
+      "hr_birthday",
+      "hr_anniversary",
+    ],
+  },
+  {
+    id: "marketing",
+    label: "Marketing",
+    icon: <Megaphone className="h-4 w-4" />,
+    color: "text-pink-500",
+    triggers: [
+      "marketing_campaign_launch",
+      "marketing_campaign_ending",
+      "marketing_low_engagement",
+      "marketing_post_scheduled",
+      "marketing_content_due",
+      "marketing_newsletter_due",
+      "marketing_competitor_update",
+      "marketing_trending",
+      "marketing_review_received",
+    ],
+  },
+  {
+    id: "operations",
+    label: "Operations",
+    icon: <Briefcase className="h-4 w-4" />,
+    color: "text-cyan-500",
+    triggers: [
+      "ops_ticket_created",
+      "ops_ticket_escalated",
+      "ops_customer_inactive",
+      "ops_subscription_expiring",
+      "ops_payment_failed",
+      "ops_feedback_received",
+      "ops_nps_due",
+      "ops_contract_renewal",
+    ],
+  },
+  {
+    id: "sequences",
+    label: "Sequences",
+    icon: <Send className="h-4 w-4" />,
+    color: "text-indigo-500",
+    triggers: ["sequence_welcome", "sequence_value", "sequence_case_study", "sequence_offer", "sequence_final"],
+  },
 ];
 
 export default function SmartTasksPage() {
@@ -148,21 +233,17 @@ export default function SmartTasksPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // View & Filter State
   const [viewMode, setViewMode] = useState<"kanban" | "list">("list");
   const [activeTab, setActiveTab] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [assigneeFilter, setAssigneeFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
-  const [searchQuery, setSearchQuery] = useState("");
 
-  // Dialog State
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showAutomationDialog, setShowAutomationDialog] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [automationTab, setAutomationTab] = useState("sales");
 
-  // Create Task Form
   const [newTask, setNewTask] = useState({
     title: "",
     description: "",
@@ -170,9 +251,8 @@ export default function SmartTasksPage() {
     priority: "medium",
     due_date: format(addDays(new Date(), 1), "yyyy-MM-dd"),
     assigned_type: "ai",
-    assigned_to: "",
-    customer_id: "",
-    execution_type: "",
+    assigned_to: "none",
+    customer_id: "none",
   });
 
   // Fetch Tasks
@@ -184,30 +264,17 @@ export default function SmartTasksPage() {
     queryKey: ["smart-tasks", tenantId, statusFilter, typeFilter, priorityFilter, assigneeFilter],
     queryFn: async () => {
       if (!tenantId) return [];
-
       let query = supabase
         .from("tasks")
         .select("*")
         .eq("tenant_id", tenantId)
         .order("due_at", { ascending: true, nullsFirst: false });
-
-      if (statusFilter !== "all") {
-        query = query.eq("status", statusFilter);
-      }
-      if (typeFilter !== "all") {
-        query = query.eq("task_type", typeFilter);
-      }
-      if (priorityFilter !== "all") {
-        query = query.eq("priority", priorityFilter);
-      }
-      if (assigneeFilter === "ai") {
-        query = query.eq("assigned_type", "ai");
-      } else if (assigneeFilter === "staff") {
-        query = query.eq("assigned_type", "staff");
-      } else if (assigneeFilter === "me") {
-        query = query.eq("assigned_to", authUser?.id);
-      }
-
+      if (statusFilter !== "all") query = query.eq("status", statusFilter);
+      if (typeFilter !== "all") query = query.eq("task_type", typeFilter);
+      if (priorityFilter !== "all") query = query.eq("priority", priorityFilter);
+      if (assigneeFilter === "ai") query = query.eq("assigned_type", "ai");
+      else if (assigneeFilter === "staff") query = query.eq("assigned_type", "staff");
+      else if (assigneeFilter === "me") query = query.eq("assigned_to", authUser?.id);
       const { data, error } = await query;
       if (error) throw error;
       return (data || []) as Task[];
@@ -217,7 +284,7 @@ export default function SmartTasksPage() {
   });
 
   // Fetch Automation Rules
-  const { data: automationRules = [], refetch: refetchRules } = useQuery({
+  const { data: automationRules = [] } = useQuery({
     queryKey: ["automation-rules", tenantId],
     queryFn: async () => {
       if (!tenantId) return [];
@@ -232,7 +299,7 @@ export default function SmartTasksPage() {
     enabled: !!tenantId,
   });
 
-  // Fetch Customers for dropdown
+  // Fetch Customers
   const { data: customers = [] } = useQuery({
     queryKey: ["customers-dropdown", tenantId],
     queryFn: async () => {
@@ -243,7 +310,7 @@ export default function SmartTasksPage() {
     enabled: !!tenantId,
   });
 
-  // Fetch Staff for dropdown
+  // Fetch Staff
   const { data: staff = [] } = useQuery({
     queryKey: ["staff-dropdown", tenantId],
     queryFn: async () => {
@@ -254,11 +321,10 @@ export default function SmartTasksPage() {
     enabled: !!tenantId,
   });
 
-  // Create Task Mutation
+  // Create Task
   const createTaskMutation = useMutation({
     mutationFn: async () => {
       if (!tenantId || !newTask.title) throw new Error("Title required");
-
       const { error } = await supabase.from("tasks").insert({
         tenant_id: tenantId,
         title: newTask.title,
@@ -268,14 +334,12 @@ export default function SmartTasksPage() {
         status: "pending",
         due_at: newTask.due_date ? new Date(newTask.due_date).toISOString() : null,
         assigned_type: newTask.assigned_type,
-        assigned_to: newTask.assigned_to || null,
-        customer_id: newTask.customer_id || null,
-        execution_type: newTask.execution_type || null,
+        assigned_to: newTask.assigned_to === "none" ? null : newTask.assigned_to,
+        customer_id: newTask.customer_id === "none" ? null : newTask.customer_id,
         auto_generated: false,
         source: "manual",
         created_by: authUser?.id,
       });
-
       if (error) throw error;
     },
     onSuccess: () => {
@@ -288,24 +352,19 @@ export default function SmartTasksPage() {
         priority: "medium",
         due_date: format(addDays(new Date(), 1), "yyyy-MM-dd"),
         assigned_type: "ai",
-        assigned_to: "",
-        customer_id: "",
-        execution_type: "",
+        assigned_to: "none",
+        customer_id: "none",
       });
       queryClient.invalidateQueries({ queryKey: ["smart-tasks"] });
     },
-    onError: (err) => {
-      toast({ title: "Failed to create task", description: err.message, variant: "destructive" });
-    },
+    onError: (err) => toast({ title: "Failed to create task", description: err.message, variant: "destructive" }),
   });
 
   // Update Task Status
   const updateTaskStatus = useMutation({
     mutationFn: async ({ taskId, status }: { taskId: string; status: string }) => {
       const updates: any = { status, updated_at: new Date().toISOString() };
-      if (status === "completed") {
-        updates.completed_at = new Date().toISOString();
-      }
+      if (status === "completed") updates.completed_at = new Date().toISOString();
       const { error } = await supabase.from("tasks").update(updates).eq("id", taskId);
       if (error) throw error;
     },
@@ -327,7 +386,7 @@ export default function SmartTasksPage() {
     },
   });
 
-  // Toggle Automation Rule
+  // Toggle Rule
   const toggleRule = useMutation({
     mutationFn: async ({ ruleId, isActive }: { ruleId: string; isActive: boolean }) => {
       const { error } = await supabase.from("task_automation_rules").update({ is_active: isActive }).eq("id", ruleId);
@@ -335,25 +394,18 @@ export default function SmartTasksPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["automation-rules"] });
-      toast({ title: "Automation rule updated" });
+      toast({ title: "Automation updated" });
     },
   });
 
-  // Filter tasks based on active tab
+  // Filter tasks
   const filteredTasks = tasks.filter((task) => {
-    if (activeTab === "overdue") {
-      return task.due_at && isPast(new Date(task.due_at)) && task.status !== "completed";
-    }
-    if (activeTab !== "all") {
-      return task.status === activeTab;
-    }
-    if (searchQuery) {
-      return task.title.toLowerCase().includes(searchQuery.toLowerCase());
-    }
+    if (activeTab === "overdue") return task.due_at && isPast(new Date(task.due_at)) && task.status !== "completed";
+    if (activeTab !== "all") return task.status === activeTab;
     return true;
   });
 
-  // Calculate Stats
+  // Stats
   const stats = {
     total: tasks.length,
     pending: tasks.filter((t) => t.status === "pending").length,
@@ -361,29 +413,28 @@ export default function SmartTasksPage() {
     completed: tasks.filter((t) => t.status === "completed").length,
     overdue: tasks.filter((t) => t.due_at && isPast(new Date(t.due_at)) && t.status !== "completed").length,
     aiGenerated: tasks.filter((t) => t.auto_generated).length,
-    aiExecuted: tasks.filter((t) => t.execution_status === "executed").length,
   };
 
-  const isOverdue = (task: Task) => {
-    return task.due_at && isPast(new Date(task.due_at)) && task.status !== "completed";
-  };
-
+  const isOverdue = (task: Task) => task.due_at && isPast(new Date(task.due_at)) && task.status !== "completed";
   const getTasksByStatus = (status: string) => filteredTasks.filter((t) => t.status === status);
+  const getRulesByCategory = (categoryId: string) => {
+    const category = automationCategories.find((c) => c.id === categoryId);
+    if (!category) return [];
+    return automationRules.filter((r) => category.triggers.includes(r.trigger_type));
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header with Stats */}
+      {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary/10 rounded-lg">
-            <Zap className="h-6 w-6 text-primary" />
+          <div className="p-2.5 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl shadow-lg">
+            <Zap className="h-6 w-6 text-white" />
           </div>
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
               Smart Tasks
-              <Badge variant="secondary" className="ml-2">
-                AI-Powered
-              </Badge>
+              <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0">AI-Powered</Badge>
             </h1>
             <p className="text-sm text-muted-foreground">AI-powered task management for your team</p>
           </div>
@@ -393,16 +444,19 @@ export default function SmartTasksPage() {
             <Settings className="h-4 w-4 mr-2" />
             Automation Settings
           </Button>
-          <Button onClick={() => setShowCreateDialog(true)}>
+          <Button
+            className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+            onClick={() => setShowCreateDialog(true)}
+          >
             <Plus className="h-4 w-4 mr-2" />
             Create Task
           </Button>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-        <Card className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <Card>
           <CardContent className="p-4 text-center">
             <p className="text-2xl font-bold">{stats.total}</p>
             <p className="text-xs text-muted-foreground">All Tasks</p>
@@ -426,13 +480,13 @@ export default function SmartTasksPage() {
             <p className="text-xs text-muted-foreground">Completed</p>
           </CardContent>
         </Card>
-        <Card className={cn(stats.overdue > 0 && "border-red-200 bg-red-50 dark:bg-red-950")}>
+        <Card className={cn(stats.overdue > 0 && "border-red-300 bg-red-50 dark:bg-red-950")}>
           <CardContent className="p-4 text-center">
             <p className="text-2xl font-bold text-red-600">{stats.overdue}</p>
             <p className="text-xs text-muted-foreground">Overdue</p>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900 dark:to-purple-800">
+        <Card className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950 dark:to-pink-950">
           <CardContent className="p-4 text-center">
             <div className="flex items-center justify-center gap-1">
               <Bot className="h-4 w-4 text-purple-600" />
@@ -441,25 +495,13 @@ export default function SmartTasksPage() {
             <p className="text-xs text-muted-foreground">AI Created</p>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900 dark:to-green-800">
-          <CardContent className="p-4 text-center">
-            <div className="flex items-center justify-center gap-1">
-              <Zap className="h-4 w-4 text-green-600" />
-              <p className="text-2xl font-bold text-green-600">{stats.aiExecuted}</p>
-            </div>
-            <p className="text-xs text-muted-foreground">Auto-Execute</p>
-          </CardContent>
-        </Card>
       </div>
 
-      {/* Filters Row */}
+      {/* Filters */}
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Filters:</span>
-            </div>
+            <Filter className="h-4 w-4 text-muted-foreground" />
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[130px]">
                 <SelectValue placeholder="All Status" />
@@ -508,18 +550,19 @@ export default function SmartTasksPage() {
               </SelectContent>
             </Select>
             <div className="flex-1" />
-            <div className="flex items-center gap-2">
-              <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "kanban" | "list")}>
-                <TabsList className="h-8">
-                  <TabsTrigger value="list" className="h-7 px-3">
-                    <List className="h-4 w-4" />
-                  </TabsTrigger>
-                  <TabsTrigger value="kanban" className="h-7 px-3">
-                    <LayoutGrid className="h-4 w-4" />
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </div>
+            <Button variant="outline" size="sm" onClick={() => refetchTasks()}>
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+            <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "kanban" | "list")}>
+              <TabsList className="h-8">
+                <TabsTrigger value="list" className="h-7 px-3">
+                  <List className="h-4 w-4" />
+                </TabsTrigger>
+                <TabsTrigger value="kanban" className="h-7 px-3">
+                  <LayoutGrid className="h-4 w-4" />
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
         </CardContent>
       </Card>
@@ -527,26 +570,17 @@ export default function SmartTasksPage() {
       {/* Status Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          {statusTabs.map((tab) => (
-            <TabsTrigger key={tab.id} value={tab.id} className="relative">
-              {tab.label}
-              {tab.id !== "all" && (
-                <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-xs">
-                  {tab.id === "overdue"
-                    ? stats.overdue
-                    : tab.id === "pending"
-                      ? stats.pending
-                      : tab.id === "in_progress"
-                        ? stats.inProgress
-                        : stats.completed}
-                </Badge>
-              )}
-            </TabsTrigger>
-          ))}
+          <TabsTrigger value="all">All ({stats.total})</TabsTrigger>
+          <TabsTrigger value="pending">Pending ({stats.pending})</TabsTrigger>
+          <TabsTrigger value="in_progress">In Progress ({stats.inProgress})</TabsTrigger>
+          <TabsTrigger value="completed">Completed ({stats.completed})</TabsTrigger>
+          <TabsTrigger value="overdue" className={cn(stats.overdue > 0 && "text-red-600")}>
+            Overdue ({stats.overdue})
+          </TabsTrigger>
         </TabsList>
       </Tabs>
 
-      {/* Tasks List/Kanban */}
+      {/* Task List */}
       {tasksLoading ? (
         <div className="space-y-3">
           {[...Array(5)].map((_, i) => (
@@ -554,7 +588,6 @@ export default function SmartTasksPage() {
           ))}
         </div>
       ) : viewMode === "list" ? (
-        /* List View */
         <Card>
           <CardContent className="p-0">
             {filteredTasks.length === 0 ? (
@@ -568,11 +601,6 @@ export default function SmartTasksPage() {
               </div>
             ) : (
               <div className="divide-y">
-                {/* Select All Header */}
-                <div className="flex items-center gap-4 p-4 bg-muted/30">
-                  <Checkbox />
-                  <span className="text-sm text-muted-foreground">Select All</span>
-                </div>
                 {filteredTasks.map((task) => (
                   <div
                     key={task.id}
@@ -583,16 +611,13 @@ export default function SmartTasksPage() {
                   >
                     <Checkbox
                       checked={task.status === "completed"}
-                      onCheckedChange={(checked) => {
-                        updateTaskStatus.mutate({
-                          taskId: task.id,
-                          status: checked ? "completed" : "pending",
-                        });
-                      }}
+                      onCheckedChange={(checked) =>
+                        updateTaskStatus.mutate({ taskId: task.id, status: checked ? "completed" : "pending" })
+                      }
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className={cn("", taskTypeConfig[task.task_type]?.color)}>
+                        <span className={taskTypeConfig[task.task_type]?.color}>
                           {taskTypeConfig[task.task_type]?.icon}
                         </span>
                         <span
@@ -610,7 +635,6 @@ export default function SmartTasksPage() {
                           </Badge>
                         )}
                       </div>
-                      {task.customer_name && <p className="text-sm text-muted-foreground mt-1">{task.customer_name}</p>}
                     </div>
                     <div className="flex items-center gap-3">
                       <Badge
@@ -633,23 +657,15 @@ export default function SmartTasksPage() {
                           {isOverdue(task) ? "Overdue" : format(new Date(task.due_at), "MMM dd")}
                         </span>
                       )}
-                      <div className="flex items-center gap-1">
-                        {task.assigned_type === "ai" ? (
-                          <Badge variant="secondary" className="gap-1">
-                            <Bot className="h-3 w-3" />
-                            AI
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="gap-1">
-                            <User className="h-3 w-3" />
-                            Staff
-                          </Badge>
-                        )}
-                      </div>
-                      {task.status === "completed" && (
-                        <Badge variant="default" className="bg-green-500">
-                          <CheckSquare className="h-3 w-3 mr-1" />
-                          Completed {task.completed_at && format(new Date(task.completed_at), "MMM dd")}
+                      {task.assigned_type === "ai" ? (
+                        <Badge variant="secondary" className="gap-1">
+                          <Bot className="h-3 w-3" />
+                          AI
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="gap-1">
+                          <User className="h-3 w-3" />
+                          Staff
                         </Badge>
                       )}
                       <DropdownMenu>
@@ -659,11 +675,6 @@ export default function SmartTasksPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setSelectedTask(task)}>
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
                           {task.status !== "pending" && (
                             <DropdownMenuItem
                               onClick={() => updateTaskStatus.mutate({ taskId: task.id, status: "pending" })}
@@ -700,7 +711,6 @@ export default function SmartTasksPage() {
           </CardContent>
         </Card>
       ) : (
-        /* Kanban View */
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {["pending", "in_progress", "completed"].map((status) => (
             <Card key={status} className="bg-muted/30">
@@ -777,13 +787,13 @@ export default function SmartTasksPage() {
               <Label>Customer (Optional)</Label>
               <Select value={newTask.customer_id} onValueChange={(v) => setNewTask({ ...newTask, customer_id: v })}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Search by name or phone..." />
+                  <SelectValue placeholder="Select customer..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No customer</SelectItem>
+                  <SelectItem value="none">No customer linked</SelectItem>
                   {customers.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
-                      {c.name} {c.phone && `(${c.phone})`}
+                      {c.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -828,7 +838,7 @@ export default function SmartTasksPage() {
               <Label>Assign To</Label>
               <Select
                 value={newTask.assigned_type}
-                onValueChange={(v) => setNewTask({ ...newTask, assigned_type: v, assigned_to: "" })}
+                onValueChange={(v) => setNewTask({ ...newTask, assigned_type: v, assigned_to: "none" })}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -854,6 +864,7 @@ export default function SmartTasksPage() {
                     <SelectValue placeholder="Select staff member..." />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">Unassigned</SelectItem>
                     {staff.map((s) => (
                       <SelectItem key={s.id} value={s.id}>
                         {s.name}
@@ -879,7 +890,7 @@ export default function SmartTasksPage() {
             </div>
             <div className="space-y-2">
               <Label>Due Date</Label>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button
                   type="button"
                   variant={newTask.due_date === format(new Date(), "yyyy-MM-dd") ? "default" : "outline"}
@@ -937,53 +948,86 @@ export default function SmartTasksPage() {
 
       {/* Automation Settings Dialog */}
       <Dialog open={showAutomationDialog} onOpenChange={setShowAutomationDialog}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="sm:max-w-4xl max-h-[90vh]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5" />
               Automation Settings
             </DialogTitle>
-            <DialogDescription>Configure AI task generation rules</DialogDescription>
+            <DialogDescription>Configure AI task generation rules across all departments</DialogDescription>
           </DialogHeader>
-          <ScrollArea className="max-h-[60vh]">
-            <div className="space-y-4 py-4">
-              {automationRules.map((rule) => (
-                <Card key={rule.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Switch
-                          checked={rule.is_active}
-                          onCheckedChange={(checked) => toggleRule.mutate({ ruleId: rule.id, isActive: checked })}
-                        />
-                        <div>
-                          <p className="font-medium">{rule.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            Trigger: {rule.trigger_type.replace(/_/g, " ")} • Due in {rule.due_hours}h • Priority:{" "}
-                            {rule.priority}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {rule.execution_type && (
-                          <Badge variant="outline">
-                            {executionTypeConfig[rule.execution_type]?.icon}
-                            <span className="ml-1">{executionTypeConfig[rule.execution_type]?.label}</span>
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+          <div className="flex gap-4 h-[60vh]">
+            {/* Category Sidebar */}
+            <div className="w-48 border-r pr-4 space-y-1">
+              {automationCategories.map((cat) => (
+                <Button
+                  key={cat.id}
+                  variant={automationTab === cat.id ? "secondary" : "ghost"}
+                  className="w-full justify-start"
+                  onClick={() => setAutomationTab(cat.id)}
+                >
+                  <span className={cn("mr-2", cat.color)}>{cat.icon}</span>
+                  {cat.label}
+                  <Badge variant="outline" className="ml-auto">
+                    {getRulesByCategory(cat.id).length}
+                  </Badge>
+                </Button>
               ))}
-              {automationRules.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Settings className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No automation rules configured</p>
-                </div>
-              )}
             </div>
-          </ScrollArea>
+            {/* Rules List */}
+            <ScrollArea className="flex-1">
+              <div className="space-y-3 pr-4">
+                {getRulesByCategory(automationTab).length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Settings className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No automation rules in this category</p>
+                  </div>
+                ) : (
+                  getRulesByCategory(automationTab).map((rule) => (
+                    <Card key={rule.id} className={cn(!rule.is_active && "opacity-60")}>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Switch
+                              checked={rule.is_active}
+                              onCheckedChange={(checked) => toggleRule.mutate({ ruleId: rule.id, isActive: checked })}
+                            />
+                            <div>
+                              <p className="font-medium">{rule.name}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Badge variant="outline" className="text-xs">
+                                  {rule.trigger_type.replace(/_/g, " ")}
+                                </Badge>
+                                <span className="text-xs text-muted-foreground">Due in {rule.due_hours}h</span>
+                                <Badge
+                                  className={cn(
+                                    "text-xs",
+                                    priorityConfig[rule.priority]?.bgColor,
+                                    priorityConfig[rule.priority]?.color,
+                                  )}
+                                >
+                                  {rule.priority}
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+                          {rule.execution_type && (
+                            <Badge variant="secondary">
+                              {rule.execution_type === "call" && <Phone className="h-3 w-3 mr-1" />}
+                              {rule.execution_type === "whatsapp" && <MessageSquare className="h-3 w-3 mr-1" />}
+                              {rule.execution_type === "email" && <Mail className="h-3 w-3 mr-1" />}
+                              {rule.execution_type === "sms" && <MessageSquare className="h-3 w-3 mr-1" />}
+                              {rule.execution_type}
+                            </Badge>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAutomationDialog(false)}>
               Close
