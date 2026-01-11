@@ -216,11 +216,10 @@ export default function InboxPage() {
     },
   });
 
-  // CREATE TASK - saves to tasks table
   const createTask = useMutation({
     mutationFn: async (data: TaskFormData) => {
       if (!selectedConversation || !tenantId) throw new Error("No conversation selected");
-      const { error } = await supabase.from("tasks").insert({
+      const taskData: Record<string, any> = {
         tenant_id: tenantId,
         title: data.title,
         description: data.description,
@@ -228,11 +227,16 @@ export default function InboxPage() {
         due_date: data.due_date || null,
         status: "pending",
         type: "follow_up",
-        customer_id: selectedConversation.customer_id,
-        conversation_id: selectedConversation.id,
-        created_by: authUser?.id,
         assigned_to: authUser?.id,
-      });
+        assigned_type: "staff",
+        source: "inbox",
+        auto_generated: false,
+      };
+      // Only add these if columns exist
+      if (selectedConversation.customer_id) {
+        taskData.customer_id = selectedConversation.customer_id;
+      }
+      const { error } = await supabase.from("tasks").insert(taskData);
       if (error) throw error;
     },
     onSuccess: () => {
