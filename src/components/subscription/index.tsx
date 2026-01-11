@@ -306,13 +306,4 @@ function LimitWarning({ type, className }: LimitWarningProps) {
 }
 
 // Export all components
-export { FeatureGate, UsageMeter, DataSourceBadge, DataSourceIndicator,export { 
-  FeatureGate, 
-  UsageMeter, 
-  DataSourceBadge, 
-  DataSourceIndicator, 
-  TierBadge, 
-  LimitWarning,
-  TierBadge, 
-  LimitWarning 
-};
+export { FeatureGate, UsageMeter, DataSourceBadge, DataSourceIndicator, TierBadge, LimitWarning };
