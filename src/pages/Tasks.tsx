@@ -1,21 +1,14 @@
-import { useEffect, useState, useCallback } from 'react';
-import { useTenant } from '@/contexts/TenantContext';
-import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { useEffect, useState, useCallback } from "react";
+import { useTenant } from "@/contexts/TenantContext";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -24,25 +17,19 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Switch } from '@/components/ui/switch';
+} from "@/components/ui/dropdown-menu";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 import {
   CheckSquare,
   Plus,
@@ -59,21 +46,21 @@ import {
   MessageSquare,
   FileCheck,
   GripVertical,
-} from 'lucide-react';
-import { format, isPast, isToday } from 'date-fns';
-import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
+} from "lucide-react";
+import { format, isPast, isToday } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 interface Task {
   id: string;
   title: string;
   description: string | null;
-  task_type: 'follow_up' | 'callback' | 'reminder' | 'review' | 'custom';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  status: 'pending' | 'in_progress' | 'completed';
+  task_type: "follow_up" | "callback" | "reminder" | "review" | "custom";
+  priority: "low" | "medium" | "high" | "urgent";
+  status: "pending" | "in_progress" | "completed";
   due_at: string | null;
   assigned_to: string | null;
-  assigned_type: 'ai' | 'human';
+  assigned_type: "ai" | "human";
   customer_id: string | null;
   customer_name: string | null;
   created_at: string;
@@ -90,24 +77,24 @@ interface Staff {
 }
 
 const priorityConfig: Record<string, { color: string; icon: React.ReactNode }> = {
-  low: { color: 'bg-muted text-muted-foreground', icon: <Flag className="h-3 w-3" /> },
-  medium: { color: 'bg-info text-info-foreground', icon: <Flag className="h-3 w-3" /> },
-  high: { color: 'bg-warning text-warning-foreground', icon: <Flag className="h-3 w-3" /> },
-  urgent: { color: 'bg-destructive text-destructive-foreground', icon: <AlertTriangle className="h-3 w-3" /> },
+  low: { color: "bg-muted text-muted-foreground", icon: <Flag className="h-3 w-3" /> },
+  medium: { color: "bg-info text-info-foreground", icon: <Flag className="h-3 w-3" /> },
+  high: { color: "bg-warning text-warning-foreground", icon: <Flag className="h-3 w-3" /> },
+  urgent: { color: "bg-destructive text-destructive-foreground", icon: <AlertTriangle className="h-3 w-3" /> },
 };
 
 const taskTypeConfig: Record<string, { label: string; icon: React.ReactNode }> = {
-  follow_up: { label: 'Follow Up', icon: <MessageSquare className="h-4 w-4" /> },
-  callback: { label: 'Callback', icon: <Phone className="h-4 w-4" /> },
-  reminder: { label: 'Reminder', icon: <Bell className="h-4 w-4" /> },
-  review: { label: 'Review', icon: <FileCheck className="h-4 w-4" /> },
-  custom: { label: 'Custom', icon: <CheckSquare className="h-4 w-4" /> },
+  follow_up: { label: "Follow Up", icon: <MessageSquare className="h-4 w-4" /> },
+  callback: { label: "Callback", icon: <Phone className="h-4 w-4" /> },
+  reminder: { label: "Reminder", icon: <Bell className="h-4 w-4" /> },
+  review: { label: "Review", icon: <FileCheck className="h-4 w-4" /> },
+  custom: { label: "Custom", icon: <CheckSquare className="h-4 w-4" /> },
 };
 
 const statusColumns = [
-  { id: 'pending', label: 'Pending' },
-  { id: 'in_progress', label: 'In Progress' },
-  { id: 'completed', label: 'Completed' },
+  { id: "pending", label: "Pending" },
+  { id: "in_progress", label: "In Progress" },
+  { id: "completed", label: "Completed" },
 ];
 
 export default function TasksPage() {
@@ -116,10 +103,10 @@ export default function TasksPage() {
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [typeFilter, setTypeFilter] = useState('all');
-  const [priorityFilter, setPriorityFilter] = useState('all');
+  const [viewMode, setViewMode] = useState<"kanban" | "list">("kanban");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
   const [myTasksOnly, setMyTasksOnly] = useState(false);
   const [overdueOnly, setOverdueOnly] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -128,15 +115,15 @@ export default function TasksPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [newTask, setNewTask] = useState({
-    title: '',
-    description: '',
-    task_type: 'follow_up' as Task['task_type'],
-    priority: 'medium' as Task['priority'],
-    due_date: '',
-    due_time: '',
-    assigned_to: '',
-    assigned_type: 'ai' as 'ai' | 'human',
-    customer_id: '',
+    title: "",
+    description: "",
+    task_type: "follow_up" as Task["task_type"],
+    priority: "medium" as Task["priority"],
+    due_date: "",
+    due_time: "",
+    assigned_to: "",
+    assigned_type: "ai" as "ai" | "human",
+    customer_id: "",
   });
 
   const fetchTasks = useCallback(async () => {
@@ -145,32 +132,19 @@ export default function TasksPage() {
     setIsLoading(true);
     try {
       let query = supabase
-        .from('tasks')
-        .select(`
-          id,
-          title,
-          description,
-          task_type,
-          priority,
-          status,
-          due_at,
-          assigned_to,
-          assigned_type,
-          customer_id,
-          created_at,
-          customers(name)
-        `)
-        .eq('tenant_id', tenantId)
-        .order('due_at', { ascending: true, nullsFirst: false });
+        .from("tasks")
+        .select("*")
+        .eq("tenant_id", tenantId)
+        .order("due_at", { ascending: true, nullsFirst: false });
 
-      if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter);
+      if (statusFilter !== "all") {
+        query = query.eq("status", statusFilter);
       }
-      if (typeFilter !== 'all') {
-        query = query.eq('task_type', typeFilter);
+      if (typeFilter !== "all") {
+        query = query.eq("task_type", typeFilter);
       }
-      if (priorityFilter !== 'all') {
-        query = query.eq('priority', priorityFilter);
+      if (priorityFilter !== "all") {
+        query = query.eq("priority", priorityFilter);
       }
 
       const { data, error } = await query;
@@ -186,13 +160,13 @@ export default function TasksPage() {
       // Client-side filters
       if (overdueOnly) {
         formattedTasks = formattedTasks.filter(
-          (t) => t.due_at && isPast(new Date(t.due_at)) && t.status !== 'completed'
+          (t) => t.due_at && isPast(new Date(t.due_at)) && t.status !== "completed",
         );
       }
 
       setTasks(formattedTasks);
     } catch (error) {
-      console.error('Error fetching tasks:', error);
+      console.error("Error fetching tasks:", error);
     } finally {
       setIsLoading(false);
     }
@@ -203,15 +177,15 @@ export default function TasksPage() {
 
     try {
       const [customersRes, staffRes] = await Promise.all([
-        supabase.from('customers').select('id, name').eq('tenant_id', tenantId).limit(100),
-        supabase.from('users').select('id, full_name').eq('tenant_id', tenantId),
+        supabase.from("customers").select("id, name").eq("tenant_id", tenantId).limit(100),
+        supabase.from("users").select("id, full_name").eq("tenant_id", tenantId),
       ]);
 
       setCustomers(customersRes.data || []);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setStaff((staffRes.data || []).map((s: any) => ({ id: s.id, name: s.full_name })));
     } catch (error) {
-      console.error('Error fetching dropdown data:', error);
+      console.error("Error fetching dropdown data:", error);
     }
   }, [tenantId]);
 
@@ -231,19 +205,19 @@ export default function TasksPage() {
       if (newTask.due_date) {
         const dueDate = new Date(newTask.due_date);
         if (newTask.due_time) {
-          const [hours, minutes] = newTask.due_time.split(':');
+          const [hours, minutes] = newTask.due_time.split(":");
           dueDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
         }
         dueAt = dueDate.toISOString();
       }
 
-      const { error } = await supabase.from('tasks').insert({
+      const { error } = await supabase.from("tasks").insert({
         tenant_id: tenantId,
         title: newTask.title,
         description: newTask.description || null,
         task_type: newTask.task_type,
         priority: newTask.priority,
-        status: 'pending',
+        status: "pending",
         due_at: dueAt,
         assigned_to: newTask.assigned_to || null,
         assigned_type: newTask.assigned_type,
@@ -253,55 +227,49 @@ export default function TasksPage() {
       if (error) throw error;
 
       toast({
-        title: 'Success',
-        description: 'Task created successfully',
+        title: "Success",
+        description: "Task created successfully",
       });
 
       setIsAddDialogOpen(false);
       setNewTask({
-        title: '',
-        description: '',
-        task_type: 'follow_up',
-        priority: 'medium',
-        due_date: '',
-        due_time: '',
-        assigned_to: '',
-        assigned_type: 'ai',
-        customer_id: '',
+        title: "",
+        description: "",
+        task_type: "follow_up",
+        priority: "medium",
+        due_date: "",
+        due_time: "",
+        assigned_to: "",
+        assigned_type: "ai",
+        customer_id: "",
       });
       fetchTasks();
     } catch (error) {
-      console.error('Error adding task:', error);
+      console.error("Error adding task:", error);
       toast({
-        title: 'Error',
-        description: 'Failed to create task',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to create task",
+        variant: "destructive",
       });
     }
   };
 
-  const handleUpdateStatus = async (taskId: string, status: Task['status']) => {
+  const handleUpdateStatus = async (taskId: string, status: Task["status"]) => {
     if (!tenantId) return;
 
     try {
-      const { error } = await supabase
-        .from('tasks')
-        .update({ status })
-        .eq('id', taskId)
-        .eq('tenant_id', tenantId);
+      const { error } = await supabase.from("tasks").update({ status }).eq("id", taskId).eq("tenant_id", tenantId);
 
       if (error) throw error;
 
-      setTasks((prev) =>
-        prev.map((t) => (t.id === taskId ? { ...t, status } : t))
-      );
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status } : t)));
 
       toast({
-        title: 'Status Updated',
-        description: `Task marked as ${status.replace('_', ' ')}`,
+        title: "Status Updated",
+        description: `Task marked as ${status.replace("_", " ")}`,
       });
     } catch (error) {
-      console.error('Error updating status:', error);
+      console.error("Error updating status:", error);
     }
   };
 
@@ -309,22 +277,18 @@ export default function TasksPage() {
     if (!tenantId) return;
 
     try {
-      const { error } = await supabase
-        .from('tasks')
-        .delete()
-        .eq('id', taskId)
-        .eq('tenant_id', tenantId);
+      const { error } = await supabase.from("tasks").delete().eq("id", taskId).eq("tenant_id", tenantId);
 
       if (error) throw error;
 
       setTasks((prev) => prev.filter((t) => t.id !== taskId));
 
       toast({
-        title: 'Deleted',
-        description: 'Task deleted successfully',
+        title: "Deleted",
+        description: "Task deleted successfully",
       });
     } catch (error) {
-      console.error('Error deleting task:', error);
+      console.error("Error deleting task:", error);
     }
   };
 
@@ -333,7 +297,7 @@ export default function TasksPage() {
   };
 
   const isOverdue = (task: Task) => {
-    return task.due_at && isPast(new Date(task.due_at)) && task.status !== 'completed';
+    return task.due_at && isPast(new Date(task.due_at)) && task.status !== "completed";
   };
 
   if (tenantLoading) {
@@ -370,11 +334,13 @@ export default function TasksPage() {
               <p className="text-xs text-muted-foreground">AI Generated Today</p>
             </div>
             <div className="p-3 rounded-lg bg-background/50">
-              <p className="text-2xl font-bold">{tasks.filter(t => t.status === 'pending').length}</p>
+              <p className="text-2xl font-bold">{tasks.filter((t) => t.status === "pending").length}</p>
               <p className="text-xs text-muted-foreground">Pending</p>
             </div>
             <div className="p-3 rounded-lg bg-background/50">
-              <p className="text-2xl font-bold text-green-500">{tasks.filter(t => t.status === 'completed').length}</p>
+              <p className="text-2xl font-bold text-green-500">
+                {tasks.filter((t) => t.status === "completed").length}
+              </p>
               <p className="text-xs text-muted-foreground">Completed Today</p>
             </div>
             <div className="p-3 rounded-lg bg-background/50">
@@ -389,12 +355,10 @@ export default function TasksPage() {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold">Tasks</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage and track your tasks
-          </p>
+          <p className="text-muted-foreground mt-1">Manage and track your tasks</p>
         </div>
         <div className="flex items-center gap-2">
-          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'kanban' | 'list')}>
+          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "kanban" | "list")}>
             <TabsList>
               <TabsTrigger value="kanban">
                 <LayoutGrid className="h-4 w-4 mr-2" />
@@ -441,7 +405,7 @@ export default function TasksPage() {
                     <Label>Type</Label>
                     <Select
                       value={newTask.task_type}
-                      onValueChange={(value) => setNewTask({ ...newTask, task_type: value as Task['task_type'] })}
+                      onValueChange={(value) => setNewTask({ ...newTask, task_type: value as Task["task_type"] })}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -459,7 +423,7 @@ export default function TasksPage() {
                     <Label>Priority</Label>
                     <Select
                       value={newTask.priority}
-                      onValueChange={(value) => setNewTask({ ...newTask, priority: value as Task['priority'] })}
+                      onValueChange={(value) => setNewTask({ ...newTask, priority: value as Task["priority"] })}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -496,14 +460,14 @@ export default function TasksPage() {
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
                       <Switch
-                        checked={newTask.assigned_type === 'ai'}
+                        checked={newTask.assigned_type === "ai"}
                         onCheckedChange={(checked) =>
-                          setNewTask({ ...newTask, assigned_type: checked ? 'ai' : 'human', assigned_to: '' })
+                          setNewTask({ ...newTask, assigned_type: checked ? "ai" : "human", assigned_to: "" })
                         }
                       />
-                      <span className="text-sm">{newTask.assigned_type === 'ai' ? 'AI' : 'Human'}</span>
+                      <span className="text-sm">{newTask.assigned_type === "ai" ? "AI" : "Human"}</span>
                     </div>
-                    {newTask.assigned_type === 'human' && (
+                    {newTask.assigned_type === "human" && (
                       <Select
                         value={newTask.assigned_to}
                         onValueChange={(value) => setNewTask({ ...newTask, assigned_to: value })}
@@ -523,13 +487,13 @@ export default function TasksPage() {
                   </div>
                 </div>
                 <div className="grid gap-2">
-                  <Label>Link to {translate('customer')}</Label>
+                  <Label>Link to {translate("customer")}</Label>
                   <Select
                     value={newTask.customer_id}
                     onValueChange={(value) => setNewTask({ ...newTask, customer_id: value })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder={`Select ${translate('customer').toLowerCase()} (optional)`} />
+                      <SelectValue placeholder={`Select ${translate("customer").toLowerCase()} (optional)`} />
                     </SelectTrigger>
                     <SelectContent>
                       {customers.map((c) => (
@@ -608,7 +572,7 @@ export default function TasksPage() {
       </Card>
 
       {/* Main Content */}
-      {viewMode === 'kanban' ? (
+      {viewMode === "kanban" ? (
         /* Kanban View */
         <div className="grid gap-4 md:grid-cols-3">
           {statusColumns.map((column) => (
@@ -621,9 +585,7 @@ export default function TasksPage() {
               </CardHeader>
               <CardContent className="min-h-[400px] space-y-3">
                 {isLoading ? (
-                  [...Array(3)].map((_, i) => (
-                    <Skeleton key={i} className="h-24 w-full" />
-                  ))
+                  [...Array(3)].map((_, i) => <Skeleton key={i} className="h-24 w-full" />)
                 ) : getTasksByStatus(column.id).length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <CheckSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -634,8 +596,8 @@ export default function TasksPage() {
                     <Card
                       key={task.id}
                       className={cn(
-                        'cursor-pointer hover:shadow-md transition-shadow',
-                        isOverdue(task) && 'border-destructive'
+                        "cursor-pointer hover:shadow-md transition-shadow",
+                        isOverdue(task) && "border-destructive",
                       )}
                     >
                       <CardContent className="p-3">
@@ -654,18 +616,18 @@ export default function TasksPage() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  {column.id !== 'pending' && (
-                                    <DropdownMenuItem onClick={() => handleUpdateStatus(task.id, 'pending')}>
+                                  {column.id !== "pending" && (
+                                    <DropdownMenuItem onClick={() => handleUpdateStatus(task.id, "pending")}>
                                       Move to Pending
                                     </DropdownMenuItem>
                                   )}
-                                  {column.id !== 'in_progress' && (
-                                    <DropdownMenuItem onClick={() => handleUpdateStatus(task.id, 'in_progress')}>
+                                  {column.id !== "in_progress" && (
+                                    <DropdownMenuItem onClick={() => handleUpdateStatus(task.id, "in_progress")}>
                                       Move to In Progress
                                     </DropdownMenuItem>
                                   )}
-                                  {column.id !== 'completed' && (
-                                    <DropdownMenuItem onClick={() => handleUpdateStatus(task.id, 'completed')}>
+                                  {column.id !== "completed" && (
+                                    <DropdownMenuItem onClick={() => handleUpdateStatus(task.id, "completed")}>
                                       Mark Complete
                                     </DropdownMenuItem>
                                   )}
@@ -681,31 +643,29 @@ export default function TasksPage() {
                             </div>
 
                             <div className="flex items-center gap-2 mt-2">
-                              <Badge className={cn('text-xs', priorityConfig[task.priority]?.color)}>
+                              <Badge className={cn("text-xs", priorityConfig[task.priority]?.color)}>
                                 {priorityConfig[task.priority]?.icon}
                                 <span className="ml-1 capitalize">{task.priority}</span>
                               </Badge>
                               {task.due_at && (
                                 <span
                                   className={cn(
-                                    'text-xs',
-                                    isOverdue(task) ? 'text-destructive font-medium' : 'text-muted-foreground'
+                                    "text-xs",
+                                    isOverdue(task) ? "text-destructive font-medium" : "text-muted-foreground",
                                   )}
                                 >
                                   <Clock className="h-3 w-3 inline mr-1" />
-                                  {format(new Date(task.due_at), 'MMM dd')}
+                                  {format(new Date(task.due_at), "MMM dd")}
                                 </span>
                               )}
                             </div>
 
                             <div className="flex items-center justify-between mt-2">
                               {task.customer_name && (
-                                <span className="text-xs text-muted-foreground truncate">
-                                  {task.customer_name}
-                                </span>
+                                <span className="text-xs text-muted-foreground truncate">{task.customer_name}</span>
                               )}
                               <div className="flex items-center gap-1">
-                                {task.assigned_type === 'ai' ? (
+                                {task.assigned_type === "ai" ? (
                                   <Bot className="h-4 w-4 text-primary" />
                                 ) : (
                                   <Avatar className="h-5 w-5">
@@ -747,7 +707,7 @@ export default function TasksPage() {
                   <TableRow>
                     <TableHead>Title</TableHead>
                     <TableHead>Type</TableHead>
-                    <TableHead>{translate('customer')}</TableHead>
+                    <TableHead>{translate("customer")}</TableHead>
                     <TableHead>Assignee</TableHead>
                     <TableHead>Priority</TableHead>
                     <TableHead>Due Date</TableHead>
@@ -757,7 +717,7 @@ export default function TasksPage() {
                 </TableHeader>
                 <TableBody>
                   {tasks.map((task) => (
-                    <TableRow key={task.id} className={cn(isOverdue(task) && 'bg-destructive/5')}>
+                    <TableRow key={task.id} className={cn(isOverdue(task) && "bg-destructive/5")}>
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
                           {taskTypeConfig[task.task_type]?.icon}
@@ -765,10 +725,10 @@ export default function TasksPage() {
                         </div>
                       </TableCell>
                       <TableCell>{taskTypeConfig[task.task_type]?.label}</TableCell>
-                      <TableCell>{task.customer_name || '-'}</TableCell>
+                      <TableCell>{task.customer_name || "-"}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          {task.assigned_type === 'ai' ? (
+                          {task.assigned_type === "ai" ? (
                             <>
                               <Bot className="h-4 w-4" />
                               <span>AI</span>
@@ -789,16 +749,16 @@ export default function TasksPage() {
                       </TableCell>
                       <TableCell>
                         {task.due_at ? (
-                          <span className={cn(isOverdue(task) && 'text-destructive font-medium')}>
-                            {format(new Date(task.due_at), 'MMM dd, h:mm a')}
+                          <span className={cn(isOverdue(task) && "text-destructive font-medium")}>
+                            {format(new Date(task.due_at), "MMM dd, h:mm a")}
                           </span>
                         ) : (
-                          '-'
+                          "-"
                         )}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="capitalize">
-                          {task.status.replace('_', ' ')}
+                          {task.status.replace("_", " ")}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
@@ -809,20 +769,17 @@ export default function TasksPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleUpdateStatus(task.id, 'pending')}>
+                            <DropdownMenuItem onClick={() => handleUpdateStatus(task.id, "pending")}>
                               Set Pending
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleUpdateStatus(task.id, 'in_progress')}>
+                            <DropdownMenuItem onClick={() => handleUpdateStatus(task.id, "in_progress")}>
                               Set In Progress
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleUpdateStatus(task.id, 'completed')}>
+                            <DropdownMenuItem onClick={() => handleUpdateStatus(task.id, "completed")}>
                               Mark Complete
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => handleDeleteTask(task.id)}
-                            >
+                            <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteTask(task.id)}>
                               Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
