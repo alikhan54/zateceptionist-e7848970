@@ -1,7 +1,7 @@
 // src/contexts/SubscriptionContext.tsx
-// FIXED - READS FROM DATABASE
+// COMPLETE FIX - READS FROM DATABASE + EXPORTS ALL NEEDED
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { useTenant } from "@/contexts/TenantContext";
 
 export type SubscriptionTier = "starter" | "professional" | "enterprise";
@@ -30,11 +30,13 @@ export interface TierConfig {
   id: SubscriptionTier;
   name: string;
   price: number;
+  yearlyPrice: number;
   limits: TierLimits;
   features: string[];
+  description: string;
 }
 
-// DEFAULT TIER CONFIGS
+// DEFAULT TIER LIMITS
 const TIER_DEFAULTS: Record<SubscriptionTier, TierLimits> = {
   starter: {
     leads_per_month: 100,
@@ -90,32 +92,78 @@ const TIER_DEFAULTS: Record<SubscriptionTier, TierLimits> = {
     emails_per_day: 1000,
     whatsapp_per_day: 500,
     calls_per_day: 200,
-    max_users: -1,
+    max_users: -1, // unlimited
     voice_minutes: 2000,
   },
 };
 
-const TIER_CONFIGS: Record<SubscriptionTier, TierConfig> = {
+// FULL TIER CONFIGS - EXPORTED FOR BILLING PAGE
+export const SUBSCRIPTION_TIERS: Record<SubscriptionTier, TierConfig> = {
   starter: {
     id: "starter",
     name: "Starter",
     price: 199,
+    yearlyPrice: 1990,
+    description: "Perfect for small businesses getting started with AI automation",
     limits: TIER_DEFAULTS.starter,
-    features: ["100 leads/month", "Google Search", "5 sequences"],
+    features: [
+      "100 leads per month",
+      "Google Search leads",
+      "AI lead scoring",
+      "5 active sequences",
+      "100 emails per day",
+      "50 WhatsApp messages per day",
+      "20 AI calls per day",
+      "3 team members",
+      "100 voice minutes",
+      "Email support",
+    ],
   },
   professional: {
     id: "professional",
     name: "Professional",
     price: 499,
+    yearlyPrice: 4990,
+    description: "For growing teams that need more power and premium data sources",
     limits: TIER_DEFAULTS.professional,
-    features: ["500 leads/month", "Google + Hunter", "Intent Detection", "20 sequences"],
+    features: [
+      "500 leads per month",
+      "Google + Hunter.io",
+      "B2C Intent Detection",
+      "AI lead scoring",
+      "20 active sequences",
+      "300 emails per day",
+      "150 WhatsApp messages per day",
+      "50 AI calls per day",
+      "10 team members",
+      "500 voice minutes",
+      "Priority support",
+      "Advanced analytics",
+    ],
   },
   enterprise: {
     id: "enterprise",
     name: "Enterprise",
     price: 1999,
+    yearlyPrice: 19990,
+    description: "Full power for agencies and enterprises with white-label options",
     limits: TIER_DEFAULTS.enterprise,
-    features: ["2000 leads/month", "All Sources", "White Label", "Unlimited"],
+    features: [
+      "2000 leads per month",
+      "All data sources (Apollo, Hunter, Apify)",
+      "B2C Intent Detection",
+      "AI lead scoring",
+      "100 active sequences",
+      "1000 emails per day",
+      "500 WhatsApp messages per day",
+      "200 AI calls per day",
+      "Unlimited team members",
+      "2000 voice minutes",
+      "White-label branding",
+      "API access",
+      "Dedicated support",
+      "Custom integrations",
+    ],
   },
 };
 
@@ -152,36 +200,37 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
 
   // GET TIER FROM DATABASE via tenantConfig
   const tier: SubscriptionTier = useMemo(() => {
-    const dbTier = tenantConfig?.subscription_tier;
+    const dbTier = (tenantConfig as any)?.subscription_tier;
     if (dbTier === "enterprise" || dbTier === "professional" || dbTier === "starter") {
       return dbTier;
     }
     return "starter";
-  }, [tenantConfig?.subscription_tier]);
+  }, [(tenantConfig as any)?.subscription_tier]);
 
-  const tierConfig = TIER_CONFIGS[tier];
+  const tierConfig = SUBSCRIPTION_TIERS[tier];
 
   // BUILD LIMITS - combine DB values with tier defaults
   const limits: TierLimits = useMemo(() => {
     const defaults = TIER_DEFAULTS[tier];
+    const config = tenantConfig as any;
 
     // Check if tenant has API keys (override tier restrictions if they have keys)
-    const hasApolloKey = !!tenantConfig?.apollo_api_key;
-    const hasHunterKey = !!tenantConfig?.hunter_api_key;
-    const hasApifyKey = !!tenantConfig?.apify_api_key;
+    const hasApolloKey = !!config?.apollo_api_key;
+    const hasHunterKey = !!config?.hunter_api_key;
+    const hasApifyKey = !!config?.apify_api_key;
 
     return {
       ...defaults,
       // Use DB values if available, otherwise use tier defaults
-      leads_per_month: tenantConfig?.leads_per_month || defaults.leads_per_month,
-      b2b_searches_per_day: tenantConfig?.b2b_searches_per_day || defaults.b2b_searches_per_day,
-      intent_searches_per_day: tenantConfig?.intent_searches_per_day || defaults.intent_searches_per_day,
+      leads_per_month: config?.leads_per_month || defaults.leads_per_month,
+      b2b_searches_per_day: config?.b2b_searches_per_day || defaults.b2b_searches_per_day,
+      intent_searches_per_day: config?.intent_searches_per_day || defaults.intent_searches_per_day,
       // API access based on tier OR having the key
       has_apollo_access: defaults.has_apollo_access || hasApolloKey,
       has_hunter_access: defaults.has_hunter_access || hasHunterKey,
       has_apify_access: defaults.has_apify_access || hasApifyKey,
       // Intent leads available if tier allows OR if intent_searches > 0
-      has_intent_leads: defaults.has_intent_leads || (tenantConfig?.intent_searches_per_day || 0) > 0,
+      has_intent_leads: defaults.has_intent_leads || (config?.intent_searches_per_day || 0) > 0,
     };
   }, [tier, tenantConfig]);
 
@@ -302,7 +351,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         hasReachedLimit,
         getRemainingCredits,
         getUsagePercentage,
-        allTiers: Object.values(TIER_CONFIGS),
+        allTiers: Object.values(SUBSCRIPTION_TIERS),
       }}
     >
       {children}
