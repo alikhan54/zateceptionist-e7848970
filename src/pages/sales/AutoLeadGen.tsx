@@ -174,9 +174,9 @@ export default function AutoLeadGen() {
     try {
       // Determine which webhook to call based on tier
       const webhookUrl =
-        hasPremiumSources && usePremiumSources
+        limits.has_apollo_access || limits.has_hunter_access
           ? "https://webhooks.zatesystems.com/webhook/premium-b2b-lead-gen"
-          : "https://webhooks.zatesystems.com/webhook/b2b-lead-gen";
+          : "https://webhooks.zatesystems.com/webhook/lead-gen-request";
 
       const response = await fetch(webhookUrl, {
         method: "POST",
