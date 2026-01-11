@@ -493,7 +493,7 @@ export default function BillingSettings() {
                     <td className="py-3 px-4">{row.label}</td>
                     {allTiers.map((plan) => (
                       <td key={plan.id} className="py-3 px-4 text-center">
-                        {row.format((plan.limits as any)[row.key])}
+                        {row.format((plan.limits as Record<string, any>)[row.key])}
                       </td>
                     ))}
                   </tr>
