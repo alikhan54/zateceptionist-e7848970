@@ -1,462 +1,372 @@
-import { useState, useEffect } from "react";
-import { useTenant } from "@/contexts/TenantContext";
-import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import { callWebhook, WEBHOOKS, N8N_WEBHOOK_BASE } from "@/integrations/supabase/client";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+// src/pages/AutoLeadGen.tsx
+// COMPLETE AUTO LEAD GEN WITH SUBSCRIPTION TIERS
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { useTenant } from "@/contexts/TenantContext";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  FeatureGate,
+  UsageMeter,
+  DataSourceBadge,
+  DataSourceIndicator,
+  TierBadge,
+  LimitWarning,
+} from "@/components/subscription";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Sparkles,
-  Building2,
-  Users,
-  Search,
-  TrendingUp,
-  Zap,
-  RefreshCw,
-  CheckCircle,
-  XCircle,
-  Plus,
-  Filter,
-  Download,
   Play,
   Pause,
-  Eye,
-  Mail,
-  Phone,
+  Building2,
+  MapPin,
+  Users,
+  Briefcase,
   Globe,
-  Linkedin,
-  Target,
-  Brain,
+  MessageCircle,
+  Twitter,
+  Zap,
   Loader2,
-  AlertCircle,
-  Settings,
-  Clock,
+  RefreshCw,
+  Check,
+  ArrowRight,
+  X,
+  Lock,
+  Crown,
+  TrendingUp,
+  Radio,
 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { GradeBadge } from "@/components/shared";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { useNavigate } from "react-router-dom";
 
 // =====================================================
 // TYPES
 // =====================================================
 interface GeneratedLead {
   id: string;
-  tenant_id: string;
-  company_name: string;
-  contact_name: string | null;
-  email: string | null;
-  phone: string | null;
-  website: string | null;
-  linkedin_url: string | null;
-  industry: string | null;
-  city: string | null;
-  country: string | null;
-  lead_score: number;
-  lead_grade: string;
-  status: string;
-  source: string;
-  source_channel: string | null;
-  lead_type: string;
-  sequence_status: string | null;
-  tags: string | null;
-  notes: string | null;
-  created_at: string;
+  company: string;
+  contact: string;
+  email: string;
+  title: string;
+  score: number;
+  grade: "A" | "B" | "C" | "D";
+  status: "new" | "enriching" | "added" | "dismissed";
+  source: "apollo" | "hunter" | "google" | "apify" | "intent";
+  phone?: string;
+  linkedin?: string;
+  website?: string;
+  temperature?: "hot" | "warm" | "cold";
 }
-
-interface LeadGenConfig {
-  id: string;
-  tenant_id: string;
-  b2b_enabled: boolean;
-  b2b_industries: string[];
-  b2b_locations: string[];
-  b2b_keywords: string[];
-  b2b_daily_limit: number;
-  b2c_enabled: boolean;
-  intent_enabled: boolean;
-  intent_keywords: string[];
-  intent_platforms: string[];
-  free_leads_per_day: number;
-  free_leads_used_today: number;
-  auto_sequence_enabled: boolean;
-  google_api_key: string | null;
-  google_cx_id: string | null;
-}
-
-interface Credits {
-  total: number;
-  used: number;
-  remaining: number;
-  reset_date: string | null;
-}
-
-// =====================================================
-// CONSTANTS
-// =====================================================
-const INDUSTRIES = [
-  "Technology",
-  "Healthcare",
-  "Finance",
-  "Real Estate",
-  "E-commerce",
-  "Manufacturing",
-  "Education",
-  "Marketing",
-  "Legal",
-  "Consulting",
-  "Hospitality",
-  "Automotive",
-  "Construction",
-  "Food & Beverage",
-  "Retail",
-];
-
-const INTENT_PLATFORMS = [
-  { id: "reddit", name: "Reddit", icon: "🔴" },
-  { id: "twitter", name: "Twitter/X", icon: "🐦" },
-  { id: "linkedin", name: "LinkedIn", icon: "💼" },
-  { id: "forums", name: "Industry Forums", icon: "💬" },
-  { id: "quora", name: "Quora", icon: "❓" },
-];
-
-const GRADE_COLORS: Record<string, string> = {
-  A: "bg-green-500 text-white",
-  B: "bg-blue-500 text-white",
-  C: "bg-yellow-500 text-black",
-  D: "bg-red-500 text-white",
-};
 
 // =====================================================
 // MAIN COMPONENT
 // =====================================================
 export default function AutoLeadGen() {
-  const { tenantId } = useTenant();
-  const { authUser } = useAuth();
+  const { tenantId, tenantConfig } = useTenant();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
-  // =====================================================
-  // STATE
-  // =====================================================
-  const [activeTab, setActiveTab] = useState("b2b");
-  const [isMonitoring, setIsMonitoring] = useState(false);
-  const [showConfigDialog, setShowConfigDialog] = useState(false);
-
-  // B2B Form State
-  const [b2bForm, setB2bForm] = useState({
-    industry: "",
-    location: "",
-    keywords: "",
-    company_size: "all",
-    count: 25,
-  });
-
-  // Intent Form State
-  const [intentForm, setIntentForm] = useState({
-    keywords: "",
-    platforms: ["reddit", "twitter"] as string[],
-    location: "",
-  });
-
-  // =====================================================
-  // QUERIES
-  // =====================================================
-
-  // Fetch Lead Gen Config
-  const { data: config, isLoading: configLoading } = useQuery({
-    queryKey: ["lead-gen-config", tenantId],
-    queryFn: async () => {
-      if (!tenantId) return null;
-      const { data, error } = await supabase.from("lead_gen_config").select("*").eq("tenant_id", tenantId).single();
-
-      if (error && error.code !== "PGRST116") {
-        console.error("Error fetching config:", error);
-      }
-      return data as LeadGenConfig | null;
-    },
-    enabled: !!tenantId,
-  });
-
-  // Fetch Generated Leads from sales_leads table
+  // Subscription context
   const {
-    data: leads = [],
-    isLoading: leadsLoading,
-    refetch: refetchLeads,
-  } = useQuery({
-    queryKey: ["generated-leads", tenantId],
-    queryFn: async () => {
-      if (!tenantId) return [];
+    tier,
+    tierConfig,
+    limits,
+    usage,
+    isLoadingUsage,
+    canUseFeature,
+    hasReachedLimit,
+    getRemainingCredits,
+    refreshUsage,
+  } = useSubscription();
 
-      const { data, error } = await supabase
-        .from("sales_leads")
-        .select("*")
-        .eq("tenant_id", tenantId)
-        .in("source", ["lead_gen", "intent_signal", "b2b_google", "intent_reddit", "intent_twitter", "intent_linkedin"])
-        .order("created_at", { ascending: false })
-        .limit(100);
+  // State
+  const [activeTab, setActiveTab] = useState("b2b");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generateCount, setGenerateCount] = useState([10]);
+  const [selectedIndustry, setSelectedIndustry] = useState("");
+  const [keywords, setKeywords] = useState("");
+  const [location, setLocation] = useState("Dubai");
+  const [country, setCountry] = useState("UAE");
+  const [companySize, setCompanySize] = useState("all");
+  const [jobTitles, setJobTitles] = useState("");
+  const [usePremiumSources, setUsePremiumSources] = useState(true);
 
-      if (error) {
-        console.error("Error fetching leads:", error);
-        return [];
-      }
-
-      return (data || []).map((lead: any) => ({
-        id: lead.id,
-        tenant_id: lead.tenant_id,
-        company_name: lead.company || lead.name || "Unknown",
-        contact_name: lead.contact_name || lead.name,
-        email: lead.email,
-        phone: lead.phone,
-        website: lead.website,
-        linkedin_url: lead.linkedin_url,
-        industry: lead.industry,
-        city: lead.city,
-        country: lead.country,
-        lead_score: lead.score || 0,
-        lead_grade:
-          lead.temperature === "hot"
-            ? "A"
-            : lead.temperature === "warm"
-              ? "B"
-              : lead.temperature === "cold"
-                ? "C"
-                : "D",
-        status: lead.status,
-        source: lead.source,
-        source_channel: lead.source_channel,
-        lead_type: lead.source?.includes("intent") ? "b2c" : "b2b",
-        sequence_status: lead.sequence_status,
-        tags: lead.tags,
-        notes: lead.notes,
-        created_at: lead.created_at,
-      })) as GeneratedLead[];
-    },
-    enabled: !!tenantId,
-    refetchInterval: isMonitoring ? 30000 : false, // Refresh every 30s when monitoring
+  // Intent config
+  const [platforms, setPlatforms] = useState({
+    reddit: true,
+    twitter: true,
+    forums: false,
+    linkedin: false,
   });
+  const [intentKeywords, setIntentKeywords] = useState("");
+  const [isMonitoring, setIsMonitoring] = useState(false);
 
-  // Calculate Credits from tenant_config or lead_gen_config
-  const { data: credits } = useQuery({
-    queryKey: ["lead-gen-credits", tenantId],
-    queryFn: async (): Promise<Credits> => {
-      if (!tenantId) return { total: 500, used: 0, remaining: 500, reset_date: null };
+  // Generated leads
+  const [generatedLeads, setGeneratedLeads] = useState<GeneratedLead[]>([]);
 
-      // Get credits from tenant_config
-      const { data: tenantConfig } = await supabase
-        .from("tenant_config")
-        .select("credits_balance, credits_monthly_limit")
-        .eq("tenant_id", tenantId)
-        .single();
+  // Industries list
+  const industries = [
+    { id: "real_estate", label: "Real Estate" },
+    { id: "healthcare", label: "Healthcare" },
+    { id: "salon", label: "Salon & Beauty" },
+    { id: "restaurant", label: "Restaurant" },
+    { id: "flooring", label: "Flooring" },
+    { id: "technology", label: "Technology" },
+    { id: "general", label: "General" },
+  ];
 
-      // Get today's usage from lead_gen_config
-      const { data: leadGenConfig } = await supabase
-        .from("lead_gen_config")
-        .select("free_leads_per_day, free_leads_used_today")
-        .eq("tenant_id", tenantId)
-        .single();
+  // Max leads based on remaining credits
+  const maxLeadsAllowed = Math.min(
+    getRemainingCredits("leads"),
+    25, // Max per request
+  );
 
-      const total = leadGenConfig?.free_leads_per_day || tenantConfig?.credits_monthly_limit || 500;
-      const used = leadGenConfig?.free_leads_used_today || 0;
-
-      return {
-        total,
-        used,
-        remaining: Math.max(0, total - used),
-        reset_date: new Date(new Date().setHours(24, 0, 0, 0)).toISOString(),
-      };
-    },
-    enabled: !!tenantId,
-  });
+  // Check if any premium source is available
+  const hasPremiumSources =
+    canUseFeature("has_apollo_access") || canUseFeature("has_hunter_access") || canUseFeature("has_apify_access");
 
   // =====================================================
-  // MUTATIONS
+  // GENERATE B2B LEADS
   // =====================================================
-
-  // Generate B2B Leads
-  const generateB2BMutation = useMutation({
-    mutationFn: async () => {
-      if (!tenantId) throw new Error("No tenant");
-
-      const payload = {
-        tenant_id: tenantId,
-        industry: b2bForm.industry,
-        location: b2bForm.location,
-        keywords: b2bForm.keywords
-          .split(",")
-          .map((k) => k.trim())
-          .filter(Boolean),
-        company_size: b2bForm.company_size,
-        max_results: b2bForm.count,
-      };
-
-      // Call the n8n webhook
-      const response = await fetch(`${N8N_WEBHOOK_BASE}/lead-gen-request`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || "Failed to generate leads");
-      }
-
-      return response.json();
-    },
-    onSuccess: (data) => {
+  const handleGenerateB2B = async () => {
+    // Check limits
+    if (hasReachedLimit("leads")) {
       toast({
-        title: "B2B Lead Generation Started",
-        description: data.message || `Generating ${b2bForm.count} leads...`,
-      });
-      // Refetch leads after a delay
-      setTimeout(() => {
-        refetchLeads();
-        queryClient.invalidateQueries({ queryKey: ["lead-gen-credits"] });
-      }, 5000);
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Generation Failed",
-        description: error.message,
+        title: "Lead limit reached",
+        description: "Upgrade your plan for more leads",
         variant: "destructive",
       });
-    },
-  });
+      return;
+    }
 
-  // Generate Intent Leads (B2C)
-  const generateIntentMutation = useMutation({
-    mutationFn: async () => {
-      if (!tenantId) throw new Error("No tenant");
-
-      const payload = {
-        tenant_id: tenantId,
-        keywords: intentForm.keywords,
-        platforms: intentForm.platforms,
-        location: intentForm.location,
-        lead_type: "buyer",
-        max_results: 20,
-      };
-
-      // Call the n8n webhook
-      const response = await fetch(`${N8N_WEBHOOK_BASE}/intent-lead-gen`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || "Failed to generate intent leads");
-      }
-
-      return response.json();
-    },
-    onSuccess: (data) => {
+    if (hasReachedLimit("b2b_searches")) {
       toast({
-        title: "Intent Signal Search Started",
-        description: data.message || "Searching for buying signals...",
-      });
-      setTimeout(() => {
-        refetchLeads();
-        queryClient.invalidateQueries({ queryKey: ["lead-gen-credits"] });
-      }, 5000);
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Search Failed",
-        description: error.message,
+        title: "Daily search limit reached",
+        description: "Try again tomorrow or upgrade your plan",
         variant: "destructive",
       });
-    },
-  });
+      return;
+    }
 
-  // Add Lead to Pipeline
-  const addToPipelineMutation = useMutation({
-    mutationFn: async (lead: GeneratedLead) => {
-      const { error } = await supabase
-        .from("sales_leads")
-        .update({
-          status: "qualified",
-          sequence_status: "pending",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", lead.id)
-        .eq("tenant_id", tenantId);
-
-      if (error) throw error;
-      return lead;
-    },
-    onSuccess: (lead) => {
-      toast({ title: "Lead added to pipeline", description: lead.company_name });
-      refetchLeads();
-    },
-    onError: (error: Error) => {
-      toast({ title: "Failed to add lead", description: error.message, variant: "destructive" });
-    },
-  });
-
-  // Discard Lead
-  const discardLeadMutation = useMutation({
-    mutationFn: async (leadId: string) => {
-      const { error } = await supabase
-        .from("sales_leads")
-        .update({ status: "discarded" })
-        .eq("id", leadId)
-        .eq("tenant_id", tenantId);
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      refetchLeads();
-    },
-  });
-
-  // Start/Stop Monitoring
-  const toggleMonitoring = async () => {
-    if (!tenantId) return;
-
-    const newState = !isMonitoring;
-    setIsMonitoring(newState);
-
-    if (newState) {
-      // Start monitoring - trigger first intent search
-      generateIntentMutation.mutate();
+    if (!keywords && !selectedIndustry) {
       toast({
-        title: "Monitoring Started",
-        description: "Checking for buying signals every 5 minutes",
+        title: "Missing search criteria",
+        description: "Enter keywords or select an industry",
+        variant: "destructive",
       });
-    } else {
+      return;
+    }
+
+    setIsGenerating(true);
+
+    try {
+      // Determine which webhook to call based on tier
+      const webhookUrl =
+        hasPremiumSources && usePremiumSources
+          ? "https://webhooks.zatesystems.com/webhook/premium-b2b-lead-gen"
+          : "https://webhooks.zatesystems.com/webhook/b2b-lead-gen";
+
+      const response = await fetch(webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tenant_id: tenantId,
+          keywords: keywords || selectedIndustry,
+          industry: selectedIndustry || "general",
+          location,
+          country,
+          company_size: companySize,
+          job_titles: jobTitles
+            .split(",")
+            .map((t) => t.trim())
+            .filter(Boolean),
+          max_leads: generateCount[0],
+          use_premium_sources: usePremiumSources && hasPremiumSources,
+          ai_scoring: canUseFeature("has_ai_scoring"),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.leads) {
+        const newLeads: GeneratedLead[] = data.leads.map((lead: any) => ({
+          id: lead.lead_id || `lead-${Date.now()}-${Math.random()}`,
+          company: lead.company || lead.company_name,
+          contact: lead.contact || lead.contact_name || "",
+          email: lead.email || "",
+          title: lead.title || lead.job_title || "",
+          score: lead.score || lead.lead_score || 0,
+          grade: lead.grade || lead.lead_grade || "C",
+          status: "new" as const,
+          source: lead.source || "google",
+          phone: lead.phone,
+          linkedin: lead.linkedin_url,
+          website: lead.website,
+          temperature: lead.temperature,
+        }));
+
+        setGeneratedLeads((prev) => [...newLeads, ...prev]);
+
+        toast({
+          title: "Leads generated!",
+          description: `${data.leads_saved || newLeads.length} new leads found. ${data.hot_leads || 0} hot leads!`,
+        });
+
+        refreshUsage();
+      } else {
+        toast({
+          title: "No leads found",
+          description: data.message || "Try different search criteria",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Lead gen error:", error);
       toast({
-        title: "Monitoring Stopped",
-        description: "Intent signal detection paused",
+        title: "Generation failed",
+        description: "Please try again",
+        variant: "destructive",
       });
+    } finally {
+      setIsGenerating(false);
     }
   };
 
   // =====================================================
-  // COMPUTED VALUES
+  // GENERATE INTENT LEADS
   // =====================================================
-  const b2bLeads = leads.filter((l) => l.lead_type === "b2b" && l.status !== "discarded");
-  const intentLeads = leads.filter((l) => l.lead_type === "b2c" && l.status !== "discarded");
-  const pendingLeads = leads.filter((l) => l.status === "new");
+  const handleGenerateIntent = async () => {
+    if (!canUseFeature("has_intent_leads")) {
+      toast({
+        title: "Feature not available",
+        description: "Upgrade to Professional for intent detection",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (hasReachedLimit("intent_searches")) {
+      toast({
+        title: "Daily intent search limit reached",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsGenerating(true);
+
+    try {
+      const response = await fetch("https://webhooks.zatesystems.com/webhook/intent-lead-gen", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tenant_id: tenantId,
+          industry: selectedIndustry || "general",
+          city: location,
+          country,
+          keywords: intentKeywords,
+          lead_type: "buyer",
+          max_results: 20,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.leads) {
+        const newLeads: GeneratedLead[] = data.leads.map((lead: any) => ({
+          id: lead.lead_id || `intent-${Date.now()}-${Math.random()}`,
+          company: lead.company_name || "",
+          contact: lead.contact_name || lead.username || "",
+          email: lead.email || "",
+          title: "",
+          score: lead.score || lead.lead_score || 0,
+          grade: lead.grade || lead.lead_grade || "C",
+          status: "new" as const,
+          source: "intent" as const,
+          website: lead.website || lead.source_url,
+        }));
+
+        setGeneratedLeads((prev) => [...newLeads, ...prev]);
+        toast({ title: "Intent leads found!", description: `${newLeads.length} potential buyers detected` });
+        refreshUsage();
+      }
+    } catch (error) {
+      toast({ title: "Intent search failed", variant: "destructive" });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // =====================================================
+  // ADD TO PIPELINE
+  // =====================================================
+  const addToPipelineMutation = useMutation({
+    mutationFn: async (lead: GeneratedLead) => {
+      const { data, error } = await supabase
+        .from("sales_leads")
+        .insert({
+          tenant_id: tenantId,
+          contact_name: lead.contact,
+          company_name: lead.company,
+          email: lead.email,
+          phone: lead.phone || null,
+          job_title: lead.title,
+          website: lead.website,
+          linkedin_url: lead.linkedin,
+          source: lead.source,
+          source_channel: "auto_lead_gen",
+          lead_score: lead.score,
+          lead_grade: lead.grade,
+          temperature: lead.temperature || (lead.grade === "A" ? "hot" : lead.grade === "B" ? "warm" : "cold"),
+          status: "new",
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, lead) => {
+      setGeneratedLeads((leads) => leads.map((l) => (l.id === lead.id ? { ...l, status: "added" as const } : l)));
+      queryClient.invalidateQueries({ queryKey: ["sales-leads", tenantId] });
+      toast({ title: "Lead added to pipeline!" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Failed to add lead", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleDiscard = (leadId: string) => {
+    setGeneratedLeads((leads) => leads.filter((l) => l.id !== leadId));
+  };
+
+  const toggleMonitoring = () => {
+    if (!canUseFeature("has_intent_leads")) {
+      toast({
+        title: "Upgrade required",
+        description: "Intent monitoring requires Professional plan",
+        variant: "destructive",
+      });
+      return;
+    }
+    setIsMonitoring(!isMonitoring);
+    toast({
+      title: isMonitoring ? "Monitoring stopped" : "Monitoring started",
+      description: isMonitoring ? "Intent signal detection paused" : "Checking for buying signals every 5 minutes",
+    });
+  };
 
   // =====================================================
   // RENDER
@@ -470,28 +380,34 @@ export default function AutoLeadGen() {
             <Sparkles className="h-8 w-8 text-primary" />
             Auto Lead Gen
           </h1>
-          <p className="text-muted-foreground mt-1">AI-powered lead generation and intent detection</p>
+          <p className="text-muted-foreground mt-1">AI-powered lead generation • {tierConfig.name} Plan</p>
         </div>
+
+        {/* Plan Badge & Usage Summary */}
         <div className="flex items-center gap-3">
-          {/* Credits Meter */}
-          <Card className="p-3">
-            <div className="flex items-center gap-3">
-              <div className="text-right">
-                <p className="text-xs text-muted-foreground">Daily Credits</p>
-                <p className="font-bold">
-                  {credits?.remaining || 0} / {credits?.total || 500}
-                </p>
+          <TierBadge />
+
+          {usage && (
+            <Card className="p-3">
+              <div className="flex items-center gap-4">
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground">Leads</p>
+                  <p className="font-bold text-sm">
+                    {usage.leads_generated} / {usage.leads_limit}
+                  </p>
+                </div>
+                <div className="w-20">
+                  <UsageMeter type="leads" label="" showWarning={false} size="sm" />
+                </div>
               </div>
-              <div className="w-24">
-                <Progress value={((credits?.remaining || 0) / (credits?.total || 500)) * 100} className="h-2" />
-              </div>
-            </div>
-          </Card>
-          <Button variant="outline" size="icon" onClick={() => setShowConfigDialog(true)}>
-            <Settings className="h-4 w-4" />
-          </Button>
+            </Card>
+          )}
         </div>
       </div>
+
+      {/* Limit Warnings */}
+      <LimitWarning type="leads" />
+      <LimitWarning type="b2b_searches" />
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Configuration Panel */}
@@ -499,110 +415,156 @@ export default function AutoLeadGen() {
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="w-full">
               <TabsTrigger value="b2b" className="flex-1">
-                <Building2 className="h-4 w-4 mr-2" />
                 B2B Leads
               </TabsTrigger>
-              <TabsTrigger value="intent" className="flex-1">
-                <Brain className="h-4 w-4 mr-2" />
+              <TabsTrigger value="intent" className="flex-1 relative">
                 Intent Signals
+                {!canUseFeature("has_intent_leads") && <Lock className="h-3 w-3 ml-1 opacity-50" />}
               </TabsTrigger>
             </TabsList>
 
-            {/* B2B Lead Generation */}
+            {/* B2B Tab */}
             <TabsContent value="b2b" className="mt-4 space-y-4">
               <Card>
-                <CardHeader>
+                <CardHeader className="pb-3">
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Building2 className="h-5 w-5" />
                     B2B Lead Generation
                   </CardTitle>
-                  <CardDescription>Find and enrich business leads automatically</CardDescription>
+                  <CardDescription>{getRemainingCredits("b2b_searches")} searches remaining today</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Industry Selection */}
+                  {/* Data Sources */}
+                  <DataSourceIndicator />
+
+                  {/* Industry */}
                   <div className="space-y-2">
-                    <Label>Industry *</Label>
-                    <Select value={b2bForm.industry} onValueChange={(v) => setB2bForm({ ...b2bForm, industry: v })}>
+                    <Label>Industry</Label>
+                    <Select value={selectedIndustry} onValueChange={setSelectedIndustry}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select industry" />
                       </SelectTrigger>
                       <SelectContent>
-                        {INDUSTRIES.map((industry) => (
-                          <SelectItem key={industry} value={industry.toLowerCase()}>
-                            {industry}
+                        {industries.map((ind) => (
+                          <SelectItem key={ind.id} value={ind.id}>
+                            {ind.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
 
-                  {/* Location */}
+                  {/* Keywords */}
                   <div className="space-y-2">
-                    <Label>Location</Label>
+                    <Label>Keywords</Label>
                     <Input
-                      placeholder="e.g., Dubai, UAE"
-                      value={b2bForm.location}
-                      onChange={(e) => setB2bForm({ ...b2bForm, location: e.target.value })}
+                      placeholder="e.g., flooring contractors, real estate"
+                      value={keywords}
+                      onChange={(e) => setKeywords(e.target.value)}
                     />
                   </div>
 
-                  {/* Keywords */}
-                  <div className="space-y-2">
-                    <Label>Keywords (comma-separated)</Label>
-                    <Input
-                      placeholder="e.g., software, SaaS, cloud"
-                      value={b2bForm.keywords}
-                      onChange={(e) => setB2bForm({ ...b2bForm, keywords: e.target.value })}
-                    />
+                  {/* Location */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-2">
+                      <Label>City</Label>
+                      <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          className="pl-9"
+                          placeholder="Dubai"
+                          value={location}
+                          onChange={(e) => setLocation(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Country</Label>
+                      <Input placeholder="UAE" value={country} onChange={(e) => setCountry(e.target.value)} />
+                    </div>
                   </div>
 
                   {/* Company Size */}
                   <div className="space-y-2">
                     <Label>Company Size</Label>
-                    <Select
-                      value={b2bForm.company_size}
-                      onValueChange={(v) => setB2bForm({ ...b2bForm, company_size: v })}
-                    >
+                    <Select value={companySize} onValueChange={setCompanySize}>
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="All sizes" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Sizes</SelectItem>
-                        <SelectItem value="small">Small (1-50)</SelectItem>
-                        <SelectItem value="medium">Medium (51-200)</SelectItem>
-                        <SelectItem value="large">Large (201-1000)</SelectItem>
-                        <SelectItem value="enterprise">Enterprise (1000+)</SelectItem>
+                        <SelectItem value="small">1-50 employees</SelectItem>
+                        <SelectItem value="medium">51-200 employees</SelectItem>
+                        <SelectItem value="large">201-500 employees</SelectItem>
+                        <SelectItem value="enterprise">500+ employees</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
-                  {/* Lead Count */}
+                  {/* Job Titles */}
                   <div className="space-y-2">
-                    <Label>Number of Leads: {b2bForm.count}</Label>
-                    <Slider
-                      value={[b2bForm.count]}
-                      onValueChange={(v) => setB2bForm({ ...b2bForm, count: v[0] })}
-                      min={5}
-                      max={100}
-                      step={5}
+                    <Label>Target Job Titles</Label>
+                    <Input
+                      placeholder="CEO, Owner, Director, Manager"
+                      value={jobTitles}
+                      onChange={(e) => setJobTitles(e.target.value)}
                     />
                   </div>
 
-                  {/* Generate Button */}
+                  {/* Lead Count */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <Label>Number of Leads</Label>
+                      <span className="text-sm font-medium">{generateCount[0]}</span>
+                    </div>
+                    <Slider
+                      value={generateCount}
+                      onValueChange={setGenerateCount}
+                      min={1}
+                      max={Math.max(1, Math.min(25, maxLeadsAllowed))}
+                      step={1}
+                      disabled={maxLeadsAllowed === 0}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {maxLeadsAllowed > 0
+                        ? `Max ${maxLeadsAllowed} leads remaining this month`
+                        : "No leads remaining - upgrade your plan"}
+                    </p>
+                  </div>
+
+                  {/* Use Premium Toggle */}
+                  {hasPremiumSources && (
+                    <div className="flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30 rounded-lg border">
+                      <div>
+                        <p className="text-sm font-medium flex items-center gap-1">
+                          <Crown className="h-4 w-4 text-purple-500" />
+                          Use Premium Sources
+                        </p>
+                        <p className="text-xs text-muted-foreground">Higher quality, verified leads</p>
+                      </div>
+                      <Switch checked={usePremiumSources} onCheckedChange={setUsePremiumSources} />
+                    </div>
+                  )}
+
                   <Button
                     className="w-full"
-                    onClick={() => generateB2BMutation.mutate()}
-                    disabled={generateB2BMutation.isPending || !b2bForm.industry}
+                    onClick={handleGenerateB2B}
+                    disabled={
+                      isGenerating ||
+                      hasReachedLimit("leads") ||
+                      hasReachedLimit("b2b_searches") ||
+                      maxLeadsAllowed === 0
+                    }
                   >
-                    {generateB2BMutation.isPending ? (
+                    {isGenerating ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                         Generating...
                       </>
                     ) : (
                       <>
-                        <Zap className="h-4 w-4 mr-2" />
-                        Generate {b2bForm.count} Leads
+                        <Play className="h-4 w-4 mr-2" />
+                        Generate {generateCount[0]} Leads
                       </>
                     )}
                   </Button>
@@ -610,304 +572,243 @@ export default function AutoLeadGen() {
               </Card>
             </TabsContent>
 
-            {/* Intent-Based Lead Generation */}
+            {/* Intent Tab */}
             <TabsContent value="intent" className="mt-4 space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Brain className="h-5 w-5" />
-                    Intent-Based Leads
-                  </CardTitle>
-                  <CardDescription>Capture leads showing buying intent</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Platform Selection */}
-                  <div className="space-y-2">
-                    <Label>Monitor Platforms</Label>
+              <FeatureGate feature="has_intent_leads">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Zap className="h-5 w-5" />
+                      Intent-Based Leads
+                    </CardTitle>
+                    <CardDescription>
+                      {getRemainingCredits("intent_searches")} intent searches remaining today
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Platform Selection */}
+                    <div className="space-y-3">
+                      <Label>Monitor Platforms</Label>
+                      <div className="space-y-2">
+                        {[
+                          { key: "reddit", label: "Reddit", icon: MessageCircle },
+                          { key: "twitter", label: "Twitter/X", icon: Twitter },
+                          { key: "forums", label: "Industry Forums", icon: Globe },
+                          { key: "linkedin", label: "LinkedIn", icon: Users },
+                        ].map((platform) => (
+                          <div key={platform.key} className="flex items-center justify-between p-2 border rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <platform.icon className="h-4 w-4" />
+                              <span className="text-sm">{platform.label}</span>
+                            </div>
+                            <Switch
+                              checked={platforms[platform.key as keyof typeof platforms]}
+                              onCheckedChange={(checked) =>
+                                setPlatforms((prev) => ({ ...prev, [platform.key]: checked }))
+                              }
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Intent Keywords */}
+                    <div className="space-y-2">
+                      <Label>Intent Keywords</Label>
+                      <Input
+                        placeholder="looking for, need help, recommend"
+                        value={intentKeywords}
+                        onChange={(e) => setIntentKeywords(e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">Keywords that indicate buying intent</p>
+                    </div>
+
                     <div className="grid grid-cols-2 gap-2">
-                      {INTENT_PLATFORMS.map((platform) => (
-                        <Button
-                          key={platform.id}
-                          variant={intentForm.platforms.includes(platform.id) ? "default" : "outline"}
-                          size="sm"
-                          className="justify-start"
-                          onClick={() => {
-                            const newPlatforms = intentForm.platforms.includes(platform.id)
-                              ? intentForm.platforms.filter((p) => p !== platform.id)
-                              : [...intentForm.platforms, platform.id];
-                            setIntentForm({ ...intentForm, platforms: newPlatforms });
-                          }}
-                        >
-                          <span className="mr-2">{platform.icon}</span>
-                          {platform.name}
-                        </Button>
-                      ))}
+                      <Button
+                        className="w-full"
+                        onClick={handleGenerateIntent}
+                        disabled={isGenerating || hasReachedLimit("intent_searches")}
+                      >
+                        {isGenerating ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            <Zap className="h-4 w-4 mr-1" />
+                            Search Now
+                          </>
+                        )}
+                      </Button>
+
+                      <Button variant={isMonitoring ? "destructive" : "outline"} onClick={toggleMonitoring}>
+                        {isMonitoring ? (
+                          <>
+                            <Pause className="h-4 w-4 mr-1" />
+                            Stop
+                          </>
+                        ) : (
+                          <>
+                            <Radio className="h-4 w-4 mr-1" />
+                            Monitor
+                          </>
+                        )}
+                      </Button>
                     </div>
-                  </div>
 
-                  {/* Intent Keywords */}
-                  <div className="space-y-2">
-                    <Label>Intent Keywords</Label>
-                    <Input
-                      placeholder="e.g., looking for apartments, need flooring"
-                      value={intentForm.keywords}
-                      onChange={(e) => setIntentForm({ ...intentForm, keywords: e.target.value })}
-                    />
-                    <p className="text-xs text-muted-foreground">Enter keywords that indicate buying intent</p>
-                  </div>
-
-                  {/* Location */}
-                  <div className="space-y-2">
-                    <Label>Location (Optional)</Label>
-                    <Input
-                      placeholder="e.g., Dubai, UAE"
-                      value={intentForm.location}
-                      onChange={(e) => setIntentForm({ ...intentForm, location: e.target.value })}
-                    />
-                  </div>
-
-                  {/* Monitoring Toggle */}
-                  <Button
-                    className={cn(
-                      "w-full",
-                      isMonitoring ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600",
+                    {isMonitoring && (
+                      <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+                        <div className="relative">
+                          <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
+                          <div className="absolute inset-0 w-3 h-3 bg-green-500 rounded-full animate-ping" />
+                        </div>
+                        <span className="text-sm text-green-700 dark:text-green-300">Monitoring active</span>
+                      </div>
                     )}
-                    onClick={toggleMonitoring}
-                    disabled={generateIntentMutation.isPending || !intentForm.keywords}
-                  >
-                    {isMonitoring ? (
-                      <>
-                        <Pause className="h-4 w-4 mr-2" />
-                        Stop Monitoring
-                      </>
-                    ) : (
-                      <>
-                        <Play className="h-4 w-4 mr-2" />
-                        Start Monitoring
-                      </>
-                    )}
-                  </Button>
-
-                  {isMonitoring && (
-                    <div className="flex items-center gap-2 text-sm text-green-600">
-                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                      Monitoring active - checking every 5 minutes
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </FeatureGate>
             </TabsContent>
           </Tabs>
+
+          {/* Usage Stats Card */}
+          {usage && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  Usage This Month
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <UsageMeter type="leads" label="Leads Generated" />
+                <UsageMeter type="b2b_searches" label="B2B Searches Today" />
+                {canUseFeature("has_intent_leads") && (
+                  <UsageMeter type="intent_searches" label="Intent Searches Today" />
+                )}
+
+                <div className="pt-2 border-t">
+                  <p className="text-xs text-muted-foreground">
+                    {usage.days_remaining} days remaining in billing period
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
-        {/* Generated Leads Queue */}
+        {/* Results Panel */}
         <div className="lg:col-span-2">
           <Card className="h-full">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>Generated Leads Queue</CardTitle>
-                  <CardDescription>{pendingLeads.length} leads ready for review</CardDescription>
+                  <CardDescription>
+                    {generatedLeads.filter((l) => l.status === "new").length} leads ready for review
+                  </CardDescription>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => refetchLeads()} disabled={leadsLoading}>
-                  <RefreshCw className={cn("h-4 w-4 mr-2", leadsLoading && "animate-spin")} />
+                <Button variant="outline" size="sm" onClick={() => refreshUsage()}>
+                  <RefreshCw className="h-4 w-4 mr-2" />
                   Refresh
                 </Button>
               </div>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-[600px] pr-4">
-                {leadsLoading ? (
-                  <div className="space-y-4">
-                    {[...Array(5)].map((_, i) => (
-                      <Skeleton key={i} className="h-24 w-full" />
-                    ))}
-                  </div>
-                ) : leads.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p className="font-medium">No leads generated yet</p>
-                    <p className="text-sm mt-1">Use B2B or Intent search to find leads</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {leads
-                      .filter((l) => l.status !== "discarded")
-                      .map((lead) => (
-                        <Card
-                          key={lead.id}
-                          className={cn(
-                            "transition-all hover:shadow-md",
-                            lead.status === "qualified" && "border-green-300 bg-green-50/50",
-                          )}
-                        >
-                          <CardContent className="p-4">
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                  <h4 className="font-semibold">{lead.company_name}</h4>
-                                  <Badge className={cn("text-xs", GRADE_COLORS[lead.lead_grade] || "bg-gray-500")}>
-                                    {lead.lead_grade}
+              <ScrollArea className="h-[calc(100vh-350px)]">
+                <div className="space-y-3">
+                  {generatedLeads
+                    .filter((l) => l.status !== "dismissed")
+                    .map((lead) => (
+                      <Card
+                        key={lead.id}
+                        className={cn(
+                          "transition-all",
+                          lead.status === "added" && "opacity-50 bg-green-50/50 dark:bg-green-950/20",
+                        )}
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                <h4 className="font-medium truncate">{lead.company || "Unknown Company"}</h4>
+                                <GradeBadge grade={lead.grade} />
+                                <DataSourceBadge source={lead.source} />
+                                {lead.temperature === "hot" && (
+                                  <Badge variant="destructive" className="text-xs">
+                                    🔥 Hot
                                   </Badge>
-                                  {lead.lead_type === "b2c" && (
-                                    <Badge variant="outline" className="text-xs">
-                                      Intent
-                                    </Badge>
-                                  )}
-                                </div>
-
-                                {lead.contact_name && (
-                                  <p className="text-sm text-muted-foreground flex items-center gap-1">
+                                )}
+                              </div>
+                              <div className="grid grid-cols-2 gap-2 text-sm mt-2">
+                                {lead.contact && (
+                                  <div className="flex items-center gap-1 text-muted-foreground">
                                     <Users className="h-3 w-3" />
-                                    {lead.contact_name}
-                                  </p>
+                                    <span className="truncate">{lead.contact}</span>
+                                  </div>
                                 )}
-
-                                <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-muted-foreground">
-                                  {lead.email && (
-                                    <span className="flex items-center gap-1">
-                                      <Mail className="h-3 w-3" />
-                                      {lead.email}
-                                    </span>
-                                  )}
-                                  {lead.phone && (
-                                    <span className="flex items-center gap-1">
-                                      <Phone className="h-3 w-3" />
-                                      {lead.phone}
-                                    </span>
-                                  )}
-                                  {lead.website && (
-                                    <a
-                                      href={lead.website}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="flex items-center gap-1 hover:text-primary"
-                                    >
-                                      <Globe className="h-3 w-3" />
-                                      Website
-                                    </a>
-                                  )}
-                                </div>
-
-                                {lead.status === "enriching" && (
-                                  <div className="flex items-center gap-1 mt-2 text-xs text-blue-600">
-                                    <Loader2 className="h-3 w-3 animate-spin" />
-                                    Enriching data...
+                                {lead.title && (
+                                  <div className="flex items-center gap-1 text-muted-foreground">
+                                    <Briefcase className="h-3 w-3" />
+                                    <span className="truncate">{lead.title}</span>
                                   </div>
                                 )}
                               </div>
+                              {lead.email && (
+                                <p className="text-sm text-muted-foreground mt-1 truncate">{lead.email}</p>
+                              )}
 
-                              <div className="flex flex-col items-end gap-2">
-                                <div className="text-right">
-                                  <p className="text-xs text-muted-foreground">Score</p>
-                                  <p className="text-xl font-bold">{lead.lead_score}</p>
+                              {lead.status === "added" && (
+                                <div className="flex items-center gap-2 mt-2 text-sm text-green-600">
+                                  <Check className="h-3 w-3" />
+                                  <span>Added to pipeline</span>
                                 </div>
-
-                                {lead.status === "new" && (
-                                  <div className="flex gap-1">
-                                    <Button
-                                      size="sm"
-                                      variant="default"
-                                      onClick={() => addToPipelineMutation.mutate(lead)}
-                                      disabled={addToPipelineMutation.isPending}
-                                    >
-                                      <Plus className="h-3 w-3 mr-1" />
-                                      Add
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => discardLeadMutation.mutate(lead.id)}
-                                    >
-                                      <XCircle className="h-3 w-3" />
-                                    </Button>
-                                  </div>
-                                )}
-
-                                {lead.status === "qualified" && (
-                                  <Badge variant="outline" className="text-green-600 border-green-300">
-                                    <CheckCircle className="h-3 w-3 mr-1" />
-                                    In Pipeline
-                                  </Badge>
-                                )}
-                              </div>
+                              )}
                             </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                  </div>
-                )}
+
+                            <div className="flex flex-col items-end gap-2">
+                              <div className="text-right">
+                                <p className="text-xs text-muted-foreground">Score</p>
+                                <p className="text-lg font-bold">{lead.score}</p>
+                              </div>
+
+                              {lead.status === "new" && (
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={() => handleDiscard(lead.id)}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => addToPipelineMutation.mutate(lead)}
+                                    disabled={addToPipelineMutation.isPending}
+                                  >
+                                    <ArrowRight className="h-4 w-4 mr-1" />
+                                    Add
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+
+                  {generatedLeads.length === 0 && (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <Sparkles className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p className="font-medium">No leads in queue</p>
+                      <p className="text-sm mt-1">Configure your search and generate leads</p>
+                    </div>
+                  )}
+                </div>
               </ScrollArea>
             </CardContent>
           </Card>
         </div>
       </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4 text-center">
-            <Building2 className="h-8 w-8 mx-auto mb-2 text-blue-500" />
-            <p className="text-2xl font-bold">{b2bLeads.length}</p>
-            <p className="text-sm text-muted-foreground">B2B Leads</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <Brain className="h-8 w-8 mx-auto mb-2 text-purple-500" />
-            <p className="text-2xl font-bold">{intentLeads.length}</p>
-            <p className="text-sm text-muted-foreground">Intent Leads</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <TrendingUp className="h-8 w-8 mx-auto mb-2 text-green-500" />
-            <p className="text-2xl font-bold">{leads.filter((l) => l.lead_grade === "A").length}</p>
-            <p className="text-sm text-muted-foreground">Hot Leads (A)</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <CheckCircle className="h-8 w-8 mx-auto mb-2 text-emerald-500" />
-            <p className="text-2xl font-bold">{leads.filter((l) => l.status === "qualified").length}</p>
-            <p className="text-sm text-muted-foreground">In Pipeline</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Config Dialog */}
-      <Dialog open={showConfigDialog} onOpenChange={setShowConfigDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Lead Generation Settings</DialogTitle>
-            <DialogDescription>Configure your lead generation preferences</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="flex items-center justify-between">
-              <Label>Auto-enroll in sequence</Label>
-              <Switch checked={config?.auto_sequence_enabled || false} />
-            </div>
-            <div className="flex items-center justify-between">
-              <Label>B2B Generation Enabled</Label>
-              <Switch checked={config?.b2b_enabled || true} />
-            </div>
-            <div className="flex items-center justify-between">
-              <Label>Intent Detection Enabled</Label>
-              <Switch checked={config?.intent_enabled || true} />
-            </div>
-            <div className="space-y-2">
-              <Label>Daily Lead Limit</Label>
-              <Input type="number" value={config?.free_leads_per_day || 50} readOnly className="bg-muted" />
-              <p className="text-xs text-muted-foreground">Based on your subscription plan</p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowConfigDialog(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
