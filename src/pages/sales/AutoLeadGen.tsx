@@ -1,10 +1,10 @@
 // ============================================
 // FILE: src/pages/sales/LeadDiscovery.tsx
-// COPY THIS ENTIRE FILE INTO LOVABLE
-// Matches 417 Lead Discovery design exactly
+// COMPLETE B2B IMPLEMENTATION - ALL FEATURES
+// Paste this into Lovable to replace existing
 // ============================================
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
@@ -45,39 +45,239 @@ import {
   Clock,
   Play,
   Trash2,
+  Check,
+  AlertTriangle,
+  ExternalLink,
+  Mail,
+  Phone,
+  Globe,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const N8N_WEBHOOK_URL = "https://webhooks.zatesystems.com";
+const N8N_WEBHOOK_URL = "https://webhooks.zatesystems.com/webhook";
 
+// COMPLETE INDUSTRIES LIST - Matching n8n workflow configurations
 const INDUSTRIES = [
-  { id: "medical_spa", label: "Medical Spa / Aesthetics", icon: "✨" },
-  { id: "dental", label: "Dental Clinic", icon: "🦷" },
-  { id: "salon", label: "Salon / Beauty", icon: "💇" },
-  { id: "real_estate", label: "Real Estate", icon: "🏠" },
-  { id: "restaurant", label: "Restaurant / F&B", icon: "🍽️" },
-  { id: "healthcare", label: "Healthcare / Clinic", icon: "⚕️" },
-  { id: "fitness", label: "Fitness / Gym", icon: "💪" },
-  { id: "technology", label: "Technology", icon: "💻" },
-  { id: "flooring", label: "Flooring", icon: "🏗️" },
-  { id: "general", label: "General", icon: "🏢" },
+  {
+    id: "medical_spa",
+    label: "Medical Spa / Aesthetics",
+    icon: "✨",
+    google_suffix: "medical spa aesthetics clinic botox filler laser treatment contact email",
+  },
+  {
+    id: "dental",
+    label: "Dental Clinic",
+    icon: "🦷",
+    google_suffix: "dental clinic dentist teeth whitening orthodontist contact email",
+  },
+  {
+    id: "salon",
+    label: "Salon / Beauty",
+    icon: "💇",
+    google_suffix: "salon beauty parlor hair nails spa contact booking email",
+  },
+  {
+    id: "real_estate",
+    label: "Real Estate",
+    icon: "🏠",
+    google_suffix: "real estate agent broker property manager listing contact email",
+  },
+  {
+    id: "restaurant",
+    label: "Restaurant / F&B",
+    icon: "🍽️",
+    google_suffix: "restaurant cafe dining catering food contact reservation email",
+  },
+  {
+    id: "healthcare",
+    label: "Healthcare / Clinic",
+    icon: "⚕️",
+    google_suffix: "healthcare clinic hospital medical center doctor contact email",
+  },
+  {
+    id: "fitness",
+    label: "Fitness / Gym",
+    icon: "💪",
+    google_suffix: "gym fitness center personal trainer workout contact membership email",
+  },
+  {
+    id: "technology",
+    label: "Technology / Software",
+    icon: "💻",
+    google_suffix: "technology software company SaaS development IT services contact email",
+  },
+  {
+    id: "flooring",
+    label: "Flooring / Contractors",
+    icon: "🏗️",
+    google_suffix: "flooring contractor installation tiles hardwood carpet vinyl contact email",
+  },
+  {
+    id: "construction",
+    label: "Construction",
+    icon: "🔨",
+    google_suffix: "construction contractor builder general contractor renovation contact email",
+  },
+  {
+    id: "legal",
+    label: "Legal / Law Firm",
+    icon: "⚖️",
+    google_suffix: "law firm attorney lawyer legal services consultation contact email",
+  },
+  {
+    id: "accounting",
+    label: "Accounting / CPA",
+    icon: "📊",
+    google_suffix: "accounting firm CPA accountant tax services bookkeeping contact email",
+  },
+  {
+    id: "marketing",
+    label: "Marketing / Agency",
+    icon: "📣",
+    google_suffix: "marketing agency digital marketing advertising PR branding contact email",
+  },
+  {
+    id: "insurance",
+    label: "Insurance",
+    icon: "🛡️",
+    google_suffix: "insurance agency broker auto home life health contact quote email",
+  },
+  {
+    id: "automotive",
+    label: "Automotive",
+    icon: "🚗",
+    google_suffix: "auto dealer car dealership mechanic repair service contact email",
+  },
+  {
+    id: "education",
+    label: "Education / Training",
+    icon: "📚",
+    google_suffix: "school training center tutoring education courses contact enrollment email",
+  },
+  {
+    id: "hotel",
+    label: "Hotel / Hospitality",
+    icon: "🏨",
+    google_suffix: "hotel resort hospitality accommodation booking reservation contact email",
+  },
+  {
+    id: "plumbing",
+    label: "Plumbing",
+    icon: "🔧",
+    google_suffix: "plumber plumbing contractor repair installation emergency service contact email",
+  },
+  {
+    id: "electrical",
+    label: "Electrical",
+    icon: "⚡",
+    google_suffix: "electrician electrical contractor wiring repair installation contact email",
+  },
+  {
+    id: "hvac",
+    label: "HVAC",
+    icon: "❄️",
+    google_suffix: "hvac heating cooling air conditioning repair installation contact email",
+  },
+  {
+    id: "landscaping",
+    label: "Landscaping",
+    icon: "🌳",
+    google_suffix: "landscaping lawn care garden maintenance outdoor services contact email",
+  },
+  {
+    id: "photography",
+    label: "Photography",
+    icon: "📷",
+    google_suffix: "photographer photography studio wedding portrait event contact booking email",
+  },
+  {
+    id: "wedding",
+    label: "Wedding / Events",
+    icon: "💒",
+    google_suffix: "wedding planner event planning venue catering contact booking email",
+  },
+  {
+    id: "pet_services",
+    label: "Pet Services",
+    icon: "🐕",
+    google_suffix: "pet grooming veterinary dog walking pet sitting boarding contact email",
+  },
+  {
+    id: "cleaning",
+    label: "Cleaning Services",
+    icon: "🧹",
+    google_suffix: "cleaning service house cleaning commercial janitorial maid contact email",
+  },
+  {
+    id: "moving",
+    label: "Moving / Storage",
+    icon: "📦",
+    google_suffix: "moving company movers storage relocation packing contact quote email",
+  },
+  {
+    id: "general",
+    label: "General / Other",
+    icon: "🏢",
+    google_suffix: "business company enterprise services contact email phone",
+  },
 ];
 
-const INTENT_OPTIONS: Record<string, { label: string; keywords: string[] }[]> = {
-  aesthetics: [
-    { label: "Looking for Botox", keywords: ["botox near me", "botox treatment", "wrinkle treatment"] },
-    { label: "Looking for Fillers", keywords: ["lip fillers", "dermal fillers", "facial fillers"] },
-    { label: "Looking for Laser", keywords: ["laser hair removal", "laser treatment", "skin laser"] },
-  ],
-  dental: [
-    { label: "Looking for Dentist", keywords: ["dentist near me", "dental clinic", "teeth cleaning"] },
-    { label: "Looking for Braces", keywords: ["braces cost", "invisalign", "teeth straightening"] },
-  ],
-  real_estate: [
-    { label: "Looking to Buy", keywords: ["houses for sale", "buy apartment", "property for sale"] },
-    { label: "Looking to Rent", keywords: ["apartments for rent", "rental properties", "lease apartment"] },
-  ],
-};
+// LOCAL DISCOVERY CATEGORIES - For Google Places/Maps
+const LOCAL_CATEGORIES = [
+  { id: "beauty_salon", label: "Beauty Salon", icon: "💇" },
+  { id: "spa", label: "Spa", icon: "🧖" },
+  { id: "gym", label: "Gym / Fitness", icon: "💪" },
+  { id: "dentist", label: "Dentist", icon: "🦷" },
+  { id: "doctor", label: "Doctor / Clinic", icon: "⚕️" },
+  { id: "restaurant", label: "Restaurant", icon: "🍽️" },
+  { id: "cafe", label: "Cafe / Coffee", icon: "☕" },
+  { id: "real_estate_agency", label: "Real Estate", icon: "🏠" },
+  { id: "flooring_contractor", label: "Flooring Contractor", icon: "🏗️" },
+  { id: "general_contractor", label: "General Contractor", icon: "🔨" },
+  { id: "electrician", label: "Electrician", icon: "⚡" },
+  { id: "plumber", label: "Plumber", icon: "🔧" },
+  { id: "lawyer", label: "Lawyer / Law Firm", icon: "⚖️" },
+  { id: "accountant", label: "Accountant / CPA", icon: "📊" },
+  { id: "car_dealer", label: "Car Dealer", icon: "🚗" },
+  { id: "car_repair", label: "Auto Repair", icon: "🔧" },
+  { id: "hotel", label: "Hotel", icon: "🏨" },
+  { id: "pet_store", label: "Pet Store / Vet", icon: "🐕" },
+  { id: "moving_company", label: "Moving Company", icon: "📦" },
+  { id: "insurance_agency", label: "Insurance Agency", icon: "🛡️" },
+];
+
+// JOB TITLES for Premium B2B
+const JOB_TITLES = [
+  "CEO",
+  "Owner",
+  "Founder",
+  "President",
+  "Director",
+  "General Manager",
+  "Manager",
+  "VP",
+  "Vice President",
+  "Partner",
+  "Principal",
+  "CFO",
+  "COO",
+  "CTO",
+  "Sales Director",
+  "Marketing Director",
+  "Operations Director",
+  "Practice Manager",
+  "Office Manager",
+  "Administrator",
+];
+
+// COMPANY SIZES
+const COMPANY_SIZES = [
+  { id: "1-10", label: "1-10 employees" },
+  { id: "11-50", label: "11-50 employees" },
+  { id: "51-200", label: "51-200 employees" },
+  { id: "201-500", label: "201-500 employees" },
+  { id: "500+", label: "500+ employees" },
+];
 
 export default function LeadDiscovery() {
   // CRITICAL: Get tenantConfig for UUID
@@ -96,6 +296,10 @@ export default function LeadDiscovery() {
 
   // Loading states
   const [isSearching, setIsSearching] = useState(false);
+
+  // Search results state (for displaying before saving)
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [showResults, setShowResults] = useState(false);
 
   // B2B Quick Search form
   const [quickForm, setQuickForm] = useState({
@@ -119,26 +323,9 @@ export default function LeadDiscovery() {
     titles: [] as string[],
     industries: [] as string[],
     location: "",
-    companySize: "all",
+    country: "United Arab Emirates",
+    companySize: [] as string[],
     maxResults: 25,
-  });
-
-  // B2C Intent Signals form
-  const [intentForm, setIntentForm] = useState({
-    industry: "aesthetics",
-    searchIntent: "looking_for_botox",
-    location: "",
-    source: "google_intent",
-    maxResults: 25,
-  });
-
-  // B2C Social Audiences form
-  const [socialForm, setSocialForm] = useState({
-    platform: "instagram",
-    hashtags: "",
-    location: "",
-    engagementMin: 100,
-    maxResults: 50,
   });
 
   // Auto Lead Gen settings
@@ -170,8 +357,14 @@ export default function LeadDiscovery() {
     title: "",
   });
 
+  // Check if tenant has premium API keys
+  const hasApolloKey = !!tenantConfig?.apollo_api_key;
+  const hasHunterKey = !!tenantConfig?.hunter_api_key;
+  const hasApifyKey = !!tenantConfig?.apify_api_key;
+  const hasPremiumAccess = hasApolloKey || hasHunterKey;
+
   // Fetch stats using UUID
-  const { data: stats } = useQuery({
+  const { data: stats, refetch: refetchStats } = useQuery({
     queryKey: ["lead-discovery-stats", tenantUuid],
     queryFn: async () => {
       if (!tenantUuid) return { total: 0, today: 0, inSequences: 0, conversion: 0 };
@@ -243,54 +436,72 @@ export default function LeadDiscovery() {
     enabled: !!tenantUuid,
   });
 
-  // Get intent keywords for selected industry/intent
-  const currentIntentKeywords =
-    INTENT_OPTIONS[intentForm.industry]?.find(
-      (i) => i.label.toLowerCase().replace(/ /g, "_") === intentForm.searchIntent,
-    )?.keywords || [];
-
   // ============ HANDLERS ============
 
   // B2B Quick Search
   const handleQuickSearch = async () => {
     if (!tenantUuid) {
-      toast({ title: "Error", description: "Tenant not loaded", variant: "destructive" });
+      toast({ title: "Error", description: "Tenant not loaded. Please refresh.", variant: "destructive" });
       return;
     }
     if (!quickForm.location) {
-      toast({ title: "Missing location", description: "Please enter a location", variant: "destructive" });
+      toast({ title: "Missing location", description: "Please enter a city or location", variant: "destructive" });
       return;
     }
 
     setIsSearching(true);
+    setSearchResults([]);
+    setShowResults(false);
+
     try {
-      const response = await fetch(`${N8N_WEBHOOK_URL}/webhook/lead-gen-request`, {
+      const response = await fetch(`${N8N_WEBHOOK_URL}/lead-gen-request`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tenant_id: tenantUuid,
-          generation_type: "free",
-          cost_tier: "free",
+          tenant_id: tenantUuid, // CRITICAL: Send UUID!
+          keywords:
+            quickForm.keywords || INDUSTRIES.find((i) => i.id === quickForm.industry)?.label || quickForm.industry,
           industry: quickForm.industry,
+          location: quickForm.location,
           city: quickForm.location,
-          keywords: quickForm.keywords,
-          max_results: quickForm.maxResults,
+          country: "USA", // Default, can be made configurable
+          max_leads: quickForm.maxResults,
+          data_sources: ["google"],
+          use_premium_sources: false,
         }),
       });
 
       const result = await response.json();
+
       if (result.success || result.leads) {
+        const leadsFound = result.leads?.length || result.leads_found || 0;
+        const leadsSaved = result.leads_saved || leadsFound;
+
         toast({
           title: "✅ Search Complete!",
-          description: `Found ${result.leads?.length || result.valid_leads || 0} businesses`,
+          description: `Found ${leadsFound} businesses, saved ${leadsSaved} new leads`,
         });
+
+        // Refresh stats
         queryClient.invalidateQueries({ queryKey: ["lead-discovery-stats"] });
         queryClient.invalidateQueries({ queryKey: ["lead-gen-history"] });
+        refetchStats();
+
+        // Show results if available
+        if (result.leads && result.leads.length > 0) {
+          setSearchResults(result.leads);
+          setShowResults(true);
+        }
       } else {
-        throw new Error(result.error || "No results found");
+        throw new Error(result.error || result.message || "Search failed - check n8n workflow");
       }
     } catch (error: any) {
-      toast({ title: "Search failed", description: error.message, variant: "destructive" });
+      console.error("Quick Search Error:", error);
+      toast({
+        title: "Search failed",
+        description: error.message || "Check browser console and n8n execution logs",
+        variant: "destructive",
+      });
     } finally {
       setIsSearching(false);
     }
@@ -303,24 +514,36 @@ export default function LeadDiscovery() {
       return;
     }
     if (!localForm.category || !localForm.location) {
-      toast({ title: "Missing fields", description: "Please select category and location", variant: "destructive" });
+      toast({
+        title: "Missing fields",
+        description: "Please select category and enter location",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!hasApifyKey) {
+      toast({
+        title: "API Key Required",
+        description: "Local Discovery requires Apify API key. Configure in Settings → Integrations.",
+        variant: "destructive",
+      });
       return;
     }
 
     setIsSearching(true);
     try {
-      const response = await fetch(`${N8N_WEBHOOK_URL}/webhook/lead-gen-request`, {
+      const response = await fetch(`${N8N_WEBHOOK_URL}/lead-gen-request`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tenant_id: tenantUuid,
-          generation_type: "google_places",
-          cost_tier: "cheap",
-          industry: localForm.category,
+          generation_type: "google_places", // Route to Places logic
+          category: localForm.category,
           location: localForm.location,
           radius_km: localForm.radius,
           min_rating: parseFloat(localForm.minRating),
-          max_results: localForm.maxResults,
+          max_leads: localForm.maxResults,
         }),
       });
 
@@ -331,6 +554,9 @@ export default function LeadDiscovery() {
           description: `Found ${result.leads?.length || 0} nearby businesses`,
         });
         refetchHistory();
+        refetchStats();
+      } else {
+        throw new Error(result.error || "Local Discovery failed");
       }
     } catch (error: any) {
       toast({ title: "Search failed", description: error.message, variant: "destructive" });
@@ -339,37 +565,64 @@ export default function LeadDiscovery() {
     }
   };
 
-  // B2C Intent Search
-  const handleIntentSearch = async () => {
+  // B2B LinkedIn Premium Search
+  const handleLinkedInSearch = async () => {
     if (!tenantUuid) {
       toast({ title: "Error", description: "Tenant not loaded", variant: "destructive" });
       return;
     }
 
+    if (!hasPremiumAccess) {
+      toast({
+        title: "API Keys Required",
+        description: "Premium search requires Apollo.io or Hunter.io API key. Configure in Settings → Integrations.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (linkedinForm.titles.length === 0) {
+      toast({
+        title: "Select Job Titles",
+        description: "Please select at least one job title to search",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSearching(true);
     try {
-      const response = await fetch(`${N8N_WEBHOOK_URL}/webhook/lead-gen-request`, {
+      const response = await fetch(`${N8N_WEBHOOK_URL}/premium-b2b-lead-gen`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tenant_id: tenantUuid,
-          generation_type: "intent",
-          industry: intentForm.industry,
-          search_intent: intentForm.searchIntent,
-          location: intentForm.location,
-          source: intentForm.source,
-          keywords: currentIntentKeywords,
-          max_results: intentForm.maxResults,
+          job_titles: linkedinForm.titles,
+          industries: linkedinForm.industries,
+          country: linkedinForm.country,
+          city: linkedinForm.location,
+          company_sizes: linkedinForm.companySize,
+          max_results: linkedinForm.maxResults,
+          use_apollo: hasApolloKey,
+          use_hunter: hasHunterKey,
         }),
       });
 
       const result = await response.json();
       if (result.success) {
         toast({
-          title: "✅ Intent Leads Found!",
-          description: `Found ${result.leads?.length || 0} potential customers`,
+          title: "✅ Premium Search Complete!",
+          description: `Found ${result.leads?.length || 0} decision makers with contact info`,
         });
         refetchHistory();
+        refetchStats();
+
+        if (result.leads) {
+          setSearchResults(result.leads);
+          setShowResults(true);
+        }
+      } else {
+        throw new Error(result.error || "Premium search failed");
       }
     } catch (error: any) {
       toast({ title: "Search failed", description: error.message, variant: "destructive" });
@@ -378,17 +631,22 @@ export default function LeadDiscovery() {
     }
   };
 
-  // Save Auto Lead Gen Config - FIXED WITH UUID
+  // Save Auto Lead Gen Config
   const handleSaveAutoConfig = async () => {
     if (!tenantUuid) {
       toast({ title: "Error", description: "Tenant not loaded yet. Please wait.", variant: "destructive" });
       return;
     }
 
+    if (!autoSettings.industry || !autoSettings.location) {
+      toast({ title: "Missing fields", description: "Please select industry and location", variant: "destructive" });
+      return;
+    }
+
     try {
       const { error } = await supabase.from("lead_gen_searches").insert({
-        tenant_id: tenantUuid, // CRITICAL: Use UUID not slug!
-        name: `Auto: ${autoSettings.industry || "General"} - ${autoSettings.location || "Any"}`,
+        tenant_id: tenantUuid,
+        name: `Auto: ${INDUSTRIES.find((i) => i.id === autoSettings.industry)?.label || autoSettings.industry} - ${autoSettings.location}`,
         search_type: autoSettings.source,
         keywords: autoSettings.keywords,
         industry: autoSettings.industry,
@@ -410,7 +668,7 @@ export default function LeadDiscovery() {
     }
   };
 
-  // Manual Entry - FIXED WITH UUID
+  // Manual Entry
   const handleManualEntry = async () => {
     if (!tenantUuid) {
       toast({ title: "Error", description: "Tenant not loaded", variant: "destructive" });
@@ -427,7 +685,7 @@ export default function LeadDiscovery() {
 
     try {
       const { error } = await supabase.from("sales_leads").insert({
-        tenant_id: tenantUuid, // CRITICAL: Use UUID!
+        tenant_id: tenantUuid,
         company_name: manualForm.company || null,
         contact_name: manualForm.name || null,
         email: manualForm.email || null,
@@ -436,24 +694,18 @@ export default function LeadDiscovery() {
         source: "manual",
         source_channel: "manual_entry",
         status: "new",
+        lead_score: 50,
+        temperature: "warm",
       });
 
       if (error) throw error;
 
       toast({ title: "✅ Lead Added!", description: "Lead has been added to your pipeline" });
       setManualForm({ name: "", email: "", phone: "", company: "", title: "" });
-      queryClient.invalidateQueries({ queryKey: ["lead-discovery-stats"] });
+      refetchStats();
     } catch (error: any) {
       toast({ title: "Failed to add", description: error.message, variant: "destructive" });
     }
-  };
-
-  // CSV Upload handler
-  const handleFileUpload = async () => {
-    if (!tenantUuid || !uploadedFile) return;
-
-    toast({ title: "Processing CSV", description: `Uploading ${uploadedFile.name}...` });
-    // In real implementation, parse CSV and insert leads with tenant_id: tenantUuid
   };
 
   // Delete saved config
@@ -467,6 +719,24 @@ export default function LeadDiscovery() {
       refetchConfigs();
     },
   });
+
+  // Toggle job title selection
+  const toggleTitle = (title: string) => {
+    setLinkedinForm((prev) => ({
+      ...prev,
+      titles: prev.titles.includes(title) ? prev.titles.filter((t) => t !== title) : [...prev.titles, title],
+    }));
+  };
+
+  // Toggle company size selection
+  const toggleSize = (size: string) => {
+    setLinkedinForm((prev) => ({
+      ...prev,
+      companySize: prev.companySize.includes(size)
+        ? prev.companySize.filter((s) => s !== size)
+        : [...prev.companySize, size],
+    }));
+  };
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -573,89 +843,160 @@ export default function LeadDiscovery() {
 
           {/* Quick Search (Free) */}
           {b2bSubTab === "quick" && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Gift className="h-5 w-5 text-green-500" /> Quick Search
-                </CardTitle>
-                <CardDescription>Free Google Custom Search - 100 searches/day</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Industry</Label>
-                    <Select
-                      value={quickForm.industry}
-                      onValueChange={(v) => setQuickForm({ ...quickForm, industry: v })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {INDUSTRIES.map((ind) => (
-                          <SelectItem key={ind.id} value={ind.id}>
-                            {ind.icon} {ind.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Gift className="h-5 w-5 text-green-500" /> Quick Search
+                  </CardTitle>
+                  <CardDescription>Free Google Custom Search - 100 searches/day</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Industry</Label>
+                      <Select
+                        value={quickForm.industry}
+                        onValueChange={(v) => setQuickForm({ ...quickForm, industry: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {INDUSTRIES.map((ind) => (
+                            <SelectItem key={ind.id} value={ind.id}>
+                              {ind.icon} {ind.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Location *</Label>
+                      <Input
+                        placeholder="e.g., New York, Dubai, London"
+                        value={quickForm.location}
+                        onChange={(e) => setQuickForm({ ...quickForm, location: e.target.value })}
+                      />
+                    </div>
                   </div>
+
                   <div className="space-y-2">
-                    <Label>Location</Label>
+                    <Label>Keywords (optional)</Label>
                     <Input
-                      placeholder="e.g., Dubai, New York, London"
-                      value={quickForm.location}
-                      onChange={(e) => setQuickForm({ ...quickForm, location: e.target.value })}
+                      placeholder="e.g., luxury, premium, certified, award-winning"
+                      value={quickForm.keywords}
+                      onChange={(e) => setQuickForm({ ...quickForm, keywords: e.target.value })}
                     />
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <Label>Keywords (optional)</Label>
-                  <Input
-                    placeholder="e.g., luxury, premium, certified"
-                    value={quickForm.keywords}
-                    onChange={(e) => setQuickForm({ ...quickForm, keywords: e.target.value })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <Label>Max Results</Label>
-                    <span className="font-medium">{quickForm.maxResults}</span>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <Label>Max Results</Label>
+                      <span className="font-medium">{quickForm.maxResults}</span>
+                    </div>
+                    <Slider
+                      value={[quickForm.maxResults]}
+                      onValueChange={(v) => setQuickForm({ ...quickForm, maxResults: v[0] })}
+                      min={5}
+                      max={50}
+                      step={5}
+                    />
                   </div>
-                  <Slider
-                    value={[quickForm.maxResults]}
-                    onValueChange={(v) => setQuickForm({ ...quickForm, maxResults: v[0] })}
-                    min={5}
-                    max={50}
-                    step={5}
-                  />
-                </div>
 
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <span>💰 Estimated cost:</span>
-                  <Badge className="bg-green-500">FREE</Badge>
-                </div>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span>💰 Estimated cost:</span>
+                    <Badge className="bg-green-500">FREE</Badge>
+                  </div>
 
-                <Button
-                  onClick={handleQuickSearch}
-                  disabled={isSearching}
-                  className="w-full bg-purple-600 hover:bg-purple-700"
-                  size="lg"
-                >
-                  {isSearching ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Searching...
-                    </>
-                  ) : (
-                    <>
-                      <Search className="h-4 w-4 mr-2" /> Search Businesses
-                    </>
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
+                  <Button
+                    onClick={handleQuickSearch}
+                    disabled={isSearching || !quickForm.location}
+                    className="w-full bg-purple-600 hover:bg-purple-700"
+                    size="lg"
+                  >
+                    {isSearching ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Searching...
+                      </>
+                    ) : (
+                      <>
+                        <Search className="h-4 w-4 mr-2" /> Search Businesses
+                      </>
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Search Results */}
+              {showResults && searchResults.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Search Results ({searchResults.length} found)</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ScrollArea className="h-[400px]">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Company</TableHead>
+                            <TableHead>Website</TableHead>
+                            <TableHead>Email</TableHead>
+                            <TableHead>Phone</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {searchResults.map((lead: any, idx: number) => (
+                            <TableRow key={idx}>
+                              <TableCell className="font-medium">{lead.company_name}</TableCell>
+                              <TableCell>
+                                {lead.website && (
+                                  <a
+                                    href={lead.website}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-500 hover:underline flex items-center gap-1"
+                                  >
+                                    <Globe className="h-3 w-3" />
+                                    <span className="truncate max-w-[150px]">
+                                      {lead.website.replace(/https?:\/\//, "")}
+                                    </span>
+                                  </a>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {lead.email ? (
+                                  <span className="flex items-center gap-1 text-green-600">
+                                    <Mail className="h-3 w-3" /> {lead.email}
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground text-xs">Needs enrichment</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {lead.phone ? (
+                                  <span className="flex items-center gap-1 text-green-600">
+                                    <Phone className="h-3 w-3" /> {lead.phone}
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground text-xs">—</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="bg-green-50 text-green-700">
+                                  <Check className="h-3 w-3 mr-1" /> Saved
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           )}
 
           {/* Local Discovery (Paid) */}
@@ -668,6 +1009,15 @@ export default function LeadDiscovery() {
                 <CardDescription>Find businesses near a specific location using Google Places</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {!hasApifyKey && (
+                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="text-sm text-amber-700 flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4" />
+                      Local Discovery requires Apify API key. Configure in Settings → Integrations.
+                    </p>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Business Category</Label>
@@ -679,19 +1029,18 @@ export default function LeadDiscovery() {
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="beauty_salon">💇 Beauty Salon</SelectItem>
-                        <SelectItem value="spa">🧖 Spa</SelectItem>
-                        <SelectItem value="gym">💪 Gym</SelectItem>
-                        <SelectItem value="dentist">🦷 Dentist</SelectItem>
-                        <SelectItem value="restaurant">🍽️ Restaurant</SelectItem>
-                        <SelectItem value="real_estate">🏠 Real Estate</SelectItem>
+                        {LOCAL_CATEGORIES.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.id}>
+                            {cat.icon} {cat.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
                     <Label>Location / Area</Label>
                     <Input
-                      placeholder="e.g., DIFC Dubai, Business Bay"
+                      placeholder="e.g., DIFC Dubai, Manhattan NYC"
                       value={localForm.location}
                       onChange={(e) => setLocalForm({ ...localForm, location: e.target.value })}
                     />
@@ -735,7 +1084,12 @@ export default function LeadDiscovery() {
                   <Badge variant="outline">~${(localForm.maxResults * 0.003).toFixed(2)}</Badge>
                 </div>
 
-                <Button onClick={handleLocalDiscovery} disabled={isSearching} className="w-full" size="lg">
+                <Button
+                  onClick={handleLocalDiscovery}
+                  disabled={isSearching || !hasApifyKey || !localForm.category || !localForm.location}
+                  className="w-full"
+                  size="lg"
+                >
                   {isSearching ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   ) : (
@@ -752,171 +1106,110 @@ export default function LeadDiscovery() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Linkedin className="h-5 w-5 text-[#0077B5]" /> LinkedIn Premium
+                  <Linkedin className="h-5 w-5 text-[#0077B5]" /> LinkedIn Premium Search
                 </CardTitle>
-                <CardDescription>Find decision makers with Apollo.io + LinkedIn enrichment</CardDescription>
+                <CardDescription>Find decision makers with Apollo.io + Hunter.io enrichment</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                  <p className="text-sm text-amber-700">
-                    ⚠️ Premium feature - Requires Apollo.io API key. Configure in Settings → Integrations.
-                  </p>
-                </div>
+                {!hasPremiumAccess ? (
+                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="text-sm text-amber-700 flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4" />
+                      Premium search requires API keys. Add your Apollo.io or Hunter.io key in Settings → Integrations.
+                    </p>
+                    <div className="mt-2 flex gap-2">
+                      {hasApolloKey && <Badge className="bg-green-100 text-green-700">✓ Apollo Connected</Badge>}
+                      {hasHunterKey && <Badge className="bg-green-100 text-green-700">✓ Hunter Connected</Badge>}
+                      {!hasApolloKey && (
+                        <Badge variant="outline" className="text-gray-500">
+                          Apollo: Not configured
+                        </Badge>
+                      )}
+                      {!hasHunterKey && (
+                        <Badge variant="outline" className="text-gray-500">
+                          Hunter: Not configured
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-sm text-green-700 flex items-center gap-2">
+                      <Check className="h-4 w-4" />
+                      Premium access enabled:
+                      {hasApolloKey && <Badge className="bg-green-100 text-green-700 ml-2">Apollo ✓</Badge>}
+                      {hasHunterKey && <Badge className="bg-green-100 text-green-700 ml-1">Hunter ✓</Badge>}
+                    </p>
+                  </div>
+                )}
 
                 <div className="space-y-2">
-                  <Label>Target Job Titles</Label>
+                  <Label>Target Job Titles *</Label>
                   <div className="flex flex-wrap gap-2">
-                    {["CEO", "Owner", "Founder", "Director", "Manager", "VP"].map((title) => (
+                    {JOB_TITLES.map((title) => (
                       <Badge
                         key={title}
                         variant={linkedinForm.titles.includes(title) ? "default" : "outline"}
-                        className="cursor-pointer"
-                        onClick={() =>
-                          setLinkedinForm({
-                            ...linkedinForm,
-                            titles: linkedinForm.titles.includes(title)
-                              ? linkedinForm.titles.filter((t) => t !== title)
-                              : [...linkedinForm.titles, title],
-                          })
-                        }
+                        className={cn(
+                          "cursor-pointer transition-colors",
+                          linkedinForm.titles.includes(title) && "bg-blue-500",
+                        )}
+                        onClick={() => toggleTitle(title)}
                       >
                         {title}
                       </Badge>
                     ))}
                   </div>
+                  {linkedinForm.titles.length > 0 && (
+                    <p className="text-xs text-muted-foreground">{linkedinForm.titles.length} selected</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Target Industries</Label>
+                  <Label>Company Size (optional)</Label>
                   <div className="flex flex-wrap gap-2">
-                    {["Healthcare", "Beauty", "Real Estate", "Technology"].map((ind) => (
+                    {COMPANY_SIZES.map((size) => (
                       <Badge
-                        key={ind}
-                        variant={linkedinForm.industries.includes(ind) ? "default" : "outline"}
+                        key={size.id}
+                        variant={linkedinForm.companySize.includes(size.id) ? "default" : "outline"}
                         className="cursor-pointer"
-                        onClick={() =>
-                          setLinkedinForm({
-                            ...linkedinForm,
-                            industries: linkedinForm.industries.includes(ind)
-                              ? linkedinForm.industries.filter((i) => i !== ind)
-                              : [...linkedinForm.industries, ind],
-                          })
-                        }
+                        onClick={() => toggleSize(size.id)}
                       >
-                        {ind}
+                        {size.label}
                       </Badge>
                     ))}
                   </div>
                 </div>
 
-                <Button disabled className="w-full" size="lg">
-                  <Crown className="h-4 w-4 mr-2" /> Configure API Keys First
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        {/* ==================== B2C TAB ==================== */}
-        <TabsContent value="b2c">
-          {/* B2C Sub-tabs */}
-          <div className="flex gap-2 mb-6">
-            <Button
-              variant={b2cSubTab === "intent" ? "default" : "outline"}
-              onClick={() => setB2cSubTab("intent")}
-              className="gap-2"
-            >
-              <Radio className="h-4 w-4" /> Intent Signals
-            </Button>
-            <Button
-              variant={b2cSubTab === "social" ? "default" : "outline"}
-              onClick={() => setB2cSubTab("social")}
-              className="gap-2"
-            >
-              <MessageSquare className="h-4 w-4" /> Social Audiences
-            </Button>
-            <Button
-              variant={b2cSubTab === "reviews" ? "default" : "outline"}
-              onClick={() => setB2cSubTab("reviews")}
-              className="gap-2"
-            >
-              <Star className="h-4 w-4" /> Review Hunters
-            </Button>
-          </div>
-
-          {/* Intent Signals */}
-          {b2cSubTab === "intent" && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Radio className="h-5 w-5 text-purple-500" /> Intent Signals
-                </CardTitle>
-                <CardDescription>Find people actively searching for services across industries</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4" /> Industry
-                    </Label>
-                    <Select
-                      value={intentForm.industry}
-                      onValueChange={(v) => setIntentForm({ ...intentForm, industry: v })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="aesthetics">✨ Aesthetics & Medical Spa</SelectItem>
-                        <SelectItem value="dental">🦷 Dental</SelectItem>
-                        <SelectItem value="real_estate">🏠 Real Estate</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                      <Zap className="h-4 w-4" /> Search Intent
-                    </Label>
-                    <Select
-                      value={intentForm.searchIntent}
-                      onValueChange={(v) => setIntentForm({ ...intentForm, searchIntent: v })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {INTENT_OPTIONS[intentForm.industry]?.map((opt) => (
-                          <SelectItem key={opt.label} value={opt.label.toLowerCase().replace(/ /g, "_")}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Location</Label>
+                    <Label>Location / City</Label>
                     <Input
-                      placeholder="e.g., Dubai, Los Angeles"
-                      value={intentForm.location}
-                      onChange={(e) => setIntentForm({ ...intentForm, location: e.target.value })}
+                      placeholder="e.g., Dubai, New York"
+                      value={linkedinForm.location}
+                      onChange={(e) => setLinkedinForm({ ...linkedinForm, location: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Source</Label>
+                    <Label>Country</Label>
                     <Select
-                      value={intentForm.source}
-                      onValueChange={(v) => setIntentForm({ ...intentForm, source: v })}
+                      value={linkedinForm.country}
+                      onValueChange={(v) => setLinkedinForm({ ...linkedinForm, country: v })}
                     >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="google_intent">🔍 Google Search Intent</SelectItem>
-                        <SelectItem value="reddit">📱 Reddit</SelectItem>
-                        <SelectItem value="twitter">🐦 Twitter/X</SelectItem>
+                        <SelectItem value="United Arab Emirates">🇦🇪 United Arab Emirates</SelectItem>
+                        <SelectItem value="United States">🇺🇸 United States</SelectItem>
+                        <SelectItem value="United Kingdom">🇬🇧 United Kingdom</SelectItem>
+                        <SelectItem value="Canada">🇨🇦 Canada</SelectItem>
+                        <SelectItem value="Australia">🇦🇺 Australia</SelectItem>
+                        <SelectItem value="India">🇮🇳 India</SelectItem>
+                        <SelectItem value="Germany">🇩🇪 Germany</SelectItem>
+                        <SelectItem value="France">🇫🇷 France</SelectItem>
+                        <SelectItem value="Saudi Arabia">🇸🇦 Saudi Arabia</SelectItem>
+                        <SelectItem value="Qatar">🇶🇦 Qatar</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -925,120 +1218,64 @@ export default function LeadDiscovery() {
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <Label>Max Results</Label>
-                    <span>{intentForm.maxResults}</span>
+                    <span>{linkedinForm.maxResults}</span>
                   </div>
                   <Slider
-                    value={[intentForm.maxResults]}
-                    onValueChange={(v) => setIntentForm({ ...intentForm, maxResults: v[0] })}
+                    value={[linkedinForm.maxResults]}
+                    onValueChange={(v) => setLinkedinForm({ ...linkedinForm, maxResults: v[0] })}
                     min={10}
                     max={100}
                     step={5}
                   />
                 </div>
 
-                {/* Search Keywords */}
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground">Search Keywords:</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {currentIntentKeywords.map((kw) => (
-                      <Badge key={kw} variant="secondary" className="bg-purple-100 text-purple-700">
-                        {kw}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-
                 <Button
-                  onClick={handleIntentSearch}
-                  disabled={isSearching}
-                  className="w-full bg-purple-600 hover:bg-purple-700"
+                  onClick={handleLinkedInSearch}
+                  disabled={isSearching || !hasPremiumAccess || linkedinForm.titles.length === 0}
+                  className="w-full bg-[#0077B5] hover:bg-[#005885]"
                   size="lg"
                 >
                   {isSearching ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Searching...
+                    </>
                   ) : (
-                    <Target className="h-4 w-4 mr-2" />
+                    <>
+                      <Crown className="h-4 w-4 mr-2" /> Find Decision Makers
+                    </>
                   )}
-                  Find Intent Leads
                 </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Social Audiences */}
-          {b2cSubTab === "social" && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5 text-pink-500" /> Social Audiences
-                </CardTitle>
-                <CardDescription>Find potential customers from social media engagement</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Platform</Label>
-                    <Select
-                      value={socialForm.platform}
-                      onValueChange={(v) => setSocialForm({ ...socialForm, platform: v })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="instagram">📸 Instagram</SelectItem>
-                        <SelectItem value="tiktok">🎵 TikTok</SelectItem>
-                        <SelectItem value="facebook">📘 Facebook</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Hashtags / Keywords</Label>
-                    <Input
-                      placeholder="#skincare, #botox, #beauty"
-                      value={socialForm.hashtags}
-                      onChange={(e) => setSocialForm({ ...socialForm, hashtags: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <Button disabled className="w-full" size="lg">
-                  <MessageSquare className="h-4 w-4 mr-2" /> Coming Soon
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Review Hunters */}
-          {b2cSubTab === "reviews" && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Star className="h-5 w-5 text-yellow-500" /> Review Hunters
-                </CardTitle>
-                <CardDescription>Find customers who left negative reviews at competitors</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8 text-muted-foreground">
-                  <Star className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Coming Soon</p>
-                  <p className="text-sm">Monitor competitor reviews and reach out to dissatisfied customers</p>
-                </div>
               </CardContent>
             </Card>
           )}
         </TabsContent>
 
+        {/* ==================== B2C TAB ==================== */}
+        <TabsContent value="b2c">
+          <Card>
+            <CardHeader>
+              <CardTitle>Consumer (B2C) Lead Discovery</CardTitle>
+              <CardDescription>Find individual consumers with buying intent</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-12 text-muted-foreground">
+                <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p className="text-lg font-medium">Coming Soon</p>
+                <p className="text-sm">Intent Signals, Social Audiences, and Review Hunters</p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* ==================== AUTO LEAD GEN TAB ==================== */}
         <TabsContent value="auto">
           <div className="grid gap-6 lg:grid-cols-2">
-            {/* Configuration */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Bot className="h-5 w-5 text-green-500" /> Auto Lead Gen Configuration
                 </CardTitle>
-                <CardDescription>Set up automated lead generation</CardDescription>
+                <CardDescription>Set up automated lead generation on a schedule</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
@@ -1064,14 +1301,13 @@ export default function LeadDiscovery() {
                     <SelectContent>
                       <SelectItem value="quick_search">🎁 Quick Search (Free)</SelectItem>
                       <SelectItem value="local_discovery">📍 Local Discovery</SelectItem>
-                      <SelectItem value="intent_signals">📡 Intent Signals</SelectItem>
-                      <SelectItem value="linkedin">💼 LinkedIn Premium</SelectItem>
+                      <SelectItem value="linkedin_premium">💼 LinkedIn Premium</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Industry</Label>
+                  <Label>Industry *</Label>
                   <Select
                     value={autoSettings.industry}
                     onValueChange={(v) => setAutoSettings({ ...autoSettings, industry: v })}
@@ -1090,20 +1326,11 @@ export default function LeadDiscovery() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Location</Label>
+                  <Label>Location *</Label>
                   <Input
                     placeholder="e.g., Dubai, New York"
                     value={autoSettings.location}
                     onChange={(e) => setAutoSettings({ ...autoSettings, location: e.target.value })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Keywords (optional)</Label>
-                  <Input
-                    placeholder="Additional keywords"
-                    value={autoSettings.keywords}
-                    onChange={(e) => setAutoSettings({ ...autoSettings, keywords: e.target.value })}
                   />
                 </div>
 
@@ -1148,45 +1375,15 @@ export default function LeadDiscovery() {
                   </div>
                 </div>
 
-                <div className="space-y-3 pt-4 border-t">
-                  <div className="flex items-center justify-between">
-                    <Label>Auto-enrich leads</Label>
-                    <Switch
-                      checked={autoSettings.autoEnrich}
-                      onCheckedChange={(v) => setAutoSettings({ ...autoSettings, autoEnrich: v })}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label>Auto-score leads</Label>
-                    <Switch
-                      checked={autoSettings.autoScore}
-                      onCheckedChange={(v) => setAutoSettings({ ...autoSettings, autoScore: v })}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label>Auto-add to sequence</Label>
-                    <Switch
-                      checked={autoSettings.autoSequence}
-                      onCheckedChange={(v) => setAutoSettings({ ...autoSettings, autoSequence: v })}
-                    />
-                  </div>
-                </div>
-
                 <Button onClick={handleSaveAutoConfig} className="w-full" size="lg">
                   <Bot className="h-4 w-4 mr-2" /> Save Configuration
                 </Button>
               </CardContent>
             </Card>
 
-            {/* Saved Configurations */}
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Saved Configurations</CardTitle>
-                  <Button variant="outline" size="sm" onClick={() => refetchConfigs()}>
-                    <RefreshCw className="h-4 w-4" />
-                  </Button>
-                </div>
+                <CardTitle>Saved Configurations</CardTitle>
               </CardHeader>
               <CardContent>
                 {savedConfigs.length === 0 ? (
@@ -1195,41 +1392,26 @@ export default function LeadDiscovery() {
                     <p>No saved configurations</p>
                   </div>
                 ) : (
-                  <ScrollArea className="h-[400px]">
+                  <ScrollArea className="h-[350px]">
                     <div className="space-y-3">
                       {savedConfigs.map((config: any) => (
                         <div key={config.id} className="p-4 border rounded-lg">
                           <div className="flex items-start justify-between">
                             <div>
                               <p className="font-medium">{config.name}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {config.industry} • {config.city || "Any location"}
-                              </p>
-                              <div className="flex items-center gap-2 mt-2">
-                                <Badge variant={config.is_active ? "default" : "secondary"}>
-                                  {config.is_active ? "Active" : "Paused"}
-                                </Badge>
-                                {config.is_scheduled && (
-                                  <Badge variant="outline">
-                                    <Clock className="h-3 w-3 mr-1" />
-                                    {config.schedule_frequency}
-                                  </Badge>
-                                )}
-                              </div>
+                              <p className="text-sm text-muted-foreground">{config.city || "Any location"}</p>
+                              <Badge variant={config.is_active ? "default" : "secondary"} className="mt-2">
+                                {config.is_active ? "Active" : "Paused"}
+                              </Badge>
                             </div>
-                            <div className="flex gap-1">
-                              <Button size="sm" variant="ghost">
-                                <Play className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-red-500"
-                                onClick={() => deleteConfig.mutate(config.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-red-500"
+                              onClick={() => deleteConfig.mutate(config.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
                       ))}
@@ -1243,96 +1425,25 @@ export default function LeadDiscovery() {
 
         {/* ==================== IMPORT TAB ==================== */}
         <TabsContent value="import">
-          {/* Import Sub-tabs */}
           <div className="flex gap-2 mb-6">
-            <Button
-              variant={importSubTab === "csv" ? "default" : "outline"}
-              onClick={() => setImportSubTab("csv")}
-              className="gap-2"
-            >
-              <FileText className="h-4 w-4" /> CSV Upload
+            <Button variant={importSubTab === "csv" ? "default" : "outline"} onClick={() => setImportSubTab("csv")}>
+              <FileText className="h-4 w-4 mr-2" /> CSV Upload
             </Button>
             <Button
               variant={importSubTab === "manual" ? "default" : "outline"}
               onClick={() => setImportSubTab("manual")}
-              className="gap-2"
             >
-              <Plus className="h-4 w-4" /> Manual Entry
+              <Plus className="h-4 w-4 mr-2" /> Manual Entry
             </Button>
-            <Button
-              variant={importSubTab === "crm" ? "default" : "outline"}
-              onClick={() => setImportSubTab("crm")}
-              className="gap-2"
-            >
-              <RefreshCw className="h-4 w-4" /> CRM Sync
+            <Button variant={importSubTab === "crm" ? "default" : "outline"} onClick={() => setImportSubTab("crm")}>
+              <RefreshCw className="h-4 w-4 mr-2" /> CRM Sync
             </Button>
           </div>
 
-          {/* CSV Upload */}
-          {importSubTab === "csv" && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Upload CSV File</CardTitle>
-                <CardDescription>Upload a CSV with columns: name, email, phone, company (optional)</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div
-                  className={cn(
-                    "border-2 border-dashed rounded-lg p-12 text-center transition-colors cursor-pointer",
-                    isDragging
-                      ? "border-primary bg-primary/5"
-                      : "border-muted-foreground/25 hover:border-muted-foreground/50",
-                  )}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    setIsDragging(true);
-                  }}
-                  onDragLeave={() => setIsDragging(false)}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    setIsDragging(false);
-                    const file = e.dataTransfer.files[0];
-                    if (file?.name.endsWith(".csv")) setUploadedFile(file);
-                  }}
-                  onClick={() => document.getElementById("csv-input")?.click()}
-                >
-                  <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-lg font-medium">Click to upload or drag and drop</p>
-                  <p className="text-sm text-muted-foreground">CSV files up to 10MB</p>
-                  <input
-                    id="csv-input"
-                    type="file"
-                    accept=".csv"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) setUploadedFile(file);
-                    }}
-                  />
-                </div>
-
-                {uploadedFile && (
-                  <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <FileText className="h-8 w-8 text-blue-500" />
-                      <div>
-                        <p className="font-medium">{uploadedFile.name}</p>
-                        <p className="text-sm text-muted-foreground">{(uploadedFile.size / 1024).toFixed(1)} KB</p>
-                      </div>
-                    </div>
-                    <Button onClick={handleFileUpload}>Upload & Import</Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Manual Entry */}
           {importSubTab === "manual" && (
             <Card>
               <CardHeader>
                 <CardTitle>Add Lead Manually</CardTitle>
-                <CardDescription>Enter lead details to add to your pipeline</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -1369,16 +1480,7 @@ export default function LeadDiscovery() {
                       onChange={(e) => setManualForm({ ...manualForm, company: e.target.value })}
                     />
                   </div>
-                  <div className="space-y-2 col-span-2">
-                    <Label>Job Title</Label>
-                    <Input
-                      placeholder="CEO, Manager, etc."
-                      value={manualForm.title}
-                      onChange={(e) => setManualForm({ ...manualForm, title: e.target.value })}
-                    />
-                  </div>
                 </div>
-
                 <Button onClick={handleManualEntry} className="w-full" size="lg">
                   <Plus className="h-4 w-4 mr-2" /> Add Lead
                 </Button>
@@ -1386,25 +1488,34 @@ export default function LeadDiscovery() {
             </Card>
           )}
 
-          {/* CRM Sync */}
+          {importSubTab === "csv" && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Upload CSV File</CardTitle>
+                <CardDescription>Upload a CSV with columns: name, email, phone, company</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="border-2 border-dashed rounded-lg p-12 text-center">
+                  <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <p>Click to upload or drag and drop</p>
+                  <p className="text-sm text-muted-foreground">CSV files up to 10MB</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {importSubTab === "crm" && (
             <Card>
               <CardHeader>
                 <CardTitle>Sync from CRM</CardTitle>
-                <CardDescription>Import leads from your CRM system</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-4 gap-4">
-                  {[
-                    { name: "Salesforce", icon: "☁️" },
-                    { name: "HubSpot", icon: "🟠" },
-                    { name: "Pipedrive", icon: "🟢" },
-                    { name: "Zoho", icon: "🔴" },
-                  ].map((crm) => (
-                    <Card key={crm.name} className="cursor-pointer hover:border-primary transition-colors">
+                  {["Salesforce", "HubSpot", "Pipedrive", "Zoho"].map((crm) => (
+                    <Card key={crm} className="cursor-pointer hover:border-primary">
                       <CardContent className="pt-6 text-center">
                         <RefreshCw className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-                        <p className="font-medium">{crm.name}</p>
+                        <p className="font-medium">{crm}</p>
                       </CardContent>
                     </Card>
                   ))}
@@ -1430,7 +1541,6 @@ export default function LeadDiscovery() {
                 <div className="text-center py-12 text-muted-foreground">
                   <History className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p>No generation history yet</p>
-                  <p className="text-sm">Start generating leads to see history here</p>
                 </div>
               ) : (
                 <Table>
