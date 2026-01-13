@@ -34,6 +34,7 @@ export interface TierConfig {
   limits: TierLimits;
   features: string[];
   description: string;
+  badge?: string;
 }
 
 // DEFAULT TIER LIMITS
@@ -125,6 +126,7 @@ export const SUBSCRIPTION_TIERS: Record<SubscriptionTier, TierConfig> = {
     price: 499,
     yearlyPrice: 4990,
     description: "For growing teams that need more power and premium data sources",
+    badge: "Most Popular",
     limits: TIER_DEFAULTS.professional,
     features: [
       "500 leads per month",
@@ -147,6 +149,7 @@ export const SUBSCRIPTION_TIERS: Record<SubscriptionTier, TierConfig> = {
     price: 1999,
     yearlyPrice: 19990,
     description: "Full power for agencies and enterprises with white-label options",
+    badge: "Best Value",
     limits: TIER_DEFAULTS.enterprise,
     features: [
       "2000 leads per month",
@@ -174,6 +177,10 @@ export interface UsageStats {
   b2b_limit: number;
   intent_searches_today: number;
   intent_limit: number;
+  emails_sent_today: number;
+  emails_limit: number;
+  whatsapp_sent_today: number;
+  whatsapp_limit: number;
   days_remaining: number;
 }
 
@@ -263,7 +270,11 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         b2b_limit: limits.b2b_searches_per_day,
         intent_searches_today: creditsData?.intent_searches_today || 0,
         intent_limit: limits.intent_searches_per_day,
-        days_remaining,
+        emails_sent_today: 0,
+        emails_limit: limits.emails_per_day,
+        whatsapp_sent_today: 0,
+        whatsapp_limit: limits.whatsapp_per_day,
+        days_remaining: daysRemaining,
       });
     } catch (error) {
       console.error("Error fetching usage:", error);
@@ -275,6 +286,10 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         b2b_limit: limits.b2b_searches_per_day,
         intent_searches_today: 0,
         intent_limit: limits.intent_searches_per_day,
+        emails_sent_today: 0,
+        emails_limit: limits.emails_per_day,
+        whatsapp_sent_today: 0,
+        whatsapp_limit: limits.whatsapp_per_day,
         days_remaining: 30,
       });
     } finally {
