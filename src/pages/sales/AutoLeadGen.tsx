@@ -1,8 +1,8 @@
 // src/pages/sales/AutoLeadGen.tsx
-// COMPLETE AUTO LEAD GEN - FIXED VERSION WITH ALL FEATURES
-// Version 3.0 - Clickable leads, History, Saved searches
+// COMPLETE AUTO LEAD GEN WITH SAVED SEARCHES, SCHEDULING & HISTORY
+// Version 2.0 - Production Ready
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,38 +18,64 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useTenant } from "@/contexts/TenantContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
-import { TierBadge } from "@/components/subscription";
+import {
+  FeatureGate,
+  UsageMeter,
+  DataSourceBadge,
+  DataSourceIndicator,
+  TierBadge,
+  LimitWarning,
+} from "@/components/subscription";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Sparkles,
+  Play,
+  Pause,
   Building2,
+  MapPin,
   Users,
   Briefcase,
   Globe,
   MessageCircle,
+  Twitter,
   Zap,
   Loader2,
   RefreshCw,
   Check,
+  ArrowRight,
   X,
   Lock,
   Crown,
   TrendingUp,
   Radio,
+  Clock,
+  Calendar,
   Save,
+  Settings,
   History,
   Search,
   Plus,
+  Trash2,
+  Edit,
+  Copy,
+  MoreHorizontal,
+  ChevronDown,
+  ChevronRight,
+  Target,
+  Database,
+  Filter,
+  Download,
+  Eye,
+  EyeOff,
+  Star,
   Flame,
   Snowflake,
+  AlertCircle,
+  CheckCircle,
   ExternalLink,
-  Mail,
-  Phone,
-  Linkedin,
-  Globe2,
-  ChevronRight,
 } from "lucide-react";
+import { GradeBadge } from "@/components/shared";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import {
@@ -59,14 +85,94 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { format, formatDistanceToNow } from "date-fns";
 
 // =====================================================
 // TYPES
 // =====================================================
+interface GeneratedLead {
+  id: string;
+  company: string;
+  contact: string;
+  email: string;
+  title: string;
+  score: number;
+  grade: "A" | "B" | "C" | "D";
+  status: "new" | "enriching" | "added" | "dismissed";
+  source: "apollo" | "hunter" | "google" | "apify" | "intent";
+  phone?: string;
+  linkedin?: string;
+  website?: string;
+  temperature?: "hot" | "warm" | "cold";
+  snippet?: string;
+}
+
+interface SavedSearch {
+  id: string;
+  tenant_id: string;
+  name: string;
+  search_type: "b2b" | "b2c_intent" | "premium_b2b";
+  keywords: string;
+  industry: string;
+  location: string;
+  country: string;
+  company_size: string;
+  job_titles: string[];
+  max_leads: number;
+  intent_keywords: string;
+  platforms: Record<string, boolean>;
+  use_premium_sources: boolean;
+  ai_scoring: boolean;
+  auto_enroll_sequence: boolean;
+  sequence_id: string | null;
+  is_scheduled: boolean;
+  schedule_frequency: string | null;
+  schedule_time: string | null;
+  schedule_days: number[] | null;
+  next_run_at: string | null;
+  last_run_at: string | null;
+  is_active: boolean;
+  total_runs: number;
+  total_leads_found: number;
+  total_leads_saved: number;
+  created_at: string;
+}
+
+interface SearchHistory {
+  id: string;
+  tenant_id: string;
+  search_id: string | null;
+  search_type: string;
+  keywords: string;
+  industry: string;
+  location: string;
+  country: string;
+  request_id: string;
+  leads_found: number;
+  leads_saved: number;
+  duplicates_skipped: number;
+  average_score: number;
+  grade_distribution: Record<string, number>;
+  hot_leads: number;
+  warm_leads: number;
+  sources_used: string[];
+  triggered_by: string;
+  execution_time_ms: number;
+  status: string;
+  error_message: string | null;
+  created_at: string;
+}
+
 interface SalesLead {
   id: string;
   tenant_id: string;
@@ -83,29 +189,7 @@ interface SalesLead {
   lead_grade: string;
   temperature: string;
   status: string;
-  notes: string;
-  snippet: string;
-  industry: string;
   created_at: string;
-  updated_at: string;
-}
-
-interface GeneratedLead {
-  id: string;
-  company: string;
-  contact: string;
-  email: string;
-  title: string;
-  score: number;
-  grade: "A" | "B" | "C" | "D";
-  status: "new" | "enriching" | "added" | "dismissed";
-  source: string;
-  phone?: string;
-  linkedin?: string;
-  website?: string;
-  temperature?: "hot" | "warm" | "cold";
-  snippet?: string;
-  industry?: string;
 }
 
 // =====================================================
@@ -121,36 +205,24 @@ const INDUSTRIES = [
   { id: "general", label: "General", icon: "🏢" },
 ];
 
+const SCHEDULE_FREQUENCIES = [
+  { id: "hourly", label: "Every Hour" },
+  { id: "daily", label: "Daily" },
+  { id: "weekly", label: "Weekly" },
+  { id: "monthly", label: "Monthly" },
+];
+
 // =====================================================
 // HELPER COMPONENTS
 // =====================================================
-const GradeBadge = ({ grade }: { grade: string }) => {
-  const colors: Record<string, string> = {
-    A: "bg-green-500 text-white",
-    B: "bg-blue-500 text-white",
-    C: "bg-amber-500 text-white",
-    D: "bg-red-500 text-white",
-  };
-  return (
-    <Badge
-      className={cn(
-        "h-6 w-6 rounded-full p-0 flex items-center justify-center",
-        colors[grade] || "bg-gray-500 text-white",
-      )}
-    >
-      {grade}
-    </Badge>
-  );
-};
-
 const TemperatureBadge = ({ temperature }: { temperature?: string }) => {
   if (!temperature) return null;
-  const config: Record<string, { icon: typeof Flame; color: string }> = {
+  const config = {
     hot: { icon: Flame, color: "bg-red-500/10 text-red-600 border-red-200" },
     warm: { icon: TrendingUp, color: "bg-amber-500/10 text-amber-600 border-amber-200" },
     cold: { icon: Snowflake, color: "bg-blue-500/10 text-blue-600 border-blue-200" },
   };
-  const { icon: Icon, color } = config[temperature] || config.cold;
+  const { icon: Icon, color } = config[temperature as keyof typeof config] || config.cold;
   return (
     <Badge variant="outline" className={cn("gap-1", color)}>
       <Icon className="h-3 w-3" />
@@ -166,183 +238,33 @@ const SourceBadge = ({ source }: { source: string }) => {
     google: "bg-blue-500",
     apify: "bg-green-500",
     intent: "bg-pink-500",
-    instagram: "bg-gradient-to-r from-purple-500 to-pink-500",
-    facebook: "bg-blue-600",
-    linkedin: "bg-blue-700",
-    website: "bg-teal-500",
-    whatsapp: "bg-green-600",
   };
-  return (
-    <Badge className={cn("text-white text-xs", colors[source?.toLowerCase()] || "bg-gray-500")}>
-      {source || "unknown"}
-    </Badge>
-  );
+  return <Badge className={cn("text-white", colors[source] || "bg-gray-500")}>{source}</Badge>;
 };
-
-// =====================================================
-// LEAD DETAIL SHEET
-// =====================================================
-function LeadDetailSheet({
-  lead,
-  open,
-  onClose,
-  onAddToPipeline,
-}: {
-  lead: SalesLead | null;
-  open: boolean;
-  onClose: () => void;
-  onAddToPipeline?: (lead: SalesLead) => void;
-}) {
-  if (!lead) return null;
-
-  return (
-    <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent className="w-[500px] sm:max-w-[500px]">
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-3">
-            <Building2 className="h-5 w-5" />
-            {lead.company_name || "Unknown Company"}
-          </SheetTitle>
-          <SheetDescription>Lead details and contact information</SheetDescription>
-        </SheetHeader>
-
-        <div className="mt-6 space-y-6">
-          {/* Status Row */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <GradeBadge grade={lead.lead_grade || "C"} />
-            <TemperatureBadge temperature={lead.temperature} />
-            <SourceBadge source={lead.source} />
-            <Badge variant="outline">{lead.status}</Badge>
-          </div>
-
-          {/* Score */}
-          <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-            <span className="text-sm font-medium">Lead Score</span>
-            <div className="flex items-center gap-2">
-              <Progress value={lead.lead_score || 0} className="w-24 h-2" />
-              <span className="font-bold">{lead.lead_score || 0}</span>
-            </div>
-          </div>
-
-          {/* Contact Info */}
-          <div className="space-y-3">
-            <h4 className="font-medium text-sm text-muted-foreground">Contact Information</h4>
-
-            {lead.contact_name && (
-              <div className="flex items-center gap-3">
-                <Users className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="font-medium">{lead.contact_name}</p>
-                  {lead.job_title && <p className="text-sm text-muted-foreground">{lead.job_title}</p>}
-                </div>
-              </div>
-            )}
-
-            {lead.email && (
-              <div className="flex items-center gap-3">
-                <Mail className="h-4 w-4 text-muted-foreground" />
-                <a href={`mailto:${lead.email}`} className="text-primary hover:underline">
-                  {lead.email}
-                </a>
-              </div>
-            )}
-
-            {lead.phone && (
-              <div className="flex items-center gap-3">
-                <Phone className="h-4 w-4 text-muted-foreground" />
-                <a href={`tel:${lead.phone}`} className="text-primary hover:underline">
-                  {lead.phone}
-                </a>
-              </div>
-            )}
-
-            {lead.website && (
-              <div className="flex items-center gap-3">
-                <Globe2 className="h-4 w-4 text-muted-foreground" />
-                <a
-                  href={lead.website}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline truncate max-w-[300px]"
-                >
-                  {lead.website}
-                </a>
-              </div>
-            )}
-
-            {lead.linkedin_url && (
-              <div className="flex items-center gap-3">
-                <Linkedin className="h-4 w-4 text-muted-foreground" />
-                <a
-                  href={lead.linkedin_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline"
-                >
-                  LinkedIn Profile
-                </a>
-              </div>
-            )}
-          </div>
-
-          {/* Snippet/Notes */}
-          {(lead.snippet || lead.notes) && (
-            <div className="space-y-2">
-              <h4 className="font-medium text-sm text-muted-foreground">Notes</h4>
-              <p className="text-sm bg-muted p-3 rounded-lg">{lead.snippet || lead.notes}</p>
-            </div>
-          )}
-
-          {/* Metadata */}
-          <div className="space-y-2 pt-4 border-t">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Source Channel</span>
-              <span>{lead.source_channel || "-"}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Industry</span>
-              <span>{lead.industry || "-"}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Created</span>
-              <span>{lead.created_at ? format(new Date(lead.created_at), "PPp") : "-"}</span>
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-2 pt-4">
-            <Button className="flex-1" onClick={() => onAddToPipeline?.(lead)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add to Pipeline
-            </Button>
-            <Button variant="outline">
-              <Mail className="h-4 w-4 mr-2" />
-              Email
-            </Button>
-            <Button variant="outline">
-              <Phone className="h-4 w-4 mr-2" />
-              Call
-            </Button>
-          </div>
-        </div>
-      </SheetContent>
-    </Sheet>
-  );
-}
 
 // =====================================================
 // MAIN COMPONENT
 // =====================================================
 export default function AutoLeadGen() {
-  const { tenantId } = useTenant();
+  const { tenantId, tenantConfig } = useTenant();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  // Subscription
-  const { tier, limits, usage, canUseFeature, getRemainingCredits, refreshUsage } = useSubscription();
+  // Subscription context
+  const {
+    tier,
+    tierConfig,
+    limits,
+    usage,
+    isLoadingUsage,
+    canUseFeature,
+    hasReachedLimit,
+    getRemainingCredits,
+    refreshUsage,
+  } = useSubscription();
 
-  // Main state
+  // Main tabs
   const [mainTab, setMainTab] = useState<"generate" | "saved" | "history" | "leads">("generate");
   const [searchType, setSearchType] = useState<"b2b" | "intent">("b2b");
 
@@ -357,42 +279,90 @@ export default function AutoLeadGen() {
   const [jobTitles, setJobTitles] = useState("");
   const [usePremiumSources, setUsePremiumSources] = useState(true);
 
-  // Intent state
-  const [platforms, setPlatforms] = useState({ reddit: true, twitter: true, forums: false, linkedin: false });
+  // Intent config
+  const [platforms, setPlatforms] = useState({
+    reddit: true,
+    twitter: true,
+    forums: false,
+    linkedin: false,
+  });
   const [intentKeywords, setIntentKeywords] = useState("");
+  const [isMonitoring, setIsMonitoring] = useState(false);
 
   // Generated leads queue
   const [generatedLeads, setGeneratedLeads] = useState<GeneratedLead[]>([]);
 
-  // Lead detail
-  const [selectedLead, setSelectedLead] = useState<SalesLead | null>(null);
-  const [showLeadDetail, setShowLeadDetail] = useState(false);
-
-  // Save dialog
+  // Save search dialog
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [searchName, setSearchName] = useState("");
   const [enableSchedule, setEnableSchedule] = useState(false);
   const [scheduleFrequency, setScheduleFrequency] = useState("daily");
+  const [scheduleTime, setScheduleTime] = useState("09:00");
 
-  // Computed
-  const maxLeadsAllowed = Math.min(getRemainingCredits("leads") || 100, 25);
-  const hasPremiumSources = canUseFeature("has_apollo_access") || canUseFeature("has_hunter_access");
+  // Max leads based on remaining credits
+  const maxLeadsAllowed = Math.min(getRemainingCredits("leads"), 25);
+  const hasPremiumSources =
+    canUseFeature("has_apollo_access") || canUseFeature("has_hunter_access") || canUseFeature("has_apify_access");
 
   // =====================================================
-  // FETCH LEADS FROM DATABASE
+  // DATA FETCHING
   // =====================================================
+
+  // Fetch saved searches
+  const {
+    data: savedSearches = [],
+    isLoading: loadingSavedSearches,
+    refetch: refetchSavedSearches,
+  } = useQuery({
+    queryKey: ["lead-gen-searches", tenantId],
+    queryFn: async () => {
+      if (!tenantId) return [];
+      const { data, error } = await supabase
+        .from("lead_gen_searches")
+        .select("*")
+        .eq("tenant_id", tenantId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as SavedSearch[];
+    },
+    enabled: !!tenantId,
+  });
+
+  // Fetch search history
+  const {
+    data: searchHistory = [],
+    isLoading: loadingHistory,
+    refetch: refetchHistory,
+  } = useQuery({
+    queryKey: ["lead-gen-history", tenantId],
+    queryFn: async () => {
+      if (!tenantId) return [];
+      const { data, error } = await supabase
+        .from("lead_gen_history")
+        .select("*")
+        .eq("tenant_id", tenantId)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data as SearchHistory[];
+    },
+    enabled: !!tenantId,
+  });
+
+  // Fetch recent leads from database
   const {
     data: recentLeads = [],
     isLoading: loadingLeads,
     refetch: refetchLeads,
   } = useQuery({
-    queryKey: ["auto-lead-gen-leads", tenantId],
+    queryKey: ["sales-leads-recent", tenantId],
     queryFn: async () => {
       if (!tenantId) return [];
       const { data, error } = await supabase
         .from("sales_leads")
         .select("*")
         .eq("tenant_id", tenantId)
+        .in("source_channel", ["auto_lead_gen", "b2b_search", "premium_b2b", "intent"])
         .order("created_at", { ascending: false })
         .limit(100);
       if (error) throw error;
@@ -402,75 +372,32 @@ export default function AutoLeadGen() {
   });
 
   // =====================================================
-  // FETCH SEARCH HISTORY
-  // =====================================================
-  const {
-    data: searchHistory = [],
-    isLoading: loadingHistory,
-    refetch: refetchHistory,
-  } = useQuery({
-    queryKey: ["lead-gen-history", tenantId],
-    queryFn: async () => {
-      if (!tenantId) return [];
-
-      const { data, error } = await supabase
-        .from("sales_leads")
-        .select("created_at, source, source_channel, industry, lead_score, lead_grade, temperature")
-        .eq("tenant_id", tenantId)
-        .order("created_at", { ascending: false })
-        .limit(200);
-
-      if (error) throw error;
-      if (!data || data.length === 0) return [];
-
-      // Group by time (5 min sessions)
-      const sessions: any[] = [];
-      let currentSession: any = null;
-
-      data.forEach((lead) => {
-        const leadTime = new Date(lead.created_at).getTime();
-
-        if (!currentSession || leadTime < currentSession.startTime - 5 * 60 * 1000) {
-          if (currentSession) sessions.push(currentSession);
-          currentSession = {
-            id: lead.created_at,
-            created_at: lead.created_at,
-            startTime: leadTime,
-            search_type: lead.source_channel?.includes("intent") ? "intent" : "b2b",
-            industry: lead.industry,
-            leads_found: 1,
-            sources_used: [lead.source],
-            hot_leads: lead.temperature === "hot" ? 1 : 0,
-            warm_leads: lead.temperature === "warm" ? 1 : 0,
-            cold_leads: lead.temperature === "cold" ? 1 : 0,
-          };
-        } else {
-          currentSession.leads_found++;
-          if (lead.source && !currentSession.sources_used.includes(lead.source)) {
-            currentSession.sources_used.push(lead.source);
-          }
-          if (lead.temperature === "hot") currentSession.hot_leads++;
-          else if (lead.temperature === "warm") currentSession.warm_leads++;
-          else currentSession.cold_leads++;
-        }
-      });
-
-      if (currentSession) sessions.push(currentSession);
-      return sessions.slice(0, 20);
-    },
-    enabled: !!tenantId,
-  });
-
-  // =====================================================
   // GENERATE B2B LEADS
   // =====================================================
   const handleGenerateB2B = async () => {
+    if (hasReachedLimit("leads")) {
+      toast({ title: "Lead limit reached", description: "Upgrade your plan for more leads", variant: "destructive" });
+      return;
+    }
+    if (hasReachedLimit("b2b_searches")) {
+      toast({
+        title: "Daily search limit reached",
+        description: "Try again tomorrow or upgrade",
+        variant: "destructive",
+      });
+      return;
+    }
     if (!keywords && !selectedIndustry) {
-      toast({ title: "Missing criteria", description: "Enter keywords or select industry", variant: "destructive" });
+      toast({
+        title: "Missing search criteria",
+        description: "Enter keywords or select an industry",
+        variant: "destructive",
+      });
       return;
     }
 
     setIsGenerating(true);
+    const startTime = Date.now();
 
     try {
       const webhookUrl =
@@ -494,11 +421,12 @@ export default function AutoLeadGen() {
             .filter(Boolean),
           max_leads: generateCount[0],
           use_premium_sources: usePremiumSources && hasPremiumSources,
-          ai_scoring: true,
+          ai_scoring: canUseFeature("has_ai_scoring"),
         }),
       });
 
       const data = await response.json();
+      const executionTime = Date.now() - startTime;
 
       if (data.success && data.leads) {
         const newLeads: GeneratedLead[] = data.leads.map((lead: any) => ({
@@ -516,14 +444,36 @@ export default function AutoLeadGen() {
           website: lead.website,
           temperature: lead.temperature,
           snippet: lead.snippet,
-          industry: lead.industry,
         }));
 
         setGeneratedLeads((prev) => [...newLeads, ...prev]);
+
+        // Log to history
+        await logSearchHistory({
+          search_type: hasPremiumSources ? "premium_b2b" : "b2b",
+          keywords,
+          industry: selectedIndustry,
+          location,
+          country,
+          request_id: data.request_id,
+          leads_found: data.leads_found || newLeads.length,
+          leads_saved: data.leads_saved || 0,
+          duplicates_skipped: data.duplicates_skipped || 0,
+          average_score: data.average_score,
+          grade_distribution: data.grade_distribution,
+          hot_leads: data.hot_leads || 0,
+          warm_leads: data.warm_leads || 0,
+          sources_used: data.sources_used || ["google"],
+          triggered_by: "manual",
+          execution_time_ms: executionTime,
+          status: "completed",
+        });
+
         toast({
           title: "Leads generated!",
-          description: `${data.leads_found || newLeads.length} leads found. ${data.leads_saved || 0} saved.`,
+          description: `${data.leads_found || newLeads.length} leads found. ${data.leads_saved || 0} saved to pipeline.`,
         });
+
         refreshUsage();
         refetchHistory();
         refetchLeads();
@@ -536,7 +486,7 @@ export default function AutoLeadGen() {
       }
     } catch (error) {
       console.error("Lead gen error:", error);
-      toast({ title: "Generation failed", variant: "destructive" });
+      toast({ title: "Generation failed", description: "Please try again", variant: "destructive" });
     } finally {
       setIsGenerating(false);
     }
@@ -548,14 +498,19 @@ export default function AutoLeadGen() {
   const handleGenerateIntent = async () => {
     if (!canUseFeature("has_intent_leads")) {
       toast({
-        title: "Upgrade required",
-        description: "Intent detection requires Professional plan",
+        title: "Feature not available",
+        description: "Upgrade to Professional for intent detection",
         variant: "destructive",
       });
       return;
     }
+    if (hasReachedLimit("intent_searches")) {
+      toast({ title: "Daily intent search limit reached", variant: "destructive" });
+      return;
+    }
 
     setIsGenerating(true);
+    const startTime = Date.now();
 
     try {
       const response = await fetch("https://webhooks.zatesystems.com/webhook/intent-lead-gen", {
@@ -576,6 +531,7 @@ export default function AutoLeadGen() {
       });
 
       const data = await response.json();
+      const executionTime = Date.now() - startTime;
 
       if (data.success && data.leads) {
         const newLeads: GeneratedLead[] = data.leads.map((lead: any) => ({
@@ -584,8 +540,8 @@ export default function AutoLeadGen() {
           contact: lead.contact_name || lead.username || "",
           email: lead.email || "",
           title: "",
-          score: lead.score || 0,
-          grade: lead.grade || "C",
+          score: lead.score || lead.lead_score || 0,
+          grade: lead.grade || lead.lead_grade || "C",
           status: "new",
           source: "intent",
           website: lead.website || lead.source_url,
@@ -593,6 +549,30 @@ export default function AutoLeadGen() {
         }));
 
         setGeneratedLeads((prev) => [...newLeads, ...prev]);
+
+        // Log to history
+        await logSearchHistory({
+          search_type: "b2c_intent",
+          keywords: intentKeywords,
+          industry: selectedIndustry,
+          location,
+          country,
+          request_id: data.request_id,
+          leads_found: newLeads.length,
+          leads_saved: 0,
+          duplicates_skipped: 0,
+          average_score: data.average_score,
+          grade_distribution: data.grade_distribution,
+          hot_leads: data.hot_leads || 0,
+          warm_leads: data.warm_leads || 0,
+          sources_used: Object.entries(platforms)
+            .filter(([_, v]) => v)
+            .map(([k]) => k),
+          triggered_by: "manual",
+          execution_time_ms: executionTime,
+          status: "completed",
+        });
+
         toast({ title: "Intent leads found!", description: `${newLeads.length} potential buyers detected` });
         refreshUsage();
         refetchHistory();
@@ -601,6 +581,123 @@ export default function AutoLeadGen() {
       toast({ title: "Intent search failed", variant: "destructive" });
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  // =====================================================
+  // LOG SEARCH HISTORY
+  // =====================================================
+  const logSearchHistory = async (historyData: Partial<SearchHistory>) => {
+    try {
+      await supabase.from("lead_gen_history").insert({
+        tenant_id: tenantId,
+        ...historyData,
+      });
+    } catch (e) {
+      console.error("Failed to log history:", e);
+    }
+  };
+
+  // =====================================================
+  // SAVE SEARCH
+  // =====================================================
+  const handleSaveSearch = async () => {
+    if (!searchName.trim()) {
+      toast({ title: "Enter a name", variant: "destructive" });
+      return;
+    }
+
+    try {
+      const searchData = {
+        tenant_id: tenantId,
+        name: searchName,
+        search_type: searchType === "intent" ? "b2c_intent" : hasPremiumSources ? "premium_b2b" : "b2b",
+        keywords: searchType === "b2b" ? keywords : "",
+        industry: selectedIndustry,
+        location,
+        country,
+        company_size: companySize,
+        job_titles: jobTitles
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean),
+        max_leads: generateCount[0],
+        intent_keywords: searchType === "intent" ? intentKeywords : "",
+        platforms: searchType === "intent" ? platforms : {},
+        use_premium_sources: usePremiumSources && hasPremiumSources,
+        ai_scoring: true,
+        is_scheduled: enableSchedule,
+        schedule_frequency: enableSchedule ? scheduleFrequency : null,
+        schedule_time: enableSchedule ? scheduleTime : null,
+        is_active: true,
+      };
+
+      const { error } = await supabase.from("lead_gen_searches").insert(searchData);
+      if (error) throw error;
+
+      toast({
+        title: "Search saved!",
+        description: enableSchedule ? "Scheduled searches will run automatically" : "You can run this search anytime",
+      });
+      setShowSaveDialog(false);
+      setSearchName("");
+      refetchSavedSearches();
+    } catch (e) {
+      toast({ title: "Failed to save", variant: "destructive" });
+    }
+  };
+
+  // =====================================================
+  // RUN SAVED SEARCH
+  // =====================================================
+  const runSavedSearch = async (search: SavedSearch) => {
+    // Populate form with saved values
+    setSelectedIndustry(search.industry || "");
+    setKeywords(search.keywords || "");
+    setLocation(search.location || "Dubai");
+    setCountry(search.country || "UAE");
+    setCompanySize(search.company_size || "all");
+    setJobTitles((search.job_titles || []).join(", "));
+    setGenerateCount([search.max_leads || 10]);
+    setUsePremiumSources(search.use_premium_sources);
+
+    if (search.search_type === "b2c_intent") {
+      setSearchType("intent");
+      setIntentKeywords(search.intent_keywords || "");
+      setPlatforms((search.platforms as any) || { reddit: true, twitter: true, forums: false, linkedin: false });
+    } else {
+      setSearchType("b2b");
+    }
+
+    setMainTab("generate");
+
+    // Auto-run after brief delay
+    setTimeout(() => {
+      if (search.search_type === "b2c_intent") {
+        handleGenerateIntent();
+      } else {
+        handleGenerateB2B();
+      }
+    }, 500);
+
+    // Update last run
+    await supabase
+      .from("lead_gen_searches")
+      .update({ last_run_at: new Date().toISOString(), total_runs: (search.total_runs || 0) + 1 })
+      .eq("id", search.id);
+    refetchSavedSearches();
+  };
+
+  // =====================================================
+  // DELETE SAVED SEARCH
+  // =====================================================
+  const deleteSavedSearch = async (id: string) => {
+    try {
+      await supabase.from("lead_gen_searches").delete().eq("id", id);
+      toast({ title: "Search deleted" });
+      refetchSavedSearches();
+    } catch (e) {
+      toast({ title: "Failed to delete", variant: "destructive" });
     }
   };
 
@@ -626,8 +723,6 @@ export default function AutoLeadGen() {
           lead_grade: lead.grade,
           temperature: lead.temperature || (lead.grade === "A" ? "hot" : lead.grade === "B" ? "warm" : "cold"),
           status: "new",
-          snippet: lead.snippet,
-          industry: lead.industry,
         })
         .select()
         .single();
@@ -641,9 +736,18 @@ export default function AutoLeadGen() {
       toast({ title: "Lead added to pipeline!" });
     },
     onError: (error: any) => {
-      toast({ title: "Failed to add", description: error.message, variant: "destructive" });
+      toast({ title: "Failed to add lead", description: error.message, variant: "destructive" });
     },
   });
+
+  const handleDiscard = (leadId: string) => {
+    setGeneratedLeads((leads) => leads.filter((l) => l.id !== leadId));
+  };
+
+  const addAllToPipeline = () => {
+    const newLeads = generatedLeads.filter((l) => l.status === "new");
+    newLeads.forEach((lead) => addToPipelineMutation.mutate(lead));
+  };
 
   // =====================================================
   // RENDER
@@ -678,6 +782,7 @@ export default function AutoLeadGen() {
       </div>
 
       <div className="container py-6">
+        {/* Main Tabs */}
         <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as any)} className="space-y-6">
           <TabsList className="grid w-full max-w-2xl grid-cols-4">
             <TabsTrigger value="generate" className="gap-2">
@@ -686,7 +791,7 @@ export default function AutoLeadGen() {
             </TabsTrigger>
             <TabsTrigger value="saved" className="gap-2">
               <Save className="h-4 w-4" />
-              Saved (0)
+              Saved ({savedSearches.length})
             </TabsTrigger>
             <TabsTrigger value="history" className="gap-2">
               <History className="h-4 w-4" />
@@ -698,9 +803,10 @@ export default function AutoLeadGen() {
             </TabsTrigger>
           </TabsList>
 
-          {/* GENERATE TAB */}
+          {/* ==================== GENERATE TAB ==================== */}
           <TabsContent value="generate">
             <div className="grid gap-6 lg:grid-cols-2">
+              {/* Left: Configuration */}
               <div className="space-y-6">
                 {/* Search Type Toggle */}
                 <Card>
@@ -729,15 +835,17 @@ export default function AutoLeadGen() {
                 </Card>
 
                 {searchType === "b2b" ? (
+                  /* B2B Configuration */
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <Building2 className="h-5 w-5" />
                         B2B Lead Generation
                       </CardTitle>
-                      <CardDescription>{getRemainingCredits("b2b_searches") || 100} searches remaining</CardDescription>
+                      <CardDescription>{getRemainingCredits("b2b_searches")} searches remaining today</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                      {/* Data Sources */}
                       <div className="flex flex-wrap gap-2">
                         <Badge variant="secondary" className="gap-1">
                           <Check className="h-3 w-3 text-green-500" /> Google
@@ -758,7 +866,10 @@ export default function AutoLeadGen() {
                           </Badge>
                         )}
                       </div>
+
                       <Separator />
+
+                      {/* Industry */}
                       <div className="space-y-2">
                         <Label>Industry</Label>
                         <Select value={selectedIndustry} onValueChange={setSelectedIndustry}>
@@ -774,14 +885,18 @@ export default function AutoLeadGen() {
                           </SelectContent>
                         </Select>
                       </div>
+
+                      {/* Keywords */}
                       <div className="space-y-2">
                         <Label>Keywords</Label>
                         <Input
-                          placeholder="e.g., flooring contractors"
+                          placeholder="e.g., flooring contractors, real estate agents"
                           value={keywords}
                           onChange={(e) => setKeywords(e.target.value)}
                         />
                       </div>
+
+                      {/* Location */}
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label>City</Label>
@@ -792,6 +907,8 @@ export default function AutoLeadGen() {
                           <Input value={country} onChange={(e) => setCountry(e.target.value)} />
                         </div>
                       </div>
+
+                      {/* Company Size */}
                       <div className="space-y-2">
                         <Label>Company Size</Label>
                         <Select value={companySize} onValueChange={setCompanySize}>
@@ -803,17 +920,22 @@ export default function AutoLeadGen() {
                             <SelectItem value="small">1-50 employees</SelectItem>
                             <SelectItem value="medium">51-200 employees</SelectItem>
                             <SelectItem value="large">201-500 employees</SelectItem>
+                            <SelectItem value="enterprise">500+ employees</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
+
+                      {/* Job Titles */}
                       <div className="space-y-2">
                         <Label>Target Job Titles</Label>
                         <Input
-                          placeholder="CEO, Owner, Director"
+                          placeholder="CEO, Owner, Director, Manager"
                           value={jobTitles}
                           onChange={(e) => setJobTitles(e.target.value)}
                         />
                       </div>
+
+                      {/* Lead Count Slider */}
                       <div className="space-y-2">
                         <div className="flex justify-between">
                           <Label>Number of Leads</Label>
@@ -825,15 +947,21 @@ export default function AutoLeadGen() {
                           min={1}
                           max={Math.max(1, maxLeadsAllowed)}
                           step={1}
+                          disabled={maxLeadsAllowed === 0}
                         />
+                        <p className="text-xs text-muted-foreground">
+                          {maxLeadsAllowed > 0 ? `Max ${maxLeadsAllowed} leads remaining` : "Lead limit reached"}
+                        </p>
                       </div>
+
+                      {/* Premium Sources Toggle */}
                       {hasPremiumSources && (
                         <div className="flex items-center justify-between p-3 rounded-lg bg-primary/5 border">
                           <div className="flex items-center gap-2">
                             <Crown className="h-4 w-4 text-primary" />
                             <div>
-                              <div className="font-medium">Premium Sources</div>
-                              <div className="text-xs text-muted-foreground">Higher quality leads</div>
+                              <div className="font-medium">Use Premium Sources</div>
+                              <div className="text-xs text-muted-foreground">Higher quality, verified leads</div>
                             </div>
                           </div>
                           <Switch checked={usePremiumSources} onCheckedChange={setUsePremiumSources} />
@@ -841,7 +969,11 @@ export default function AutoLeadGen() {
                       )}
                     </CardContent>
                     <CardFooter className="flex gap-2">
-                      <Button className="flex-1" onClick={handleGenerateB2B} disabled={isGenerating}>
+                      <Button
+                        className="flex-1"
+                        onClick={handleGenerateB2B}
+                        disabled={isGenerating || maxLeadsAllowed === 0}
+                      >
                         {isGenerating ? (
                           <>
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -860,6 +992,7 @@ export default function AutoLeadGen() {
                     </CardFooter>
                   </Card>
                 ) : (
+                  /* Intent Configuration */
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
@@ -867,16 +1000,17 @@ export default function AutoLeadGen() {
                         Intent-Based Leads
                       </CardTitle>
                       <CardDescription>
-                        {getRemainingCredits("intent_searches") || 50} searches remaining
+                        {getRemainingCredits("intent_searches")} intent searches remaining today
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                      {/* Platform Toggles */}
                       <div className="space-y-3">
                         <Label>Monitor Platforms</Label>
                         {Object.entries({
                           reddit: { icon: MessageCircle, label: "Reddit" },
-                          twitter: { icon: Globe, label: "Twitter/X" },
-                          forums: { icon: Globe, label: "Forums" },
+                          twitter: { icon: Twitter, label: "Twitter/X" },
+                          forums: { icon: Globe, label: "Industry Forums" },
                           linkedin: { icon: Briefcase, label: "LinkedIn" },
                         }).map(([key, { icon: Icon, label }]) => (
                           <div key={key} className="flex items-center justify-between">
@@ -891,17 +1025,23 @@ export default function AutoLeadGen() {
                           </div>
                         ))}
                       </div>
+
                       <Separator />
+
+                      {/* Intent Keywords */}
                       <div className="space-y-2">
                         <Label>Intent Keywords</Label>
                         <Input
-                          placeholder="looking for, need help"
+                          placeholder="looking for, need help, recommend"
                           value={intentKeywords}
                           onChange={(e) => setIntentKeywords(e.target.value)}
                         />
+                        <p className="text-xs text-muted-foreground">Keywords that indicate buying intent</p>
                       </div>
+
+                      {/* Industry for context */}
                       <div className="space-y-2">
-                        <Label>Industry</Label>
+                        <Label>Industry Context</Label>
                         <Select value={selectedIndustry} onValueChange={setSelectedIndustry}>
                           <SelectTrigger>
                             <SelectValue placeholder="Select industry" />
@@ -930,11 +1070,14 @@ export default function AutoLeadGen() {
                           </>
                         )}
                       </Button>
+                      <Button variant="outline" onClick={() => setShowSaveDialog(true)}>
+                        <Save className="h-4 w-4" />
+                      </Button>
                     </CardFooter>
                   </Card>
                 )}
 
-                {/* Usage */}
+                {/* Usage Stats */}
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -950,30 +1093,36 @@ export default function AutoLeadGen() {
                       </span>
                     </div>
                     <Progress value={((usage?.leads_generated || 0) / (limits?.max_leads_per_month || 100)) * 100} />
+                    <div className="flex justify-between text-sm">
+                      <span>B2B Searches Today</span>
+                      <span className="font-medium">
+                        {usage?.b2b_searches_today || 0} / {limits?.max_b2b_searches_per_day || 10}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Intent Searches Today</span>
+                      <span className="font-medium">
+                        {usage?.intent_searches_today || 0} / {limits?.max_intent_searches_per_day || 5}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">30 days remaining in billing period</p>
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Queue */}
+              {/* Right: Generated Leads Queue */}
               <Card className="h-fit">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle>Generated Leads Queue</CardTitle>
                       <CardDescription>
-                        {generatedLeads.filter((l) => l.status === "new").length} ready for review
+                        {generatedLeads.filter((l) => l.status === "new").length} leads ready for review
                       </CardDescription>
                     </div>
                     <div className="flex gap-2">
                       {generatedLeads.filter((l) => l.status === "new").length > 0 && (
-                        <Button
-                          size="sm"
-                          onClick={() =>
-                            generatedLeads
-                              .filter((l) => l.status === "new")
-                              .forEach((lead) => addToPipelineMutation.mutate(lead))
-                          }
-                        >
+                        <Button size="sm" onClick={addAllToPipeline}>
                           <Plus className="h-4 w-4 mr-1" />
                           Add All
                         </Button>
@@ -989,7 +1138,7 @@ export default function AutoLeadGen() {
                     <div className="text-center py-12 text-muted-foreground">
                       <Sparkles className="h-12 w-12 mx-auto mb-4 opacity-50" />
                       <p>No leads in queue</p>
-                      <p className="text-sm">Configure search and generate leads</p>
+                      <p className="text-sm">Configure your search and generate leads</p>
                     </div>
                   ) : (
                     <ScrollArea className="h-[500px]">
@@ -998,14 +1147,15 @@ export default function AutoLeadGen() {
                           <div
                             key={lead.id}
                             className={cn(
-                              "p-4 rounded-lg border transition-all cursor-pointer hover:shadow-md",
+                              "p-4 rounded-lg border transition-all",
                               lead.status === "added" && "bg-green-50 border-green-200",
+                              lead.status === "new" && "bg-card hover:shadow-md",
                             )}
                           >
                             <div className="flex items-start justify-between gap-4">
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <h4 className="font-medium truncate">{lead.company || "Unknown"}</h4>
+                                  <h4 className="font-medium truncate">{lead.company || "Unknown Company"}</h4>
                                   <GradeBadge grade={lead.grade} />
                                   <TemperatureBadge temperature={lead.temperature} />
                                 </div>
@@ -1014,6 +1164,18 @@ export default function AutoLeadGen() {
                                     {lead.contact} {lead.title && `• ${lead.title}`}
                                   </p>
                                 )}
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                  {lead.email && (
+                                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                      <Check className="h-3 w-3 text-green-500" /> {lead.email}
+                                    </span>
+                                  )}
+                                  {lead.phone && (
+                                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                      <Check className="h-3 w-3 text-green-500" /> {lead.phone}
+                                    </span>
+                                  )}
+                                </div>
                                 {lead.snippet && (
                                   <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{lead.snippet}</p>
                                 )}
@@ -1028,11 +1190,7 @@ export default function AutoLeadGen() {
                                     <Button size="sm" onClick={() => addToPipelineMutation.mutate(lead)}>
                                       <Plus className="h-4 w-4" />
                                     </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => setGeneratedLeads((l) => l.filter((x) => x.id !== lead.id))}
-                                    >
+                                    <Button size="sm" variant="ghost" onClick={() => handleDiscard(lead.id)}>
                                       <X className="h-4 w-4" />
                                     </Button>
                                   </>
@@ -1054,27 +1212,111 @@ export default function AutoLeadGen() {
             </div>
           </TabsContent>
 
-          {/* SAVED TAB */}
+          {/* ==================== SAVED SEARCHES TAB ==================== */}
           <TabsContent value="saved">
             <Card>
               <CardHeader>
-                <CardTitle>Saved Searches</CardTitle>
-                <CardDescription>Your saved search configurations</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-12">
-                  <Save className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                  <p className="text-muted-foreground">No saved searches yet</p>
-                  <Button className="mt-4" onClick={() => setMainTab("generate")}>
-                    <Zap className="h-4 w-4 mr-2" />
-                    Create Search
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Saved Searches</CardTitle>
+                    <CardDescription>Your saved search configurations and scheduled automation</CardDescription>
+                  </div>
+                  <Button
+                    onClick={() => {
+                      setMainTab("generate");
+                      setShowSaveDialog(true);
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Search
                   </Button>
                 </div>
+              </CardHeader>
+              <CardContent>
+                {loadingSavedSearches ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : savedSearches.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Save className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                    <p className="text-muted-foreground">No saved searches yet</p>
+                    <p className="text-sm text-muted-foreground">Save your search configurations to reuse them</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {savedSearches.map((search) => (
+                      <div
+                        key={search.id}
+                        className="flex items-center justify-between p-4 rounded-lg border hover:shadow-sm transition-shadow"
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-medium">{search.name}</h4>
+                            <Badge variant="outline">{search.search_type}</Badge>
+                            {search.is_scheduled && (
+                              <Badge className="bg-green-500">
+                                <Clock className="h-3 w-3 mr-1" />
+                                {search.schedule_frequency}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {search.industry} • {search.location}, {search.country}
+                            {search.keywords && ` • "${search.keywords}"`}
+                          </p>
+                          <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                            <span>Runs: {search.total_runs}</span>
+                            <span>Found: {search.total_leads_found}</span>
+                            <span>Saved: {search.total_leads_saved}</span>
+                            {search.last_run_at && (
+                              <span>
+                                Last: {formatDistanceToNow(new Date(search.last_run_at), { addSuffix: true })}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" onClick={() => runSavedSearch(search)}>
+                            <Play className="h-4 w-4 mr-1" />
+                            Run
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button size="sm" variant="ghost">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => runSavedSearch(search)}>
+                                <Play className="h-4 w-4 mr-2" />
+                                Run Now
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <Copy className="h-4 w-4 mr-2" />
+                                Duplicate
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem className="text-red-600" onClick={() => deleteSavedSearch(search.id)}>
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
 
-          {/* HISTORY TAB */}
+          {/* ==================== HISTORY TAB ==================== */}
           <TabsContent value="history">
             <Card>
               <CardHeader>
@@ -1098,6 +1340,7 @@ export default function AutoLeadGen() {
                   <div className="text-center py-12">
                     <History className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
                     <p className="text-muted-foreground">No search history yet</p>
+                    <p className="text-sm text-muted-foreground">Your lead generation activities will appear here</p>
                   </div>
                 ) : (
                   <Table>
@@ -1105,36 +1348,38 @@ export default function AutoLeadGen() {
                       <TableRow>
                         <TableHead>Date</TableHead>
                         <TableHead>Type</TableHead>
-                        <TableHead>Industry</TableHead>
+                        <TableHead>Search</TableHead>
                         <TableHead>Found</TableHead>
-                        <TableHead>Hot</TableHead>
-                        <TableHead>Warm</TableHead>
+                        <TableHead>Saved</TableHead>
+                        <TableHead>Avg Score</TableHead>
                         <TableHead>Sources</TableHead>
+                        <TableHead>Status</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {searchHistory.map((h: any) => (
+                      {searchHistory.map((h) => (
                         <TableRow key={h.id}>
                           <TableCell className="whitespace-nowrap">
-                            {formatDistanceToNow(new Date(h.created_at), { addSuffix: true })}
+                            {format(new Date(h.created_at), "MMM d, h:mm a")}
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline">{h.search_type}</Badge>
                           </TableCell>
-                          <TableCell>{h.industry || "-"}</TableCell>
-                          <TableCell className="font-medium">{h.leads_found}</TableCell>
-                          <TableCell>
-                            <span className="text-red-600">{h.hot_leads}</span>
-                          </TableCell>
-                          <TableCell>
-                            <span className="text-amber-600">{h.warm_leads}</span>
-                          </TableCell>
+                          <TableCell className="max-w-[200px] truncate">{h.keywords || h.industry || "-"}</TableCell>
+                          <TableCell>{h.leads_found}</TableCell>
+                          <TableCell>{h.leads_saved}</TableCell>
+                          <TableCell>{h.average_score || "-"}</TableCell>
                           <TableCell>
                             <div className="flex gap-1">
-                              {(h.sources_used || []).slice(0, 3).map((s: string) => (
-                                <SourceBadge key={s} source={s} />
+                              {(h.sources_used || []).map((s) => (
+                                <Badge key={s} variant="secondary" className="text-xs">
+                                  {s}
+                                </Badge>
                               ))}
                             </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={h.status === "completed" ? "default" : "destructive"}>{h.status}</Badge>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -1145,14 +1390,14 @@ export default function AutoLeadGen() {
             </Card>
           </TabsContent>
 
-          {/* LEADS TAB */}
+          {/* ==================== LEADS TAB ==================== */}
           <TabsContent value="leads">
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle>Generated Leads</CardTitle>
-                    <CardDescription>Click any lead to view details</CardDescription>
+                    <CardDescription>All leads from auto lead generation</CardDescription>
                   </div>
                   <div className="flex gap-2">
                     <Button variant="outline" onClick={() => navigate("/sales/pipeline")}>
@@ -1174,6 +1419,7 @@ export default function AutoLeadGen() {
                   <div className="text-center py-12">
                     <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
                     <p className="text-muted-foreground">No leads yet</p>
+                    <p className="text-sm text-muted-foreground">Generate leads to see them here</p>
                   </div>
                 ) : (
                   <Table>
@@ -1187,19 +1433,11 @@ export default function AutoLeadGen() {
                         <TableHead>Grade</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Created</TableHead>
-                        <TableHead></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {recentLeads.map((lead) => (
-                        <TableRow
-                          key={lead.id}
-                          className="cursor-pointer hover:bg-muted/50"
-                          onClick={() => {
-                            setSelectedLead(lead);
-                            setShowLeadDetail(true);
-                          }}
-                        >
+                        <TableRow key={lead.id} className="cursor-pointer hover:bg-muted/50">
                           <TableCell className="font-medium">{lead.company_name || "-"}</TableCell>
                           <TableCell>{lead.contact_name || "-"}</TableCell>
                           <TableCell className="max-w-[150px] truncate">{lead.email || "-"}</TableCell>
@@ -1208,18 +1446,13 @@ export default function AutoLeadGen() {
                           </TableCell>
                           <TableCell>{lead.lead_score || 0}</TableCell>
                           <TableCell>
-                            <GradeBadge grade={lead.lead_grade || "C"} />
+                            <GradeBadge grade={lead.lead_grade as any} />
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline">{lead.status}</Badge>
                           </TableCell>
                           <TableCell className="text-muted-foreground">
                             {formatDistanceToNow(new Date(lead.created_at), { addSuffix: true })}
-                          </TableCell>
-                          <TableCell>
-                            <Button size="sm" variant="ghost">
-                              <ChevronRight className="h-4 w-4" />
-                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -1232,51 +1465,54 @@ export default function AutoLeadGen() {
         </Tabs>
       </div>
 
-      {/* Lead Detail Sheet */}
-      <LeadDetailSheet
-        lead={selectedLead}
-        open={showLeadDetail}
-        onClose={() => setShowLeadDetail(false)}
-        onAddToPipeline={(lead) => navigate(`/sales/pipeline?addLead=${lead.id}`)}
-      />
-
-      {/* Save Dialog */}
+      {/* Save Search Dialog */}
       <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Save Search Configuration</DialogTitle>
-            <DialogDescription>Save to run again later</DialogDescription>
+            <DialogDescription>Save this search to run it again later or schedule automatic runs</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Search Name</Label>
               <Input
-                placeholder="e.g., Dubai Flooring"
+                placeholder="e.g., Dubai Flooring Contractors"
                 value={searchName}
                 onChange={(e) => setSearchName(e.target.value)}
               />
             </div>
+
             <Separator />
+
             <div className="flex items-center justify-between">
               <div>
                 <Label>Enable Scheduling</Label>
-                <p className="text-sm text-muted-foreground">Auto-run this search</p>
+                <p className="text-sm text-muted-foreground">Automatically run this search</p>
               </div>
               <Switch checked={enableSchedule} onCheckedChange={setEnableSchedule} />
             </div>
+
             {enableSchedule && (
-              <div className="space-y-2 p-4 bg-muted/50 rounded-lg">
-                <Label>Frequency</Label>
-                <Select value={scheduleFrequency} onValueChange={setScheduleFrequency}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="hourly">Every Hour</SelectItem>
-                    <SelectItem value="daily">Daily</SelectItem>
-                    <SelectItem value="weekly">Weekly</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="space-y-4 p-4 rounded-lg bg-muted/50">
+                <div className="space-y-2">
+                  <Label>Frequency</Label>
+                  <Select value={scheduleFrequency} onValueChange={setScheduleFrequency}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SCHEDULE_FREQUENCIES.map((f) => (
+                        <SelectItem key={f.id} value={f.id}>
+                          {f.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Time</Label>
+                  <Input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} />
+                </div>
               </div>
             )}
           </div>
@@ -1284,14 +1520,9 @@ export default function AutoLeadGen() {
             <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
               Cancel
             </Button>
-            <Button
-              onClick={() => {
-                toast({ title: "Search saved!" });
-                setShowSaveDialog(false);
-              }}
-            >
+            <Button onClick={handleSaveSearch}>
               <Save className="h-4 w-4 mr-2" />
-              Save
+              Save Search
             </Button>
           </DialogFooter>
         </DialogContent>
