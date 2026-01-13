@@ -405,90 +405,88 @@ export default function BillingSettings() {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {[
-                  { label: "Leads per month", key: "leads_per_month", format: (v: number) => v.toLocaleString() },
-                  {
-                    label: "B2B searches per day",
-                    key: "b2b_searches_per_day",
-                    format: (v: number) => v.toLocaleString(),
-                  },
-                  {
-                    label: "Google Search",
-                    key: "has_google_search",
-                    format: (v: boolean) =>
-                      v ? (
-                        <Check className="h-5 w-5 text-green-500 mx-auto" />
-                      ) : (
-                        <X className="h-5 w-5 text-gray-300 mx-auto" />
-                      ),
-                  },
-                  {
-                    label: "Hunter.io",
-                    key: "has_hunter_access",
-                    format: (v: boolean) =>
-                      v ? (
-                        <Check className="h-5 w-5 text-green-500 mx-auto" />
-                      ) : (
-                        <X className="h-5 w-5 text-gray-300 mx-auto" />
-                      ),
-                  },
-                  {
-                    label: "Apollo.io",
-                    key: "has_apollo_access",
-                    format: (v: boolean) =>
-                      v ? (
-                        <Check className="h-5 w-5 text-green-500 mx-auto" />
-                      ) : (
-                        <X className="h-5 w-5 text-gray-300 mx-auto" />
-                      ),
-                  },
-                  {
-                    label: "Apify Scraping",
-                    key: "has_apify_access",
-                    format: (v: boolean) =>
-                      v ? (
-                        <Check className="h-5 w-5 text-green-500 mx-auto" />
-                      ) : (
-                        <X className="h-5 w-5 text-gray-300 mx-auto" />
-                      ),
-                  },
-                  {
-                    label: "Intent Detection",
-                    key: "has_intent_leads",
-                    format: (v: boolean) =>
-                      v ? (
-                        <Check className="h-5 w-5 text-green-500 mx-auto" />
-                      ) : (
-                        <X className="h-5 w-5 text-gray-300 mx-auto" />
-                      ),
-                  },
-                  { label: "Emails per day", key: "emails_per_day", format: (v: number) => v.toLocaleString() },
-                  { label: "WhatsApp per day", key: "whatsapp_per_day", format: (v: number) => v.toLocaleString() },
-                  { label: "Voice calls per day", key: "calls_per_day", format: (v: number) => v.toLocaleString() },
-                  { label: "Active sequences", key: "active_sequences", format: (v: number) => v.toLocaleString() },
-                  { label: "Team members", key: "max_users", format: (v: number) => (v === -1 ? "Unlimited" : v) },
-                  { label: "Voice minutes", key: "voice_minutes", format: (v: number) => v.toLocaleString() },
-                  {
-                    label: "White-label",
-                    key: "has_white_label",
-                    format: (v: boolean) =>
-                      v ? (
-                        <Check className="h-5 w-5 text-green-500 mx-auto" />
-                      ) : (
-                        <X className="h-5 w-5 text-gray-300 mx-auto" />
-                      ),
-                  },
-                  {
-                    label: "API Access",
-                    key: "has_api_access",
-                    format: (v: boolean) =>
-                      v ? (
-                        <Check className="h-5 w-5 text-green-500 mx-auto" />
-                      ) : (
-                        <X className="h-5 w-5 text-gray-300 mx-auto" />
-                      ),
-                  },
-                ].map((row) => (
+                {(
+                  [
+                    { label: "Leads per month", key: "leads_per_month", format: (v: any) => v?.toLocaleString?.() ?? v },
+                    { label: "B2B searches per day", key: "b2b_searches_per_day", format: (v: any) => v?.toLocaleString?.() ?? v },
+                    {
+                      label: "Google Search",
+                      key: "has_google_search",
+                      format: (v: any) =>
+                        v ? (
+                          <Check className="h-5 w-5 text-green-500 mx-auto" />
+                        ) : (
+                          <X className="h-5 w-5 text-gray-300 mx-auto" />
+                        ),
+                    },
+                    {
+                      label: "Hunter.io",
+                      key: "has_hunter_access",
+                      format: (v: any) =>
+                        v ? (
+                          <Check className="h-5 w-5 text-green-500 mx-auto" />
+                        ) : (
+                          <X className="h-5 w-5 text-gray-300 mx-auto" />
+                        ),
+                    },
+                    {
+                      label: "Apollo.io",
+                      key: "has_apollo_access",
+                      format: (v: any) =>
+                        v ? (
+                          <Check className="h-5 w-5 text-green-500 mx-auto" />
+                        ) : (
+                          <X className="h-5 w-5 text-gray-300 mx-auto" />
+                        ),
+                    },
+                    {
+                      label: "Apify Scraping",
+                      key: "has_apify_access",
+                      format: (v: any) =>
+                        v ? (
+                          <Check className="h-5 w-5 text-green-500 mx-auto" />
+                        ) : (
+                          <X className="h-5 w-5 text-gray-300 mx-auto" />
+                        ),
+                    },
+                    {
+                      label: "Intent Detection",
+                      key: "has_intent_leads",
+                      format: (v: any) =>
+                        v ? (
+                          <Check className="h-5 w-5 text-green-500 mx-auto" />
+                        ) : (
+                          <X className="h-5 w-5 text-gray-300 mx-auto" />
+                        ),
+                    },
+                    { label: "Emails per day", key: "emails_per_day", format: (v: any) => v?.toLocaleString?.() ?? v },
+                    { label: "WhatsApp per day", key: "whatsapp_per_day", format: (v: any) => v?.toLocaleString?.() ?? v },
+                    { label: "Voice calls per day", key: "calls_per_day", format: (v: any) => v?.toLocaleString?.() ?? v },
+                    { label: "Active sequences", key: "active_sequences", format: (v: any) => v?.toLocaleString?.() ?? v },
+                    { label: "Team members", key: "max_users", format: (v: any) => (v === -1 ? "Unlimited" : v) },
+                    { label: "Voice minutes", key: "voice_minutes", format: (v: any) => v?.toLocaleString?.() ?? v },
+                    {
+                      label: "White-label",
+                      key: "has_white_label",
+                      format: (v: any) =>
+                        v ? (
+                          <Check className="h-5 w-5 text-green-500 mx-auto" />
+                        ) : (
+                          <X className="h-5 w-5 text-gray-300 mx-auto" />
+                        ),
+                    },
+                    {
+                      label: "API Access",
+                      key: "has_api_access",
+                      format: (v: any) =>
+                        v ? (
+                          <Check className="h-5 w-5 text-green-500 mx-auto" />
+                        ) : (
+                          <X className="h-5 w-5 text-gray-300 mx-auto" />
+                        ),
+                    },
+                  ] as { label: string; key: string; format: (v: any) => React.ReactNode }[]
+                ).map((row) => (
                   <tr key={row.key}>
                     <td className="py-3 px-4">{row.label}</td>
                     {allTiers.map((plan) => (
@@ -498,7 +496,6 @@ export default function BillingSettings() {
                     ))}
                   </tr>
                 ))}
-
               </tbody>
             </table>
           </div>
