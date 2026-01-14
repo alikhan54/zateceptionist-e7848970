@@ -33,6 +33,8 @@ import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -117,6 +119,10 @@ import {
   XCircle,
   CheckCircle,
   Info,
+  FileText,
+  Shield,
+  AlertTriangle,
+  Pin,
 } from "lucide-react";
 import {
   formatDistanceToNow,
@@ -393,6 +399,10 @@ export default function Inbox() {
   const [isDealDialogOpen, setIsDealDialogOpen] = useState(false);
   const [isBookDialogOpen, setIsBookDialogOpen] = useState(false);
   const [isCallDialogOpen, setIsCallDialogOpen] = useState(false);
+  const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
+  const [isEscalateDialogOpen, setIsEscalateDialogOpen] = useState(false);
+  const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
+  const [isComplianceDialogOpen, setIsComplianceDialogOpen] = useState(false);
 
   // Form states
   const [noteText, setNoteText] = useState("");
@@ -404,6 +414,8 @@ export default function Inbox() {
   const [appointmentTime, setAppointmentTime] = useState("10:00");
   const [appointmentService, setAppointmentService] = useState("");
   const [appointmentNotes, setAppointmentNotes] = useState("");
+  const [escalationReason, setEscalationReason] = useState("");
+  const [transferReason, setTransferReason] = useState("");
 
   // Filters
   const [filters, setFilters] = useState<FilterState>({
@@ -855,6 +867,118 @@ export default function Inbox() {
     },
     onError: (error) => {
       toast.error("Failed to initiate call");
+      console.error(error);
+    },
+  });
+
+  // Escalate conversation mutation
+  const escalateMutation = useMutation({
+    mutationFn: async ({ conversationId, reason }: { conversationId: string; reason: string }) => {
+      await supabase
+        .from("conversations")
+        .update({
+          requires_human: true,
+          escalation_reason: reason,
+          priority: "high",
+          ai_handled: false,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", conversationId);
+
+      // Add internal note about escalation
+      await supabase.from("internal_notes").insert({
+        conversation_id: conversationId,
+        tenant_id: tenantUuid,
+        user_id: "system",
+        user_name: "System",
+        content: `⚠️ ESCALATED: ${reason}`,
+        mentions: [],
+        pinned: true,
+        created_at: new Date().toISOString(),
+      });
+    },
+    onSuccess: () => {
+      setIsEscalateDialogOpen(false);
+      setEscalationReason("");
+      queryClient.invalidateQueries({ queryKey: ["inbox-conversations"] });
+      toast.success("Conversation escalated");
+    },
+    onError: (error) => {
+      toast.error("Failed to escalate");
+      console.error(error);
+    },
+  });
+
+  // Transfer conversation mutation
+  const transferMutation = useMutation({
+    mutationFn: async ({
+      conversationId,
+      toStaffId,
+      reason,
+    }: {
+      conversationId: string;
+      toStaffId: string;
+      reason: string;
+    }) => {
+      await supabase
+        .from("conversations")
+        .update({
+          assigned_to: toStaffId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", conversationId);
+
+      // Add internal note about transfer
+      await supabase.from("internal_notes").insert({
+        conversation_id: conversationId,
+        tenant_id: tenantUuid,
+        user_id: "system",
+        user_name: "System",
+        content: `🔄 Transferred: ${reason}`,
+        mentions: [toStaffId],
+        pinned: false,
+        created_at: new Date().toISOString(),
+      });
+    },
+    onSuccess: () => {
+      setIsTransferDialogOpen(false);
+      setSelectedStaffId("");
+      setTransferReason("");
+      queryClient.invalidateQueries({ queryKey: ["inbox-conversations"] });
+      toast.success("Conversation transferred");
+    },
+    onError: (error) => {
+      toast.error("Failed to transfer");
+      console.error(error);
+    },
+  });
+
+  // Update customer consent mutation
+  const updateConsentMutation = useMutation({
+    mutationFn: async ({ customerId, field, value }: { customerId: string; field: string; value: boolean }) => {
+      await supabase
+        .from("customers")
+        .update({
+          [field]: value,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", customerId);
+
+      // Log compliance activity
+      await supabase.from("activities").insert({
+        tenant_id: tenantUuid,
+        customer_id: customerId,
+        type: "note",
+        description: `Consent updated: ${field} = ${value}`,
+        created_at: new Date().toISOString(),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["inbox-customers"] });
+      toast.success("Consent updated");
+    },
+    onError: (error) => {
+      toast.error("Failed to update consent");
       console.error(error);
     },
   });
