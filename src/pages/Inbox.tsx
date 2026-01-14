@@ -1,17 +1,13 @@
 // ============================================
 // FILE: src/pages/Inbox.tsx
-// VERSION 6.0 - FULLY INTEGRATED WITH N8N WEBHOOKS
+// VERSION 8.0 - USES EXACT WORKING SCHEMA
 // ============================================
 //
-// FIXES IMPLEMENTED:
-// ✅ Proper contact name resolution (Name → Email → Phone → Platform ID)
-// ✅ Phone number from customer OR conversation metadata
-// ✅ Notes trigger /webhook/orchestrator
-// ✅ Deals trigger /webhook/deal-create AND save to DB
-// ✅ Appointments trigger /webhook/book-appointment AND save to DB
-// ✅ Escalate triggers /webhook/orchestrator with escalation event
-// ✅ Call triggers VAPI /webhook/vapi/outbound-call
-// ✅ Messages trigger /webhook/send-message
+// SCHEMA FIXES (Matching Deals.tsx and Appointments.tsx):
+// ✅ Deals: title, company_name, contact_name, value, stage, probability, weighted_value
+// ✅ Appointments: customer_id, scheduled_at, duration_minutes, status, notes
+// ✅ All dialogs properly wired
+// ✅ Details panel toggles correctly
 // ============================================
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -70,7 +66,6 @@ import {
   Send,
   Paperclip,
   Smile,
-  Clock,
   CheckCheck,
   Check,
   Bot,
@@ -94,11 +89,9 @@ import {
   StickyNote,
   Briefcase,
   Hash,
-  DollarSign,
   PhoneCall,
   Plus,
   AlertCircle,
-  XCircle,
   CheckCircle,
   FileText,
   Shield,
@@ -106,25 +99,14 @@ import {
   Trash2,
   Edit,
 } from "lucide-react";
-import { format, isToday, isYesterday, addHours, setHours, setMinutes } from "date-fns";
+import { format, isToday, isYesterday } from "date-fns";
 import { cn } from "@/lib/utils";
 
 // ============================================
-// N8N WEBHOOK CONFIGURATION
+// WEBHOOK CONFIG
 // ============================================
 const N8N_WEBHOOK_BASE = "https://webhooks.zatesystems.com/webhook";
 
-const WEBHOOKS = {
-  SEND_MESSAGE: "/send-message",
-  BOOK_APPOINTMENT: "/book-appointment",
-  DEAL_CREATE: "/deal-create",
-  DEAL_UPDATE: "/deal-update",
-  ORCHESTRATOR: "/orchestrator",
-  VAPI_OUTBOUND: "/vapi/outbound-call",
-  AUTOMATION_CONTROL: "/automation-control",
-};
-
-// Helper to call webhooks
 async function callWebhook(endpoint: string, data: Record<string, unknown>, tenantId: string) {
   try {
     const response = await fetch(`${N8N_WEBHOOK_BASE}${endpoint}`, {
@@ -132,83 +114,65 @@ async function callWebhook(endpoint: string, data: Record<string, unknown>, tena
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...data, tenant_id: tenantId }),
     });
-    const result = await response.json();
-    return { success: true, data: result };
+    return { success: response.ok, data: await response.json().catch(() => ({})) };
   } catch (error) {
-    console.error(`Webhook ${endpoint} failed:`, error);
+    console.error(`Webhook ${endpoint} error:`, error);
     return { success: false, error: String(error) };
   }
 }
 
 // ============================================
-// INDUSTRY CONFIGURATION
+// PIPELINE STAGES (from Deals.tsx)
 // ============================================
-const INDUSTRY_CONFIG: Record<
-  string,
-  {
-    name: string;
-    services: string[];
-    stages: string[];
-    compliance: string[];
-  }
-> = {
+const PIPELINE_STAGES = [
+  { id: "lead", name: "Lead", probability: 10 },
+  { id: "qualified", name: "Qualified", probability: 25 },
+  { id: "proposal", name: "Proposal", probability: 50 },
+  { id: "negotiation", name: "Negotiation", probability: 75 },
+  { id: "won", name: "Won", probability: 100 },
+  { id: "lost", name: "Lost", probability: 0 },
+];
+
+// ============================================
+// INDUSTRY CONFIG
+// ============================================
+const INDUSTRY_CONFIG: Record<string, { name: string; services: string[]; compliance: string[] }> = {
   healthcare: {
     name: "Healthcare",
-    services: ["Consultation", "Treatment", "Follow-up", "Botox", "Filler", "Laser"],
-    stages: ["Inquiry", "Consultation Booked", "Treatment Plan", "In Treatment", "Completed"],
-    compliance: ["HIPAA", "Patient Consent"],
+    services: ["Consultation", "Treatment", "Follow-up", "Botox", "Filler"],
+    compliance: ["HIPAA"],
   },
   real_estate: {
     name: "Real Estate",
     services: ["Property Viewing", "Market Analysis", "Investment Consultation"],
-    stages: ["Lead", "Viewing Scheduled", "Interested", "Offer Made", "Closed"],
-    compliance: ["Fair Housing", "Disclosure"],
+    compliance: ["Fair Housing"],
   },
   salon: {
     name: "Salon & Beauty",
-    services: ["Haircut", "Color", "Styling", "Manicure", "Pedicure", "Facial"],
-    stages: ["Inquiry", "Booked", "Confirmed", "Completed", "Rebooking"],
-    compliance: ["Product Safety", "Allergy Disclosure"],
+    services: ["Haircut", "Color", "Styling", "Manicure", "Facial"],
+    compliance: ["Product Safety"],
   },
   restaurant: {
     name: "Restaurant",
-    services: ["Reservation", "Catering", "Private Event", "Takeaway"],
-    stages: ["Inquiry", "Reserved", "Confirmed", "Completed"],
-    compliance: ["Food Safety", "Allergen Information"],
+    services: ["Reservation", "Catering", "Private Event"],
+    compliance: ["Food Safety"],
   },
   flooring: {
     name: "Flooring",
-    services: ["Free Estimate", "Installation", "Repair", "Consultation"],
-    stages: ["Lead", "Estimate Scheduled", "Quote Sent", "Job Scheduled", "Completed"],
-    compliance: ["Contractor License", "Warranty Terms"],
+    services: ["Free Estimate", "Installation", "Repair"],
+    compliance: ["Contractor License"],
   },
-  general: {
-    name: "General Business",
-    services: ["Consultation", "Service", "Support", "Sales"],
-    stages: ["Lead", "Qualified", "Proposal", "Negotiation", "Won", "Lost"],
-    compliance: ["Data Privacy", "Terms of Service"],
-  },
+  general: { name: "General Business", services: ["Consultation", "Service", "Support"], compliance: ["Data Privacy"] },
 };
 
 // ============================================
-// CHANNEL CONFIGURATION
+// CHANNELS
 // ============================================
-const CHANNELS: Record<
-  string,
-  {
-    id: string;
-    name: string;
-    icon: any;
-    color: string;
-    bgColor: string;
-    textColor: string;
-  }
-> = {
+const CHANNELS: Record<string, { id: string; name: string; icon: any; bgColor: string; textColor: string }> = {
   whatsapp: {
     id: "whatsapp",
     name: "WhatsApp",
     icon: MessageSquare,
-    color: "#25D366",
     bgColor: "bg-[#25D366]/10",
     textColor: "text-[#25D366]",
   },
@@ -216,7 +180,6 @@ const CHANNELS: Record<
     id: "instagram",
     name: "Instagram",
     icon: Instagram,
-    color: "#E1306C",
     bgColor: "bg-[#E1306C]/10",
     textColor: "text-[#E1306C]",
   },
@@ -224,7 +187,6 @@ const CHANNELS: Record<
     id: "facebook",
     name: "Facebook",
     icon: Facebook,
-    color: "#1877F2",
     bgColor: "bg-[#1877F2]/10",
     textColor: "text-[#1877F2]",
   },
@@ -232,127 +194,38 @@ const CHANNELS: Record<
     id: "linkedin",
     name: "LinkedIn",
     icon: Linkedin,
-    color: "#0A66C2",
     bgColor: "bg-[#0A66C2]/10",
     textColor: "text-[#0A66C2]",
   },
-  twitter: {
-    id: "twitter",
-    name: "X (Twitter)",
-    icon: Twitter,
-    color: "#000000",
-    bgColor: "bg-black/5",
-    textColor: "text-black",
-  },
-  telegram: {
-    id: "telegram",
-    name: "Telegram",
-    icon: Send,
-    color: "#0088CC",
-    bgColor: "bg-[#0088CC]/10",
-    textColor: "text-[#0088CC]",
-  },
-  email: {
-    id: "email",
-    name: "Email",
-    icon: Mail,
-    color: "#EA4335",
-    bgColor: "bg-[#EA4335]/10",
-    textColor: "text-[#EA4335]",
-  },
-  sms: {
-    id: "sms",
-    name: "SMS",
-    icon: MessageCircle,
-    color: "#34B7F1",
-    bgColor: "bg-[#34B7F1]/10",
-    textColor: "text-[#34B7F1]",
-  },
-  voice: {
-    id: "voice",
-    name: "Voice",
-    icon: Phone,
-    color: "#F97316",
-    bgColor: "bg-[#F97316]/10",
-    textColor: "text-[#F97316]",
-  },
-  web: {
-    id: "web",
-    name: "Web Chat",
-    icon: Globe,
-    color: "#6366F1",
-    bgColor: "bg-[#6366F1]/10",
-    textColor: "text-[#6366F1]",
-  },
+  twitter: { id: "twitter", name: "X (Twitter)", icon: Twitter, bgColor: "bg-black/5", textColor: "text-black" },
+  telegram: { id: "telegram", name: "Telegram", icon: Send, bgColor: "bg-[#0088CC]/10", textColor: "text-[#0088CC]" },
+  email: { id: "email", name: "Email", icon: Mail, bgColor: "bg-[#EA4335]/10", textColor: "text-[#EA4335]" },
+  sms: { id: "sms", name: "SMS", icon: MessageCircle, bgColor: "bg-[#34B7F1]/10", textColor: "text-[#34B7F1]" },
+  voice: { id: "voice", name: "Voice", icon: Phone, bgColor: "bg-[#F97316]/10", textColor: "text-[#F97316]" },
+  web: { id: "web", name: "Web Chat", icon: Globe, bgColor: "bg-[#6366F1]/10", textColor: "text-[#6366F1]" },
   pinterest: {
     id: "pinterest",
     name: "Pinterest",
     icon: Globe,
-    color: "#E60023",
     bgColor: "bg-[#E60023]/10",
     textColor: "text-[#E60023]",
   },
-  tiktok: {
-    id: "tiktok",
-    name: "TikTok",
-    icon: Video,
-    color: "#010101",
-    bgColor: "bg-black/5",
-    textColor: "text-black",
-  },
-  youtube: {
-    id: "youtube",
-    name: "YouTube",
-    icon: Video,
-    color: "#FF0000",
-    bgColor: "bg-[#FF0000]/10",
-    textColor: "text-[#FF0000]",
-  },
-  slack: {
-    id: "slack",
-    name: "Slack",
-    icon: Hash,
-    color: "#4A154B",
-    bgColor: "bg-[#4A154B]/10",
-    textColor: "text-[#4A154B]",
-  },
-  teams: {
-    id: "teams",
-    name: "Teams",
-    icon: Users,
-    color: "#6264A7",
-    bgColor: "bg-[#6264A7]/10",
-    textColor: "text-[#6264A7]",
-  },
+  tiktok: { id: "tiktok", name: "TikTok", icon: Video, bgColor: "bg-black/5", textColor: "text-black" },
+  youtube: { id: "youtube", name: "YouTube", icon: Video, bgColor: "bg-[#FF0000]/10", textColor: "text-[#FF0000]" },
+  slack: { id: "slack", name: "Slack", icon: Hash, bgColor: "bg-[#4A154B]/10", textColor: "text-[#4A154B]" },
+  teams: { id: "teams", name: "Teams", icon: Users, bgColor: "bg-[#6264A7]/10", textColor: "text-[#6264A7]" },
 };
 
-// Default templates
+// Templates
 const DEFAULT_TEMPLATES = [
-  {
-    id: "1",
-    name: "Greeting",
-    content: "Hello {{name}}! Thank you for reaching out. How can I assist you today?",
-    category: "general",
-  },
+  { id: "1", name: "Greeting", content: "Hello {{name}}! How can I help you today?", category: "general" },
   {
     id: "2",
     name: "Appointment Confirm",
-    content: "Your appointment has been confirmed for {{date}} at {{time}}. We look forward to seeing you!",
+    content: "Your appointment is confirmed for {{date}}. See you soon!",
     category: "appointment",
   },
-  {
-    id: "3",
-    name: "Follow Up",
-    content:
-      "Hi {{name}}! I wanted to follow up on our recent conversation. Is there anything else I can help you with?",
-    category: "followup",
-  },
-  {
-    id: "4",
-    name: "Thank You",
-    content: "Thank you for your time and interest. We appreciate your business!",
-    category: "closing",
-  },
+  { id: "3", name: "Follow Up", content: "Hi {{name}}! Just following up on our conversation.", category: "followup" },
 ];
 
 // ============================================
@@ -365,12 +238,13 @@ interface Customer {
   first_name?: string;
   last_name?: string;
   phone_number?: string;
+  phone?: string;
   email?: string;
   lead_score?: number;
   lead_temperature?: string;
+  temperature?: string;
   lifecycle_stage?: string;
   source?: string;
-  handler_type?: string;
   consent_marketing?: boolean;
   consent_data_processing?: boolean;
   do_not_contact?: boolean;
@@ -378,10 +252,8 @@ interface Customer {
   facebook_id?: string;
   instagram_id?: string;
   whatsapp_id?: string;
-  linkedin_id?: string;
-  twitter_id?: string;
+  company_name?: string;
   created_at: string;
-  updated_at?: string;
 }
 
 interface Conversation {
@@ -399,25 +271,19 @@ interface Conversation {
   message_count: number;
   unread_count: number;
   requires_human?: boolean;
-  escalation_reason?: string;
   created_at: string;
-  // Joined customer data
   customer?: Customer;
-  // Metadata from conversation (may have contact info)
-  contact_name?: string;
-  contact_phone?: string;
-  contact_email?: string;
+  customer_name?: string;
+  customer_phone?: string;
 }
 
 interface Message {
   id: string;
   conversation_id: string;
-  tenant_id: string;
   direction: string;
   content: string;
   sender_type: string;
   channel: string;
-  status?: string;
   created_at: string;
 }
 
@@ -425,17 +291,6 @@ interface StaffMember {
   id: string;
   full_name?: string;
   email: string;
-  role?: string;
-}
-
-interface FilterState {
-  quickFilter: string;
-  channels: string[];
-  leadTemperature: string;
-  leadScoreRange: [number, number];
-  marketingSource: string;
-  status: string;
-  sortBy: string;
 }
 
 // ============================================
@@ -448,60 +303,60 @@ export default function Inbox() {
   const industryConfig = INDUSTRY_CONFIG[industry] || INDUSTRY_CONFIG.general;
   const queryClient = useQueryClient();
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const messageInputRef = useRef<HTMLTextAreaElement>(null);
 
   // ============================================
   // STATE
   // ============================================
-  const [selectedChannel, setSelectedChannel] = useState<string>("all");
+  const [selectedChannel, setSelectedChannel] = useState("all");
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [showDetailsPanel, setShowDetailsPanel] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [messageInput, setMessageInput] = useState("");
   const [starredConversations, setStarredConversations] = useState<Set<string>>(new Set());
 
-  // Dialog states
-  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
-  const [isNoteDialogOpen, setIsNoteDialogOpen] = useState(false);
-  const [isDealDialogOpen, setIsDealDialogOpen] = useState(false);
-  const [isBookDialogOpen, setIsBookDialogOpen] = useState(false);
-  const [isCallDialogOpen, setIsCallDialogOpen] = useState(false);
-  const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
-  const [isEscalateDialogOpen, setIsEscalateDialogOpen] = useState(false);
-  const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
-  const [isComplianceDialogOpen, setIsComplianceDialogOpen] = useState(false);
-  const [isEditContactDialogOpen, setIsEditContactDialogOpen] = useState(false);
+  // DIALOG STATES
+  const [showAssignDialog, setShowAssignDialog] = useState(false);
+  const [showNoteDialog, setShowNoteDialog] = useState(false);
+  const [showDealDialog, setShowDealDialog] = useState(false);
+  const [showBookDialog, setShowBookDialog] = useState(false);
+  const [showCallDialog, setShowCallDialog] = useState(false);
+  const [showTransferDialog, setShowTransferDialog] = useState(false);
+  const [showEscalateDialog, setShowEscalateDialog] = useState(false);
+  const [showTemplateDialog, setShowTemplateDialog] = useState(false);
+  const [showComplianceDialog, setShowComplianceDialog] = useState(false);
+  const [showEditContactDialog, setShowEditContactDialog] = useState(false);
 
-  // Form states
+  // FORM STATES
   const [noteText, setNoteText] = useState("");
-  const [selectedStaffId, setSelectedStaffId] = useState<string>("");
+  const [selectedStaffId, setSelectedStaffId] = useState("");
   const [dealTitle, setDealTitle] = useState("");
   const [dealValue, setDealValue] = useState("");
   const [dealStage, setDealStage] = useState("lead");
+  const [dealCompanyName, setDealCompanyName] = useState("");
+  const [dealContactName, setDealContactName] = useState("");
+  const [dealEmail, setDealEmail] = useState("");
+  const [dealPhone, setDealPhone] = useState("");
   const [appointmentDate, setAppointmentDate] = useState<Date | undefined>(undefined);
   const [appointmentTime, setAppointmentTime] = useState("10:00");
-  const [appointmentService, setAppointmentService] = useState("");
   const [appointmentNotes, setAppointmentNotes] = useState("");
   const [escalationReason, setEscalationReason] = useState("");
   const [transferReason, setTransferReason] = useState("");
 
-  // Contact edit form
-  const [editContactName, setEditContactName] = useState("");
-  const [editContactPhone, setEditContactPhone] = useState("");
-  const [editContactEmail, setEditContactEmail] = useState("");
+  // EDIT CONTACT FORM
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editEmail, setEditEmail] = useState("");
 
   const [messageTemplates] = useState(DEFAULT_TEMPLATES);
 
-  // Filters
-  const [filters, setFilters] = useState<FilterState>({
+  // FILTERS
+  const [filters, setFilters] = useState({
     quickFilter: "all",
-    channels: [],
     leadTemperature: "all",
-    leadScoreRange: [0, 100],
-    marketingSource: "all",
+    leadScoreRange: [0, 100] as [number, number],
     status: "all",
     sortBy: "recent",
   });
@@ -510,7 +365,7 @@ export default function Inbox() {
   // QUERIES
   // ============================================
 
-  // Query conversations with customer join
+  // Conversations with customer join
   const {
     data: conversations = [],
     isLoading: conversationsLoading,
@@ -522,19 +377,7 @@ export default function Inbox() {
 
       let query = supabase
         .from("conversations")
-        .select(
-          `
-          *,
-          customer:customers!contact_id (
-            id, tenant_id, name, first_name, last_name, 
-            phone_number, email, lead_score, lead_temperature,
-            lifecycle_stage, source, handler_type, notes,
-            consent_marketing, consent_data_processing, do_not_contact,
-            facebook_id, instagram_id, whatsapp_id, linkedin_id, twitter_id,
-            created_at, updated_at
-          )
-        `,
-        )
+        .select(`*, customer:customers(*)`)
         .eq("tenant_id", tenantUuid)
         .order("last_message_at", { ascending: false, nullsFirst: false });
 
@@ -543,25 +386,22 @@ export default function Inbox() {
       }
 
       const { data, error } = await query;
-
       if (error) {
-        console.error("Conversations query error:", error);
-        // Fallback: query without join
-        const { data: fallbackData } = await supabase
+        console.error("Query error:", error);
+        const { data: fallback } = await supabase
           .from("conversations")
           .select("*")
           .eq("tenant_id", tenantUuid)
-          .order("last_message_at", { ascending: false, nullsFirst: false });
-        return (fallbackData || []) as Conversation[];
+          .order("last_message_at", { ascending: false });
+        return (fallback || []) as Conversation[];
       }
-
       return (data || []) as Conversation[];
     },
     enabled: !!tenantUuid,
     refetchInterval: 10000,
   });
 
-  // Query customers separately (for enrichment if join fails)
+  // Customers for enrichment
   const { data: customers = [] } = useQuery({
     queryKey: ["inbox-customers", tenantUuid],
     queryFn: async () => {
@@ -572,25 +412,21 @@ export default function Inbox() {
     enabled: !!tenantUuid,
   });
 
-  // Create customers map for fallback enrichment
   const customersMap = useMemo(() => {
     const map = new Map<string, Customer>();
     customers.forEach((c) => map.set(c.id, c));
     return map;
   }, [customers]);
 
-  // Enrich conversations (ensure customer data exists)
+  // Enrich conversations
   const enrichedConversations = useMemo(() => {
-    return conversations.map((conv) => {
-      // If customer wasn't joined, try to get from map
-      if (!conv.customer && conv.contact_id) {
-        return { ...conv, customer: customersMap.get(conv.contact_id) };
-      }
-      return conv;
-    });
+    return conversations.map((conv) => ({
+      ...conv,
+      customer: conv.customer || customersMap.get(conv.contact_id),
+    }));
   }, [conversations, customersMap]);
 
-  // Query messages
+  // Messages
   const {
     data: messages = [],
     isLoading: messagesLoading,
@@ -599,47 +435,28 @@ export default function Inbox() {
     queryKey: ["conversation-messages", selectedConversationId],
     queryFn: async () => {
       if (!selectedConversationId) return [];
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("messages")
         .select("*")
         .eq("conversation_id", selectedConversationId)
         .order("created_at", { ascending: true });
-      if (error) {
-        console.error("Messages error:", error);
-        return [];
-      }
       return (data || []) as Message[];
     },
     enabled: !!selectedConversationId,
   });
 
-  // Query staff
+  // Staff
   const { data: staffMembers = [] } = useQuery({
     queryKey: ["staff-members", tenantUuid],
     queryFn: async () => {
       if (!tenantUuid) return [];
-      const { data } = await supabase.from("users").select("id, full_name, email, role").eq("tenant_id", tenantUuid);
+      const { data } = await supabase.from("users").select("id, full_name, email").eq("tenant_id", tenantUuid);
       return (data || []) as StaffMember[];
     },
     enabled: !!tenantUuid,
   });
 
-  // Query sources
-  const { data: marketingSources = [] } = useQuery({
-    queryKey: ["marketing-sources", tenantUuid],
-    queryFn: async () => {
-      if (!tenantUuid) return [];
-      const { data } = await supabase
-        .from("customers")
-        .select("source")
-        .eq("tenant_id", tenantUuid)
-        .not("source", "is", null);
-      return [...new Set(data?.map((d) => d.source).filter(Boolean))] as string[];
-    },
-    enabled: !!tenantUuid,
-  });
-
-  // Selected conversation & customer
+  // Selected conversation and customer
   const selectedConversation = useMemo(
     () => enrichedConversations.find((c) => c.id === selectedConversationId),
     [enrichedConversations, selectedConversationId],
@@ -648,104 +465,69 @@ export default function Inbox() {
   const selectedCustomer = useMemo(() => selectedConversation?.customer || null, [selectedConversation]);
 
   // ============================================
-  // CONTACT INFO RESOLUTION (CRITICAL FIX)
+  // HELPER FUNCTIONS
   // ============================================
 
-  // Get the best available name for a contact
   const getDisplayName = useCallback((conv: Conversation): string => {
-    const customer = conv.customer;
-
-    // Priority 1: Customer name field
-    if (customer?.name && customer.name !== "Customer" && customer.name.trim()) {
-      return customer.name;
-    }
-
-    // Priority 2: First + Last name
-    if (customer?.first_name) {
-      return customer.last_name ? `${customer.first_name} ${customer.last_name}` : customer.first_name;
-    }
-
-    // Priority 3: Conversation metadata (contact_name)
-    if (conv.contact_name && conv.contact_name.trim()) {
-      return conv.contact_name;
-    }
-
-    // Priority 4: Email (extract name part)
-    if (customer?.email) {
-      const emailName = customer.email.split("@")[0];
-      // Clean up common patterns like "john.doe" or "john_doe"
-      return emailName.replace(/[._]/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
-    }
-
-    // Priority 5: Phone number
-    if (customer?.phone_number) {
-      return customer.phone_number;
-    }
-    if (conv.contact_phone) {
-      return conv.contact_phone;
-    }
-
-    // Priority 6: Platform-specific IDs with friendly labels
-    if (customer?.facebook_id) {
-      return `Facebook User`;
-    }
-    if (customer?.instagram_id) {
-      return `Instagram User`;
-    }
-    if (customer?.whatsapp_id) {
-      return `WhatsApp User`;
-    }
-    if (customer?.linkedin_id) {
-      return `LinkedIn User`;
-    }
-    if (customer?.twitter_id) {
-      return `Twitter User`;
-    }
-
-    // Final fallback
+    const c = conv.customer;
+    if (c?.name && c.name.trim() && c.name !== "Customer") return c.name;
+    if (c?.first_name) return c.last_name ? `${c.first_name} ${c.last_name}` : c.first_name;
+    if (conv.customer_name && conv.customer_name.trim()) return conv.customer_name;
+    if (c?.email)
+      return c.email
+        .split("@")[0]
+        .replace(/[._]/g, " ")
+        .replace(/\b\w/g, (l) => l.toUpperCase());
+    if (c?.phone_number || c?.phone) return c.phone_number || c.phone || "";
+    if (conv.customer_phone) return conv.customer_phone;
+    if (c?.facebook_id) return `FB ${c.facebook_id.slice(-6)}`;
+    if (c?.instagram_id) return `IG ${c.instagram_id.slice(-6)}`;
+    if (c?.whatsapp_id) return c.whatsapp_id;
     return "New Contact";
   }, []);
 
-  // Get the best available phone number
   const getPhoneNumber = useCallback((conv: Conversation): string | null => {
-    const customer = conv.customer;
-
-    // Priority 1: Customer phone_number
-    if (customer?.phone_number) {
-      return customer.phone_number;
-    }
-
-    // Priority 2: Conversation metadata
-    if (conv.contact_phone) {
-      return conv.contact_phone;
-    }
-
-    // Priority 3: WhatsApp ID (often a phone number)
-    if (customer?.whatsapp_id && /^\+?\d{10,}$/.test(customer.whatsapp_id)) {
-      return customer.whatsapp_id;
-    }
-
+    const c = conv.customer;
+    if (c?.phone_number) return c.phone_number;
+    if (c?.phone) return c.phone;
+    if (conv.customer_phone) return conv.customer_phone;
+    if (c?.whatsapp_id && /^\+?\d{10,}$/.test(c.whatsapp_id)) return c.whatsapp_id;
     return null;
   }, []);
 
-  // Get initials
+  const getEmail = useCallback((conv: Conversation): string | null => {
+    return conv.customer?.email || null;
+  }, []);
+
   const getInitials = useCallback(
     (conv: Conversation): string => {
       const name = getDisplayName(conv);
-      if (name.startsWith("Facebook") || name.startsWith("Instagram")) {
-        return conv.channel?.substring(0, 2).toUpperCase() || "??";
-      }
       const parts = name.split(" ");
-      if (parts.length >= 2) {
-        return (parts[0][0] + parts[1][0]).toUpperCase();
-      }
+      if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
       return name.substring(0, 2).toUpperCase();
     },
     [getDisplayName],
   );
 
+  const getChannelConfig = (channel: string) => CHANNELS[channel] || CHANNELS.web;
+
+  const getTemperatureIcon = (temp?: string) => {
+    const t = temp?.toLowerCase();
+    if (t === "hot") return <Flame className="h-3 w-3 text-red-500" />;
+    if (t === "warm") return <Sun className="h-3 w-3 text-yellow-500" />;
+    if (t === "cold") return <Snowflake className="h-3 w-3 text-blue-500" />;
+    return null;
+  };
+
+  const formatTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    if (isToday(date)) return format(date, "HH:mm");
+    if (isYesterday(date)) return "Yesterday";
+    return format(date, "MMM d");
+  };
+
   // ============================================
-  // FILTER CONVERSATIONS
+  // FILTERED CONVERSATIONS
   // ============================================
   const filteredConversations = useMemo(() => {
     let result = [...enrichedConversations];
@@ -753,112 +535,83 @@ export default function Inbox() {
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       result = result.filter((c) => {
-        const customer = c.customer;
         const name = getDisplayName(c).toLowerCase();
         return (
           name.includes(q) ||
-          (customer?.phone_number || "").includes(searchQuery) ||
-          (customer?.email || "").toLowerCase().includes(q) ||
+          (getPhoneNumber(c) || "").includes(q) ||
           (c.last_message_text || "").toLowerCase().includes(q)
         );
       });
     }
 
-    if (filters.quickFilter === "unread") {
-      result = result.filter((c) => c.unread_count > 0);
-    } else if (filters.quickFilter === "starred") {
-      result = result.filter((c) => starredConversations.has(c.id));
-    } else if (filters.quickFilter === "ai") {
-      result = result.filter((c) => c.ai_handled);
-    } else if (filters.quickFilter === "human") {
-      result = result.filter((c) => !c.ai_handled);
-    }
-
-    if (filters.channels.length > 0) {
-      result = result.filter((c) => filters.channels.includes(c.channel));
-    }
+    if (filters.quickFilter === "unread") result = result.filter((c) => c.unread_count > 0);
+    else if (filters.quickFilter === "starred") result = result.filter((c) => starredConversations.has(c.id));
+    else if (filters.quickFilter === "ai") result = result.filter((c) => c.ai_handled);
+    else if (filters.quickFilter === "human") result = result.filter((c) => !c.ai_handled);
 
     if (filters.leadTemperature !== "all") {
-      result = result.filter((c) => c.customer?.lead_temperature === filters.leadTemperature);
+      result = result.filter((c) => {
+        const temp = c.customer?.lead_temperature || c.customer?.temperature;
+        return temp === filters.leadTemperature;
+      });
     }
+    if (filters.status !== "all") result = result.filter((c) => c.status === filters.status);
 
     result = result.filter((c) => {
       const score = c.customer?.lead_score ?? 50;
       return score >= filters.leadScoreRange[0] && score <= filters.leadScoreRange[1];
     });
 
-    if (filters.marketingSource !== "all") {
-      result = result.filter((c) => c.customer?.source === filters.marketingSource);
-    }
-
-    if (filters.status !== "all") {
-      result = result.filter((c) => c.status === filters.status);
-    }
-
     result.sort((a, b) => {
-      switch (filters.sortBy) {
-        case "oldest":
-          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-        case "score-high":
-          return (b.customer?.lead_score || 0) - (a.customer?.lead_score || 0);
-        case "score-low":
-          return (a.customer?.lead_score || 0) - (b.customer?.lead_score || 0);
-        default:
-          return (
-            new Date(b.last_message_at || b.created_at).getTime() -
-            new Date(a.last_message_at || a.created_at).getTime()
-          );
-      }
+      if (filters.sortBy === "oldest") return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      if (filters.sortBy === "score-high") return (b.customer?.lead_score || 0) - (a.customer?.lead_score || 0);
+      return (
+        new Date(b.last_message_at || b.created_at).getTime() - new Date(a.last_message_at || a.created_at).getTime()
+      );
     });
 
     return result;
-  }, [enrichedConversations, searchQuery, filters, starredConversations, getDisplayName]);
+  }, [enrichedConversations, searchQuery, filters, starredConversations, getDisplayName, getPhoneNumber]);
 
   // ============================================
-  // MUTATIONS WITH WEBHOOK INTEGRATION
+  // MUTATIONS
   // ============================================
 
-  // 1. SEND MESSAGE - Saves to DB + Calls webhook
+  // Send Message
   const sendMessageMutation = useMutation({
     mutationFn: async ({ conversationId, content }: { conversationId: string; content: string }) => {
-      const conversation = conversations.find((c) => c.id === conversationId);
-      if (!conversation) throw new Error("Conversation not found");
+      const conv = conversations.find((c) => c.id === conversationId);
+      if (!conv) throw new Error("Conversation not found");
 
-      // Save to database
       await supabase.from("messages").insert({
         conversation_id: conversationId,
         tenant_id: tenantUuid,
         direction: "outbound",
         content,
         sender_type: "staff",
-        channel: conversation.channel,
+        channel: conv.channel,
         status: "pending",
         created_at: new Date().toISOString(),
       });
 
-      // Update conversation
       await supabase
         .from("conversations")
         .update({
           last_message_text: content,
           last_message_at: new Date().toISOString(),
           last_message_direction: "outbound",
-          message_count: (conversation.message_count || 0) + 1,
+          message_count: (conv.message_count || 0) + 1,
           ai_handled: false,
         })
         .eq("id", conversationId);
 
-      // CALL WEBHOOK to actually send the message
-      const customer = conversation.customer;
       await callWebhook(
-        WEBHOOKS.SEND_MESSAGE,
+        "/send-message",
         {
           conversation_id: conversationId,
-          customer_id: conversation.contact_id,
-          customer_phone: customer?.phone_number || customer?.whatsapp_id,
-          customer_email: customer?.email,
+          customer_id: conv.contact_id,
           message: content,
-          channel: conversation.channel,
+          channel: conv.channel,
         },
         tenantUuid!,
       );
@@ -872,392 +625,304 @@ export default function Inbox() {
     onError: () => toast.error("Failed to send message"),
   });
 
-  // 2. CREATE DEAL - Saves to DB + Calls webhook
+  // CREATE DEAL - EXACT SCHEMA FROM Deals.tsx
   const createDealMutation = useMutation({
-    mutationFn: async ({
-      contactId,
-      title,
-      value,
-      stage,
-    }: {
-      contactId: string;
-      title: string;
-      value: number;
-      stage: string;
-    }) => {
-      const customer = selectedCustomer;
-      const customerName = customer ? getDisplayName(selectedConversation!) : "Unknown";
+    mutationFn: async () => {
+      const stageConfig = PIPELINE_STAGES.find((s) => s.id === dealStage);
+      const value = parseFloat(dealValue) || 0;
+      const probability = stageConfig?.probability || 10;
+      const weightedValue = (value * probability) / 100;
 
-      // Save to database
-      const { data: deal, error } = await supabase
-        .from("deals")
-        .insert({
+      // First try webhook (same as Deals.tsx)
+      const webhookResponse = await fetch(`${N8N_WEBHOOK_BASE}/deal-create`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           tenant_id: tenantUuid,
-          contact_id: contactId,
-          title,
-          value,
-          stage,
-          status: "open",
-          probability: stage === "lead" ? 10 : stage === "qualified" ? 30 : 50,
-          created_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
+          title: dealTitle,
+          value: value,
+          stage: dealStage,
+          company_name: dealCompanyName || selectedCustomer?.company_name || "",
+          contact_name: dealContactName || getDisplayName(selectedConversation!),
+          email: dealEmail || selectedCustomer?.email || "",
+          phone: dealPhone || getPhoneNumber(selectedConversation!) || "",
+        }),
+      });
 
-      if (error) throw error;
+      if (!webhookResponse.ok) {
+        // Fallback to direct insert (EXACT schema from Deals.tsx)
+        const { error } = await supabase.from("deals").insert({
+          tenant_id: tenantUuid,
+          title: dealTitle,
+          value: value,
+          weighted_value: weightedValue,
+          stage: dealStage,
+          probability: probability,
+          company_name: dealCompanyName || selectedCustomer?.company_name || "",
+          contact_name: dealContactName || getDisplayName(selectedConversation!),
+          email: dealEmail || selectedCustomer?.email || "",
+          phone: dealPhone || getPhoneNumber(selectedConversation!) || "",
+        });
+
+        if (error) throw error;
+      }
 
       // Update customer lifecycle
-      await supabase.from("customers").update({ lifecycle_stage: "opportunity" }).eq("id", contactId);
-
-      // CALL WEBHOOK to trigger n8n workflow
-      await callWebhook(
-        WEBHOOKS.DEAL_CREATE,
-        {
-          deal_id: deal.id,
-          name: title,
-          customer_id: contactId,
-          customer_name: customerName,
-          customer_phone: customer?.phone_number,
-          customer_email: customer?.email,
-          value,
-          stage,
-          source: "inbox",
-        },
-        tenantUuid!,
-      );
-
-      return deal;
+      if (selectedConversation?.contact_id) {
+        await supabase
+          .from("customers")
+          .update({ lifecycle_stage: "opportunity" })
+          .eq("id", selectedConversation.contact_id);
+      }
     },
     onSuccess: () => {
-      setIsDealDialogOpen(false);
+      setShowDealDialog(false);
       setDealTitle("");
       setDealValue("");
       setDealStage("lead");
+      setDealCompanyName("");
+      setDealContactName("");
+      setDealEmail("");
+      setDealPhone("");
       queryClient.invalidateQueries({ queryKey: ["deals"] });
-      toast.success("Deal created successfully!");
+      toast.success("Deal created!");
     },
-    onError: (error) => {
-      console.error("Deal creation error:", error);
+    onError: (err) => {
+      console.error("Deal error:", err);
       toast.error("Failed to create deal");
     },
   });
 
-  // 3. BOOK APPOINTMENT - Saves to DB + Calls webhook
+  // BOOK APPOINTMENT - EXACT SCHEMA FROM Appointments.tsx
   const bookAppointmentMutation = useMutation({
-    mutationFn: async ({
-      customerId,
-      date,
-      time,
-      service,
-      notes,
-    }: {
-      customerId: string;
-      date: Date;
-      time: string;
-      service: string;
-      notes: string;
-    }) => {
-      const customer = selectedCustomer;
-      const customerName = customer ? getDisplayName(selectedConversation!) : "Unknown";
+    mutationFn: async () => {
+      if (!appointmentDate || !selectedConversation?.contact_id) {
+        throw new Error("Missing date or customer");
+      }
 
-      const [hours, minutes] = time.split(":").map(Number);
-      const startTime = setMinutes(setHours(date, hours), minutes);
-      const endTime = addHours(startTime, 1);
+      const scheduledAt = new Date(appointmentDate);
+      const [hours, minutes] = appointmentTime.split(":").map(Number);
+      scheduledAt.setHours(hours, minutes, 0, 0);
 
-      // Save to database
-      const { data: appointment, error } = await supabase
-        .from("appointments")
-        .insert({
-          tenant_id: tenantUuid,
-          customer_id: customerId,
-          title: service,
-          service_type: service,
-          start_time: startTime.toISOString(),
-          end_time: endTime.toISOString(),
-          status: "scheduled",
-          notes,
-          created_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
+      // EXACT schema from Appointments.tsx
+      const { error } = await supabase.from("appointments").insert({
+        tenant_id: tenantUuid,
+        customer_id: selectedConversation.contact_id,
+        service_id: null, // Optional
+        provider_id: null, // Optional
+        scheduled_at: scheduledAt.toISOString(),
+        duration_minutes: 60,
+        status: "pending",
+        notes: appointmentNotes || null,
+      });
 
       if (error) throw error;
 
-      // CALL WEBHOOK to send confirmation
+      // Also call webhook for confirmation
       await callWebhook(
-        WEBHOOKS.BOOK_APPOINTMENT,
+        "/book-appointment",
         {
-          appointment_id: appointment.id,
-          customer_id: customerId,
-          customer_name: customerName,
-          customer_phone: customer?.phone_number,
-          customer_email: customer?.email,
-          title: service,
-          start_time: startTime.toISOString(),
-          end_time: endTime.toISOString(),
-          notes,
-          send_confirmation: true,
+          customer_id: selectedConversation.contact_id,
+          customer_name: getDisplayName(selectedConversation),
+          customer_phone: getPhoneNumber(selectedConversation),
+          scheduled_at: scheduledAt.toISOString(),
+          notes: appointmentNotes,
         },
         tenantUuid!,
       );
-
-      return appointment;
     },
     onSuccess: () => {
-      setIsBookDialogOpen(false);
+      setShowBookDialog(false);
       setAppointmentDate(undefined);
       setAppointmentTime("10:00");
-      setAppointmentService("");
       setAppointmentNotes("");
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
-      toast.success("Appointment booked! Confirmation will be sent.");
+      toast.success("Appointment booked!");
     },
-    onError: () => toast.error("Failed to book appointment"),
+    onError: (err) => {
+      console.error("Appointment error:", err);
+      toast.error("Failed to book appointment");
+    },
   });
 
-  // 4. ADD NOTE - Saves to DB + Calls orchestrator
+  // Add Note
   const addNoteMutation = useMutation({
-    mutationFn: async ({ conversationId, content }: { conversationId: string; content: string }) => {
-      // Save to internal_notes
-      await supabase.from("internal_notes").insert({
-        conversation_id: conversationId,
-        tenant_id: tenantUuid,
-        user_id: "current_user",
-        user_name: "Staff",
-        content,
-        pinned: false,
-        created_at: new Date().toISOString(),
-      });
+    mutationFn: async () => {
+      if (!selectedConversation?.contact_id || !noteText.trim()) return;
 
-      // Also append to customer notes
-      if (selectedConversation?.contact_id) {
-        const { data: customer } = await supabase
-          .from("customers")
-          .select("notes")
-          .eq("id", selectedConversation.contact_id)
-          .single();
+      const { data: customer } = await supabase
+        .from("customers")
+        .select("notes")
+        .eq("id", selectedConversation.contact_id)
+        .single();
 
-        const timestamp = format(new Date(), "yyyy-MM-dd HH:mm");
-        const newNotes = customer?.notes ? `${customer.notes}\n[${timestamp}] ${content}` : `[${timestamp}] ${content}`;
+      const timestamp = format(new Date(), "yyyy-MM-dd HH:mm");
+      const existingNotes = customer?.notes || "";
+      const newNotes = existingNotes ? `${existingNotes}\n\n[${timestamp}] ${noteText}` : `[${timestamp}] ${noteText}`;
 
-        await supabase.from("customers").update({ notes: newNotes }).eq("id", selectedConversation.contact_id);
-      }
+      await supabase
+        .from("customers")
+        .update({ notes: newNotes, updated_at: new Date().toISOString() })
+        .eq("id", selectedConversation.contact_id);
 
-      // CALL ORCHESTRATOR WEBHOOK
       await callWebhook(
-        WEBHOOKS.ORCHESTRATOR,
+        "/orchestrator",
         {
           event_type: "note_added",
-          entity_type: "conversation",
-          entity_id: conversationId,
-          data: {
-            content,
-            customer_id: selectedConversation?.contact_id,
-            customer_name: selectedConversation ? getDisplayName(selectedConversation) : null,
-          },
+          entity_id: selectedConversation.id,
+          data: { content: noteText },
         },
         tenantUuid!,
       );
     },
     onSuccess: () => {
-      setIsNoteDialogOpen(false);
+      setShowNoteDialog(false);
       setNoteText("");
+      queryClient.invalidateQueries({ queryKey: ["inbox-customers"] });
       toast.success("Note added");
     },
     onError: () => toast.error("Failed to add note"),
   });
 
-  // 5. ESCALATE - Updates DB + Calls orchestrator
+  // Escalate
   const escalateMutation = useMutation({
-    mutationFn: async ({ conversationId, reason }: { conversationId: string; reason: string }) => {
-      // Update conversation flags
+    mutationFn: async () => {
+      if (!selectedConversationId || !escalationReason) return;
+
       await supabase
         .from("conversations")
         .update({
           requires_human: true,
-          escalation_reason: reason,
           priority: "high",
           ai_handled: false,
+          status: "escalated",
         })
-        .eq("id", conversationId);
+        .eq("id", selectedConversationId);
 
-      // Add escalation note
-      await supabase.from("internal_notes").insert({
-        conversation_id: conversationId,
-        tenant_id: tenantUuid,
-        user_id: "system",
-        user_name: "System",
-        content: `⚠️ ESCALATED: ${reason}`,
-        pinned: true,
-        created_at: new Date().toISOString(),
-      });
-
-      // CALL ORCHESTRATOR WEBHOOK to notify team
       await callWebhook(
-        WEBHOOKS.ORCHESTRATOR,
+        "/orchestrator",
         {
           event_type: "conversation_escalated",
-          entity_type: "conversation",
-          entity_id: conversationId,
+          entity_id: selectedConversationId,
           data: {
-            reason,
-            customer_id: selectedConversation?.contact_id,
+            reason: escalationReason,
             customer_name: selectedConversation ? getDisplayName(selectedConversation) : null,
-            customer_phone: selectedCustomer?.phone_number,
+            customer_phone: getPhoneNumber(selectedConversation!),
             channel: selectedConversation?.channel,
-            priority: "high",
           },
         },
         tenantUuid!,
       );
     },
     onSuccess: () => {
-      setIsEscalateDialogOpen(false);
+      setShowEscalateDialog(false);
       setEscalationReason("");
       queryClient.invalidateQueries({ queryKey: ["inbox-conversations"] });
-      toast.success("Conversation escalated - team notified");
+      toast.success("Escalated - team notified");
     },
     onError: () => toast.error("Failed to escalate"),
   });
 
-  // 6. INITIATE CALL - Logs activity + Calls VAPI
+  // Transfer
+  const transferMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedConversationId || !selectedStaffId) return;
+
+      await supabase.from("conversations").update({ assigned_to: selectedStaffId }).eq("id", selectedConversationId);
+
+      await callWebhook(
+        "/orchestrator",
+        {
+          event_type: "conversation_transferred",
+          entity_id: selectedConversationId,
+          data: { to_staff_id: selectedStaffId, reason: transferReason },
+        },
+        tenantUuid!,
+      );
+    },
+    onSuccess: () => {
+      setShowTransferDialog(false);
+      setSelectedStaffId("");
+      setTransferReason("");
+      queryClient.invalidateQueries({ queryKey: ["inbox-conversations"] });
+      toast.success("Transferred");
+    },
+    onError: () => toast.error("Failed to transfer"),
+  });
+
+  // Assign
+  const assignMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedConversationId || !selectedStaffId) return;
+      await supabase
+        .from("conversations")
+        .update({ assigned_to: selectedStaffId, ai_handled: false })
+        .eq("id", selectedConversationId);
+    },
+    onSuccess: () => {
+      setShowAssignDialog(false);
+      setSelectedStaffId("");
+      queryClient.invalidateQueries({ queryKey: ["inbox-conversations"] });
+      toast.success("Assigned");
+    },
+  });
+
+  // Initiate Call
   const initiateCallMutation = useMutation({
-    mutationFn: async ({ customerId, phoneNumber }: { customerId: string; phoneNumber: string }) => {
-      // Log activity
+    mutationFn: async () => {
+      const phoneNumber = getPhoneNumber(selectedConversation!);
+      if (!phoneNumber || !selectedConversation?.contact_id) return;
+
       await supabase.from("activities").insert({
         tenant_id: tenantUuid,
-        customer_id: customerId,
+        customer_id: selectedConversation.contact_id,
         type: "call",
         description: `Outbound call to ${phoneNumber}`,
         created_at: new Date().toISOString(),
       });
 
-      // CALL VAPI WEBHOOK for outbound call
-      const result = await callWebhook(
-        WEBHOOKS.VAPI_OUTBOUND,
+      await callWebhook(
+        "/vapi/outbound-call",
         {
-          customer_id: customerId,
-          customer_name: selectedConversation ? getDisplayName(selectedConversation) : "Customer",
+          customer_id: selectedConversation.contact_id,
           phone_number: phoneNumber,
-          assistant_id: "d7e846ab-9c1c-4f59-92f0-c755424e6c3f", // Aamerah assistant
-          from_number: "+12722350215", // VAPI number
+          assistant_id: "d7e846ab-9c1c-4f59-92f0-c755424e6c3f",
+          from_number: "+12722350215",
         },
         tenantUuid!,
       );
 
-      // Fallback to tel: link if webhook fails
-      if (!result.success) {
-        window.open(`tel:${phoneNumber}`, "_self");
-      }
+      window.open(`tel:${phoneNumber}`, "_self");
     },
     onSuccess: () => {
-      setIsCallDialogOpen(false);
-      toast.success("Call initiated via VAPI");
+      setShowCallDialog(false);
+      toast.success("Call initiated");
     },
     onError: () => toast.error("Failed to initiate call"),
   });
 
-  // 7. TRANSFER CONVERSATION
-  const transferMutation = useMutation({
-    mutationFn: async ({
-      conversationId,
-      toStaffId,
-      reason,
-    }: {
-      conversationId: string;
-      toStaffId: string;
-      reason: string;
-    }) => {
-      const staff = staffMembers.find((s) => s.id === toStaffId);
-
-      await supabase.from("conversations").update({ assigned_to: toStaffId }).eq("id", conversationId);
-
-      await supabase.from("internal_notes").insert({
-        conversation_id: conversationId,
-        tenant_id: tenantUuid,
-        user_id: "system",
-        user_name: "System",
-        content: `🔄 Transferred to ${staff?.full_name || staff?.email}: ${reason}`,
-        pinned: false,
-        created_at: new Date().toISOString(),
-      });
-
-      // Notify via orchestrator
-      await callWebhook(
-        WEBHOOKS.ORCHESTRATOR,
-        {
-          event_type: "conversation_transferred",
-          entity_type: "conversation",
-          entity_id: conversationId,
-          data: {
-            to_staff_id: toStaffId,
-            to_staff_name: staff?.full_name || staff?.email,
-            reason,
-            customer_id: selectedConversation?.contact_id,
-          },
-        },
-        tenantUuid!,
-      );
-    },
-    onSuccess: () => {
-      setIsTransferDialogOpen(false);
-      setSelectedStaffId("");
-      setTransferReason("");
-      queryClient.invalidateQueries({ queryKey: ["inbox-conversations"] });
-      toast.success("Conversation transferred");
-    },
-    onError: () => toast.error("Failed to transfer"),
-  });
-
-  // 8. ASSIGN CONVERSATION
-  const assignMutation = useMutation({
-    mutationFn: async ({ conversationId, staffId }: { conversationId: string; staffId: string }) => {
-      await supabase.from("conversations").update({ assigned_to: staffId, ai_handled: false }).eq("id", conversationId);
-
-      const conversation = conversations.find((c) => c.id === conversationId);
-      if (conversation?.contact_id) {
-        await supabase
-          .from("customers")
-          .update({ assigned_to: staffId, handler_type: "staff" })
-          .eq("id", conversation.contact_id);
-      }
-    },
-    onSuccess: () => {
-      setIsAssignDialogOpen(false);
-      setSelectedStaffId("");
-      queryClient.invalidateQueries({ queryKey: ["inbox-conversations"] });
-      toast.success("Assigned successfully");
-    },
-  });
-
-  // 9. UPDATE CONTACT INFO
+  // Update Contact
   const updateContactMutation = useMutation({
-    mutationFn: async ({
-      customerId,
-      name,
-      phone,
-      email,
-    }: {
-      customerId: string;
-      name: string;
-      phone: string;
-      email: string;
-    }) => {
-      await supabase
+    mutationFn: async () => {
+      if (!selectedConversation?.contact_id) return;
+
+      const { error } = await supabase
         .from("customers")
         .update({
-          name: name || null,
-          phone_number: phone || null,
-          email: email || null,
+          name: editName || null,
+          phone_number: editPhone || null,
+          email: editEmail || null,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", customerId);
+        .eq("id", selectedConversation.contact_id);
+
+      if (error) throw error;
     },
     onSuccess: () => {
-      setIsEditContactDialogOpen(false);
+      setShowEditContactDialog(false);
       queryClient.invalidateQueries({ queryKey: ["inbox-conversations"] });
       queryClient.invalidateQueries({ queryKey: ["inbox-customers"] });
-      toast.success("Contact updated");
+      toast.success("Contact updated!");
     },
     onError: () => toast.error("Failed to update contact"),
   });
@@ -1267,9 +932,7 @@ export default function Inbox() {
     mutationFn: async (id: string) => {
       await supabase.from("conversations").update({ unread_count: 0 }).eq("id", id);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["inbox-conversations"] });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["inbox-conversations"] }),
   });
 
   // Update status
@@ -1293,7 +956,7 @@ export default function Inbox() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inbox-customers"] });
-      toast.success("Consent updated");
+      toast.success("Updated");
     },
   });
 
@@ -1305,9 +968,7 @@ export default function Inbox() {
     (id: string) => {
       setSelectedConversationId(id);
       const conv = conversations.find((c) => c.id === id);
-      if (conv && conv.unread_count > 0) {
-        markAsReadMutation.mutate(id);
-      }
+      if (conv?.unread_count > 0) markAsReadMutation.mutate(id);
     },
     [conversations, markAsReadMutation],
   );
@@ -1321,8 +982,7 @@ export default function Inbox() {
     e.stopPropagation();
     setStarredConversations((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
   }, []);
@@ -1330,69 +990,54 @@ export default function Inbox() {
   const handleUseTemplate = useCallback(
     (template: { content: string }) => {
       let content = template.content;
-      if (selectedConversation) {
-        content = content.replace("{{name}}", getDisplayName(selectedConversation));
-      }
+      if (selectedConversation) content = content.replace("{{name}}", getDisplayName(selectedConversation));
       setMessageInput(content);
-      setIsTemplateDialogOpen(false);
-      messageInputRef.current?.focus();
+      setShowTemplateDialog(false);
     },
     [selectedConversation, getDisplayName],
   );
 
-  const handleEditContact = useCallback(() => {
+  // Open Edit Contact - PROPERLY INITIALIZE FORM
+  const openEditContact = useCallback(() => {
     if (selectedCustomer) {
-      setEditContactName(selectedCustomer.name || selectedCustomer.first_name || "");
-      setEditContactPhone(selectedCustomer.phone_number || "");
-      setEditContactEmail(selectedCustomer.email || "");
-      setIsEditContactDialogOpen(true);
+      setEditName(selectedCustomer.name || selectedCustomer.first_name || "");
+      setEditPhone(selectedCustomer.phone_number || selectedCustomer.phone || "");
+      setEditEmail(selectedCustomer.email || "");
+    } else {
+      setEditName("");
+      setEditPhone("");
+      setEditEmail("");
     }
+    setShowEditContactDialog(true);
   }, [selectedCustomer]);
+
+  // Open Deal Dialog - PRE-FILL FORM
+  const openDealDialog = useCallback(() => {
+    if (selectedConversation) {
+      setDealContactName(getDisplayName(selectedConversation));
+      setDealPhone(getPhoneNumber(selectedConversation) || "");
+      setDealEmail(getEmail(selectedConversation) || "");
+      setDealCompanyName(selectedCustomer?.company_name || "");
+    }
+    setShowDealDialog(true);
+  }, [selectedConversation, selectedCustomer, getDisplayName, getPhoneNumber, getEmail]);
 
   const clearFilters = useCallback(() => {
     setFilters({
       quickFilter: "all",
-      channels: [],
       leadTemperature: "all",
       leadScoreRange: [0, 100],
-      marketingSource: "all",
       status: "all",
       sortBy: "recent",
     });
   }, []);
-
-  // ============================================
-  // HELPERS
-  // ============================================
-
-  const getChannelConfig = (channel: string) => CHANNELS[channel] || CHANNELS.web;
-
-  const getTemperatureIcon = (temp?: string) => {
-    switch (temp?.toLowerCase()) {
-      case "hot":
-        return <Flame className="h-3 w-3 text-red-500" />;
-      case "warm":
-        return <Sun className="h-3 w-3 text-yellow-500" />;
-      case "cold":
-        return <Snowflake className="h-3 w-3 text-blue-500" />;
-      default:
-        return null;
-    }
-  };
-
-  const formatMessageTime = (dateStr: string) => {
-    const date = new Date(dateStr);
-    if (isToday(date)) return format(date, "HH:mm");
-    if (isYesterday(date)) return "Yesterday";
-    return format(date, "MMM d");
-  };
 
   // Scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Real-time subscription
+  // Real-time
   useEffect(() => {
     if (!tenantUuid) return;
     const channel = supabase
@@ -1405,11 +1050,8 @@ export default function Inbox() {
         },
       )
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => {
-        const msg = payload.new as Message;
-        if (msg.conversation_id === selectedConversationId) refetchMessages();
-        if (!isMuted && msg.direction === "inbound") {
-          toast.info("New message received");
-        }
+        if ((payload.new as any).conversation_id === selectedConversationId) refetchMessages();
+        if (!isMuted && (payload.new as any).direction === "inbound") toast.info("New message");
       })
       .subscribe();
     return () => {
@@ -1417,20 +1059,17 @@ export default function Inbox() {
     };
   }, [tenantUuid, selectedConversationId, queryClient, refetchMessages, isMuted]);
 
-  // Active filter count
+  // Filter count
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (filters.quickFilter !== "all") count++;
-    if (filters.channels.length > 0) count++;
     if (filters.leadTemperature !== "all") count++;
     if (filters.leadScoreRange[0] !== 0 || filters.leadScoreRange[1] !== 100) count++;
-    if (filters.marketingSource !== "all") count++;
     if (filters.status !== "all") count++;
     if (filters.sortBy !== "recent") count++;
     return count;
   }, [filters]);
 
-  // Current phone number for selected contact
   const currentPhoneNumber = selectedConversation ? getPhoneNumber(selectedConversation) : null;
 
   // ============================================
@@ -1442,14 +1081,9 @@ export default function Inbox() {
         {/* HEADER */}
         <nav className="h-14 border-b px-4 flex items-center justify-between bg-card shrink-0">
           <div className="flex items-center gap-3">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" onClick={() => setIsCollapsed(!isCollapsed)}>
-                  {isCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{isCollapsed ? "Show" : "Hide"} sidebar</TooltipContent>
-            </Tooltip>
+            <Button variant="ghost" size="icon" onClick={() => setIsCollapsed(!isCollapsed)}>
+              {isCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+            </Button>
             <div>
               <h1 className="text-lg font-bold">{tenantConfig?.company_name || "Inbox"}</h1>
               <p className="text-xs text-muted-foreground">
@@ -1463,81 +1097,64 @@ export default function Inbox() {
             </div>
           </div>
 
-          {/* Channel Tabs */}
-          <div className="flex items-center gap-1">
-            <ScrollArea className="max-w-xl">
-              <div className="flex gap-1 px-1">
-                <button
-                  onClick={() => setSelectedChannel("all")}
-                  className={cn(
-                    "px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap",
-                    selectedChannel === "all"
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-muted",
-                  )}
-                >
-                  All
-                </button>
-                {Object.values(CHANNELS)
-                  .slice(0, 6)
-                  .map((ch) => (
-                    <Tooltip key={ch.id}>
-                      <TooltipTrigger asChild>
-                        <button
-                          onClick={() => setSelectedChannel(ch.id)}
-                          className={cn(
-                            "px-2.5 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1",
-                            selectedChannel === ch.id
-                              ? `${ch.bgColor} ${ch.textColor}`
-                              : "text-muted-foreground hover:bg-muted",
-                          )}
-                        >
-                          <ch.icon className="h-3.5 w-3.5" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>{ch.name}</TooltipContent>
-                    </Tooltip>
-                  ))}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className="px-2.5 py-1.5 rounded-full text-xs font-medium text-muted-foreground hover:bg-muted flex items-center gap-1">
-                      <Plus className="h-3.5 w-3.5" />
-                      More
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {Object.values(CHANNELS)
-                      .slice(6)
-                      .map((ch) => (
-                        <DropdownMenuItem key={ch.id} onClick={() => setSelectedChannel(ch.id)}>
-                          <ch.icon className={cn("h-4 w-4 mr-2", ch.textColor)} />
-                          {ch.name}
-                        </DropdownMenuItem>
-                      ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </ScrollArea>
-          </div>
+          {/* Channels */}
+          <ScrollArea className="max-w-xl">
+            <div className="flex gap-1 px-1">
+              <button
+                onClick={() => setSelectedChannel("all")}
+                className={cn(
+                  "px-3 py-1.5 rounded-full text-xs font-medium",
+                  selectedChannel === "all"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted",
+                )}
+              >
+                All
+              </button>
+              {Object.values(CHANNELS)
+                .slice(0, 6)
+                .map((ch) => (
+                  <button
+                    key={ch.id}
+                    onClick={() => setSelectedChannel(ch.id)}
+                    className={cn(
+                      "px-2.5 py-1.5 rounded-full text-xs font-medium flex items-center gap-1",
+                      selectedChannel === ch.id
+                        ? `${ch.bgColor} ${ch.textColor}`
+                        : "text-muted-foreground hover:bg-muted",
+                    )}
+                  >
+                    <ch.icon className="h-3.5 w-3.5" />
+                  </button>
+                ))}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="px-2.5 py-1.5 rounded-full text-xs font-medium text-muted-foreground hover:bg-muted flex items-center gap-1">
+                    <Plus className="h-3.5 w-3.5" />
+                    More
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {Object.values(CHANNELS)
+                    .slice(6)
+                    .map((ch) => (
+                      <DropdownMenuItem key={ch.id} onClick={() => setSelectedChannel(ch.id)}>
+                        <ch.icon className={cn("h-4 w-4 mr-2", ch.textColor)} />
+                        {ch.name}
+                      </DropdownMenuItem>
+                    ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </ScrollArea>
 
-          {/* Actions */}
           <div className="flex items-center gap-2">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={() => setIsMuted(!isMuted)}>
-                  {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{isMuted ? "Unmute" : "Mute"}</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={() => refetchConversations()}>
-                  <RefreshCcw className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Refresh</TooltipContent>
-            </Tooltip>
+            <Button variant="outline" size="icon" onClick={() => setIsMuted(!isMuted)}>
+              {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+            </Button>
+            <Button variant="outline" size="icon" onClick={() => refetchConversations()}>
+              <RefreshCcw className="h-4 w-4" />
+            </Button>
           </div>
         </nav>
 
@@ -1546,7 +1163,6 @@ export default function Inbox() {
           {/* SIDEBAR */}
           {!isCollapsed && (
             <aside className="w-80 border-r flex flex-col bg-card shrink-0">
-              {/* Search */}
               <div className="p-3 space-y-3 border-b">
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -1567,8 +1183,6 @@ export default function Inbox() {
                     </Button>
                   )}
                 </div>
-
-                {/* Quick Filters */}
                 <div className="flex gap-1.5 flex-wrap">
                   {["all", "unread", "starred", "ai", "human"].map((qf) => (
                     <Button
@@ -1584,7 +1198,6 @@ export default function Inbox() {
                       {qf === "all" ? "All" : qf.charAt(0).toUpperCase() + qf.slice(1)}
                     </Button>
                   ))}
-
                   <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
                     <SheetTrigger asChild>
                       <Button variant="outline" size="sm" className="text-xs h-7 gap-1">
@@ -1627,7 +1240,7 @@ export default function Inbox() {
                           <div className="flex justify-between">
                             <Label>Lead Score</Label>
                             <span className="text-xs text-muted-foreground">
-                              {filters.leadScoreRange[0]} - {filters.leadScoreRange[1]}
+                              {filters.leadScoreRange[0]}-{filters.leadScoreRange[1]}
                             </span>
                           </div>
                           <Slider
@@ -1637,25 +1250,6 @@ export default function Inbox() {
                             max={100}
                             step={5}
                           />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Source</Label>
-                          <Select
-                            value={filters.marketingSource}
-                            onValueChange={(v) => setFilters({ ...filters, marketingSource: v })}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">All Sources</SelectItem>
-                              {marketingSources.map((s) => (
-                                <SelectItem key={s} value={s}>
-                                  {s}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
                         </div>
                         <div className="space-y-2">
                           <Label>Status</Label>
@@ -1681,7 +1275,6 @@ export default function Inbox() {
                               <SelectItem value="recent">Most Recent</SelectItem>
                               <SelectItem value="oldest">Oldest</SelectItem>
                               <SelectItem value="score-high">Score High→Low</SelectItem>
-                              <SelectItem value="score-low">Score Low→High</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -1696,12 +1289,11 @@ export default function Inbox() {
                 {conversationsLoading ? (
                   <div className="p-8 text-center">
                     <RefreshCcw className="h-8 w-8 mx-auto mb-3 animate-spin text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">Loading...</p>
                   </div>
                 ) : filteredConversations.length === 0 ? (
                   <div className="p-8 text-center">
                     <MessageSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground/30" />
-                    <p className="font-medium text-muted-foreground">No conversations</p>
+                    <p className="text-muted-foreground">No conversations</p>
                   </div>
                 ) : (
                   filteredConversations.map((conv) => {
@@ -1710,13 +1302,14 @@ export default function Inbox() {
                     const isStarred = starredConversations.has(conv.id);
                     const hasUnread = conv.unread_count > 0;
                     const displayName = getDisplayName(conv);
+                    const temp = conv.customer?.lead_temperature || conv.customer?.temperature;
 
                     return (
                       <div
                         key={conv.id}
                         onClick={() => handleSelectConversation(conv.id)}
                         className={cn(
-                          "p-3 border-b cursor-pointer transition-all hover:bg-muted/50",
+                          "p-3 border-b cursor-pointer hover:bg-muted/50",
                           isSelected && "bg-primary/5 border-l-2 border-l-primary",
                           hasUnread && "bg-blue-50/50",
                         )}
@@ -1740,7 +1333,7 @@ export default function Inbox() {
                                 <span className={cn("font-medium truncate text-sm", hasUnread && "font-semibold")}>
                                   {displayName}
                                 </span>
-                                {getTemperatureIcon(conv.customer?.lead_temperature)}
+                                {getTemperatureIcon(temp)}
                                 {conv.ai_handled && <Bot className="h-3 w-3 text-blue-500 shrink-0" />}
                               </div>
                               <div className="flex items-center gap-1 shrink-0">
@@ -1752,22 +1345,17 @@ export default function Inbox() {
                                   )}
                                 </button>
                                 <span className="text-[10px] text-muted-foreground">
-                                  {conv.last_message_at && formatMessageTime(conv.last_message_at)}
+                                  {conv.last_message_at && formatTime(conv.last_message_at)}
                                 </span>
                               </div>
                             </div>
-                            <p
-                              className={cn(
-                                "text-xs truncate",
-                                hasUnread ? "text-foreground font-medium" : "text-muted-foreground",
-                              )}
-                            >
+                            <p className={cn("text-xs truncate", hasUnread ? "font-medium" : "text-muted-foreground")}>
                               {conv.last_message_direction === "outbound" && (
                                 <Check className="h-3 w-3 inline mr-1 text-green-500" />
                               )}
                               {conv.last_message_text || "No messages"}
                             </p>
-                            <div className="flex items-center gap-1 mt-1 flex-wrap">
+                            <div className="flex items-center gap-1 mt-1">
                               {hasUnread && (
                                 <Badge variant="default" className="text-[10px] h-4 px-1.5">
                                   {conv.unread_count}
@@ -1809,8 +1397,8 @@ export default function Inbox() {
                     <div>
                       <h2 className="font-semibold flex items-center gap-2">
                         {getDisplayName(selectedConversation)}
-                        {getTemperatureIcon(selectedCustomer?.lead_temperature)}
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleEditContact}>
+                        {getTemperatureIcon(selectedCustomer?.lead_temperature || selectedCustomer?.temperature)}
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={openEditContact}>
                           <Edit className="h-3 w-3" />
                         </Button>
                       </h2>
@@ -1821,30 +1409,27 @@ export default function Inbox() {
                         >
                           {getChannelConfig(selectedConversation.channel).name}
                         </Badge>
-                        {currentPhoneNumber && <span>{currentPhoneNumber}</span>}
-                        {!currentPhoneNumber && <span className="text-yellow-600">No phone - click edit to add</span>}
+                        {currentPhoneNumber ? (
+                          <span>{currentPhoneNumber}</span>
+                        ) : (
+                          <span className="text-orange-500">No phone - click edit</span>
+                        )}
                       </div>
                     </div>
                   </div>
-
                   <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setIsCallDialogOpen(true)}
+                      onClick={() => setShowCallDialog(true)}
                       disabled={!currentPhoneNumber}
                     >
                       <Phone className="h-4 w-4 mr-1" />
                       Call
                     </Button>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="outline" size="icon" onClick={() => setIsDetailsOpen(!isDetailsOpen)}>
-                          {isDetailsOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRight className="h-4 w-4" />}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Details</TooltipContent>
-                    </Tooltip>
+                    <Button variant="outline" size="icon" onClick={() => setShowDetailsPanel(!showDetailsPanel)}>
+                      {showDetailsPanel ? <PanelRightClose className="h-4 w-4" /> : <PanelRight className="h-4 w-4" />}
+                    </Button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline" size="icon">
@@ -1854,28 +1439,28 @@ export default function Inbox() {
                       <DropdownMenuContent align="end" className="w-48">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => setIsNoteDialogOpen(true)}>
+                        <DropdownMenuItem onClick={() => setShowNoteDialog(true)}>
                           <StickyNote className="h-4 w-4 mr-2" />
                           Add Note
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setIsAssignDialogOpen(true)}>
+                        <DropdownMenuItem onClick={() => setShowAssignDialog(true)}>
                           <UserPlus className="h-4 w-4 mr-2" />
                           Assign
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setIsTransferDialogOpen(true)}>
+                        <DropdownMenuItem onClick={() => setShowTransferDialog(true)}>
                           <Send className="h-4 w-4 mr-2" />
                           Transfer
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setIsDealDialogOpen(true)}>
+                        <DropdownMenuItem onClick={openDealDialog}>
                           <Briefcase className="h-4 w-4 mr-2" />
                           Create Deal
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setIsBookDialogOpen(true)}>
+                        <DropdownMenuItem onClick={() => setShowBookDialog(true)}>
                           <CalendarIcon className="h-4 w-4 mr-2" />
                           Book Appointment
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => setIsEscalateDialogOpen(true)}>
+                        <DropdownMenuItem onClick={() => setShowEscalateDialog(true)}>
                           <AlertTriangle className="h-4 w-4 mr-2 text-orange-500" />
                           Escalate
                         </DropdownMenuItem>
@@ -1895,11 +1480,11 @@ export default function Inbox() {
                           Close
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={handleEditContact}>
+                        <DropdownMenuItem onClick={openEditContact}>
                           <Edit className="h-4 w-4 mr-2" />
                           Edit Contact
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setIsComplianceDialogOpen(true)}>
+                        <DropdownMenuItem onClick={() => setShowComplianceDialog(true)}>
                           <Shield className="h-4 w-4 mr-2" />
                           Compliance
                         </DropdownMenuItem>
@@ -1919,35 +1504,35 @@ export default function Inbox() {
                       ) : messages.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                           <MessageSquare className="h-12 w-12 mb-3 opacity-30" />
-                          <p>No messages yet</p>
+                          <p>No messages</p>
                         </div>
                       ) : (
                         <div className="space-y-4">
-                          {messages.map((message) => (
+                          {messages.map((msg) => (
                             <div
-                              key={message.id}
-                              className={cn("flex", message.direction === "outbound" ? "justify-end" : "justify-start")}
+                              key={msg.id}
+                              className={cn("flex", msg.direction === "outbound" ? "justify-end" : "justify-start")}
                             >
                               <div
                                 className={cn(
                                   "max-w-[70%] rounded-2xl px-4 py-2.5",
-                                  message.direction === "outbound"
+                                  msg.direction === "outbound"
                                     ? "bg-primary text-primary-foreground rounded-br-md"
                                     : "bg-muted rounded-bl-md",
                                 )}
                               >
-                                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                                <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                                 <div
                                   className={cn(
-                                    "flex items-center gap-1.5 mt-1",
-                                    message.direction === "outbound"
+                                    "flex items-center gap-1.5 mt-1 text-[10px]",
+                                    msg.direction === "outbound"
                                       ? "text-primary-foreground/70 justify-end"
                                       : "text-muted-foreground",
                                   )}
                                 >
-                                  <span className="text-[10px]">{format(new Date(message.created_at), "HH:mm")}</span>
-                                  {message.sender_type === "ai" && <Bot className="h-3 w-3" />}
-                                  {message.direction === "outbound" && <CheckCheck className="h-3 w-3" />}
+                                  {format(new Date(msg.created_at), "HH:mm")}
+                                  {msg.sender_type === "ai" && <Bot className="h-3 w-3" />}
+                                  {msg.direction === "outbound" && <CheckCheck className="h-3 w-3" />}
                                 </div>
                               </div>
                             </div>
@@ -1967,7 +1552,7 @@ export default function Inbox() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="start">
-                            <DropdownMenuItem onClick={() => setIsTemplateDialogOpen(true)}>
+                            <DropdownMenuItem onClick={() => setShowTemplateDialog(true)}>
                               <FileText className="h-4 w-4 mr-2" />
                               Templates
                             </DropdownMenuItem>
@@ -1975,7 +1560,6 @@ export default function Inbox() {
                         </DropdownMenu>
                         <div className="flex-1 relative">
                           <Textarea
-                            ref={messageInputRef}
                             placeholder="Type a message..."
                             className="min-h-[44px] max-h-32 pr-20 resize-none"
                             value={messageInput}
@@ -2005,8 +1589,8 @@ export default function Inbox() {
                     </div>
                   </div>
 
-                  {/* Details Panel */}
-                  {isDetailsOpen && selectedCustomer && (
+                  {/* DETAILS PANEL */}
+                  {showDetailsPanel && (
                     <aside className="w-72 border-l bg-card p-4 overflow-y-auto shrink-0">
                       <div className="text-center mb-4">
                         <Avatar className="h-16 w-16 mx-auto mb-2">
@@ -2016,40 +1600,40 @@ export default function Inbox() {
                         </Avatar>
                         <h3 className="font-semibold">{getDisplayName(selectedConversation)}</h3>
                         <div className="flex items-center justify-center gap-2 mt-1">
-                          {getTemperatureIcon(selectedCustomer.lead_temperature)}
+                          {getTemperatureIcon(selectedCustomer?.lead_temperature || selectedCustomer?.temperature)}
                           <Badge variant="outline" className="capitalize">
-                            {selectedCustomer.lifecycle_stage || "Lead"}
+                            {selectedCustomer?.lifecycle_stage || "Lead"}
                           </Badge>
                         </div>
-                        <Button variant="ghost" size="sm" className="mt-2" onClick={handleEditContact}>
+                        <Button variant="ghost" size="sm" className="mt-2" onClick={openEditContact}>
                           <Edit className="h-3 w-3 mr-1" />
-                          Edit Contact
+                          Edit
                         </Button>
                       </div>
                       <Separator className="my-4" />
                       <div className="space-y-3 text-sm">
                         <div className="flex items-center gap-2">
                           <Phone className="h-4 w-4 text-muted-foreground" />
-                          <span>{currentPhoneNumber || <span className="text-yellow-600">Not set</span>}</span>
+                          <span>{currentPhoneNumber || <span className="text-orange-500">Not set</span>}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Mail className="h-4 w-4 text-muted-foreground" />
                           <span className="truncate">
-                            {selectedCustomer.email || <span className="text-yellow-600">Not set</span>}
+                            {selectedCustomer?.email || <span className="text-orange-500">Not set</span>}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Tag className="h-4 w-4 text-muted-foreground" />
-                          <span>Score: {selectedCustomer.lead_score || 50}</span>
+                          <span>Score: {selectedCustomer?.lead_score || 50}</span>
                         </div>
-                        {selectedCustomer.source && (
+                        {selectedCustomer?.source && (
                           <div className="flex items-center gap-2">
                             <Globe className="h-4 w-4 text-muted-foreground" />
                             <span>{selectedCustomer.source}</span>
                           </div>
                         )}
                       </div>
-                      {selectedCustomer.notes && (
+                      {selectedCustomer?.notes && (
                         <>
                           <Separator className="my-4" />
                           <div>
@@ -2069,19 +1653,17 @@ export default function Inbox() {
                 <div className="text-center p-8">
                   <MessageSquare className="h-16 w-16 mx-auto mb-4 text-muted-foreground/30" />
                   <h2 className="text-xl font-semibold mb-2">Select a conversation</h2>
-                  <p className="text-muted-foreground">Choose a conversation to view messages</p>
+                  <p className="text-muted-foreground">Choose from the list</p>
                 </div>
               </div>
             )}
           </main>
         </div>
 
-        {/* ============================================ */}
-        {/* ALL DIALOGS */}
-        {/* ============================================ */}
+        {/* ===== DIALOGS ===== */}
 
-        {/* Edit Contact Dialog */}
-        <Dialog open={isEditContactDialogOpen} onOpenChange={setIsEditContactDialogOpen}>
+        {/* EDIT CONTACT */}
+        <Dialog open={showEditContactDialog} onOpenChange={setShowEditContactDialog}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Edit Contact</DialogTitle>
@@ -2090,58 +1672,38 @@ export default function Inbox() {
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label>Name</Label>
-                <Input
-                  placeholder="Full name"
-                  value={editContactName}
-                  onChange={(e) => setEditContactName(e.target.value)}
-                />
+                <Input placeholder="Full name" value={editName} onChange={(e) => setEditName(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>Phone Number</Label>
-                <Input
-                  placeholder="+1234567890"
-                  value={editContactPhone}
-                  onChange={(e) => setEditContactPhone(e.target.value)}
-                />
+                <Label>Phone</Label>
+                <Input placeholder="+1234567890" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>Email</Label>
                 <Input
                   type="email"
                   placeholder="email@example.com"
-                  value={editContactEmail}
-                  onChange={(e) => setEditContactEmail(e.target.value)}
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
                 />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsEditContactDialogOpen(false)}>
+              <Button variant="outline" onClick={() => setShowEditContactDialog(false)}>
                 Cancel
               </Button>
-              <Button
-                onClick={() =>
-                  selectedCustomer &&
-                  updateContactMutation.mutate({
-                    customerId: selectedCustomer.id,
-                    name: editContactName,
-                    phone: editContactPhone,
-                    email: editContactEmail,
-                  })
-                }
-                disabled={updateContactMutation.isPending}
-              >
+              <Button onClick={() => updateContactMutation.mutate()} disabled={updateContactMutation.isPending}>
                 {updateContactMutation.isPending ? "Saving..." : "Save"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* Assign Dialog */}
-        <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
+        {/* ASSIGN */}
+        <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Assign Conversation</DialogTitle>
-              <DialogDescription>Select a staff member</DialogDescription>
             </DialogHeader>
             <div className="py-4">
               <Select value={selectedStaffId} onValueChange={setSelectedStaffId}>
@@ -2149,37 +1711,30 @@ export default function Inbox() {
                   <SelectValue placeholder="Select staff" />
                 </SelectTrigger>
                 <SelectContent>
-                  {staffMembers.map((staff) => (
-                    <SelectItem key={staff.id} value={staff.id}>
-                      {staff.full_name || staff.email}
+                  {staffMembers.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.full_name || s.email}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAssignDialogOpen(false)}>
+              <Button variant="outline" onClick={() => setShowAssignDialog(false)}>
                 Cancel
               </Button>
-              <Button
-                onClick={() =>
-                  selectedConversationId &&
-                  assignMutation.mutate({ conversationId: selectedConversationId, staffId: selectedStaffId })
-                }
-                disabled={!selectedStaffId || assignMutation.isPending}
-              >
+              <Button onClick={() => assignMutation.mutate()} disabled={!selectedStaffId || assignMutation.isPending}>
                 {assignMutation.isPending ? "Assigning..." : "Assign"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* Note Dialog */}
-        <Dialog open={isNoteDialogOpen} onOpenChange={setIsNoteDialogOpen}>
+        {/* NOTE */}
+        <Dialog open={showNoteDialog} onOpenChange={setShowNoteDialog}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Add Note</DialogTitle>
-              <DialogDescription>Add an internal note (triggers n8n workflow)</DialogDescription>
             </DialogHeader>
             <div className="py-4">
               <Textarea
@@ -2190,68 +1745,92 @@ export default function Inbox() {
               />
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsNoteDialogOpen(false)}>
+              <Button variant="outline" onClick={() => setShowNoteDialog(false)}>
                 Cancel
               </Button>
-              <Button
-                onClick={() =>
-                  selectedConversationId &&
-                  addNoteMutation.mutate({ conversationId: selectedConversationId, content: noteText })
-                }
-                disabled={!noteText.trim() || addNoteMutation.isPending}
-              >
-                {addNoteMutation.isPending ? "Saving..." : "Save Note"}
+              <Button onClick={() => addNoteMutation.mutate()} disabled={!noteText.trim() || addNoteMutation.isPending}>
+                {addNoteMutation.isPending ? "Saving..." : "Save"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* Deal Dialog */}
-        <Dialog open={isDealDialogOpen} onOpenChange={setIsDealDialogOpen}>
-          <DialogContent>
+        {/* CREATE DEAL - MATCHES Deals.tsx SCHEMA */}
+        <Dialog open={showDealDialog} onOpenChange={setShowDealDialog}>
+          <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Create Deal</DialogTitle>
-              <DialogDescription>Create a new opportunity (triggers n8n workflow)</DialogDescription>
+              <DialogDescription>Add to sales pipeline (same schema as Deals page)</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>Title</Label>
+                <Label>Title *</Label>
                 <Input placeholder="Deal title" value={dealTitle} onChange={(e) => setDealTitle(e.target.value)} />
               </div>
-              <div className="space-y-2">
-                <Label>Value ($)</Label>
-                <Input type="number" placeholder="0" value={dealValue} onChange={(e) => setDealValue(e.target.value)} />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Value ($)</Label>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    value={dealValue}
+                    onChange={(e) => setDealValue(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Stage</Label>
+                  <Select value={dealStage} onValueChange={setDealStage}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PIPELINE_STAGES.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name} ({s.probability}%)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="space-y-2">
-                <Label>Stage</Label>
-                <Select value={dealStage} onValueChange={setDealStage}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {industryConfig.stages.map((stage) => (
-                      <SelectItem key={stage} value={stage.toLowerCase().replace(/ /g, "_")}>
-                        {stage}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>Company Name</Label>
+                <Input
+                  placeholder="Company"
+                  value={dealCompanyName}
+                  onChange={(e) => setDealCompanyName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Contact Name</Label>
+                <Input
+                  placeholder="Contact person"
+                  value={dealContactName}
+                  onChange={(e) => setDealContactName(e.target.value)}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Email</Label>
+                  <Input
+                    type="email"
+                    placeholder="email"
+                    value={dealEmail}
+                    onChange={(e) => setDealEmail(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Phone</Label>
+                  <Input placeholder="phone" value={dealPhone} onChange={(e) => setDealPhone(e.target.value)} />
+                </div>
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDealDialogOpen(false)}>
+              <Button variant="outline" onClick={() => setShowDealDialog(false)}>
                 Cancel
               </Button>
               <Button
-                onClick={() =>
-                  selectedConversation?.contact_id &&
-                  createDealMutation.mutate({
-                    contactId: selectedConversation.contact_id,
-                    title: dealTitle,
-                    value: parseFloat(dealValue) || 0,
-                    stage: dealStage,
-                  })
-                }
+                onClick={() => createDealMutation.mutate()}
                 disabled={!dealTitle.trim() || createDealMutation.isPending}
               >
                 {createDealMutation.isPending ? "Creating..." : "Create Deal"}
@@ -2260,33 +1839,16 @@ export default function Inbox() {
           </DialogContent>
         </Dialog>
 
-        {/* Book Appointment Dialog */}
-        <Dialog open={isBookDialogOpen} onOpenChange={setIsBookDialogOpen}>
+        {/* BOOK APPOINTMENT - MATCHES Appointments.tsx SCHEMA */}
+        <Dialog open={showBookDialog} onOpenChange={setShowBookDialog}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Book Appointment</DialogTitle>
-              <DialogDescription>
-                Schedule an appointment (triggers n8n workflow + sends confirmation)
-              </DialogDescription>
+              <DialogDescription>Schedule using same schema as Appointments page</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>Service</Label>
-                <Select value={appointmentService} onValueChange={setAppointmentService}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select service" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {industryConfig.services.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {s}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Date</Label>
+                <Label>Date *</Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="outline" className="w-full justify-start">
@@ -2322,7 +1884,7 @@ export default function Inbox() {
               <div className="space-y-2">
                 <Label>Notes</Label>
                 <Textarea
-                  placeholder="Notes..."
+                  placeholder="Optional notes..."
                   value={appointmentNotes}
                   onChange={(e) => setAppointmentNotes(e.target.value)}
                   rows={2}
@@ -2330,35 +1892,24 @@ export default function Inbox() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsBookDialogOpen(false)}>
+              <Button variant="outline" onClick={() => setShowBookDialog(false)}>
                 Cancel
               </Button>
               <Button
-                onClick={() =>
-                  selectedConversation?.contact_id &&
-                  appointmentDate &&
-                  bookAppointmentMutation.mutate({
-                    customerId: selectedConversation.contact_id,
-                    date: appointmentDate,
-                    time: appointmentTime,
-                    service: appointmentService,
-                    notes: appointmentNotes,
-                  })
-                }
-                disabled={!appointmentDate || !appointmentService || bookAppointmentMutation.isPending}
+                onClick={() => bookAppointmentMutation.mutate()}
+                disabled={!appointmentDate || bookAppointmentMutation.isPending}
               >
-                {bookAppointmentMutation.isPending ? "Booking..." : "Book Appointment"}
+                {bookAppointmentMutation.isPending ? "Booking..." : "Book"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* Call Dialog */}
-        <Dialog open={isCallDialogOpen} onOpenChange={setIsCallDialogOpen}>
+        {/* CALL */}
+        <Dialog open={showCallDialog} onOpenChange={setShowCallDialog}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Initiate Call</DialogTitle>
-              <DialogDescription>Start a phone call via VAPI</DialogDescription>
             </DialogHeader>
             <div className="py-6 text-center">
               {currentPhoneNumber ? (
@@ -2367,56 +1918,52 @@ export default function Inbox() {
                     <Phone className="h-10 w-10 text-green-600" />
                   </div>
                   <p className="text-2xl font-semibold mb-2">{currentPhoneNumber}</p>
-                  <p className="text-muted-foreground">
-                    {selectedConversation && getDisplayName(selectedConversation)}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-2">Call will be made via VAPI AI (+1 272 235 0215)</p>
+                  <p className="text-sm text-muted-foreground">Via VAPI: +1 272 235 0215</p>
                 </>
               ) : (
                 <>
                   <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-yellow-100 flex items-center justify-center">
                     <AlertCircle className="h-10 w-10 text-yellow-600" />
                   </div>
-                  <p className="text-muted-foreground mb-2">No phone number available</p>
-                  <Button variant="outline" size="sm" onClick={handleEditContact}>
+                  <p className="text-muted-foreground mb-2">No phone number</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setShowCallDialog(false);
+                      openEditContact();
+                    }}
+                  >
                     <Edit className="h-4 w-4 mr-1" />
-                    Add Phone Number
+                    Add Phone
                   </Button>
                 </>
               )}
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCallDialogOpen(false)}>
+              <Button variant="outline" onClick={() => setShowCallDialog(false)}>
                 Cancel
               </Button>
               <Button
-                onClick={() =>
-                  currentPhoneNumber &&
-                  selectedConversation &&
-                  initiateCallMutation.mutate({
-                    customerId: selectedConversation.contact_id,
-                    phoneNumber: currentPhoneNumber,
-                  })
-                }
+                onClick={() => initiateCallMutation.mutate()}
                 disabled={!currentPhoneNumber || initiateCallMutation.isPending}
                 className="bg-green-600 hover:bg-green-700"
               >
                 <PhoneCall className="h-4 w-4 mr-2" />
-                {initiateCallMutation.isPending ? "Connecting..." : "Call Now"}
+                {initiateCallMutation.isPending ? "Connecting..." : "Call"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* Escalate Dialog */}
-        <Dialog open={isEscalateDialogOpen} onOpenChange={setIsEscalateDialogOpen}>
+        {/* ESCALATE */}
+        <Dialog open={showEscalateDialog} onOpenChange={setShowEscalateDialog}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-orange-500" />
                 Escalate
               </DialogTitle>
-              <DialogDescription>Mark for human attention (triggers n8n notification)</DialogDescription>
             </DialogHeader>
             <div className="py-4">
               <Select value={escalationReason} onValueChange={setEscalationReason}>
@@ -2424,40 +1971,34 @@ export default function Inbox() {
                   <SelectValue placeholder="Select reason" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="complex_inquiry">Complex Inquiry</SelectItem>
+                  <SelectItem value="complex">Complex Inquiry</SelectItem>
                   <SelectItem value="complaint">Customer Complaint</SelectItem>
-                  <SelectItem value="urgent_request">Urgent Request</SelectItem>
-                  <SelectItem value="high_value">High Value Opportunity</SelectItem>
+                  <SelectItem value="urgent">Urgent Request</SelectItem>
+                  <SelectItem value="high_value">High Value</SelectItem>
                   <SelectItem value="ai_limitation">AI Cannot Handle</SelectItem>
-                  <SelectItem value="sensitive">Sensitive Topic</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsEscalateDialogOpen(false)}>
+              <Button variant="outline" onClick={() => setShowEscalateDialog(false)}>
                 Cancel
               </Button>
               <Button
                 variant="destructive"
-                onClick={() =>
-                  selectedConversationId &&
-                  escalateMutation.mutate({ conversationId: selectedConversationId, reason: escalationReason })
-                }
+                onClick={() => escalateMutation.mutate()}
                 disabled={!escalationReason || escalateMutation.isPending}
               >
-                {escalateMutation.isPending ? "Escalating..." : "Escalate Now"}
+                {escalateMutation.isPending ? "Escalating..." : "Escalate"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* Transfer Dialog */}
-        <Dialog open={isTransferDialogOpen} onOpenChange={setIsTransferDialogOpen}>
+        {/* TRANSFER */}
+        <Dialog open={showTransferDialog} onOpenChange={setShowTransferDialog}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Transfer</DialogTitle>
-              <DialogDescription>Transfer to another team member</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
@@ -2467,9 +2008,9 @@ export default function Inbox() {
                     <SelectValue placeholder="Select staff" />
                   </SelectTrigger>
                   <SelectContent>
-                    {staffMembers.map((staff) => (
-                      <SelectItem key={staff.id} value={staff.id}>
-                        {staff.full_name || staff.email}
+                    {staffMembers.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.full_name || s.email}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -2486,18 +2027,11 @@ export default function Inbox() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsTransferDialogOpen(false)}>
+              <Button variant="outline" onClick={() => setShowTransferDialog(false)}>
                 Cancel
               </Button>
               <Button
-                onClick={() =>
-                  selectedConversationId &&
-                  transferMutation.mutate({
-                    conversationId: selectedConversationId,
-                    toStaffId: selectedStaffId,
-                    reason: transferReason,
-                  })
-                }
+                onClick={() => transferMutation.mutate()}
                 disabled={!selectedStaffId || transferMutation.isPending}
               >
                 {transferMutation.isPending ? "Transferring..." : "Transfer"}
@@ -2506,58 +2040,52 @@ export default function Inbox() {
           </DialogContent>
         </Dialog>
 
-        {/* Template Dialog */}
-        <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
+        {/* TEMPLATE */}
+        <Dialog open={showTemplateDialog} onOpenChange={setShowTemplateDialog}>
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>Message Templates</DialogTitle>
-              <DialogDescription>Select a template</DialogDescription>
+              <DialogTitle>Templates</DialogTitle>
             </DialogHeader>
             <div className="py-4 grid gap-3 max-h-80 overflow-y-auto">
-              {messageTemplates.map((template) => (
-                <Card
-                  key={template.id}
-                  className="cursor-pointer hover:shadow-md"
-                  onClick={() => handleUseTemplate(template)}
-                >
+              {messageTemplates.map((t) => (
+                <Card key={t.id} className="cursor-pointer hover:shadow-md" onClick={() => handleUseTemplate(t)}>
                   <CardHeader className="p-3 pb-1">
-                    <CardTitle className="text-sm">{template.name}</CardTitle>
+                    <CardTitle className="text-sm">{t.name}</CardTitle>
                     <Badge variant="outline" className="w-fit text-[10px]">
-                      {template.category}
+                      {t.category}
                     </Badge>
                   </CardHeader>
                   <CardContent className="p-3 pt-1">
-                    <p className="text-xs text-muted-foreground line-clamp-2">{template.content}</p>
+                    <p className="text-xs text-muted-foreground line-clamp-2">{t.content}</p>
                   </CardContent>
                 </Card>
               ))}
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsTemplateDialogOpen(false)}>
+              <Button variant="outline" onClick={() => setShowTemplateDialog(false)}>
                 Cancel
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* Compliance Dialog */}
-        <Dialog open={isComplianceDialogOpen} onOpenChange={setIsComplianceDialogOpen}>
+        {/* COMPLIANCE */}
+        <Dialog open={showComplianceDialog} onOpenChange={setShowComplianceDialog}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Shield className="h-5 w-5" />
                 Compliance
               </DialogTitle>
-              <DialogDescription>Manage consent settings</DialogDescription>
             </DialogHeader>
             {selectedCustomer && (
               <div className="space-y-4 py-4">
                 <div className="bg-muted/50 rounded-lg p-3">
                   <h4 className="text-sm font-medium mb-2">{industryConfig.name} Compliance</h4>
                   <div className="flex flex-wrap gap-2">
-                    {industryConfig.compliance.map((req) => (
-                      <Badge key={req} variant="outline">
-                        {req}
+                    {industryConfig.compliance.map((r) => (
+                      <Badge key={r} variant="outline">
+                        {r}
                       </Badge>
                     ))}
                   </div>
@@ -2566,8 +2094,8 @@ export default function Inbox() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <Label>Marketing Communications</Label>
-                      <p className="text-xs text-muted-foreground">Allow marketing messages</p>
+                      <Label>Marketing</Label>
+                      <p className="text-xs text-muted-foreground">Allow marketing</p>
                     </div>
                     <Switch
                       checked={selectedCustomer.consent_marketing || false}
@@ -2583,7 +2111,7 @@ export default function Inbox() {
                   <div className="flex items-center justify-between">
                     <div>
                       <Label>Data Processing</Label>
-                      <p className="text-xs text-muted-foreground">Allow data storage</p>
+                      <p className="text-xs text-muted-foreground">Allow storage</p>
                     </div>
                     <Switch
                       checked={selectedCustomer.consent_data_processing || false}
@@ -2600,7 +2128,7 @@ export default function Inbox() {
                   <div className="flex items-center justify-between">
                     <div>
                       <Label className="text-red-600">Do Not Contact</Label>
-                      <p className="text-xs text-muted-foreground">Block all outreach</p>
+                      <p className="text-xs text-muted-foreground">Block outreach</p>
                     </div>
                     <Switch
                       checked={selectedCustomer.do_not_contact || false}
@@ -2618,25 +2146,14 @@ export default function Inbox() {
                   <div className="bg-red-50 border border-red-200 rounded-lg p-3">
                     <div className="flex items-center gap-2 text-red-600">
                       <AlertTriangle className="h-4 w-4" />
-                      <span className="text-sm font-medium">Do Not Contact Active</span>
+                      <span className="text-sm font-medium">DNC Active</span>
                     </div>
                   </div>
                 )}
-                <Separator />
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="flex-1">
-                    <FileText className="h-4 w-4 mr-2" />
-                    Export Data
-                  </Button>
-                  <Button variant="outline" size="sm" className="flex-1 text-red-600">
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete Data
-                  </Button>
-                </div>
               </div>
             )}
             <DialogFooter>
-              <Button onClick={() => setIsComplianceDialogOpen(false)}>Done</Button>
+              <Button onClick={() => setShowComplianceDialog(false)}>Done</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
