@@ -1,7 +1,6 @@
 // ============================================
 // FILE: src/pages/sales/LeadDiscovery.tsx
-// COMPLETE B2B IMPLEMENTATION - ALL FEATURES
-// Paste this into Lovable to replace existing
+// COMPLETE B2B IMPLEMENTATION - ALL FIXES APPLIED
 // ============================================
 
 import { useState, useEffect } from "react";
@@ -58,172 +57,38 @@ const N8N_WEBHOOK_URL = "https://webhooks.zatesystems.com/webhook";
 
 // COMPLETE INDUSTRIES LIST - Matching n8n workflow configurations
 const INDUSTRIES = [
-  {
-    id: "medical_spa",
-    label: "Medical Spa / Aesthetics",
-    icon: "✨",
-    google_suffix: "medical spa aesthetics clinic botox filler laser treatment contact email",
-  },
-  {
-    id: "dental",
-    label: "Dental Clinic",
-    icon: "🦷",
-    google_suffix: "dental clinic dentist teeth whitening orthodontist contact email",
-  },
-  {
-    id: "salon",
-    label: "Salon / Beauty",
-    icon: "💇",
-    google_suffix: "salon beauty parlor hair nails spa contact booking email",
-  },
-  {
-    id: "real_estate",
-    label: "Real Estate",
-    icon: "🏠",
-    google_suffix: "real estate agent broker property manager listing contact email",
-  },
-  {
-    id: "restaurant",
-    label: "Restaurant / F&B",
-    icon: "🍽️",
-    google_suffix: "restaurant cafe dining catering food contact reservation email",
-  },
-  {
-    id: "healthcare",
-    label: "Healthcare / Clinic",
-    icon: "⚕️",
-    google_suffix: "healthcare clinic hospital medical center doctor contact email",
-  },
-  {
-    id: "fitness",
-    label: "Fitness / Gym",
-    icon: "💪",
-    google_suffix: "gym fitness center personal trainer workout contact membership email",
-  },
-  {
-    id: "technology",
-    label: "Technology / Software",
-    icon: "💻",
-    google_suffix: "technology software company SaaS development IT services contact email",
-  },
-  {
-    id: "flooring",
-    label: "Flooring / Contractors",
-    icon: "🏗️",
-    google_suffix: "flooring contractor installation tiles hardwood carpet vinyl contact email",
-  },
-  {
-    id: "construction",
-    label: "Construction",
-    icon: "🔨",
-    google_suffix: "construction contractor builder general contractor renovation contact email",
-  },
-  {
-    id: "legal",
-    label: "Legal / Law Firm",
-    icon: "⚖️",
-    google_suffix: "law firm attorney lawyer legal services consultation contact email",
-  },
-  {
-    id: "accounting",
-    label: "Accounting / CPA",
-    icon: "📊",
-    google_suffix: "accounting firm CPA accountant tax services bookkeeping contact email",
-  },
-  {
-    id: "marketing",
-    label: "Marketing / Agency",
-    icon: "📣",
-    google_suffix: "marketing agency digital marketing advertising PR branding contact email",
-  },
-  {
-    id: "insurance",
-    label: "Insurance",
-    icon: "🛡️",
-    google_suffix: "insurance agency broker auto home life health contact quote email",
-  },
-  {
-    id: "automotive",
-    label: "Automotive",
-    icon: "🚗",
-    google_suffix: "auto dealer car dealership mechanic repair service contact email",
-  },
-  {
-    id: "education",
-    label: "Education / Training",
-    icon: "📚",
-    google_suffix: "school training center tutoring education courses contact enrollment email",
-  },
-  {
-    id: "hotel",
-    label: "Hotel / Hospitality",
-    icon: "🏨",
-    google_suffix: "hotel resort hospitality accommodation booking reservation contact email",
-  },
-  {
-    id: "plumbing",
-    label: "Plumbing",
-    icon: "🔧",
-    google_suffix: "plumber plumbing contractor repair installation emergency service contact email",
-  },
-  {
-    id: "electrical",
-    label: "Electrical",
-    icon: "⚡",
-    google_suffix: "electrician electrical contractor wiring repair installation contact email",
-  },
-  {
-    id: "hvac",
-    label: "HVAC",
-    icon: "❄️",
-    google_suffix: "hvac heating cooling air conditioning repair installation contact email",
-  },
-  {
-    id: "landscaping",
-    label: "Landscaping",
-    icon: "🌳",
-    google_suffix: "landscaping lawn care garden maintenance outdoor services contact email",
-  },
-  {
-    id: "photography",
-    label: "Photography",
-    icon: "📷",
-    google_suffix: "photographer photography studio wedding portrait event contact booking email",
-  },
-  {
-    id: "wedding",
-    label: "Wedding / Events",
-    icon: "💒",
-    google_suffix: "wedding planner event planning venue catering contact booking email",
-  },
-  {
-    id: "pet_services",
-    label: "Pet Services",
-    icon: "🐕",
-    google_suffix: "pet grooming veterinary dog walking pet sitting boarding contact email",
-  },
-  {
-    id: "cleaning",
-    label: "Cleaning Services",
-    icon: "🧹",
-    google_suffix: "cleaning service house cleaning commercial janitorial maid contact email",
-  },
-  {
-    id: "moving",
-    label: "Moving / Storage",
-    icon: "📦",
-    google_suffix: "moving company movers storage relocation packing contact quote email",
-  },
-  {
-    id: "general",
-    label: "General / Other",
-    icon: "🏢",
-    google_suffix: "business company enterprise services contact email phone",
-  },
+  { id: "flooring", label: "Flooring / Contractors", icon: "🏗️" },
+  { id: "medical_spa", label: "Medical Spa / Aesthetics", icon: "✨" },
+  { id: "dental", label: "Dental Clinic", icon: "🦷" },
+  { id: "salon", label: "Salon / Beauty", icon: "💇" },
+  { id: "real_estate", label: "Real Estate", icon: "🏠" },
+  { id: "restaurant", label: "Restaurant / F&B", icon: "🍽️" },
+  { id: "healthcare", label: "Healthcare / Clinic", icon: "⚕️" },
+  { id: "fitness", label: "Fitness / Gym", icon: "💪" },
+  { id: "technology", label: "Technology / Software", icon: "💻" },
+  { id: "construction", label: "Construction", icon: "🔨" },
+  { id: "legal", label: "Legal / Law Firm", icon: "⚖️" },
+  { id: "accounting", label: "Accounting / CPA", icon: "📊" },
+  { id: "marketing", label: "Marketing / Agency", icon: "📣" },
+  { id: "insurance", label: "Insurance", icon: "🛡️" },
+  { id: "automotive", label: "Automotive", icon: "🚗" },
+  { id: "education", label: "Education / Training", icon: "📚" },
+  { id: "hotel", label: "Hotel / Hospitality", icon: "🏨" },
+  { id: "plumbing", label: "Plumbing", icon: "🔧" },
+  { id: "electrical", label: "Electrical", icon: "⚡" },
+  { id: "hvac", label: "HVAC", icon: "❄️" },
+  { id: "landscaping", label: "Landscaping", icon: "🌳" },
+  { id: "photography", label: "Photography", icon: "📷" },
+  { id: "wedding", label: "Wedding / Events", icon: "💒" },
+  { id: "pet_services", label: "Pet Services", icon: "🐕" },
+  { id: "cleaning", label: "Cleaning Services", icon: "🧹" },
+  { id: "moving", label: "Moving / Storage", icon: "📦" },
+  { id: "general", label: "General / Other", icon: "🏢" },
 ];
 
 // LOCAL DISCOVERY CATEGORIES - For Google Places/Maps
 const LOCAL_CATEGORIES = [
+  { id: "flooring_contractor", label: "Flooring Contractor", icon: "🏗️" },
   { id: "beauty_salon", label: "Beauty Salon", icon: "💇" },
   { id: "spa", label: "Spa", icon: "🧖" },
   { id: "gym", label: "Gym / Fitness", icon: "💪" },
@@ -232,7 +97,6 @@ const LOCAL_CATEGORIES = [
   { id: "restaurant", label: "Restaurant", icon: "🍽️" },
   { id: "cafe", label: "Cafe / Coffee", icon: "☕" },
   { id: "real_estate_agency", label: "Real Estate", icon: "🏠" },
-  { id: "flooring_contractor", label: "Flooring Contractor", icon: "🏗️" },
   { id: "general_contractor", label: "General Contractor", icon: "🔨" },
   { id: "electrician", label: "Electrician", icon: "⚡" },
   { id: "plumber", label: "Plumber", icon: "🔧" },
@@ -303,7 +167,7 @@ export default function LeadDiscovery() {
 
   // B2B Quick Search form
   const [quickForm, setQuickForm] = useState({
-    industry: "medical_spa",
+    industry: "flooring",
     location: "",
     keywords: "",
     maxResults: 20,
@@ -318,13 +182,14 @@ export default function LeadDiscovery() {
     maxResults: 20,
   });
 
-  // B2B LinkedIn Premium form
+  // B2B LinkedIn Premium form - FIXED
   const [linkedinForm, setLinkedinForm] = useState({
     titles: [] as string[],
-    industries: [] as string[],
+    industry: "", // FIXED: string not array
+    keywords: "", // ADDED: keywords field
     location: "",
-    country: "United Arab Emirates",
-    companySize: [] as string[],
+    country: "United States",
+    companySize: "", // FIXED: string not array
     maxResults: 25,
   });
 
@@ -454,17 +319,18 @@ export default function LeadDiscovery() {
     setShowResults(false);
 
     try {
+      const industryLabel = INDUSTRIES.find((i) => i.id === quickForm.industry)?.label || quickForm.industry;
+      const searchKeywords = quickForm.keywords || industryLabel;
+
       const response = await fetch(`${N8N_WEBHOOK_URL}/lead-gen-request`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tenant_id: tenantUuid, // CRITICAL: Send UUID!
-          keywords:
-            quickForm.keywords || INDUSTRIES.find((i) => i.id === quickForm.industry)?.label || quickForm.industry,
+          tenant_id: tenantUuid,
+          keywords: searchKeywords,
           industry: quickForm.industry,
           location: quickForm.location,
-          city: quickForm.location,
-          country: "USA", // Default, can be made configurable
+          country: "USA",
           max_leads: quickForm.maxResults,
           data_sources: ["google"],
           use_premium_sources: false,
@@ -475,31 +341,30 @@ export default function LeadDiscovery() {
 
       if (result.success || result.leads) {
         const leadsFound = result.leads?.length || result.leads_found || 0;
-        const leadsSaved = result.leads_saved || leadsFound;
+        const leadsSaved = result.leads_saved || 0;
 
         toast({
           title: "✅ Search Complete!",
           description: `Found ${leadsFound} businesses, saved ${leadsSaved} new leads`,
         });
 
-        // Refresh stats
         queryClient.invalidateQueries({ queryKey: ["lead-discovery-stats"] });
         queryClient.invalidateQueries({ queryKey: ["lead-gen-history"] });
         refetchStats();
+        refetchHistory();
 
-        // Show results if available
         if (result.leads && result.leads.length > 0) {
           setSearchResults(result.leads);
           setShowResults(true);
         }
       } else {
-        throw new Error(result.error || result.message || "Search failed - check n8n workflow");
+        throw new Error(result.error || result.message || "Search failed");
       }
     } catch (error: any) {
       console.error("Quick Search Error:", error);
       toast({
         title: "Search failed",
-        description: error.message || "Check browser console and n8n execution logs",
+        description: error.message || "Check console for details",
         variant: "destructive",
       });
     } finally {
@@ -522,23 +387,17 @@ export default function LeadDiscovery() {
       return;
     }
 
-    if (!hasApifyKey) {
-      toast({
-        title: "API Key Required",
-        description: "Local Discovery requires Apify API key. Configure in Settings → Integrations.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsSearching(true);
+    setSearchResults([]);
+    setShowResults(false);
+
     try {
       const response = await fetch(`${N8N_WEBHOOK_URL}/lead-gen-request`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tenant_id: tenantUuid,
-          generation_type: "google_places", // Route to Places logic
+          generation_type: "google_places",
           category: localForm.category,
           location: localForm.location,
           radius_km: localForm.radius,
@@ -548,15 +407,25 @@ export default function LeadDiscovery() {
       });
 
       const result = await response.json();
-      if (result.success) {
+
+      if (result.success || result.leads) {
+        const leadsFound = result.leads?.length || result.leads_found || 0;
+        const leadsSaved = result.leads_saved || 0;
+
         toast({
           title: "✅ Local Businesses Found!",
-          description: `Found ${result.leads?.length || 0} nearby businesses`,
+          description: `Found ${leadsFound} businesses, saved ${leadsSaved} new leads`,
         });
+
         refetchHistory();
         refetchStats();
+
+        if (result.leads && result.leads.length > 0) {
+          setSearchResults(result.leads);
+          setShowResults(true);
+        }
       } else {
-        throw new Error(result.error || "Local Discovery failed");
+        throw new Error(result.error || result.message || "Local Discovery failed");
       }
     } catch (error: any) {
       toast({ title: "Search failed", description: error.message, variant: "destructive" });
@@ -565,7 +434,7 @@ export default function LeadDiscovery() {
     }
   };
 
-  // B2B LinkedIn Premium Search
+  // B2B LinkedIn Premium Search - FIXED
   const handleLinkedInSearch = async () => {
     if (!tenantUuid) {
       toast({ title: "Error", description: "Tenant not loaded", variant: "destructive" });
@@ -581,48 +450,66 @@ export default function LeadDiscovery() {
       return;
     }
 
-    if (linkedinForm.titles.length === 0) {
+    // FIXED: Validate that at least one search parameter is provided
+    const hasKeywords = linkedinForm.keywords && linkedinForm.keywords.trim().length > 0;
+    const hasIndustry = linkedinForm.industry && linkedinForm.industry.length > 0;
+    const hasJobTitles = linkedinForm.titles.length > 0;
+
+    if (!hasKeywords && !hasIndustry && !hasJobTitles) {
       toast({
-        title: "Select Job Titles",
-        description: "Please select at least one job title to search",
+        title: "Missing Search Criteria",
+        description: "Please provide keywords, select an industry, or choose job titles",
         variant: "destructive",
       });
       return;
     }
 
     setIsSearching(true);
+    setSearchResults([]);
+    setShowResults(false);
+
     try {
       const response = await fetch(`${N8N_WEBHOOK_URL}/premium-b2b-lead-gen`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tenant_id: tenantUuid,
+          // FIXED: Correct field names matching backend expectations
+          keywords: linkedinForm.keywords || "",
+          industry: linkedinForm.industry || "",
           job_titles: linkedinForm.titles,
-          industries: linkedinForm.industries,
+          location: linkedinForm.location,
           country: linkedinForm.country,
-          city: linkedinForm.location,
-          company_sizes: linkedinForm.companySize,
-          max_results: linkedinForm.maxResults,
-          use_apollo: hasApolloKey,
-          use_hunter: hasHunterKey,
+          company_size: linkedinForm.companySize || "all",
+          max_leads: linkedinForm.maxResults,
+          // Feature flags
+          include_emails: true,
+          include_phones: true,
+          use_premium_sources: true,
+          verify_emails: false,
         }),
       });
 
       const result = await response.json();
-      if (result.success) {
+
+      if (result.success || result.leads) {
+        const leadsFound = result.leads?.length || result.leads_found || 0;
+        const leadsSaved = result.leads_saved || 0;
+
         toast({
           title: "✅ Premium Search Complete!",
-          description: `Found ${result.leads?.length || 0} decision makers with contact info`,
+          description: `Found ${leadsFound} decision makers, saved ${leadsSaved} new leads`,
         });
+
         refetchHistory();
         refetchStats();
 
-        if (result.leads) {
+        if (result.leads && result.leads.length > 0) {
           setSearchResults(result.leads);
           setShowResults(true);
         }
       } else {
-        throw new Error(result.error || "Premium search failed");
+        throw new Error(result.error || result.message || "Premium search failed");
       }
     } catch (error: any) {
       toast({ title: "Search failed", description: error.message, variant: "destructive" });
@@ -725,16 +612,6 @@ export default function LeadDiscovery() {
     setLinkedinForm((prev) => ({
       ...prev,
       titles: prev.titles.includes(title) ? prev.titles.filter((t) => t !== title) : [...prev.titles, title],
-    }));
-  };
-
-  // Toggle company size selection
-  const toggleSize = (size: string) => {
-    setLinkedinForm((prev) => ({
-      ...prev,
-      companySize: prev.companySize.includes(size)
-        ? prev.companySize.filter((s) => s !== size)
-        : [...prev.companySize, size],
     }));
   };
 
@@ -849,7 +726,9 @@ export default function LeadDiscovery() {
                   <CardTitle className="flex items-center gap-2">
                     <Gift className="h-5 w-5 text-green-500" /> Quick Search
                   </CardTitle>
-                  <CardDescription>Free Google Custom Search - 100 searches/day</CardDescription>
+                  <CardDescription>
+                    Free Google Custom Search - Find businesses by industry and location
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
@@ -943,13 +822,13 @@ export default function LeadDiscovery() {
                             <TableHead>Website</TableHead>
                             <TableHead>Email</TableHead>
                             <TableHead>Phone</TableHead>
-                            <TableHead>Status</TableHead>
+                            <TableHead>Score</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {searchResults.map((lead: any, idx: number) => (
                             <TableRow key={idx}>
-                              <TableCell className="font-medium">{lead.company_name}</TableCell>
+                              <TableCell className="font-medium">{lead.company_name || lead.company}</TableCell>
                               <TableCell>
                                 {lead.website && (
                                   <a
@@ -971,7 +850,7 @@ export default function LeadDiscovery() {
                                     <Mail className="h-3 w-3" /> {lead.email}
                                   </span>
                                 ) : (
-                                  <span className="text-muted-foreground text-xs">Needs enrichment</span>
+                                  <span className="text-muted-foreground text-xs">—</span>
                                 )}
                               </TableCell>
                               <TableCell>
@@ -984,8 +863,8 @@ export default function LeadDiscovery() {
                                 )}
                               </TableCell>
                               <TableCell>
-                                <Badge variant="outline" className="bg-green-50 text-green-700">
-                                  <Check className="h-3 w-3 mr-1" /> Saved
+                                <Badge variant={lead.lead_score >= 50 ? "default" : "secondary"}>
+                                  {lead.lead_score || lead.score || 0}
                                 </Badge>
                               </TableCell>
                             </TableRow>
@@ -1001,252 +880,416 @@ export default function LeadDiscovery() {
 
           {/* Local Discovery (Paid) */}
           {b2bSubTab === "local" && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MapPin className="h-5 w-5 text-blue-500" /> Local Discovery
-                </CardTitle>
-                <CardDescription>Find businesses near a specific location using Google Places</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {!hasApifyKey && (
-                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                    <p className="text-sm text-amber-700 flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4" />
-                      Local Discovery requires Apify API key. Configure in Settings → Integrations.
-                    </p>
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MapPin className="h-5 w-5 text-blue-500" /> Local Discovery
+                  </CardTitle>
+                  <CardDescription>Find businesses near a specific location using Google Places</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Business Category *</Label>
+                      <Select
+                        value={localForm.category}
+                        onValueChange={(v) => setLocalForm({ ...localForm, category: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {LOCAL_CATEGORIES.map((cat) => (
+                            <SelectItem key={cat.id} value={cat.id}>
+                              {cat.icon} {cat.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Location / Area *</Label>
+                      <Input
+                        placeholder="e.g., Manhattan NYC, DIFC Dubai"
+                        value={localForm.location}
+                        onChange={(e) => setLocalForm({ ...localForm, location: e.target.value })}
+                      />
+                    </div>
                   </div>
-                )}
 
-                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <Label>Search Radius</Label>
+                        <span>{localForm.radius} km</span>
+                      </div>
+                      <Slider
+                        value={[localForm.radius]}
+                        onValueChange={(v) => setLocalForm({ ...localForm, radius: v[0] })}
+                        min={1}
+                        max={50}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Minimum Rating</Label>
+                      <Select
+                        value={localForm.minRating}
+                        onValueChange={(v) => setLocalForm({ ...localForm, minRating: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="0">Any Rating</SelectItem>
+                          <SelectItem value="3">⭐⭐⭐ 3.0+</SelectItem>
+                          <SelectItem value="4">⭐⭐⭐⭐ 4.0+</SelectItem>
+                          <SelectItem value="4.5">⭐⭐⭐⭐½ 4.5+</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
-                    <Label>Business Category</Label>
+                    <div className="flex justify-between">
+                      <Label>Max Results</Label>
+                      <span>{localForm.maxResults}</span>
+                    </div>
+                    <Slider
+                      value={[localForm.maxResults]}
+                      onValueChange={(v) => setLocalForm({ ...localForm, maxResults: v[0] })}
+                      min={5}
+                      max={50}
+                      step={5}
+                    />
+                  </div>
+
+                  <Button
+                    onClick={handleLocalDiscovery}
+                    disabled={isSearching || !localForm.category || !localForm.location}
+                    className="w-full"
+                    size="lg"
+                  >
+                    {isSearching ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <MapPin className="h-4 w-4 mr-2" />
+                    )}
+                    Find Local Businesses
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Local Discovery Results */}
+              {showResults && searchResults.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Local Businesses Found ({searchResults.length})</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ScrollArea className="h-[400px]">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Business</TableHead>
+                            <TableHead>Address</TableHead>
+                            <TableHead>Rating</TableHead>
+                            <TableHead>Phone</TableHead>
+                            <TableHead>Website</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {searchResults.map((lead: any, idx: number) => (
+                            <TableRow key={idx}>
+                              <TableCell className="font-medium">{lead.company_name || lead.company}</TableCell>
+                              <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
+                                {lead.address || lead.city || "—"}
+                              </TableCell>
+                              <TableCell>
+                                {lead.rating ? (
+                                  <span className="flex items-center gap-1">
+                                    <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
+                                    {lead.rating}
+                                  </span>
+                                ) : (
+                                  "—"
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {lead.phone ? (
+                                  <span className="flex items-center gap-1 text-green-600">
+                                    <Phone className="h-3 w-3" /> {lead.phone}
+                                  </span>
+                                ) : (
+                                  "—"
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {lead.website && (
+                                  <a
+                                    href={lead.website}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-500 hover:underline"
+                                  >
+                                    <Globe className="h-4 w-4" />
+                                  </a>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+
+          {/* LinkedIn Premium - FIXED */}
+          {b2bSubTab === "linkedin" && (
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Linkedin className="h-5 w-5 text-[#0077B5]" /> LinkedIn Premium Search
+                  </CardTitle>
+                  <CardDescription>Find decision makers with Apollo.io + Hunter.io enrichment</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {!hasPremiumAccess ? (
+                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                      <p className="text-sm text-amber-700 flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4" />
+                        Premium search requires API keys. Add your Apollo.io or Hunter.io key in Settings →
+                        Integrations.
+                      </p>
+                      <div className="mt-2 flex gap-2">
+                        {hasApolloKey && <Badge className="bg-green-100 text-green-700">✓ Apollo Connected</Badge>}
+                        {hasHunterKey && <Badge className="bg-green-100 text-green-700">✓ Hunter Connected</Badge>}
+                        {!hasApolloKey && (
+                          <Badge variant="outline" className="text-gray-500">
+                            Apollo: Not configured
+                          </Badge>
+                        )}
+                        {!hasHunterKey && (
+                          <Badge variant="outline" className="text-gray-500">
+                            Hunter: Not configured
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-sm text-green-700 flex items-center gap-2">
+                        <Check className="h-4 w-4" />
+                        Premium access enabled:
+                        {hasApolloKey && <Badge className="bg-green-100 text-green-700 ml-2">Apollo ✓</Badge>}
+                        {hasHunterKey && <Badge className="bg-green-100 text-green-700 ml-1">Hunter ✓</Badge>}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* NEW: Industry and Keywords fields */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Industry</Label>
+                      <Select
+                        value={linkedinForm.industry}
+                        onValueChange={(v) => setLinkedinForm({ ...linkedinForm, industry: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select industry (optional)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {INDUSTRIES.map((ind) => (
+                            <SelectItem key={ind.id} value={ind.id}>
+                              {ind.icon} {ind.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Keywords (optional)</Label>
+                      <Input
+                        placeholder="e.g., flooring, medical spa, marketing"
+                        value={linkedinForm.keywords}
+                        onChange={(e) => setLinkedinForm({ ...linkedinForm, keywords: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Target Job Titles</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {JOB_TITLES.map((title) => (
+                        <Badge
+                          key={title}
+                          variant={linkedinForm.titles.includes(title) ? "default" : "outline"}
+                          className={cn(
+                            "cursor-pointer transition-colors",
+                            linkedinForm.titles.includes(title) && "bg-blue-500",
+                          )}
+                          onClick={() => toggleTitle(title)}
+                        >
+                          {title}
+                        </Badge>
+                      ))}
+                    </div>
+                    {linkedinForm.titles.length > 0 && (
+                      <p className="text-xs text-muted-foreground">{linkedinForm.titles.length} selected</p>
+                    )}
+                  </div>
+
+                  {/* Company Size - Changed to dropdown */}
+                  <div className="space-y-2">
+                    <Label>Company Size (optional)</Label>
                     <Select
-                      value={localForm.category}
-                      onValueChange={(v) => setLocalForm({ ...localForm, category: v })}
+                      value={linkedinForm.companySize}
+                      onValueChange={(v) => setLinkedinForm({ ...linkedinForm, companySize: v })}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
+                        <SelectValue placeholder="Any size" />
                       </SelectTrigger>
                       <SelectContent>
-                        {LOCAL_CATEGORIES.map((cat) => (
-                          <SelectItem key={cat.id} value={cat.id}>
-                            {cat.icon} {cat.label}
+                        <SelectItem value="all">Any Size</SelectItem>
+                        {COMPANY_SIZES.map((size) => (
+                          <SelectItem key={size.id} value={size.id}>
+                            {size.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Location / Area</Label>
-                    <Input
-                      placeholder="e.g., DIFC Dubai, Manhattan NYC"
-                      value={localForm.location}
-                      onChange={(e) => setLocalForm({ ...localForm, location: e.target.value })}
-                    />
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Location / City</Label>
+                      <Input
+                        placeholder="e.g., New York, Dubai, London"
+                        value={linkedinForm.location}
+                        onChange={(e) => setLinkedinForm({ ...linkedinForm, location: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Country</Label>
+                      <Select
+                        value={linkedinForm.country}
+                        onValueChange={(v) => setLinkedinForm({ ...linkedinForm, country: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="United States">🇺🇸 United States</SelectItem>
+                          <SelectItem value="United Arab Emirates">🇦🇪 United Arab Emirates</SelectItem>
+                          <SelectItem value="United Kingdom">🇬🇧 United Kingdom</SelectItem>
+                          <SelectItem value="Canada">🇨🇦 Canada</SelectItem>
+                          <SelectItem value="Australia">🇦🇺 Australia</SelectItem>
+                          <SelectItem value="India">🇮🇳 India</SelectItem>
+                          <SelectItem value="Germany">🇩🇪 Germany</SelectItem>
+                          <SelectItem value="France">🇫🇷 France</SelectItem>
+                          <SelectItem value="Saudi Arabia">🇸🇦 Saudi Arabia</SelectItem>
+                          <SelectItem value="Qatar">🇶🇦 Qatar</SelectItem>
+                          <SelectItem value="Pakistan">🇵🇰 Pakistan</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <Label>Search Radius</Label>
-                      <span>{localForm.radius} km</span>
+                      <Label>Max Results</Label>
+                      <span>{linkedinForm.maxResults}</span>
                     </div>
                     <Slider
-                      value={[localForm.radius]}
-                      onValueChange={(v) => setLocalForm({ ...localForm, radius: v[0] })}
-                      min={1}
-                      max={50}
+                      value={[linkedinForm.maxResults]}
+                      onValueChange={(v) => setLinkedinForm({ ...linkedinForm, maxResults: v[0] })}
+                      min={10}
+                      max={100}
+                      step={5}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Minimum Rating</Label>
-                    <Select
-                      value={localForm.minRating}
-                      onValueChange={(v) => setLocalForm({ ...localForm, minRating: v })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="0">Any Rating</SelectItem>
-                        <SelectItem value="3">⭐⭐⭐ 3.0+</SelectItem>
-                        <SelectItem value="4">⭐⭐⭐⭐ 4.0+</SelectItem>
-                        <SelectItem value="4.5">⭐⭐⭐⭐½ 4.5+</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <span>💰 Estimated cost:</span>
-                  <Badge variant="outline">~${(localForm.maxResults * 0.003).toFixed(2)}</Badge>
-                </div>
+                  <Button
+                    onClick={handleLinkedInSearch}
+                    disabled={
+                      isSearching ||
+                      !hasPremiumAccess ||
+                      (!linkedinForm.keywords && !linkedinForm.industry && linkedinForm.titles.length === 0)
+                    }
+                    className="w-full bg-[#0077B5] hover:bg-[#005885]"
+                    size="lg"
+                  >
+                    {isSearching ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Searching...
+                      </>
+                    ) : (
+                      <>
+                        <Crown className="h-4 w-4 mr-2" /> Find Decision Makers
+                      </>
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
 
-                <Button
-                  onClick={handleLocalDiscovery}
-                  disabled={isSearching || !hasApifyKey || !localForm.category || !localForm.location}
-                  className="w-full"
-                  size="lg"
-                >
-                  {isSearching ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <MapPin className="h-4 w-4 mr-2" />
-                  )}
-                  Find Local Businesses
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* LinkedIn Premium */}
-          {b2bSubTab === "linkedin" && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Linkedin className="h-5 w-5 text-[#0077B5]" /> LinkedIn Premium Search
-                </CardTitle>
-                <CardDescription>Find decision makers with Apollo.io + Hunter.io enrichment</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {!hasPremiumAccess ? (
-                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                    <p className="text-sm text-amber-700 flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4" />
-                      Premium search requires API keys. Add your Apollo.io or Hunter.io key in Settings → Integrations.
-                    </p>
-                    <div className="mt-2 flex gap-2">
-                      {hasApolloKey && <Badge className="bg-green-100 text-green-700">✓ Apollo Connected</Badge>}
-                      {hasHunterKey && <Badge className="bg-green-100 text-green-700">✓ Hunter Connected</Badge>}
-                      {!hasApolloKey && (
-                        <Badge variant="outline" className="text-gray-500">
-                          Apollo: Not configured
-                        </Badge>
-                      )}
-                      {!hasHunterKey && (
-                        <Badge variant="outline" className="text-gray-500">
-                          Hunter: Not configured
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <p className="text-sm text-green-700 flex items-center gap-2">
-                      <Check className="h-4 w-4" />
-                      Premium access enabled:
-                      {hasApolloKey && <Badge className="bg-green-100 text-green-700 ml-2">Apollo ✓</Badge>}
-                      {hasHunterKey && <Badge className="bg-green-100 text-green-700 ml-1">Hunter ✓</Badge>}
-                    </p>
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  <Label>Target Job Titles *</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {JOB_TITLES.map((title) => (
-                      <Badge
-                        key={title}
-                        variant={linkedinForm.titles.includes(title) ? "default" : "outline"}
-                        className={cn(
-                          "cursor-pointer transition-colors",
-                          linkedinForm.titles.includes(title) && "bg-blue-500",
-                        )}
-                        onClick={() => toggleTitle(title)}
-                      >
-                        {title}
-                      </Badge>
-                    ))}
-                  </div>
-                  {linkedinForm.titles.length > 0 && (
-                    <p className="text-xs text-muted-foreground">{linkedinForm.titles.length} selected</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Company Size (optional)</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {COMPANY_SIZES.map((size) => (
-                      <Badge
-                        key={size.id}
-                        variant={linkedinForm.companySize.includes(size.id) ? "default" : "outline"}
-                        className="cursor-pointer"
-                        onClick={() => toggleSize(size.id)}
-                      >
-                        {size.label}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Location / City</Label>
-                    <Input
-                      placeholder="e.g., Dubai, New York"
-                      value={linkedinForm.location}
-                      onChange={(e) => setLinkedinForm({ ...linkedinForm, location: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Country</Label>
-                    <Select
-                      value={linkedinForm.country}
-                      onValueChange={(v) => setLinkedinForm({ ...linkedinForm, country: v })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="United Arab Emirates">🇦🇪 United Arab Emirates</SelectItem>
-                        <SelectItem value="United States">🇺🇸 United States</SelectItem>
-                        <SelectItem value="United Kingdom">🇬🇧 United Kingdom</SelectItem>
-                        <SelectItem value="Canada">🇨🇦 Canada</SelectItem>
-                        <SelectItem value="Australia">🇦🇺 Australia</SelectItem>
-                        <SelectItem value="India">🇮🇳 India</SelectItem>
-                        <SelectItem value="Germany">🇩🇪 Germany</SelectItem>
-                        <SelectItem value="France">🇫🇷 France</SelectItem>
-                        <SelectItem value="Saudi Arabia">🇸🇦 Saudi Arabia</SelectItem>
-                        <SelectItem value="Qatar">🇶🇦 Qatar</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <Label>Max Results</Label>
-                    <span>{linkedinForm.maxResults}</span>
-                  </div>
-                  <Slider
-                    value={[linkedinForm.maxResults]}
-                    onValueChange={(v) => setLinkedinForm({ ...linkedinForm, maxResults: v[0] })}
-                    min={10}
-                    max={100}
-                    step={5}
-                  />
-                </div>
-
-                <Button
-                  onClick={handleLinkedInSearch}
-                  disabled={isSearching || !hasPremiumAccess || linkedinForm.titles.length === 0}
-                  className="w-full bg-[#0077B5] hover:bg-[#005885]"
-                  size="lg"
-                >
-                  {isSearching ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Searching...
-                    </>
-                  ) : (
-                    <>
-                      <Crown className="h-4 w-4 mr-2" /> Find Decision Makers
-                    </>
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
+              {/* Premium Search Results */}
+              {showResults && searchResults.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Decision Makers Found ({searchResults.length})</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ScrollArea className="h-[400px]">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Title</TableHead>
+                            <TableHead>Company</TableHead>
+                            <TableHead>Email</TableHead>
+                            <TableHead>LinkedIn</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {searchResults.map((lead: any, idx: number) => (
+                            <TableRow key={idx}>
+                              <TableCell className="font-medium">{lead.contact_name || lead.name || "—"}</TableCell>
+                              <TableCell>{lead.job_title || lead.title || "—"}</TableCell>
+                              <TableCell>{lead.company_name || lead.company || "—"}</TableCell>
+                              <TableCell>
+                                {lead.email ? (
+                                  <span className="flex items-center gap-1 text-green-600">
+                                    <Mail className="h-3 w-3" /> {lead.email}
+                                  </span>
+                                ) : (
+                                  "—"
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {lead.linkedin_url && (
+                                  <a
+                                    href={lead.linkedin_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[#0077B5] hover:underline"
+                                  >
+                                    <Linkedin className="h-4 w-4" />
+                                  </a>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           )}
         </TabsContent>
 
@@ -1541,6 +1584,7 @@ export default function LeadDiscovery() {
                 <div className="text-center py-12 text-muted-foreground">
                   <History className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p>No generation history yet</p>
+                  <p className="text-sm mt-2">Run a search to see history here</p>
                 </div>
               ) : (
                 <Table>
