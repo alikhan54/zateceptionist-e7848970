@@ -1,15 +1,23 @@
 // ============================================
 // FILE: src/pages/Inbox.tsx
-// VERSION 9.0 - ALL 6 ISSUES FIXED
+// VERSION 10.0 - COMPREHENSIVE FIX WITH ACTUAL DB SCHEMA
 // ============================================
 //
-// FIXES APPLIED:
-// ✅ FIX 1: Edit Contact - proper validation + tenant filter
-// ✅ FIX 2: Notes - saves to customer.notes + refreshes UI
-// ✅ FIX 3: Deals - EXACT schema from Deals.tsx (title, company_name, contact_name, weighted_value)
-// ✅ FIX 4: Appointments - EXACT schema from Appointments.tsx (scheduled_at, duration_minutes)
-// ✅ FIX 5: Escalate/Resolve - clears requires_human flag on resolve/close
-// ✅ FIX 6: Deal Tracker - deals now save correctly (was schema mismatch)
+// ROOT CAUSES IDENTIFIED FROM WORKFLOW ANALYSIS:
+//
+// 1. APPOINTMENTS: DB uses appointment_date + appointment_time (SEPARATE fields)
+//    NOT scheduled_at, NOT start_time/end_time
+//
+// 2. DEALS: DB uses title, company_name, contact_name
+//    NOT contact_id, NOT name
+//
+// 3. EDIT CONTACT: .single() fails when 0 rows - removed it
+//
+// 4. CHANNELS: Only showing 6 - now showing ALL 15
+//
+// 5. NOTES: Saves correctly but UI needs refresh - fixed invalidation
+//
+// 6. ESCALATE: Not clearing on resolve - fixed
 // ============================================
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -100,15 +108,36 @@ import {
   AlertTriangle,
   Trash2,
   Edit,
+  Youtube,
+  Music,
+  Slack,
+  MessageSquareMore,
 } from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
 import { cn } from "@/lib/utils";
 
 // ============================================
-// CONSTANTS
+// WEBHOOK CONFIG
 // ============================================
 const N8N_WEBHOOK_BASE = "https://webhooks.zatesystems.com/webhook";
 
+async function callWebhook(endpoint: string, data: Record<string, unknown>, tenantId: string) {
+  try {
+    const response = await fetch(`${N8N_WEBHOOK_BASE}${endpoint}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...data, tenant_id: tenantId }),
+    });
+    return { success: response.ok, data: await response.json().catch(() => ({})) };
+  } catch (error) {
+    console.error(`Webhook ${endpoint} error:`, error);
+    return { success: false, error };
+  }
+}
+
+// ============================================
+// PIPELINE STAGES (Multi-Industry)
+// ============================================
 const PIPELINE_STAGES = [
   { id: "lead", name: "Lead", probability: 10 },
   { id: "qualified", name: "Qualified", probability: 25 },
@@ -118,36 +147,10 @@ const PIPELINE_STAGES = [
   { id: "lost", name: "Lost", probability: 0 },
 ];
 
-const INDUSTRY_CONFIG: Record<string, { name: string; services: string[]; compliance: string[] }> = {
-  healthcare: {
-    name: "Healthcare",
-    services: ["Consultation", "Treatment", "Follow-up", "Botox", "Filler"],
-    compliance: ["HIPAA"],
-  },
-  real_estate: {
-    name: "Real Estate",
-    services: ["Property Viewing", "Market Analysis", "Investment"],
-    compliance: ["Fair Housing"],
-  },
-  salon: {
-    name: "Salon & Beauty",
-    services: ["Haircut", "Color", "Styling", "Manicure", "Facial"],
-    compliance: ["Product Safety"],
-  },
-  restaurant: {
-    name: "Restaurant",
-    services: ["Reservation", "Catering", "Private Event"],
-    compliance: ["Food Safety"],
-  },
-  flooring: {
-    name: "Flooring",
-    services: ["Free Estimate", "Installation", "Repair"],
-    compliance: ["Contractor License"],
-  },
-  general: { name: "General Business", services: ["Consultation", "Service", "Support"], compliance: ["Data Privacy"] },
-};
-
-const CHANNELS: Record<string, { id: string; name: string; icon: any; bgColor: string; textColor: string }> = {
+// ============================================
+// ALL 15 CHANNELS - COMPLETE LIST
+// ============================================
+const ALL_CHANNELS: Record<string, { id: string; name: string; icon: any; bgColor: string; textColor: string }> = {
   whatsapp: {
     id: "whatsapp",
     name: "WhatsApp",
@@ -176,12 +179,64 @@ const CHANNELS: Record<string, { id: string; name: string; icon: any; bgColor: s
     bgColor: "bg-[#0A66C2]/10",
     textColor: "text-[#0A66C2]",
   },
-  twitter: { id: "twitter", name: "X (Twitter)", icon: Twitter, bgColor: "bg-black/5", textColor: "text-black" },
+  twitter: { id: "twitter", name: "X (Twitter)", icon: Twitter, bgColor: "bg-black/10", textColor: "text-black" },
   telegram: { id: "telegram", name: "Telegram", icon: Send, bgColor: "bg-[#0088CC]/10", textColor: "text-[#0088CC]" },
   email: { id: "email", name: "Email", icon: Mail, bgColor: "bg-[#EA4335]/10", textColor: "text-[#EA4335]" },
   sms: { id: "sms", name: "SMS", icon: MessageCircle, bgColor: "bg-[#34B7F1]/10", textColor: "text-[#34B7F1]" },
   voice: { id: "voice", name: "Voice", icon: Phone, bgColor: "bg-[#F97316]/10", textColor: "text-[#F97316]" },
   web: { id: "web", name: "Web Chat", icon: Globe, bgColor: "bg-[#6366F1]/10", textColor: "text-[#6366F1]" },
+  pinterest: {
+    id: "pinterest",
+    name: "Pinterest",
+    icon: Hash,
+    bgColor: "bg-[#E60023]/10",
+    textColor: "text-[#E60023]",
+  },
+  tiktok: { id: "tiktok", name: "TikTok", icon: Music, bgColor: "bg-black/10", textColor: "text-black" },
+  youtube: { id: "youtube", name: "YouTube", icon: Youtube, bgColor: "bg-[#FF0000]/10", textColor: "text-[#FF0000]" },
+  slack: { id: "slack", name: "Slack", icon: Slack, bgColor: "bg-[#4A154B]/10", textColor: "text-[#4A154B]" },
+  teams: {
+    id: "teams",
+    name: "Teams",
+    icon: MessageSquareMore,
+    bgColor: "bg-[#6264A7]/10",
+    textColor: "text-[#6264A7]",
+  },
+};
+
+// Primary channels shown in header (first 8)
+const PRIMARY_CHANNEL_IDS = ["whatsapp", "instagram", "facebook", "linkedin", "twitter", "telegram", "email", "sms"];
+
+// ============================================
+// INDUSTRY CONFIG
+// ============================================
+const INDUSTRY_CONFIG: Record<string, { name: string; services: string[]; compliance: string[] }> = {
+  healthcare: {
+    name: "Healthcare",
+    services: ["Consultation", "Treatment", "Follow-up", "Botox", "Filler"],
+    compliance: ["HIPAA"],
+  },
+  real_estate: {
+    name: "Real Estate",
+    services: ["Property Viewing", "Market Analysis", "Investment Consultation"],
+    compliance: ["Fair Housing"],
+  },
+  salon: {
+    name: "Salon & Beauty",
+    services: ["Haircut", "Color", "Styling", "Manicure", "Facial"],
+    compliance: ["Product Safety"],
+  },
+  restaurant: {
+    name: "Restaurant",
+    services: ["Reservation", "Catering", "Private Event"],
+    compliance: ["Food Safety"],
+  },
+  flooring: {
+    name: "Flooring",
+    services: ["Free Estimate", "Installation", "Repair"],
+    compliance: ["Contractor License"],
+  },
+  general: { name: "General Business", services: ["Consultation", "Service", "Support"], compliance: ["Data Privacy"] },
 };
 
 const DEFAULT_TEMPLATES = [
@@ -189,28 +244,17 @@ const DEFAULT_TEMPLATES = [
   {
     id: "2",
     name: "Appointment Confirm",
-    content: "Your appointment is confirmed for {{date}}.",
+    content: "Your appointment is confirmed for {{date}} at {{time}}.",
     category: "appointment",
   },
   { id: "3", name: "Follow Up", content: "Hi {{name}}! Just following up on our conversation.", category: "followup" },
+  {
+    id: "4",
+    name: "Thank You",
+    content: "Thank you for reaching out, {{name}}! We appreciate your business.",
+    category: "general",
+  },
 ];
-
-// ============================================
-// HELPER FUNCTION
-// ============================================
-async function callWebhook(endpoint: string, data: Record<string, unknown>, tenantId: string) {
-  try {
-    const response = await fetch(`${N8N_WEBHOOK_BASE}${endpoint}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...data, tenant_id: tenantId }),
-    });
-    return { success: response.ok };
-  } catch (error) {
-    console.error(`Webhook ${endpoint} error:`, error);
-    return { success: false };
-  }
-}
 
 // ============================================
 // TYPES
@@ -325,6 +369,7 @@ export default function Inbox() {
   const [dealPhone, setDealPhone] = useState("");
   const [appointmentDate, setAppointmentDate] = useState<Date | undefined>(undefined);
   const [appointmentTime, setAppointmentTime] = useState("10:00");
+  const [appointmentService, setAppointmentService] = useState("");
   const [appointmentNotes, setAppointmentNotes] = useState("");
   const [escalationReason, setEscalationReason] = useState("");
   const [transferReason, setTransferReason] = useState("");
@@ -359,6 +404,7 @@ export default function Inbox() {
       if (selectedChannel !== "all") query = query.eq("channel", selectedChannel);
       const { data, error } = await query;
       if (error) {
+        console.error("Conversations query error:", error);
         const { data: fallback } = await supabase
           .from("conversations")
           .select("*")
@@ -372,7 +418,7 @@ export default function Inbox() {
     refetchInterval: 10000,
   });
 
-  const { data: customers = [] } = useQuery({
+  const { data: customers = [], refetch: refetchCustomers } = useQuery({
     queryKey: ["inbox-customers", tenantUuid],
     queryFn: async () => {
       if (!tenantUuid) return [];
@@ -438,15 +484,15 @@ export default function Inbox() {
   // ============================================
   const getDisplayName = useCallback((conv: Conversation): string => {
     const c = conv.customer;
-    if (c?.name && c.name.trim() && c.name !== "Customer") return c.name;
+    if (c?.name && c.name.trim() && c.name !== "Customer" && c.name !== "New Contact") return c.name;
     if (c?.first_name) return c.last_name ? `${c.first_name} ${c.last_name}` : c.first_name;
-    if (conv.customer_name && conv.customer_name.trim()) return conv.customer_name;
-    if (c?.email)
-      return c.email
-        .split("@")[0]
-        .replace(/[._]/g, " ")
-        .replace(/\b\w/g, (l) => l.toUpperCase());
-    if (c?.phone_number || c?.phone) return c.phone_number || c.phone || "";
+    if (conv.customer_name && conv.customer_name.trim() && conv.customer_name !== "Customer") return conv.customer_name;
+    if (c?.email) {
+      const emailPart = c.email.split("@")[0];
+      return emailPart.replace(/[._]/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+    }
+    if (c?.phone_number) return c.phone_number;
+    if (c?.phone) return c.phone;
     if (conv.customer_phone) return conv.customer_phone;
     if (c?.facebook_id) return `FB ${c.facebook_id.slice(-6)}`;
     if (c?.instagram_id) return `IG ${c.instagram_id.slice(-6)}`;
@@ -467,14 +513,14 @@ export default function Inbox() {
   const getInitials = useCallback(
     (conv: Conversation): string => {
       const name = getDisplayName(conv);
-      const parts = name.split(" ");
+      const parts = name.split(" ").filter(Boolean);
       if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
       return name.substring(0, 2).toUpperCase();
     },
     [getDisplayName],
   );
 
-  const getChannelConfig = (channel: string) => CHANNELS[channel] || CHANNELS.web;
+  const getChannelConfig = (channel: string) => ALL_CHANNELS[channel] || ALL_CHANNELS.web;
 
   const getTemperatureIcon = (temp?: string) => {
     const t = temp?.toLowerCase();
@@ -533,7 +579,7 @@ export default function Inbox() {
   }, [enrichedConversations, searchQuery, filters, starredConversations, getDisplayName, getPhoneNumber]);
 
   // ============================================
-  // MUTATIONS - ALL FIXED
+  // MUTATIONS - ALL WITH CORRECT SCHEMAS
   // ============================================
 
   // Send Message
@@ -559,6 +605,7 @@ export default function Inbox() {
           last_message_direction: "outbound",
           message_count: (conv.message_count || 0) + 1,
           ai_handled: false,
+          updated_at: new Date().toISOString(),
         })
         .eq("id", conversationId);
       await callWebhook(
@@ -578,18 +625,32 @@ export default function Inbox() {
       refetchConversations();
       toast.success("Message sent");
     },
-    onError: () => toast.error("Failed to send message"),
+    onError: (err) => {
+      console.error("Send message error:", err);
+      toast.error("Failed to send message");
+    },
   });
 
-  // FIX #1: UPDATE CONTACT - With proper validation
+  // FIX #1 & #3: UPDATE CONTACT - NO .single()
   const updateContactMutation = useMutation({
     mutationFn: async () => {
-      if (!selectedConversation?.contact_id) throw new Error("No contact selected");
-      if (!tenantUuid) throw new Error("No tenant ID");
+      if (!selectedConversation?.contact_id) {
+        throw new Error("No contact selected");
+      }
+      if (!tenantUuid) {
+        throw new Error("No tenant ID");
+      }
 
-      console.log("Updating contact:", selectedConversation.contact_id);
+      console.log("Updating contact:", {
+        id: selectedConversation.contact_id,
+        name: editName,
+        phone: editPhone,
+        email: editEmail,
+        tenant: tenantUuid,
+      });
 
-      const { data, error } = await supabase
+      // DO NOT use .single() - just update and check error
+      const { error } = await supabase
         .from("customers")
         .update({
           name: editName.trim() || null,
@@ -598,66 +659,102 @@ export default function Inbox() {
           updated_at: new Date().toISOString(),
         })
         .eq("id", selectedConversation.contact_id)
-        .eq("tenant_id", tenantUuid)
-        .select()
-        .single();
+        .eq("tenant_id", tenantUuid);
 
       if (error) {
         console.error("Update error:", error);
         throw error;
       }
-      return data;
+
+      return { success: true };
     },
     onSuccess: () => {
       setShowEditContactDialog(false);
+      // Invalidate ALL related queries
       queryClient.invalidateQueries({ queryKey: ["inbox-conversations"] });
       queryClient.invalidateQueries({ queryKey: ["inbox-customers"] });
-      toast.success("Contact updated!");
+      refetchCustomers();
+      refetchConversations();
+      toast.success("Contact updated successfully!");
     },
-    onError: (err: any) => toast.error(`Failed: ${err.message}`),
+    onError: (err: any) => {
+      console.error("Failed to update contact:", err);
+      toast.error(`Failed to update: ${err.message}`);
+    },
   });
 
-  // FIX #2: ADD NOTE - Saves to customer.notes
+  // FIX #2: ADD NOTE - Correct implementation
   const addNoteMutation = useMutation({
     mutationFn: async () => {
-      if (!selectedConversation?.contact_id) throw new Error("No contact");
-      if (!noteText.trim()) throw new Error("Empty note");
-      if (!tenantUuid) throw new Error("No tenant");
+      if (!selectedConversation?.contact_id) {
+        throw new Error("No contact selected");
+      }
+      if (!noteText.trim()) {
+        throw new Error("Note cannot be empty");
+      }
+      if (!tenantUuid) {
+        throw new Error("No tenant ID");
+      }
 
-      const { data: customer } = await supabase
+      const customerId = selectedConversation.contact_id;
+      console.log("Adding note to customer:", customerId);
+
+      // Get existing notes
+      const { data: customerData, error: fetchError } = await supabase
         .from("customers")
         .select("notes")
-        .eq("id", selectedConversation.contact_id)
-        .single();
+        .eq("id", customerId)
+        .eq("tenant_id", tenantUuid);
 
-      const existing = customer?.notes || "";
+      if (fetchError) {
+        console.error("Error fetching customer:", fetchError);
+        throw fetchError;
+      }
+
+      const customer = customerData?.[0];
+      const existingNotes = customer?.notes || "";
       const timestamp = format(new Date(), "yyyy-MM-dd HH:mm");
-      const newNotes = existing
-        ? `${existing}\n\n[${timestamp}] ${noteText.trim()}`
+      const newNotes = existingNotes
+        ? `${existingNotes}\n\n[${timestamp}] ${noteText.trim()}`
         : `[${timestamp}] ${noteText.trim()}`;
 
-      const { error } = await supabase
+      const { error: updateError } = await supabase
         .from("customers")
-        .update({ notes: newNotes, updated_at: new Date().toISOString() })
-        .eq("id", selectedConversation.contact_id);
+        .update({
+          notes: newNotes,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", customerId)
+        .eq("tenant_id", tenantUuid);
 
-      if (error) throw error;
+      if (updateError) {
+        console.error("Error updating notes:", updateError);
+        throw updateError;
+      }
+
+      console.log("Note added successfully");
+      return { success: true };
     },
     onSuccess: () => {
       setShowNoteDialog(false);
       setNoteText("");
+      // Force refresh
       queryClient.invalidateQueries({ queryKey: ["inbox-customers"] });
       queryClient.invalidateQueries({ queryKey: ["inbox-conversations"] });
+      refetchCustomers();
       toast.success("Note added!");
     },
-    onError: (err: any) => toast.error(`Failed: ${err.message}`),
+    onError: (err: any) => {
+      console.error("Failed to add note:", err);
+      toast.error(`Failed: ${err.message}`);
+    },
   });
 
-  // FIX #3: CREATE DEAL - EXACT Deals.tsx schema
+  // FIX #3: CREATE DEAL - Correct schema from Deals.tsx
   const createDealMutation = useMutation({
     mutationFn: async () => {
-      if (!tenantUuid) throw new Error("No tenant");
-      if (!dealTitle.trim()) throw new Error("Title required");
+      if (!tenantUuid) throw new Error("No tenant ID");
+      if (!dealTitle.trim()) throw new Error("Deal title required");
 
       const value = parseFloat(dealValue) || 0;
       const stageConfig = PIPELINE_STAGES.find((s) => s.id === dealStage);
@@ -669,31 +766,66 @@ export default function Inbox() {
       const email = dealEmail || selectedCustomer?.email || "";
       const phone = dealPhone || getPhoneNumber(selectedConversation) || "";
 
-      console.log("Creating deal with:", { tenantUuid, dealTitle, value, dealStage });
+      console.log("Creating deal:", {
+        tenantUuid,
+        title: dealTitle,
+        value,
+        stage: dealStage,
+        probability,
+        weightedValue,
+      });
 
-      const { data, error } = await supabase
-        .from("deals")
-        .insert({
-          tenant_id: tenantUuid,
+      // Try webhook first
+      const webhookResult = await callWebhook(
+        "/deal-create",
+        {
           title: dealTitle.trim(),
           value: value,
-          weighted_value: weightedValue,
           stage: dealStage,
-          probability: probability,
           company_name: companyName,
           contact_name: contactName,
           email: email,
           phone: phone,
-        })
-        .select()
-        .single();
+        },
+        tenantUuid,
+      );
 
-      if (error) {
-        console.error("Deal insert error:", error);
-        throw error;
+      if (!webhookResult.success) {
+        // Fallback to direct insert - EXACT schema from Deals.tsx
+        const { data, error } = await supabase
+          .from("deals")
+          .insert({
+            tenant_id: tenantUuid,
+            title: dealTitle.trim(),
+            value: value,
+            weighted_value: weightedValue,
+            stage: dealStage,
+            probability: probability,
+            company_name: companyName,
+            contact_name: contactName,
+            email: email,
+            phone: phone,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .select();
+
+        if (error) {
+          console.error("Deal insert error:", error);
+          throw error;
+        }
+        console.log("Deal created via direct insert:", data);
       }
-      console.log("Deal created:", data);
-      return data;
+
+      // Update customer lifecycle
+      if (selectedConversation?.contact_id) {
+        await supabase
+          .from("customers")
+          .update({ lifecycle_stage: "opportunity", updated_at: new Date().toISOString() })
+          .eq("id", selectedConversation.contact_id);
+      }
+
+      return { success: true };
     },
     onSuccess: () => {
       setShowDealDialog(false);
@@ -707,72 +839,132 @@ export default function Inbox() {
       queryClient.invalidateQueries({ queryKey: ["deals"] });
       toast.success("Deal created! Check Deal Tracker.");
     },
-    onError: (err: any) => toast.error(`Failed: ${err.message}`),
+    onError: (err: any) => {
+      console.error("Failed to create deal:", err);
+      toast.error(`Failed: ${err.message}`);
+    },
   });
 
-  // FIX #4: BOOK APPOINTMENT - EXACT Appointments.tsx schema
+  // FIX #4: BOOK APPOINTMENT - ACTUAL DB SCHEMA from workflow
+  // DB uses: appointment_date, appointment_time (SEPARATE FIELDS)
   const bookAppointmentMutation = useMutation({
     mutationFn: async () => {
-      if (!tenantUuid) throw new Error("No tenant");
-      if (!appointmentDate) throw new Error("Date required");
-      if (!selectedConversation?.contact_id) throw new Error("No customer");
+      if (!tenantUuid) throw new Error("No tenant ID");
+      if (!appointmentDate) throw new Error("Date is required");
+      if (!selectedConversation?.contact_id) throw new Error("No customer selected");
 
-      const scheduledAt = new Date(appointmentDate);
-      const [h, m] = appointmentTime.split(":").map(Number);
-      scheduledAt.setHours(h || 10, m || 0, 0, 0);
+      // Get customer info
+      const customerName = selectedConversation ? getDisplayName(selectedConversation) : "";
+      const customerPhone = getPhoneNumber(selectedConversation) || "";
+      const customerEmail = selectedCustomer?.email || "";
 
-      console.log("Booking appointment:", { tenantUuid, customerId: selectedConversation.contact_id, scheduledAt });
+      // Format date as YYYY-MM-DD
+      const dateStr = format(appointmentDate, "yyyy-MM-dd");
+      // Time is already in HH:mm format
+      const timeStr = appointmentTime;
 
+      // Generate booking ID
+      const bookingId = `BK${Date.now()}`;
+
+      console.log("Booking appointment:", {
+        tenantUuid,
+        bookingId,
+        customerName,
+        date: dateStr,
+        time: timeStr,
+        service: appointmentService,
+      });
+
+      // ACTUAL DB SCHEMA from 420_main_v2.json workflow
       const { data, error } = await supabase
         .from("appointments")
         .insert({
+          booking_id: bookingId,
           tenant_id: tenantUuid,
-          customer_id: selectedConversation.contact_id,
-          scheduled_at: scheduledAt.toISOString(),
-          duration_minutes: 60,
-          status: "pending",
+          customer_name: customerName,
+          customer_phone: customerPhone,
+          customer_email: customerEmail,
+          service: appointmentService || industryConfig.services[0] || "Consultation",
+          appointment_date: dateStr, // DATE ONLY: "2026-01-16"
+          appointment_time: timeStr, // TIME ONLY: "10:00"
+          provider: null,
           notes: appointmentNotes.trim() || null,
+          source: "inbox",
+          status: "pending",
+          reminder_sent: false,
         })
-        .select()
-        .single();
+        .select();
 
       if (error) {
         console.error("Appointment insert error:", error);
         throw error;
       }
+
       console.log("Appointment created:", data);
+
+      // Also call webhook to trigger notifications
+      await callWebhook(
+        "/book-appointment",
+        {
+          booking_id: bookingId,
+          customer_name: customerName,
+          customer_phone: customerPhone,
+          appointment_date: dateStr,
+          appointment_time: timeStr,
+          service: appointmentService,
+        },
+        tenantUuid,
+      );
+
       return data;
     },
     onSuccess: () => {
       setShowBookDialog(false);
       setAppointmentDate(undefined);
       setAppointmentTime("10:00");
+      setAppointmentService("");
       setAppointmentNotes("");
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
       toast.success("Appointment booked! Check Appointments page.");
     },
-    onError: (err: any) => toast.error(`Failed: ${err.message}`),
+    onError: (err: any) => {
+      console.error("Failed to book appointment:", err);
+      toast.error(`Failed: ${err.message}`);
+    },
   });
 
   // Escalate
   const escalateMutation = useMutation({
     mutationFn: async () => {
-      if (!selectedConversationId || !escalationReason) throw new Error("Missing data");
-      await supabase
+      if (!selectedConversationId) throw new Error("No conversation");
+      if (!escalationReason) throw new Error("Reason required");
+
+      console.log("Escalating:", selectedConversationId);
+
+      const { error } = await supabase
         .from("conversations")
         .update({
           requires_human: true,
           priority: "high",
           status: "escalated",
           ai_handled: false,
+          updated_at: new Date().toISOString(),
         })
         .eq("id", selectedConversationId);
+
+      if (error) throw error;
+
       await callWebhook(
         "/orchestrator",
         {
           event_type: "conversation_escalated",
           entity_id: selectedConversationId,
-          data: { reason: escalationReason },
+          data: {
+            reason: escalationReason,
+            customer_name: selectedConversation ? getDisplayName(selectedConversation) : null,
+            customer_phone: getPhoneNumber(selectedConversation),
+            channel: selectedConversation?.channel,
+          },
         },
         tenantUuid!,
       );
@@ -781,34 +973,53 @@ export default function Inbox() {
       setShowEscalateDialog(false);
       setEscalationReason("");
       queryClient.invalidateQueries({ queryKey: ["inbox-conversations"] });
-      toast.success("Escalated");
+      toast.success("Escalated - team notified");
     },
-    onError: () => toast.error("Failed to escalate"),
+    onError: (err: any) => {
+      toast.error(`Failed: ${err.message}`);
+    },
   });
 
-  // FIX #5: UPDATE STATUS - Clears escalation flags
+  // FIX #5: UPDATE STATUS - CLEARS ESCALATION FLAGS
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const updates: Record<string, any> = { status, updated_at: new Date().toISOString() };
-      // CRITICAL: Clear escalation flags when resolving/closing
+      console.log("Updating status:", { id, status });
+
+      const updates: Record<string, any> = {
+        status,
+        updated_at: new Date().toISOString(),
+      };
+
+      // CRITICAL: Clear escalation flags when resolving or closing
       if (status === "resolved" || status === "closed") {
         updates.requires_human = false;
         updates.priority = "normal";
       }
-      await supabase.from("conversations").update(updates).eq("id", id);
+
+      const { error } = await supabase.from("conversations").update(updates).eq("id", id);
+
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inbox-conversations"] });
       toast.success("Status updated");
     },
-    onError: () => toast.error("Failed"),
+    onError: (err: any) => {
+      toast.error(`Failed: ${err.message}`);
+    },
   });
 
   // Transfer
   const transferMutation = useMutation({
     mutationFn: async () => {
       if (!selectedConversationId || !selectedStaffId) throw new Error("Missing data");
-      await supabase.from("conversations").update({ assigned_to: selectedStaffId }).eq("id", selectedConversationId);
+      await supabase
+        .from("conversations")
+        .update({
+          assigned_to: selectedStaffId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", selectedConversationId);
       await callWebhook(
         "/orchestrator",
         {
@@ -826,7 +1037,7 @@ export default function Inbox() {
       queryClient.invalidateQueries({ queryKey: ["inbox-conversations"] });
       toast.success("Transferred");
     },
-    onError: () => toast.error("Failed"),
+    onError: () => toast.error("Failed to transfer"),
   });
 
   // Assign
@@ -835,7 +1046,11 @@ export default function Inbox() {
       if (!selectedConversationId || !selectedStaffId) throw new Error("Missing data");
       await supabase
         .from("conversations")
-        .update({ assigned_to: selectedStaffId, ai_handled: false })
+        .update({
+          assigned_to: selectedStaffId,
+          ai_handled: false,
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", selectedConversationId);
     },
     onSuccess: () => {
@@ -850,7 +1065,7 @@ export default function Inbox() {
   const initiateCallMutation = useMutation({
     mutationFn: async () => {
       const phone = getPhoneNumber(selectedConversation);
-      if (!phone) throw new Error("No phone");
+      if (!phone) throw new Error("No phone number");
       await callWebhook(
         "/vapi/outbound-call",
         {
@@ -865,7 +1080,7 @@ export default function Inbox() {
       setShowCallDialog(false);
       toast.success("Call initiated");
     },
-    onError: () => toast.error("Failed"),
+    onError: () => toast.error("Failed to initiate call"),
   });
 
   // Consent
@@ -873,12 +1088,15 @@ export default function Inbox() {
     mutationFn: async ({ customerId, field, value }: { customerId: string; field: string; value: boolean }) => {
       await supabase
         .from("customers")
-        .update({ [field]: value })
+        .update({
+          [field]: value,
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", customerId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inbox-customers"] });
-      toast.success("Updated");
+      toast.success("Consent updated");
     },
   });
 
@@ -919,17 +1137,29 @@ export default function Inbox() {
   const handleUseTemplate = useCallback(
     (template: { content: string }) => {
       let content = template.content;
-      if (selectedConversation) content = content.replace("{{name}}", getDisplayName(selectedConversation));
+      if (selectedConversation) {
+        content = content.replace("{{name}}", getDisplayName(selectedConversation));
+        if (appointmentDate) {
+          content = content.replace("{{date}}", format(appointmentDate, "MMMM d, yyyy"));
+          content = content.replace("{{time}}", appointmentTime);
+        }
+      }
       setMessageInput(content);
       setShowTemplateDialog(false);
     },
-    [selectedConversation, getDisplayName],
+    [selectedConversation, getDisplayName, appointmentDate, appointmentTime],
   );
 
   const openEditContact = useCallback(() => {
-    setEditName(selectedCustomer?.name || selectedCustomer?.first_name || "");
-    setEditPhone(selectedCustomer?.phone_number || selectedCustomer?.phone || "");
-    setEditEmail(selectedCustomer?.email || "");
+    if (selectedCustomer) {
+      setEditName(selectedCustomer.name || selectedCustomer.first_name || "");
+      setEditPhone(selectedCustomer.phone_number || selectedCustomer.phone || "");
+      setEditEmail(selectedCustomer.email || "");
+    } else {
+      setEditName("");
+      setEditPhone("");
+      setEditEmail("");
+    }
     setShowEditContactDialog(true);
   }, [selectedCustomer]);
 
@@ -953,6 +1183,7 @@ export default function Inbox() {
     });
   }, []);
 
+  // Effects
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -970,7 +1201,9 @@ export default function Inbox() {
       )
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => {
         if ((payload.new as any).conversation_id === selectedConversationId) refetchMessages();
-        if (!isMuted && (payload.new as any).direction === "inbound") toast.info("New message");
+        if (!isMuted && (payload.new as any).direction === "inbound") {
+          toast.info("New message received");
+        }
       })
       .subscribe();
     return () => {
@@ -996,7 +1229,7 @@ export default function Inbox() {
   return (
     <TooltipProvider>
       <div className="h-screen flex flex-col bg-background overflow-hidden">
-        {/* HEADER */}
+        {/* HEADER WITH ALL CHANNELS */}
         <nav className="h-14 border-b px-4 flex items-center justify-between bg-card shrink-0">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" onClick={() => setIsCollapsed(!isCollapsed)}>
@@ -1007,12 +1240,14 @@ export default function Inbox() {
               <p className="text-xs text-muted-foreground">{filteredConversations.length} conversations</p>
             </div>
           </div>
-          <ScrollArea className="max-w-xl">
+
+          {/* CHANNEL BUTTONS - ALL 15 */}
+          <ScrollArea className="max-w-2xl">
             <div className="flex gap-1 px-1">
               <button
                 onClick={() => setSelectedChannel("all")}
                 className={cn(
-                  "px-3 py-1.5 rounded-full text-xs font-medium",
+                  "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap",
                   selectedChannel === "all"
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-muted",
@@ -1020,31 +1255,76 @@ export default function Inbox() {
               >
                 All
               </button>
-              {Object.values(CHANNELS)
-                .slice(0, 6)
-                .map((ch) => (
-                  <button
-                    key={ch.id}
-                    onClick={() => setSelectedChannel(ch.id)}
-                    className={cn(
-                      "px-2.5 py-1.5 rounded-full text-xs font-medium flex items-center gap-1",
-                      selectedChannel === ch.id
-                        ? `${ch.bgColor} ${ch.textColor}`
-                        : "text-muted-foreground hover:bg-muted",
-                    )}
-                  >
-                    <ch.icon className="h-3.5 w-3.5" />
+              {/* Primary channels (first 8) */}
+              {PRIMARY_CHANNEL_IDS.map((chId) => {
+                const ch = ALL_CHANNELS[chId];
+                return (
+                  <Tooltip key={ch.id}>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => setSelectedChannel(ch.id)}
+                        className={cn(
+                          "px-2.5 py-1.5 rounded-full text-xs font-medium flex items-center gap-1",
+                          selectedChannel === ch.id
+                            ? `${ch.bgColor} ${ch.textColor}`
+                            : "text-muted-foreground hover:bg-muted",
+                        )}
+                      >
+                        <ch.icon className="h-3.5 w-3.5" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>{ch.name}</TooltipContent>
+                  </Tooltip>
+                );
+              })}
+              {/* More channels dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="px-2.5 py-1.5 rounded-full text-xs font-medium text-muted-foreground hover:bg-muted flex items-center gap-1">
+                    <Plus className="h-3.5 w-3.5" />
+                    More
                   </button>
-                ))}
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuLabel>More Channels</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {Object.values(ALL_CHANNELS)
+                    .filter((ch) => !PRIMARY_CHANNEL_IDS.includes(ch.id))
+                    .map((ch) => (
+                      <DropdownMenuItem key={ch.id} onClick={() => setSelectedChannel(ch.id)}>
+                        <ch.icon className={cn("h-4 w-4 mr-2", ch.textColor)} />
+                        {ch.name}
+                      </DropdownMenuItem>
+                    ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </ScrollArea>
+
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={() => setIsMuted(!isMuted)}>
-              {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-            </Button>
-            <Button variant="outline" size="icon" onClick={() => refetchConversations()}>
-              <RefreshCcw className="h-4 w-4" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" onClick={() => setIsMuted(!isMuted)}>
+                  {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{isMuted ? "Unmute" : "Mute"} notifications</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => {
+                    refetchConversations();
+                    refetchCustomers();
+                  }}
+                >
+                  <RefreshCcw className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Refresh</TooltipContent>
+            </Tooltip>
           </div>
         </nav>
 
@@ -1056,7 +1336,7 @@ export default function Inbox() {
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search..."
+                    placeholder="Search conversations..."
                     className="pl-8 h-9 text-sm"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -1099,7 +1379,7 @@ export default function Inbox() {
                       </SheetHeader>
                       <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                          <Label>Temperature</Label>
+                          <Label>Lead Temperature</Label>
                           <Select
                             value={filters.leadTemperature}
                             onValueChange={(v) => setFilters({ ...filters, leadTemperature: v })}
@@ -1117,7 +1397,7 @@ export default function Inbox() {
                         </div>
                         <div className="space-y-2">
                           <Label>
-                            Score: {filters.leadScoreRange[0]}-{filters.leadScoreRange[1]}
+                            Lead Score: {filters.leadScoreRange[0]} - {filters.leadScoreRange[1]}
                           </Label>
                           <Slider
                             value={filters.leadScoreRange}
@@ -1136,8 +1416,22 @@ export default function Inbox() {
                             <SelectContent>
                               <SelectItem value="all">All</SelectItem>
                               <SelectItem value="active">Active</SelectItem>
+                              <SelectItem value="escalated">Escalated</SelectItem>
                               <SelectItem value="resolved">Resolved</SelectItem>
                               <SelectItem value="closed">Closed</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Sort By</Label>
+                          <Select value={filters.sortBy} onValueChange={(v) => setFilters({ ...filters, sortBy: v })}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="recent">Most Recent</SelectItem>
+                              <SelectItem value="oldest">Oldest First</SelectItem>
+                              <SelectItem value="score-high">Highest Score</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -1146,15 +1440,22 @@ export default function Inbox() {
                   </Sheet>
                 </div>
               </div>
+
               <ScrollArea className="flex-1">
                 {conversationsLoading ? (
                   <div className="p-8 text-center">
                     <RefreshCcw className="h-8 w-8 mx-auto animate-spin text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground mt-2">Loading...</p>
                   </div>
                 ) : filteredConversations.length === 0 ? (
                   <div className="p-8 text-center">
                     <MessageSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground/30" />
-                    <p className="text-muted-foreground">No conversations</p>
+                    <p className="text-muted-foreground">No conversations found</p>
+                    {selectedChannel !== "all" && (
+                      <Button variant="link" size="sm" onClick={() => setSelectedChannel("all")} className="mt-2">
+                        View all channels
+                      </Button>
+                    )}
                   </div>
                 ) : (
                   filteredConversations.map((conv) => {
@@ -1163,12 +1464,13 @@ export default function Inbox() {
                     const isStarred = starredConversations.has(conv.id);
                     const hasUnread = conv.unread_count > 0;
                     const temp = conv.customer?.lead_temperature || conv.customer?.temperature;
+
                     return (
                       <div
                         key={conv.id}
                         onClick={() => handleSelectConversation(conv.id)}
                         className={cn(
-                          "p-3 border-b cursor-pointer hover:bg-muted/50",
+                          "p-3 border-b cursor-pointer hover:bg-muted/50 transition-colors",
                           isSelected && "bg-primary/5 border-l-2 border-l-primary",
                           hasUnread && "bg-blue-50/50",
                         )}
@@ -1198,7 +1500,7 @@ export default function Inbox() {
                                   {isStarred ? (
                                     <Star className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500" />
                                   ) : (
-                                    <StarOff className="h-3.5 w-3.5 text-muted-foreground/30" />
+                                    <StarOff className="h-3.5 w-3.5 text-muted-foreground/30 hover:text-yellow-500" />
                                   )}
                                 </button>
                                 <span className="text-[10px] text-muted-foreground">
@@ -1207,7 +1509,7 @@ export default function Inbox() {
                               </div>
                             </div>
                             <p className={cn("text-xs truncate", hasUnread ? "font-medium" : "text-muted-foreground")}>
-                              {conv.last_message_text || "No messages"}
+                              {conv.last_message_text || "No messages yet"}
                             </p>
                             <div className="flex items-center gap-1 mt-1">
                               {hasUnread && (
@@ -1218,6 +1520,14 @@ export default function Inbox() {
                               {conv.requires_human && (
                                 <Badge variant="destructive" className="text-[10px] h-4 px-1.5">
                                   Escalated
+                                </Badge>
+                              )}
+                              {conv.priority === "high" && !conv.requires_human && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] h-4 px-1.5 border-orange-500 text-orange-500"
+                                >
+                                  High Priority
                                 </Badge>
                               )}
                             </div>
@@ -1231,10 +1541,11 @@ export default function Inbox() {
             </aside>
           )}
 
-          {/* CHAT */}
+          {/* CHAT AREA */}
           <main className="flex-1 flex flex-col min-w-0 bg-background">
             {selectedConversation ? (
               <>
+                {/* Chat Header */}
                 <div className="h-14 border-b px-4 flex items-center justify-between bg-card shrink-0">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-10 w-10">
@@ -1252,27 +1563,51 @@ export default function Inbox() {
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <Badge
                           variant="outline"
-                          className={cn("h-5 text-[10px]", getChannelConfig(selectedConversation.channel).bgColor)}
+                          className={cn(
+                            "h-5 text-[10px]",
+                            getChannelConfig(selectedConversation.channel).bgColor,
+                            getChannelConfig(selectedConversation.channel).textColor,
+                          )}
                         >
                           {getChannelConfig(selectedConversation.channel).name}
                         </Badge>
-                        {currentPhoneNumber || <span className="text-orange-500">No phone</span>}
+                        {currentPhoneNumber ? (
+                          <span>{currentPhoneNumber}</span>
+                        ) : (
+                          <span className="text-orange-500 cursor-pointer" onClick={openEditContact}>
+                            No phone - click edit
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowCallDialog(true)}
-                      disabled={!currentPhoneNumber}
-                    >
-                      <Phone className="h-4 w-4 mr-1" />
-                      Call
-                    </Button>
-                    <Button variant="outline" size="icon" onClick={() => setShowDetailsPanel(!showDetailsPanel)}>
-                      {showDetailsPanel ? <PanelRightClose className="h-4 w-4" /> : <PanelRight className="h-4 w-4" />}
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowCallDialog(true)}
+                          disabled={!currentPhoneNumber}
+                        >
+                          <Phone className="h-4 w-4 mr-1" />
+                          Call
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{currentPhoneNumber ? "Call customer" : "No phone number"}</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="outline" size="icon" onClick={() => setShowDetailsPanel(!showDetailsPanel)}>
+                          {showDetailsPanel ? (
+                            <PanelRightClose className="h-4 w-4" />
+                          ) : (
+                            <PanelRight className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{showDetailsPanel ? "Hide" : "Show"} details</TooltipContent>
+                    </Tooltip>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline" size="icon">
@@ -1288,12 +1623,13 @@ export default function Inbox() {
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setShowAssignDialog(true)}>
                           <UserPlus className="h-4 w-4 mr-2" />
-                          Assign
+                          Assign to Staff
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setShowTransferDialog(true)}>
                           <Send className="h-4 w-4 mr-2" />
                           Transfer
                         </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={openDealDialog}>
                           <Briefcase className="h-4 w-4 mr-2" />
                           Create Deal
@@ -1303,8 +1639,8 @@ export default function Inbox() {
                           Book Appointment
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => setShowEscalateDialog(true)}>
-                          <AlertTriangle className="h-4 w-4 mr-2 text-orange-500" />
+                        <DropdownMenuItem onClick={() => setShowEscalateDialog(true)} className="text-orange-600">
+                          <AlertTriangle className="h-4 w-4 mr-2" />
                           Escalate
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
@@ -1312,15 +1648,16 @@ export default function Inbox() {
                           onClick={() =>
                             updateStatusMutation.mutate({ id: selectedConversation.id, status: "resolved" })
                           }
+                          className="text-green-600"
                         >
-                          <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
-                          Resolve
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Mark Resolved
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => updateStatusMutation.mutate({ id: selectedConversation.id, status: "closed" })}
                         >
                           <Archive className="h-4 w-4 mr-2" />
-                          Close
+                          Close Conversation
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={openEditContact}>
@@ -1329,23 +1666,27 @@ export default function Inbox() {
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setShowComplianceDialog(true)}>
                           <Shield className="h-4 w-4 mr-2" />
-                          Compliance
+                          Compliance Settings
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
                 </div>
+
+                {/* Chat Content */}
                 <div className="flex-1 flex overflow-hidden">
+                  {/* Messages */}
                   <div className="flex-1 flex flex-col min-w-0">
                     <ScrollArea className="flex-1 p-4">
                       {messagesLoading ? (
-                        <div className="flex justify-center h-full">
-                          <RefreshCcw className="h-6 w-6 animate-spin" />
+                        <div className="flex items-center justify-center h-full">
+                          <RefreshCcw className="h-6 w-6 animate-spin text-muted-foreground" />
                         </div>
                       ) : messages.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-full">
+                        <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                           <MessageSquare className="h-12 w-12 mb-3 opacity-30" />
-                          <p>No messages</p>
+                          <p>No messages yet</p>
+                          <p className="text-sm">Start the conversation!</p>
                         </div>
                       ) : (
                         <div className="space-y-4">
@@ -1382,6 +1723,8 @@ export default function Inbox() {
                         </div>
                       )}
                     </ScrollArea>
+
+                    {/* Message Input */}
                     <div className="p-4 border-t bg-card shrink-0">
                       <div className="flex items-end gap-2">
                         <DropdownMenu>
@@ -1393,7 +1736,7 @@ export default function Inbox() {
                           <DropdownMenuContent align="start">
                             <DropdownMenuItem onClick={() => setShowTemplateDialog(true)}>
                               <FileText className="h-4 w-4 mr-2" />
-                              Templates
+                              Use Template
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -1418,7 +1761,7 @@ export default function Inbox() {
                               size="sm"
                               className="h-8"
                               onClick={handleSendMessage}
-                              disabled={!messageInput.trim()}
+                              disabled={!messageInput.trim() || sendMessageMutation.isPending}
                             >
                               <Send className="h-4 w-4" />
                             </Button>
@@ -1427,6 +1770,8 @@ export default function Inbox() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Details Panel */}
                   {showDetailsPanel && (
                     <aside className="w-72 border-l bg-card p-4 overflow-y-auto shrink-0">
                       <div className="text-center mb-4">
@@ -1444,7 +1789,9 @@ export default function Inbox() {
                           Edit
                         </Button>
                       </div>
+
                       <Separator className="my-4" />
+
                       <div className="space-y-3 text-sm">
                         <div className="flex items-center gap-2">
                           <Phone className="h-4 w-4 text-muted-foreground" />
@@ -1460,18 +1807,58 @@ export default function Inbox() {
                           <Tag className="h-4 w-4 text-muted-foreground" />
                           <span>Score: {selectedCustomer?.lead_score || 50}</span>
                         </div>
+                        {selectedCustomer?.company_name && (
+                          <div className="flex items-center gap-2">
+                            <Briefcase className="h-4 w-4 text-muted-foreground" />
+                            <span className="truncate">{selectedCustomer.company_name}</span>
+                          </div>
+                        )}
                       </div>
+
+                      {/* Notes Section */}
                       {selectedCustomer?.notes && (
                         <>
                           <Separator className="my-4" />
                           <div>
-                            <h4 className="text-sm font-medium mb-2">Notes</h4>
-                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                            <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                              <StickyNote className="h-4 w-4" />
+                              Notes
+                            </h4>
+                            <div className="bg-muted/50 rounded-lg p-3 text-sm text-muted-foreground whitespace-pre-wrap max-h-40 overflow-y-auto">
                               {selectedCustomer.notes}
-                            </p>
+                            </div>
                           </div>
                         </>
                       )}
+
+                      <Separator className="my-4" />
+
+                      {/* Quick Actions */}
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-medium mb-2">Quick Actions</h4>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full justify-start"
+                          onClick={() => setShowNoteDialog(true)}
+                        >
+                          <StickyNote className="h-4 w-4 mr-2" />
+                          Add Note
+                        </Button>
+                        <Button variant="outline" size="sm" className="w-full justify-start" onClick={openDealDialog}>
+                          <Briefcase className="h-4 w-4 mr-2" />
+                          Create Deal
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full justify-start"
+                          onClick={() => setShowBookDialog(true)}
+                        >
+                          <CalendarIcon className="h-4 w-4 mr-2" />
+                          Book Appointment
+                        </Button>
+                      </div>
                     </aside>
                   )}
                 </div>
@@ -1481,13 +1868,18 @@ export default function Inbox() {
                 <div className="text-center p-8">
                   <MessageSquare className="h-16 w-16 mx-auto mb-4 text-muted-foreground/30" />
                   <h2 className="text-xl font-semibold mb-2">Select a conversation</h2>
+                  <p className="text-muted-foreground">Choose a conversation from the sidebar to start chatting</p>
                 </div>
               </div>
             )}
           </main>
         </div>
 
+        {/* ============================================ */}
         {/* DIALOGS */}
+        {/* ============================================ */}
+
+        {/* Edit Contact Dialog */}
         <Dialog open={showEditContactDialog} onOpenChange={setShowEditContactDialog}>
           <DialogContent>
             <DialogHeader>
@@ -1501,7 +1893,7 @@ export default function Inbox() {
               </div>
               <div className="space-y-2">
                 <Label>Phone</Label>
-                <Input placeholder="+1234567890" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
+                <Input placeholder="+923352559926" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>Email</Label>
@@ -1518,21 +1910,24 @@ export default function Inbox() {
                 Cancel
               </Button>
               <Button onClick={() => updateContactMutation.mutate()} disabled={updateContactMutation.isPending}>
-                {updateContactMutation.isPending ? "Saving..." : "Save"}
+                {updateContactMutation.isPending ? "Saving..." : "Save Changes"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
+        {/* Assign Dialog */}
         <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Assign</DialogTitle>
+              <DialogTitle>Assign Conversation</DialogTitle>
+              <DialogDescription>Assign this conversation to a team member</DialogDescription>
             </DialogHeader>
             <div className="py-4">
+              <Label>Select Staff Member</Label>
               <Select value={selectedStaffId} onValueChange={setSelectedStaffId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select staff" />
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="Select staff member" />
                 </SelectTrigger>
                 <SelectContent>
                   {staffMembers.map((s) => (
@@ -1547,22 +1942,25 @@ export default function Inbox() {
               <Button variant="outline" onClick={() => setShowAssignDialog(false)}>
                 Cancel
               </Button>
-              <Button onClick={() => assignMutation.mutate()} disabled={!selectedStaffId}>
-                Assign
+              <Button onClick={() => assignMutation.mutate()} disabled={!selectedStaffId || assignMutation.isPending}>
+                {assignMutation.isPending ? "Assigning..." : "Assign"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
+        {/* Note Dialog */}
         <Dialog open={showNoteDialog} onOpenChange={setShowNoteDialog}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Add Note</DialogTitle>
-              <DialogDescription>Note will be saved to customer record</DialogDescription>
+              <DialogDescription>
+                Add a note to this customer's record. Notes will be visible in the details panel.
+              </DialogDescription>
             </DialogHeader>
             <div className="py-4">
               <Textarea
-                placeholder="Enter note..."
+                placeholder="Enter your note here..."
                 value={noteText}
                 onChange={(e) => setNoteText(e.target.value)}
                 rows={4}
@@ -1573,29 +1971,34 @@ export default function Inbox() {
                 Cancel
               </Button>
               <Button onClick={() => addNoteMutation.mutate()} disabled={!noteText.trim() || addNoteMutation.isPending}>
-                {addNoteMutation.isPending ? "Saving..." : "Save"}
+                {addNoteMutation.isPending ? "Saving..." : "Save Note"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
+        {/* Deal Dialog */}
         <Dialog open={showDealDialog} onOpenChange={setShowDealDialog}>
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Create Deal</DialogTitle>
-              <DialogDescription>Add to Deal Tracker pipeline</DialogDescription>
+              <DialogDescription>Add a new deal to the Deal Tracker pipeline</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>Title *</Label>
-                <Input placeholder="Deal title" value={dealTitle} onChange={(e) => setDealTitle(e.target.value)} />
+                <Label>Deal Title *</Label>
+                <Input
+                  placeholder="e.g., Enterprise Package"
+                  value={dealTitle}
+                  onChange={(e) => setDealTitle(e.target.value)}
+                />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Value (AED)</Label>
                   <Input
                     type="number"
-                    placeholder="0"
+                    placeholder="50000"
                     value={dealValue}
                     onChange={(e) => setDealValue(e.target.value)}
                   />
@@ -1607,7 +2010,7 @@ export default function Inbox() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {PIPELINE_STAGES.map((s) => (
+                      {PIPELINE_STAGES.filter((s) => s.id !== "won" && s.id !== "lost").map((s) => (
                         <SelectItem key={s.id} value={s.id}>
                           {s.name} ({s.probability}%)
                         </SelectItem>
@@ -1617,7 +2020,7 @@ export default function Inbox() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Company</Label>
+                <Label>Company Name</Label>
                 <Input
                   placeholder="Company name"
                   value={dealCompanyName}
@@ -1625,9 +2028,9 @@ export default function Inbox() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Contact</Label>
+                <Label>Contact Name</Label>
                 <Input
-                  placeholder="Contact name"
+                  placeholder="Contact person"
                   value={dealContactName}
                   onChange={(e) => setDealContactName(e.target.value)}
                 />
@@ -1657,11 +2060,12 @@ export default function Inbox() {
           </DialogContent>
         </Dialog>
 
+        {/* Book Appointment Dialog */}
         <Dialog open={showBookDialog} onOpenChange={setShowBookDialog}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Book Appointment</DialogTitle>
-              <DialogDescription>Schedule appointment</DialogDescription>
+              <DialogDescription>Schedule an appointment for this customer</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
@@ -1670,11 +2074,11 @@ export default function Inbox() {
                   <PopoverTrigger asChild>
                     <Button variant="outline" className="w-full justify-start">
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {appointmentDate ? format(appointmentDate, "PPP") : "Select date"}
+                      {appointmentDate ? format(appointmentDate, "MMMM d, yyyy") : "Select date"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0">
-                    <Calendar mode="single" selected={appointmentDate} onSelect={setAppointmentDate} />
+                    <Calendar mode="single" selected={appointmentDate} onSelect={setAppointmentDate} initialFocus />
                   </PopoverContent>
                 </Popover>
               </div>
@@ -1699,9 +2103,24 @@ export default function Inbox() {
                 </Select>
               </div>
               <div className="space-y-2">
+                <Label>Service</Label>
+                <Select value={appointmentService} onValueChange={setAppointmentService}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select service" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {industryConfig.services.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
                 <Label>Notes</Label>
                 <Textarea
-                  placeholder="Optional notes"
+                  placeholder="Optional notes..."
                   value={appointmentNotes}
                   onChange={(e) => setAppointmentNotes(e.target.value)}
                   rows={2}
@@ -1716,16 +2135,17 @@ export default function Inbox() {
                 onClick={() => bookAppointmentMutation.mutate()}
                 disabled={!appointmentDate || bookAppointmentMutation.isPending}
               >
-                {bookAppointmentMutation.isPending ? "Booking..." : "Book"}
+                {bookAppointmentMutation.isPending ? "Booking..." : "Book Appointment"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
+        {/* Call Dialog */}
         <Dialog open={showCallDialog} onOpenChange={setShowCallDialog}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Call</DialogTitle>
+              <DialogTitle>Initiate Call</DialogTitle>
             </DialogHeader>
             <div className="py-6 text-center">
               {currentPhoneNumber ? (
@@ -1733,24 +2153,24 @@ export default function Inbox() {
                   <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
                     <Phone className="h-10 w-10 text-green-600" />
                   </div>
-                  <p className="text-2xl font-semibold">{currentPhoneNumber}</p>
+                  <p className="text-2xl font-semibold mb-2">{currentPhoneNumber}</p>
+                  <p className="text-muted-foreground">Ready to call {getDisplayName(selectedConversation!)}</p>
                 </>
               ) : (
                 <>
                   <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-yellow-100 flex items-center justify-center">
                     <AlertCircle className="h-10 w-10 text-yellow-600" />
                   </div>
-                  <p>No phone number</p>
+                  <p className="text-lg font-medium mb-2">No phone number available</p>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="mt-2"
                     onClick={() => {
                       setShowCallDialog(false);
                       openEditContact();
                     }}
                   >
-                    Add Phone
+                    Add Phone Number
                   </Button>
                 </>
               )}
@@ -1761,35 +2181,39 @@ export default function Inbox() {
               </Button>
               <Button
                 onClick={() => initiateCallMutation.mutate()}
-                disabled={!currentPhoneNumber}
+                disabled={!currentPhoneNumber || initiateCallMutation.isPending}
                 className="bg-green-600 hover:bg-green-700"
               >
                 <PhoneCall className="h-4 w-4 mr-2" />
-                Call
+                {initiateCallMutation.isPending ? "Calling..." : "Call Now"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
+        {/* Escalate Dialog */}
         <Dialog open={showEscalateDialog} onOpenChange={setShowEscalateDialog}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-orange-500" />
-                Escalate
+                Escalate Conversation
               </DialogTitle>
+              <DialogDescription>Escalate this conversation to require human intervention</DialogDescription>
             </DialogHeader>
             <div className="py-4">
+              <Label>Reason for Escalation</Label>
               <Select value={escalationReason} onValueChange={setEscalationReason}>
-                <SelectTrigger>
+                <SelectTrigger className="mt-2">
                   <SelectValue placeholder="Select reason" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="complex">Complex Inquiry</SelectItem>
-                  <SelectItem value="complaint">Complaint</SelectItem>
-                  <SelectItem value="urgent">Urgent</SelectItem>
-                  <SelectItem value="high_value">High Value</SelectItem>
+                  <SelectItem value="complaint">Customer Complaint</SelectItem>
+                  <SelectItem value="urgent">Urgent Matter</SelectItem>
+                  <SelectItem value="high_value">High Value Customer</SelectItem>
                   <SelectItem value="ai_limitation">AI Cannot Handle</SelectItem>
+                  <SelectItem value="sensitive">Sensitive Topic</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1797,24 +2221,30 @@ export default function Inbox() {
               <Button variant="outline" onClick={() => setShowEscalateDialog(false)}>
                 Cancel
               </Button>
-              <Button variant="destructive" onClick={() => escalateMutation.mutate()} disabled={!escalationReason}>
-                Escalate
+              <Button
+                variant="destructive"
+                onClick={() => escalateMutation.mutate()}
+                disabled={!escalationReason || escalateMutation.isPending}
+              >
+                {escalateMutation.isPending ? "Escalating..." : "Escalate"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
+        {/* Transfer Dialog */}
         <Dialog open={showTransferDialog} onOpenChange={setShowTransferDialog}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Transfer</DialogTitle>
+              <DialogTitle>Transfer Conversation</DialogTitle>
+              <DialogDescription>Transfer this conversation to another team member</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>To</Label>
+                <Label>Transfer To</Label>
                 <Select value={selectedStaffId} onValueChange={setSelectedStaffId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select" />
+                    <SelectValue placeholder="Select team member" />
                   </SelectTrigger>
                   <SelectContent>
                     {staffMembers.map((s) => (
@@ -1826,9 +2256,9 @@ export default function Inbox() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Reason</Label>
+                <Label>Reason (Optional)</Label>
                 <Textarea
-                  placeholder="Why?"
+                  placeholder="Why are you transferring this conversation?"
                   value={transferReason}
                   onChange={(e) => setTransferReason(e.target.value)}
                   rows={2}
@@ -1839,23 +2269,37 @@ export default function Inbox() {
               <Button variant="outline" onClick={() => setShowTransferDialog(false)}>
                 Cancel
               </Button>
-              <Button onClick={() => transferMutation.mutate()} disabled={!selectedStaffId}>
-                Transfer
+              <Button
+                onClick={() => transferMutation.mutate()}
+                disabled={!selectedStaffId || transferMutation.isPending}
+              >
+                {transferMutation.isPending ? "Transferring..." : "Transfer"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
+        {/* Template Dialog */}
         <Dialog open={showTemplateDialog} onOpenChange={setShowTemplateDialog}>
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>Templates</DialogTitle>
+              <DialogTitle>Message Templates</DialogTitle>
+              <DialogDescription>Select a template to use</DialogDescription>
             </DialogHeader>
             <div className="py-4 grid gap-3 max-h-80 overflow-y-auto">
               {DEFAULT_TEMPLATES.map((t) => (
-                <Card key={t.id} className="cursor-pointer hover:shadow-md" onClick={() => handleUseTemplate(t)}>
+                <Card
+                  key={t.id}
+                  className="cursor-pointer hover:shadow-md transition-shadow"
+                  onClick={() => handleUseTemplate(t)}
+                >
                   <CardHeader className="p-3 pb-1">
-                    <CardTitle className="text-sm">{t.name}</CardTitle>
+                    <CardTitle className="text-sm flex items-center justify-between">
+                      {t.name}
+                      <Badge variant="outline" className="text-[10px]">
+                        {t.category}
+                      </Badge>
+                    </CardTitle>
                   </CardHeader>
                   <CardContent className="p-3 pt-1">
                     <p className="text-xs text-muted-foreground">{t.content}</p>
@@ -1871,18 +2315,20 @@ export default function Inbox() {
           </DialogContent>
         </Dialog>
 
+        {/* Compliance Dialog */}
         <Dialog open={showComplianceDialog} onOpenChange={setShowComplianceDialog}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Shield className="h-5 w-5" />
-                Compliance
+                Compliance Settings
               </DialogTitle>
+              <DialogDescription>Manage customer consent and compliance</DialogDescription>
             </DialogHeader>
             {selectedCustomer && (
               <div className="space-y-4 py-4">
                 <div className="bg-muted/50 rounded-lg p-3">
-                  <h4 className="text-sm font-medium mb-2">{industryConfig.name}</h4>
+                  <h4 className="text-sm font-medium mb-2">{industryConfig.name} Compliance</h4>
                   <div className="flex flex-wrap gap-2">
                     {industryConfig.compliance.map((r) => (
                       <Badge key={r} variant="outline">
@@ -1895,7 +2341,8 @@ export default function Inbox() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <Label>Marketing</Label>
+                      <Label>Marketing Consent</Label>
+                      <p className="text-xs text-muted-foreground">Allow marketing communications</p>
                     </div>
                     <Switch
                       checked={selectedCustomer.consent_marketing || false}
@@ -1910,7 +2357,8 @@ export default function Inbox() {
                   </div>
                   <div className="flex items-center justify-between">
                     <div>
-                      <Label>Data Processing</Label>
+                      <Label>Data Processing Consent</Label>
+                      <p className="text-xs text-muted-foreground">Allow data processing</p>
                     </div>
                     <Switch
                       checked={selectedCustomer.consent_data_processing || false}
@@ -1927,6 +2375,7 @@ export default function Inbox() {
                   <div className="flex items-center justify-between">
                     <div>
                       <Label className="text-red-600">Do Not Contact</Label>
+                      <p className="text-xs text-muted-foreground">Block all communications</p>
                     </div>
                     <Switch
                       checked={selectedCustomer.do_not_contact || false}
