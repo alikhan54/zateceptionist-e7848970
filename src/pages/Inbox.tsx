@@ -1,23 +1,27 @@
 // ============================================
 // FILE: src/pages/Inbox.tsx
-// VERSION 10.0 - COMPREHENSIVE FIX WITH ACTUAL DB SCHEMA
+// VERSION 13.0 - FINAL CORRECT SCHEMA
 // ============================================
 //
-// ROOT CAUSES IDENTIFIED FROM WORKFLOW ANALYSIS:
+// ACTUAL DATABASE SCHEMAS (verified via SQL):
 //
-// 1. APPOINTMENTS: DB uses appointment_date + appointment_time (SEPARATE fields)
-//    NOT scheduled_at, NOT start_time/end_time
+// DEALS TABLE:
+//   - tenant_id (SLUG like "zateceptionist")
+//   - title, value, weighted_value, currency, stage, probability
+//   - contact_name, company_name, email, phone
+//   - contact_id, company_id, lead_id
+//   - notes, products, custom_fields
 //
-// 2. DEALS: DB uses title, company_name, contact_name
-//    NOT contact_id, NOT name
+// APPOINTMENTS TABLE:
+//   - tenant_id (SLUG)
+//   - customer_id, service_id, service_name, provider_id, provider_name
+//   - appointment_date (DATE - "2025-01-16")
+//   - start_time (TIME - "10:00:00")
+//   - end_time (TIME - "11:00:00")
+//   - duration_minutes
+//   - appointment_status (NOT "status"!)
+//   - notes, reminder_sent
 //
-// 3. EDIT CONTACT: .single() fails when 0 rows - removed it
-//
-// 4. CHANNELS: Only showing 6 - now showing ALL 15
-//
-// 5. NOTES: Saves correctly but UI needs refresh - fixed invalidation
-//
-// 6. ESCALATE: Not clearing on resolve - fixed
 // ============================================
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -113,7 +117,7 @@ import {
   Slack,
   MessageSquareMore,
 } from "lucide-react";
-import { format, isToday, isYesterday } from "date-fns";
+import { format, isToday, isYesterday, addHours } from "date-fns";
 import { cn } from "@/lib/utils";
 
 // ============================================
@@ -136,7 +140,7 @@ async function callWebhook(endpoint: string, data: Record<string, unknown>, tena
 }
 
 // ============================================
-// PIPELINE STAGES (Multi-Industry)
+// PIPELINE STAGES
 // ============================================
 const PIPELINE_STAGES = [
   { id: "lead", name: "Lead", probability: 10 },
@@ -148,7 +152,7 @@ const PIPELINE_STAGES = [
 ];
 
 // ============================================
-// ALL 15 CHANNELS - COMPLETE LIST
+// ALL 15 CHANNELS
 // ============================================
 const ALL_CHANNELS: Record<string, { id: string; name: string; icon: any; bgColor: string; textColor: string }> = {
   whatsapp: {
@@ -204,39 +208,18 @@ const ALL_CHANNELS: Record<string, { id: string; name: string; icon: any; bgColo
   },
 };
 
-// Primary channels shown in header (first 8)
 const PRIMARY_CHANNEL_IDS = ["whatsapp", "instagram", "facebook", "linkedin", "twitter", "telegram", "email", "sms"];
 
 // ============================================
 // INDUSTRY CONFIG
 // ============================================
-const INDUSTRY_CONFIG: Record<string, { name: string; services: string[]; compliance: string[] }> = {
-  healthcare: {
-    name: "Healthcare",
-    services: ["Consultation", "Treatment", "Follow-up", "Botox", "Filler"],
-    compliance: ["HIPAA"],
-  },
-  real_estate: {
-    name: "Real Estate",
-    services: ["Property Viewing", "Market Analysis", "Investment Consultation"],
-    compliance: ["Fair Housing"],
-  },
-  salon: {
-    name: "Salon & Beauty",
-    services: ["Haircut", "Color", "Styling", "Manicure", "Facial"],
-    compliance: ["Product Safety"],
-  },
-  restaurant: {
-    name: "Restaurant",
-    services: ["Reservation", "Catering", "Private Event"],
-    compliance: ["Food Safety"],
-  },
-  flooring: {
-    name: "Flooring",
-    services: ["Free Estimate", "Installation", "Repair"],
-    compliance: ["Contractor License"],
-  },
-  general: { name: "General Business", services: ["Consultation", "Service", "Support"], compliance: ["Data Privacy"] },
+const INDUSTRY_CONFIG: Record<string, { services: string[] }> = {
+  healthcare: { services: ["Consultation", "Treatment", "Follow-up", "Botox", "Filler", "Facial"] },
+  real_estate: { services: ["Property Viewing", "Market Analysis", "Investment Consultation"] },
+  salon: { services: ["Haircut", "Color", "Styling", "Manicure", "Facial", "Massage"] },
+  restaurant: { services: ["Reservation", "Catering", "Private Event", "Party Booking"] },
+  flooring: { services: ["Free Estimate", "Installation", "Repair", "Consultation"] },
+  general: { services: ["Consultation", "Service", "Support", "Meeting"] },
 };
 
 const DEFAULT_TEMPLATES = [
@@ -277,9 +260,6 @@ interface Customer {
   consent_data_processing?: boolean;
   do_not_contact?: boolean;
   notes?: string;
-  facebook_id?: string;
-  instagram_id?: string;
-  whatsapp_id?: string;
   company_name?: string;
   created_at: string;
 }
@@ -325,10 +305,13 @@ interface StaffMember {
 // MAIN COMPONENT
 // ============================================
 export default function Inbox() {
+  // CRITICAL: tenantId = SLUG (used for deals, appointments)
+  // tenantConfig?.id = UUID (used for conversations)
   const { tenantId, tenantConfig } = useTenant();
   const tenantUuid = tenantConfig?.id;
+
   const industry = tenantConfig?.industry || "general";
-  const industryConfig = INDUSTRY_CONFIG[industry] || INDUSTRY_CONFIG.general;
+  const industryServices = INDUSTRY_CONFIG[industry]?.services || INDUSTRY_CONFIG.general.services;
   const queryClient = useQueryClient();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -419,13 +402,26 @@ export default function Inbox() {
   });
 
   const { data: customers = [], refetch: refetchCustomers } = useQuery({
-    queryKey: ["inbox-customers", tenantUuid],
+    queryKey: ["inbox-customers", tenantId, tenantUuid],
     queryFn: async () => {
-      if (!tenantUuid) return [];
-      const { data } = await supabase.from("customers").select("*").eq("tenant_id", tenantUuid);
+      if (!tenantId && !tenantUuid) return [];
+
+      // Try UUID first (for conversations relationship), then SLUG
+      let query = supabase.from("customers").select("*");
+      if (tenantUuid) {
+        query = query.eq("tenant_id", tenantUuid);
+      } else if (tenantId) {
+        query = query.eq("tenant_id", tenantId);
+      }
+
+      const { data, error } = await query;
+      if (error) {
+        console.error("Customers query error:", error);
+        return [];
+      }
       return (data || []) as Customer[];
     },
-    enabled: !!tenantUuid,
+    enabled: !!(tenantId || tenantUuid),
   });
 
   const customersMap = useMemo(() => {
@@ -460,13 +456,13 @@ export default function Inbox() {
   });
 
   const { data: staffMembers = [] } = useQuery({
-    queryKey: ["staff-members", tenantUuid],
+    queryKey: ["staff-members", tenantId],
     queryFn: async () => {
-      if (!tenantUuid) return [];
-      const { data } = await supabase.from("users").select("id, full_name, email").eq("tenant_id", tenantUuid);
+      if (!tenantId) return [];
+      const { data } = await supabase.from("users").select("id, full_name, email").eq("tenant_id", tenantId);
       return (data || []) as StaffMember[];
     },
-    enabled: !!tenantUuid,
+    enabled: !!tenantId,
   });
 
   const selectedConversation = useMemo(
@@ -487,27 +483,21 @@ export default function Inbox() {
     if (c?.name && c.name.trim() && c.name !== "Customer" && c.name !== "New Contact") return c.name;
     if (c?.first_name) return c.last_name ? `${c.first_name} ${c.last_name}` : c.first_name;
     if (conv.customer_name && conv.customer_name.trim() && conv.customer_name !== "Customer") return conv.customer_name;
-    if (c?.email) {
-      const emailPart = c.email.split("@")[0];
-      return emailPart.replace(/[._]/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
-    }
+    if (c?.email)
+      return c.email
+        .split("@")[0]
+        .replace(/[._]/g, " ")
+        .replace(/\b\w/g, (l) => l.toUpperCase());
     if (c?.phone_number) return c.phone_number;
     if (c?.phone) return c.phone;
     if (conv.customer_phone) return conv.customer_phone;
-    if (c?.facebook_id) return `FB ${c.facebook_id.slice(-6)}`;
-    if (c?.instagram_id) return `IG ${c.instagram_id.slice(-6)}`;
-    if (c?.whatsapp_id) return c.whatsapp_id;
     return "New Contact";
   }, []);
 
   const getPhoneNumber = useCallback((conv: Conversation | null | undefined): string | null => {
     if (!conv) return null;
     const c = conv.customer;
-    if (c?.phone_number) return c.phone_number;
-    if (c?.phone) return c.phone;
-    if (conv.customer_phone) return conv.customer_phone;
-    if (c?.whatsapp_id && /^\+?\d{10,}$/.test(c.whatsapp_id)) return c.whatsapp_id;
-    return null;
+    return c?.phone_number || c?.phone || conv.customer_phone || null;
   }, []);
 
   const getInitials = useCallback(
@@ -558,10 +548,9 @@ export default function Inbox() {
     else if (filters.quickFilter === "ai") result = result.filter((c) => c.ai_handled);
     else if (filters.quickFilter === "human") result = result.filter((c) => !c.ai_handled);
     if (filters.leadTemperature !== "all") {
-      result = result.filter((c) => {
-        const temp = c.customer?.lead_temperature || c.customer?.temperature;
-        return temp === filters.leadTemperature;
-      });
+      result = result.filter(
+        (c) => (c.customer?.lead_temperature || c.customer?.temperature) === filters.leadTemperature,
+      );
     }
     if (filters.status !== "all") result = result.filter((c) => c.status === filters.status);
     result = result.filter((c) => {
@@ -579,7 +568,7 @@ export default function Inbox() {
   }, [enrichedConversations, searchQuery, filters, starredConversations, getDisplayName, getPhoneNumber]);
 
   // ============================================
-  // MUTATIONS - ALL WITH CORRECT SCHEMAS
+  // MUTATIONS
   // ============================================
 
   // Send Message
@@ -587,7 +576,8 @@ export default function Inbox() {
     mutationFn: async ({ conversationId, content }: { conversationId: string; content: string }) => {
       const conv = conversations.find((c) => c.id === conversationId);
       if (!conv) throw new Error("Conversation not found");
-      await supabase.from("messages").insert({
+
+      const { error: msgError } = await supabase.from("messages").insert({
         conversation_id: conversationId,
         tenant_id: tenantUuid,
         direction: "outbound",
@@ -597,6 +587,9 @@ export default function Inbox() {
         status: "pending",
         created_at: new Date().toISOString(),
       });
+
+      if (msgError) throw msgError;
+
       await supabase
         .from("conversations")
         .update({
@@ -608,6 +601,7 @@ export default function Inbox() {
           updated_at: new Date().toISOString(),
         })
         .eq("id", conversationId);
+
       await callWebhook(
         "/send-message",
         {
@@ -616,144 +610,138 @@ export default function Inbox() {
           message: content,
           channel: conv.channel,
         },
-        tenantUuid!,
+        tenantId!,
       );
     },
     onSuccess: () => {
       setMessageInput("");
       refetchMessages();
       refetchConversations();
-      toast.success("Message sent");
+      toast.success("Message sent!");
     },
-    onError: (err) => {
-      console.error("Send message error:", err);
-      toast.error("Failed to send message");
-    },
+    onError: (err: any) => toast.error(`Failed to send: ${err.message}`),
   });
 
-  // FIX #1 & #3: UPDATE CONTACT - NO .single()
+  // Edit Contact - Try both tenant IDs
   const updateContactMutation = useMutation({
     mutationFn: async () => {
-      if (!selectedConversation?.contact_id) {
-        throw new Error("No contact selected");
+      if (!selectedConversation?.contact_id) throw new Error("No contact selected");
+
+      const updateData = {
+        name: editName.trim() || null,
+        phone_number: editPhone.trim() || null,
+        email: editEmail.trim() || null,
+        updated_at: new Date().toISOString(),
+      };
+
+      // Try UUID first
+      if (tenantUuid) {
+        const { error } = await supabase
+          .from("customers")
+          .update(updateData)
+          .eq("id", selectedConversation.contact_id)
+          .eq("tenant_id", tenantUuid);
+        if (!error) return { success: true };
       }
-      if (!tenantUuid) {
-        throw new Error("No tenant ID");
-      }
 
-      console.log("Updating contact:", {
-        id: selectedConversation.contact_id,
-        name: editName,
-        phone: editPhone,
-        email: editEmail,
-        tenant: tenantUuid,
-      });
-
-      // DO NOT use .single() - just update and check error
-      const { error } = await supabase
-        .from("customers")
-        .update({
-          name: editName.trim() || null,
-          phone_number: editPhone.trim() || null,
-          email: editEmail.trim() || null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", selectedConversation.contact_id)
-        .eq("tenant_id", tenantUuid);
-
-      if (error) {
-        console.error("Update error:", error);
-        throw error;
+      // Try SLUG
+      if (tenantId) {
+        const { error } = await supabase
+          .from("customers")
+          .update(updateData)
+          .eq("id", selectedConversation.contact_id)
+          .eq("tenant_id", tenantId);
+        if (error) throw error;
       }
 
       return { success: true };
     },
     onSuccess: () => {
       setShowEditContactDialog(false);
-      // Invalidate ALL related queries
       queryClient.invalidateQueries({ queryKey: ["inbox-conversations"] });
       queryClient.invalidateQueries({ queryKey: ["inbox-customers"] });
       refetchCustomers();
       refetchConversations();
-      toast.success("Contact updated successfully!");
+      toast.success("Contact updated!");
     },
-    onError: (err: any) => {
-      console.error("Failed to update contact:", err);
-      toast.error(`Failed to update: ${err.message}`);
-    },
+    onError: (err: any) => toast.error(`Failed: ${err.message}`),
   });
 
-  // FIX #2: ADD NOTE - Correct implementation
+  // Add Note - Try both tenant IDs
   const addNoteMutation = useMutation({
     mutationFn: async () => {
-      if (!selectedConversation?.contact_id) {
-        throw new Error("No contact selected");
-      }
-      if (!noteText.trim()) {
-        throw new Error("Note cannot be empty");
-      }
-      if (!tenantUuid) {
-        throw new Error("No tenant ID");
-      }
+      if (!selectedConversation?.contact_id) throw new Error("No contact selected");
+      if (!noteText.trim()) throw new Error("Note cannot be empty");
 
       const customerId = selectedConversation.contact_id;
-      console.log("Adding note to customer:", customerId);
 
       // Get existing notes
-      const { data: customerData, error: fetchError } = await supabase
-        .from("customers")
-        .select("notes")
-        .eq("id", customerId)
-        .eq("tenant_id", tenantUuid);
+      let customerData: any[] | null = null;
 
-      if (fetchError) {
-        console.error("Error fetching customer:", fetchError);
-        throw fetchError;
+      if (tenantUuid) {
+        const { data } = await supabase
+          .from("customers")
+          .select("notes")
+          .eq("id", customerId)
+          .eq("tenant_id", tenantUuid);
+        customerData = data;
+      }
+      if (!customerData?.length && tenantId) {
+        const { data } = await supabase
+          .from("customers")
+          .select("notes")
+          .eq("id", customerId)
+          .eq("tenant_id", tenantId);
+        customerData = data;
       }
 
-      const customer = customerData?.[0];
-      const existingNotes = customer?.notes || "";
+      const existingNotes = customerData?.[0]?.notes || "";
       const timestamp = format(new Date(), "yyyy-MM-dd HH:mm");
       const newNotes = existingNotes
         ? `${existingNotes}\n\n[${timestamp}] ${noteText.trim()}`
         : `[${timestamp}] ${noteText.trim()}`;
 
-      const { error: updateError } = await supabase
-        .from("customers")
-        .update({
-          notes: newNotes,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", customerId)
-        .eq("tenant_id", tenantUuid);
-
-      if (updateError) {
-        console.error("Error updating notes:", updateError);
-        throw updateError;
+      // Try UUID first
+      if (tenantUuid) {
+        const { error } = await supabase
+          .from("customers")
+          .update({ notes: newNotes, updated_at: new Date().toISOString() })
+          .eq("id", customerId)
+          .eq("tenant_id", tenantUuid);
+        if (!error) return { success: true };
       }
 
-      console.log("Note added successfully");
+      // Try SLUG
+      if (tenantId) {
+        const { error } = await supabase
+          .from("customers")
+          .update({ notes: newNotes, updated_at: new Date().toISOString() })
+          .eq("id", customerId)
+          .eq("tenant_id", tenantId);
+        if (error) throw error;
+      }
+
       return { success: true };
     },
     onSuccess: () => {
       setShowNoteDialog(false);
       setNoteText("");
-      // Force refresh
       queryClient.invalidateQueries({ queryKey: ["inbox-customers"] });
       queryClient.invalidateQueries({ queryKey: ["inbox-conversations"] });
       refetchCustomers();
       toast.success("Note added!");
     },
-    onError: (err: any) => {
-      console.error("Failed to add note:", err);
-      toast.error(`Failed: ${err.message}`);
-    },
+    onError: (err: any) => toast.error(`Failed: ${err.message}`),
   });
 
-  // FIX #3: CREATE DEAL - Correct schema from Deals.tsx
+  // ============================================
+  // CREATE DEAL - CORRECT SCHEMA
+  // Schema: tenant_id (SLUG), title, value, weighted_value, stage, probability,
+  //         contact_name, company_name, email, phone, contact_id
+  // ============================================
   const createDealMutation = useMutation({
     mutationFn: async () => {
-      if (!tenantUuid) throw new Error("No tenant ID");
+      if (!tenantId) throw new Error("No tenant ID");
       if (!dealTitle.trim()) throw new Error("Deal title required");
 
       const value = parseFloat(dealValue) || 0;
@@ -761,71 +749,39 @@ export default function Inbox() {
       const probability = stageConfig?.probability || 10;
       const weightedValue = (value * probability) / 100;
 
-      const contactName = dealContactName || (selectedConversation ? getDisplayName(selectedConversation) : "");
-      const companyName = dealCompanyName || selectedCustomer?.company_name || "";
-      const email = dealEmail || selectedCustomer?.email || "";
-      const phone = dealPhone || getPhoneNumber(selectedConversation) || "";
+      const contactName = dealContactName || (selectedConversation ? getDisplayName(selectedConversation) : null);
+      const contactPhone = dealPhone || getPhoneNumber(selectedConversation) || null;
+      const contactEmail = dealEmail || selectedCustomer?.email || null;
 
-      console.log("Creating deal:", {
-        tenantUuid,
-        title: dealTitle,
-        value,
-        stage: dealStage,
-        probability,
-        weightedValue,
-      });
+      console.log("Creating deal with CORRECT schema:");
+      console.log("tenant_id (SLUG):", tenantId);
 
-      // Try webhook first
-      const webhookResult = await callWebhook(
-        "/deal-create",
-        {
+      // CORRECT SCHEMA based on SQL query results
+      const { data, error } = await supabase
+        .from("deals")
+        .insert({
+          tenant_id: tenantId, // SLUG!
           title: dealTitle.trim(),
           value: value,
+          weighted_value: weightedValue,
+          currency: "AED",
           stage: dealStage,
-          company_name: companyName,
+          probability: probability,
           contact_name: contactName,
-          email: email,
-          phone: phone,
-        },
-        tenantUuid,
-      );
+          company_name: dealCompanyName || null,
+          email: contactEmail,
+          phone: contactPhone,
+          contact_id: selectedConversation?.contact_id || null,
+        })
+        .select();
 
-      if (!webhookResult.success) {
-        // Fallback to direct insert - EXACT schema from Deals.tsx
-        const { data, error } = await supabase
-          .from("deals")
-          .insert({
-            tenant_id: tenantUuid,
-            title: dealTitle.trim(),
-            value: value,
-            weighted_value: weightedValue,
-            stage: dealStage,
-            probability: probability,
-            company_name: companyName,
-            contact_name: contactName,
-            email: email,
-            phone: phone,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          .select();
-
-        if (error) {
-          console.error("Deal insert error:", error);
-          throw error;
-        }
-        console.log("Deal created via direct insert:", data);
+      if (error) {
+        console.error("Deal insert error:", error);
+        throw error;
       }
 
-      // Update customer lifecycle
-      if (selectedConversation?.contact_id) {
-        await supabase
-          .from("customers")
-          .update({ lifecycle_stage: "opportunity", updated_at: new Date().toISOString() })
-          .eq("id", selectedConversation.contact_id);
-      }
-
-      return { success: true };
+      console.log("Deal created:", data);
+      return data;
     },
     onSuccess: () => {
       setShowDealDialog(false);
@@ -839,58 +795,48 @@ export default function Inbox() {
       queryClient.invalidateQueries({ queryKey: ["deals"] });
       toast.success("Deal created! Check Deal Tracker.");
     },
-    onError: (err: any) => {
-      console.error("Failed to create deal:", err);
-      toast.error(`Failed: ${err.message}`);
-    },
+    onError: (err: any) => toast.error(`Failed: ${err.message}`),
   });
 
-  // FIX #4: BOOK APPOINTMENT - ACTUAL DB SCHEMA from workflow
-  // DB uses: appointment_date, appointment_time (SEPARATE FIELDS)
+  // ============================================
+  // BOOK APPOINTMENT - CORRECT SCHEMA
+  // Schema: tenant_id (SLUG), customer_id, appointment_date (DATE),
+  //         start_time (TIME), end_time (TIME), duration_minutes,
+  //         appointment_status, service_name, notes
+  // ============================================
   const bookAppointmentMutation = useMutation({
     mutationFn: async () => {
-      if (!tenantUuid) throw new Error("No tenant ID");
+      if (!tenantId) throw new Error("No tenant ID");
       if (!appointmentDate) throw new Error("Date is required");
-      if (!selectedConversation?.contact_id) throw new Error("No customer selected");
 
-      // Get customer info
-      const customerName = selectedConversation ? getDisplayName(selectedConversation) : "";
-      const customerPhone = getPhoneNumber(selectedConversation) || "";
-      const customerEmail = selectedCustomer?.email || "";
-
-      // Format date as YYYY-MM-DD
+      // Format date as YYYY-MM-DD for appointment_date column
       const dateStr = format(appointmentDate, "yyyy-MM-dd");
-      // Time is already in HH:mm format
-      const timeStr = appointmentTime;
 
-      // Generate booking ID
-      const bookingId = `BK${Date.now()}`;
+      // Format times as HH:MM:SS for start_time and end_time columns
+      const startTimeStr = `${appointmentTime}:00`;
+      const [hours, minutes] = appointmentTime.split(":").map(Number);
+      const endHour = hours + 1;
+      const endTimeStr = `${endHour.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:00`;
 
-      console.log("Booking appointment:", {
-        tenantUuid,
-        bookingId,
-        customerName,
-        date: dateStr,
-        time: timeStr,
-        service: appointmentService,
-      });
+      console.log("Creating appointment with CORRECT schema:");
+      console.log("tenant_id (SLUG):", tenantId);
+      console.log("appointment_date:", dateStr);
+      console.log("start_time:", startTimeStr);
+      console.log("end_time:", endTimeStr);
 
-      // ACTUAL DB SCHEMA from 420_main_v2.json workflow
+      // CORRECT SCHEMA based on SQL query results
       const { data, error } = await supabase
         .from("appointments")
         .insert({
-          booking_id: bookingId,
-          tenant_id: tenantUuid,
-          customer_name: customerName,
-          customer_phone: customerPhone,
-          customer_email: customerEmail,
-          service: appointmentService || industryConfig.services[0] || "Consultation",
-          appointment_date: dateStr, // DATE ONLY: "2026-01-16"
-          appointment_time: timeStr, // TIME ONLY: "10:00"
-          provider: null,
+          tenant_id: tenantId, // SLUG!
+          customer_id: selectedConversation?.contact_id || null,
+          appointment_date: dateStr, // DATE format: "2025-01-16"
+          start_time: startTimeStr, // TIME format: "10:00:00"
+          end_time: endTimeStr, // TIME format: "11:00:00"
+          duration_minutes: 60,
+          appointment_status: "scheduled", // NOT "status"!
+          service_name: appointmentService || null,
           notes: appointmentNotes.trim() || null,
-          source: "inbox",
-          status: "pending",
           reminder_sent: false,
         })
         .select();
@@ -901,21 +847,6 @@ export default function Inbox() {
       }
 
       console.log("Appointment created:", data);
-
-      // Also call webhook to trigger notifications
-      await callWebhook(
-        "/book-appointment",
-        {
-          booking_id: bookingId,
-          customer_name: customerName,
-          customer_phone: customerPhone,
-          appointment_date: dateStr,
-          appointment_time: timeStr,
-          service: appointmentService,
-        },
-        tenantUuid,
-      );
-
       return data;
     },
     onSuccess: () => {
@@ -925,12 +856,9 @@ export default function Inbox() {
       setAppointmentService("");
       setAppointmentNotes("");
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
-      toast.success("Appointment booked! Check Appointments page.");
+      toast.success("Appointment booked!");
     },
-    onError: (err: any) => {
-      console.error("Failed to book appointment:", err);
-      toast.error(`Failed: ${err.message}`);
-    },
+    onError: (err: any) => toast.error(`Failed: ${err.message}`),
   });
 
   // Escalate
@@ -938,8 +866,6 @@ export default function Inbox() {
     mutationFn: async () => {
       if (!selectedConversationId) throw new Error("No conversation");
       if (!escalationReason) throw new Error("Reason required");
-
-      console.log("Escalating:", selectedConversationId);
 
       const { error } = await supabase
         .from("conversations")
@@ -959,14 +885,9 @@ export default function Inbox() {
         {
           event_type: "conversation_escalated",
           entity_id: selectedConversationId,
-          data: {
-            reason: escalationReason,
-            customer_name: selectedConversation ? getDisplayName(selectedConversation) : null,
-            customer_phone: getPhoneNumber(selectedConversation),
-            channel: selectedConversation?.channel,
-          },
+          data: { reason: escalationReason },
         },
-        tenantUuid!,
+        tenantId!,
       );
     },
     onSuccess: () => {
@@ -975,38 +896,28 @@ export default function Inbox() {
       queryClient.invalidateQueries({ queryKey: ["inbox-conversations"] });
       toast.success("Escalated - team notified");
     },
-    onError: (err: any) => {
-      toast.error(`Failed: ${err.message}`);
-    },
+    onError: (err: any) => toast.error(`Failed: ${err.message}`),
   });
 
-  // FIX #5: UPDATE STATUS - CLEARS ESCALATION FLAGS
+  // Update Status
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      console.log("Updating status:", { id, status });
-
       const updates: Record<string, any> = {
         status,
         updated_at: new Date().toISOString(),
       };
-
-      // CRITICAL: Clear escalation flags when resolving or closing
       if (status === "resolved" || status === "closed") {
         updates.requires_human = false;
         updates.priority = "normal";
       }
-
       const { error } = await supabase.from("conversations").update(updates).eq("id", id);
-
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inbox-conversations"] });
       toast.success("Status updated");
     },
-    onError: (err: any) => {
-      toast.error(`Failed: ${err.message}`);
-    },
+    onError: (err: any) => toast.error(`Failed: ${err.message}`),
   });
 
   // Transfer
@@ -1020,15 +931,6 @@ export default function Inbox() {
           updated_at: new Date().toISOString(),
         })
         .eq("id", selectedConversationId);
-      await callWebhook(
-        "/orchestrator",
-        {
-          event_type: "conversation_transferred",
-          entity_id: selectedConversationId,
-          data: { to_staff_id: selectedStaffId, reason: transferReason },
-        },
-        tenantUuid!,
-      );
     },
     onSuccess: () => {
       setShowTransferDialog(false);
@@ -1037,7 +939,6 @@ export default function Inbox() {
       queryClient.invalidateQueries({ queryKey: ["inbox-conversations"] });
       toast.success("Transferred");
     },
-    onError: () => toast.error("Failed to transfer"),
   });
 
   // Assign
@@ -1072,7 +973,7 @@ export default function Inbox() {
           customer_id: selectedConversation?.contact_id,
           phone_number: phone,
         },
-        tenantUuid!,
+        tenantId!,
       );
       window.open(`tel:${phone}`, "_self");
     },
@@ -1080,19 +981,30 @@ export default function Inbox() {
       setShowCallDialog(false);
       toast.success("Call initiated");
     },
-    onError: () => toast.error("Failed to initiate call"),
   });
 
   // Consent
   const updateConsentMutation = useMutation({
     mutationFn: async ({ customerId, field, value }: { customerId: string; field: string; value: boolean }) => {
-      await supabase
-        .from("customers")
-        .update({
-          [field]: value,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", customerId);
+      const updateData = { [field]: value, updated_at: new Date().toISOString() };
+
+      if (tenantUuid) {
+        const { error } = await supabase
+          .from("customers")
+          .update(updateData)
+          .eq("id", customerId)
+          .eq("tenant_id", tenantUuid);
+        if (!error) return;
+      }
+
+      if (tenantId) {
+        const { error } = await supabase
+          .from("customers")
+          .update(updateData)
+          .eq("id", customerId)
+          .eq("tenant_id", tenantId);
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inbox-customers"] });
@@ -1201,9 +1113,7 @@ export default function Inbox() {
       )
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => {
         if ((payload.new as any).conversation_id === selectedConversationId) refetchMessages();
-        if (!isMuted && (payload.new as any).direction === "inbound") {
-          toast.info("New message received");
-        }
+        if (!isMuted && (payload.new as any).direction === "inbound") toast.info("New message received");
       })
       .subscribe();
     return () => {
@@ -1229,7 +1139,7 @@ export default function Inbox() {
   return (
     <TooltipProvider>
       <div className="h-screen flex flex-col bg-background overflow-hidden">
-        {/* HEADER WITH ALL CHANNELS */}
+        {/* HEADER */}
         <nav className="h-14 border-b px-4 flex items-center justify-between bg-card shrink-0">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" onClick={() => setIsCollapsed(!isCollapsed)}>
@@ -1241,7 +1151,7 @@ export default function Inbox() {
             </div>
           </div>
 
-          {/* CHANNEL BUTTONS - ALL 15 */}
+          {/* CHANNEL BUTTONS */}
           <ScrollArea className="max-w-2xl">
             <div className="flex gap-1 px-1">
               <button
@@ -1255,7 +1165,6 @@ export default function Inbox() {
               >
                 All
               </button>
-              {/* Primary channels (first 8) */}
               {PRIMARY_CHANNEL_IDS.map((chId) => {
                 const ch = ALL_CHANNELS[chId];
                 return (
@@ -1277,7 +1186,6 @@ export default function Inbox() {
                   </Tooltip>
                 );
               })}
-              {/* More channels dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="px-2.5 py-1.5 rounded-full text-xs font-medium text-muted-foreground hover:bg-muted flex items-center gap-1">
@@ -1308,7 +1216,7 @@ export default function Inbox() {
                   {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>{isMuted ? "Unmute" : "Mute"} notifications</TooltipContent>
+              <TooltipContent>{isMuted ? "Unmute" : "Mute"}</TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -1336,7 +1244,7 @@ export default function Inbox() {
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search conversations..."
+                    placeholder="Search..."
                     className="pl-8 h-9 text-sm"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -1371,7 +1279,7 @@ export default function Inbox() {
                     <SheetContent className="w-80">
                       <SheetHeader>
                         <SheetTitle className="flex justify-between">
-                          Filters
+                          Filters{" "}
                           <Button variant="ghost" size="sm" onClick={clearFilters}>
                             Clear
                           </Button>
@@ -1451,11 +1359,6 @@ export default function Inbox() {
                   <div className="p-8 text-center">
                     <MessageSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground/30" />
                     <p className="text-muted-foreground">No conversations found</p>
-                    {selectedChannel !== "all" && (
-                      <Button variant="link" size="sm" onClick={() => setSelectedChannel("all")} className="mt-2">
-                        View all channels
-                      </Button>
-                    )}
                   </div>
                 ) : (
                   filteredConversations.map((conv) => {
@@ -1522,14 +1425,6 @@ export default function Inbox() {
                                   Escalated
                                 </Badge>
                               )}
-                              {conv.priority === "high" && !conv.requires_human && (
-                                <Badge
-                                  variant="outline"
-                                  className="text-[10px] h-4 px-1.5 border-orange-500 text-orange-500"
-                                >
-                                  High Priority
-                                </Badge>
-                              )}
                             </div>
                           </div>
                         </div>
@@ -1571,43 +1466,23 @@ export default function Inbox() {
                         >
                           {getChannelConfig(selectedConversation.channel).name}
                         </Badge>
-                        {currentPhoneNumber ? (
-                          <span>{currentPhoneNumber}</span>
-                        ) : (
-                          <span className="text-orange-500 cursor-pointer" onClick={openEditContact}>
-                            No phone - click edit
-                          </span>
-                        )}
+                        {currentPhoneNumber || <span className="text-orange-500">No phone</span>}
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setShowCallDialog(true)}
-                          disabled={!currentPhoneNumber}
-                        >
-                          <Phone className="h-4 w-4 mr-1" />
-                          Call
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>{currentPhoneNumber ? "Call customer" : "No phone number"}</TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="outline" size="icon" onClick={() => setShowDetailsPanel(!showDetailsPanel)}>
-                          {showDetailsPanel ? (
-                            <PanelRightClose className="h-4 w-4" />
-                          ) : (
-                            <PanelRight className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>{showDetailsPanel ? "Hide" : "Show"} details</TooltipContent>
-                    </Tooltip>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowCallDialog(true)}
+                      disabled={!currentPhoneNumber}
+                    >
+                      <Phone className="h-4 w-4 mr-1" />
+                      Call
+                    </Button>
+                    <Button variant="outline" size="icon" onClick={() => setShowDetailsPanel(!showDetailsPanel)}>
+                      {showDetailsPanel ? <PanelRightClose className="h-4 w-4" /> : <PanelRight className="h-4 w-4" />}
+                    </Button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline" size="icon">
@@ -1623,7 +1498,7 @@ export default function Inbox() {
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setShowAssignDialog(true)}>
                           <UserPlus className="h-4 w-4 mr-2" />
-                          Assign to Staff
+                          Assign
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setShowTransferDialog(true)}>
                           <Send className="h-4 w-4 mr-2" />
@@ -1657,7 +1532,7 @@ export default function Inbox() {
                           onClick={() => updateStatusMutation.mutate({ id: selectedConversation.id, status: "closed" })}
                         >
                           <Archive className="h-4 w-4 mr-2" />
-                          Close Conversation
+                          Close
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={openEditContact}>
@@ -1666,7 +1541,7 @@ export default function Inbox() {
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setShowComplianceDialog(true)}>
                           <Shield className="h-4 w-4 mr-2" />
-                          Compliance Settings
+                          Compliance
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -1815,7 +1690,7 @@ export default function Inbox() {
                         )}
                       </div>
 
-                      {/* Notes Section */}
+                      {/* NOTES SECTION */}
                       {selectedCustomer?.notes && (
                         <>
                           <Separator className="my-4" />
@@ -1824,7 +1699,7 @@ export default function Inbox() {
                               <StickyNote className="h-4 w-4" />
                               Notes
                             </h4>
-                            <div className="bg-muted/50 rounded-lg p-3 text-sm text-muted-foreground whitespace-pre-wrap max-h-40 overflow-y-auto">
+                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-gray-700 whitespace-pre-wrap max-h-40 overflow-y-auto">
                               {selectedCustomer.notes}
                             </div>
                           </div>
@@ -1833,7 +1708,6 @@ export default function Inbox() {
 
                       <Separator className="my-4" />
 
-                      {/* Quick Actions */}
                       <div className="space-y-2">
                         <h4 className="text-sm font-medium mb-2">Quick Actions</h4>
                         <Button
@@ -1868,7 +1742,7 @@ export default function Inbox() {
                 <div className="text-center p-8">
                   <MessageSquare className="h-16 w-16 mx-auto mb-4 text-muted-foreground/30" />
                   <h2 className="text-xl font-semibold mb-2">Select a conversation</h2>
-                  <p className="text-muted-foreground">Choose a conversation from the sidebar to start chatting</p>
+                  <p className="text-muted-foreground">Choose a conversation from the sidebar</p>
                 </div>
               </div>
             )}
@@ -1879,12 +1753,11 @@ export default function Inbox() {
         {/* DIALOGS */}
         {/* ============================================ */}
 
-        {/* Edit Contact Dialog */}
+        {/* Edit Contact */}
         <Dialog open={showEditContactDialog} onOpenChange={setShowEditContactDialog}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Edit Contact</DialogTitle>
-              <DialogDescription>Update customer information</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
@@ -1910,57 +1783,22 @@ export default function Inbox() {
                 Cancel
               </Button>
               <Button onClick={() => updateContactMutation.mutate()} disabled={updateContactMutation.isPending}>
-                {updateContactMutation.isPending ? "Saving..." : "Save Changes"}
+                {updateContactMutation.isPending ? "Saving..." : "Save"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* Assign Dialog */}
-        <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Assign Conversation</DialogTitle>
-              <DialogDescription>Assign this conversation to a team member</DialogDescription>
-            </DialogHeader>
-            <div className="py-4">
-              <Label>Select Staff Member</Label>
-              <Select value={selectedStaffId} onValueChange={setSelectedStaffId}>
-                <SelectTrigger className="mt-2">
-                  <SelectValue placeholder="Select staff member" />
-                </SelectTrigger>
-                <SelectContent>
-                  {staffMembers.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.full_name || s.email}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowAssignDialog(false)}>
-                Cancel
-              </Button>
-              <Button onClick={() => assignMutation.mutate()} disabled={!selectedStaffId || assignMutation.isPending}>
-                {assignMutation.isPending ? "Assigning..." : "Assign"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Note Dialog */}
+        {/* Add Note */}
         <Dialog open={showNoteDialog} onOpenChange={setShowNoteDialog}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Add Note</DialogTitle>
-              <DialogDescription>
-                Add a note to this customer's record. Notes will be visible in the details panel.
-              </DialogDescription>
+              <DialogDescription>Notes appear in the Details panel</DialogDescription>
             </DialogHeader>
             <div className="py-4">
               <Textarea
-                placeholder="Enter your note here..."
+                placeholder="Enter your note..."
                 value={noteText}
                 onChange={(e) => setNoteText(e.target.value)}
                 rows={4}
@@ -1977,12 +1815,12 @@ export default function Inbox() {
           </DialogContent>
         </Dialog>
 
-        {/* Deal Dialog */}
+        {/* Create Deal */}
         <Dialog open={showDealDialog} onOpenChange={setShowDealDialog}>
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Create Deal</DialogTitle>
-              <DialogDescription>Add a new deal to the Deal Tracker pipeline</DialogDescription>
+              <DialogDescription>Deal will appear in Deal Tracker</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
@@ -2022,7 +1860,7 @@ export default function Inbox() {
               <div className="space-y-2">
                 <Label>Company Name</Label>
                 <Input
-                  placeholder="Company name"
+                  placeholder="Company"
                   value={dealCompanyName}
                   onChange={(e) => setDealCompanyName(e.target.value)}
                 />
@@ -2060,12 +1898,12 @@ export default function Inbox() {
           </DialogContent>
         </Dialog>
 
-        {/* Book Appointment Dialog */}
+        {/* Book Appointment */}
         <Dialog open={showBookDialog} onOpenChange={setShowBookDialog}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Book Appointment</DialogTitle>
-              <DialogDescription>Schedule an appointment for this customer</DialogDescription>
+              <DialogDescription>Appointment will appear in Appointments page</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
@@ -2109,7 +1947,7 @@ export default function Inbox() {
                     <SelectValue placeholder="Select service" />
                   </SelectTrigger>
                   <SelectContent>
-                    {industryConfig.services.map((s) => (
+                    {industryServices.map((s) => (
                       <SelectItem key={s} value={s}>
                         {s}
                       </SelectItem>
@@ -2135,7 +1973,7 @@ export default function Inbox() {
                 onClick={() => bookAppointmentMutation.mutate()}
                 disabled={!appointmentDate || bookAppointmentMutation.isPending}
               >
-                {bookAppointmentMutation.isPending ? "Booking..." : "Book Appointment"}
+                {bookAppointmentMutation.isPending ? "Booking..." : "Book"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -2154,14 +1992,14 @@ export default function Inbox() {
                     <Phone className="h-10 w-10 text-green-600" />
                   </div>
                   <p className="text-2xl font-semibold mb-2">{currentPhoneNumber}</p>
-                  <p className="text-muted-foreground">Ready to call {getDisplayName(selectedConversation!)}</p>
+                  <p className="text-muted-foreground">Ready to call</p>
                 </>
               ) : (
                 <>
                   <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-yellow-100 flex items-center justify-center">
                     <AlertCircle className="h-10 w-10 text-yellow-600" />
                   </div>
-                  <p className="text-lg font-medium mb-2">No phone number available</p>
+                  <p className="text-lg font-medium mb-2">No phone number</p>
                   <Button
                     variant="outline"
                     size="sm"
@@ -2170,7 +2008,7 @@ export default function Inbox() {
                       openEditContact();
                     }}
                   >
-                    Add Phone Number
+                    Add Phone
                   </Button>
                 </>
               )}
@@ -2181,39 +2019,37 @@ export default function Inbox() {
               </Button>
               <Button
                 onClick={() => initiateCallMutation.mutate()}
-                disabled={!currentPhoneNumber || initiateCallMutation.isPending}
+                disabled={!currentPhoneNumber}
                 className="bg-green-600 hover:bg-green-700"
               >
                 <PhoneCall className="h-4 w-4 mr-2" />
-                {initiateCallMutation.isPending ? "Calling..." : "Call Now"}
+                Call Now
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* Escalate Dialog */}
+        {/* Escalate */}
         <Dialog open={showEscalateDialog} onOpenChange={setShowEscalateDialog}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-orange-500" />
-                Escalate Conversation
+                Escalate
               </DialogTitle>
-              <DialogDescription>Escalate this conversation to require human intervention</DialogDescription>
             </DialogHeader>
             <div className="py-4">
-              <Label>Reason for Escalation</Label>
+              <Label>Reason</Label>
               <Select value={escalationReason} onValueChange={setEscalationReason}>
                 <SelectTrigger className="mt-2">
                   <SelectValue placeholder="Select reason" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="complex">Complex Inquiry</SelectItem>
-                  <SelectItem value="complaint">Customer Complaint</SelectItem>
-                  <SelectItem value="urgent">Urgent Matter</SelectItem>
-                  <SelectItem value="high_value">High Value Customer</SelectItem>
+                  <SelectItem value="complaint">Complaint</SelectItem>
+                  <SelectItem value="urgent">Urgent</SelectItem>
+                  <SelectItem value="high_value">High Value</SelectItem>
                   <SelectItem value="ai_limitation">AI Cannot Handle</SelectItem>
-                  <SelectItem value="sensitive">Sensitive Topic</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -2232,19 +2068,18 @@ export default function Inbox() {
           </DialogContent>
         </Dialog>
 
-        {/* Transfer Dialog */}
+        {/* Transfer */}
         <Dialog open={showTransferDialog} onOpenChange={setShowTransferDialog}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Transfer Conversation</DialogTitle>
-              <DialogDescription>Transfer this conversation to another team member</DialogDescription>
+              <DialogTitle>Transfer</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label>Transfer To</Label>
                 <Select value={selectedStaffId} onValueChange={setSelectedStaffId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select team member" />
+                    <SelectValue placeholder="Select staff" />
                   </SelectTrigger>
                   <SelectContent>
                     {staffMembers.map((s) => (
@@ -2256,9 +2091,9 @@ export default function Inbox() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Reason (Optional)</Label>
+                <Label>Reason</Label>
                 <Textarea
-                  placeholder="Why are you transferring this conversation?"
+                  placeholder="Optional reason"
                   value={transferReason}
                   onChange={(e) => setTransferReason(e.target.value)}
                   rows={2}
@@ -2279,22 +2114,49 @@ export default function Inbox() {
           </DialogContent>
         </Dialog>
 
-        {/* Template Dialog */}
+        {/* Assign */}
+        <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Assign</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <Label>Assign To</Label>
+              <Select value={selectedStaffId} onValueChange={setSelectedStaffId}>
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="Select staff" />
+                </SelectTrigger>
+                <SelectContent>
+                  {staffMembers.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.full_name || s.email}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowAssignDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={() => assignMutation.mutate()} disabled={!selectedStaffId || assignMutation.isPending}>
+                {assignMutation.isPending ? "Assigning..." : "Assign"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Template */}
         <Dialog open={showTemplateDialog} onOpenChange={setShowTemplateDialog}>
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>Message Templates</DialogTitle>
-              <DialogDescription>Select a template to use</DialogDescription>
+              <DialogTitle>Templates</DialogTitle>
             </DialogHeader>
             <div className="py-4 grid gap-3 max-h-80 overflow-y-auto">
               {DEFAULT_TEMPLATES.map((t) => (
-                <Card
-                  key={t.id}
-                  className="cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => handleUseTemplate(t)}
-                >
+                <Card key={t.id} className="cursor-pointer hover:shadow-md" onClick={() => handleUseTemplate(t)}>
                   <CardHeader className="p-3 pb-1">
-                    <CardTitle className="text-sm flex items-center justify-between">
+                    <CardTitle className="text-sm flex justify-between">
                       {t.name}
                       <Badge variant="outline" className="text-[10px]">
                         {t.category}
@@ -2315,79 +2177,65 @@ export default function Inbox() {
           </DialogContent>
         </Dialog>
 
-        {/* Compliance Dialog */}
+        {/* Compliance */}
         <Dialog open={showComplianceDialog} onOpenChange={setShowComplianceDialog}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Shield className="h-5 w-5" />
-                Compliance Settings
+                Compliance
               </DialogTitle>
-              <DialogDescription>Manage customer consent and compliance</DialogDescription>
             </DialogHeader>
             {selectedCustomer && (
               <div className="space-y-4 py-4">
-                <div className="bg-muted/50 rounded-lg p-3">
-                  <h4 className="text-sm font-medium mb-2">{industryConfig.name} Compliance</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {industryConfig.compliance.map((r) => (
-                      <Badge key={r} variant="outline">
-                        {r}
-                      </Badge>
-                    ))}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Marketing Consent</Label>
+                    <p className="text-xs text-muted-foreground">Allow marketing</p>
                   </div>
+                  <Switch
+                    checked={selectedCustomer.consent_marketing || false}
+                    onCheckedChange={(v) =>
+                      updateConsentMutation.mutate({
+                        customerId: selectedCustomer.id,
+                        field: "consent_marketing",
+                        value: v,
+                      })
+                    }
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Data Processing</Label>
+                    <p className="text-xs text-muted-foreground">Allow data processing</p>
+                  </div>
+                  <Switch
+                    checked={selectedCustomer.consent_data_processing || false}
+                    onCheckedChange={(v) =>
+                      updateConsentMutation.mutate({
+                        customerId: selectedCustomer.id,
+                        field: "consent_data_processing",
+                        value: v,
+                      })
+                    }
+                  />
                 </div>
                 <Separator />
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label>Marketing Consent</Label>
-                      <p className="text-xs text-muted-foreground">Allow marketing communications</p>
-                    </div>
-                    <Switch
-                      checked={selectedCustomer.consent_marketing || false}
-                      onCheckedChange={(v) =>
-                        updateConsentMutation.mutate({
-                          customerId: selectedCustomer.id,
-                          field: "consent_marketing",
-                          value: v,
-                        })
-                      }
-                    />
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-red-600">Do Not Contact</Label>
+                    <p className="text-xs text-muted-foreground">Block all contact</p>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label>Data Processing Consent</Label>
-                      <p className="text-xs text-muted-foreground">Allow data processing</p>
-                    </div>
-                    <Switch
-                      checked={selectedCustomer.consent_data_processing || false}
-                      onCheckedChange={(v) =>
-                        updateConsentMutation.mutate({
-                          customerId: selectedCustomer.id,
-                          field: "consent_data_processing",
-                          value: v,
-                        })
-                      }
-                    />
-                  </div>
-                  <Separator />
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label className="text-red-600">Do Not Contact</Label>
-                      <p className="text-xs text-muted-foreground">Block all communications</p>
-                    </div>
-                    <Switch
-                      checked={selectedCustomer.do_not_contact || false}
-                      onCheckedChange={(v) =>
-                        updateConsentMutation.mutate({
-                          customerId: selectedCustomer.id,
-                          field: "do_not_contact",
-                          value: v,
-                        })
-                      }
-                    />
-                  </div>
+                  <Switch
+                    checked={selectedCustomer.do_not_contact || false}
+                    onCheckedChange={(v) =>
+                      updateConsentMutation.mutate({
+                        customerId: selectedCustomer.id,
+                        field: "do_not_contact",
+                        value: v,
+                      })
+                    }
+                  />
                 </div>
               </div>
             )}
