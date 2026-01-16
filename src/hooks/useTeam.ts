@@ -611,8 +611,8 @@ export function useTeam() {
 // ============================================================================
 
 export function usePermissions() {
-  const { tenantId } = useTenant();
-  const orgId = tenantId;
+  const { tenantConfig } = useTenant();
+  const orgId = tenantConfig?.id;
   const [currentUserHierarchy, setCurrentUserHierarchy] = useState<number>(0);
   const [userPermissions, setUserPermissions] = useState<Record<string, number>>({});
 
