@@ -430,6 +430,8 @@ export default function Inbox() {
       return (data || []) as Customer[];
     },
     enabled: !!tenantUuid,
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   const customersMap = useMemo(() => {
