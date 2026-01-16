@@ -114,7 +114,7 @@ import {
   Slack,
   MessageSquareMore,
 } from "lucide-react";
-import { format, isToday, isYesterday, addHours } from "date-fns";
+import { format, isToday, isYesterday, addHours, setMinutes, setHours } from "date-fns";
 import { cn } from "@/lib/utils";
 
 // ============================================
@@ -696,14 +696,17 @@ export default function Inbox() {
     mutationFn: async () => {
       if (!selectedConversation?.contact_id) throw new Error("No contact selected");
 
-      // CRITICAL FIX: Use "phone" not "phone_number"!
+      // ISSUE 4 FIX: Update BOTH phone columns for schema compatibility
       const updateData: Record<string, any> = {
         updated_at: new Date().toISOString(),
       };
 
       // Only include non-empty values
       if (editName.trim()) updateData.name = editName.trim();
-      if (editPhone.trim()) updateData.phone = editPhone.trim(); // FIXED!
+      if (editPhone.trim()) {
+        updateData.phone = editPhone.trim();
+        updateData.phone_number = editPhone.trim(); // Update BOTH!
+      }
       if (editEmail.trim()) updateData.email = editEmail.trim();
 
       console.log("Updating contact with data:", updateData);
@@ -847,63 +850,46 @@ export default function Inbox() {
     mutationFn: async () => {
       if (!appointmentDate) throw new Error("Date is required");
 
+      // ISSUE 2 FIX: Include BOTH schema formats for compatibility
+      const [hours, minutes] = appointmentTime.split(":").map(Number);
+      const scheduledAt = setMinutes(setHours(appointmentDate, hours), minutes);
       const dateStr = format(appointmentDate, "yyyy-MM-dd");
       const startTimeStr = `${appointmentTime}:00`;
-      const [hours, minutes] = appointmentTime.split(":").map(Number);
       const endHour = hours + 1;
       const endTimeStr = `${endHour.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:00`;
 
       const appointmentData = {
+        tenant_id: tenantId, // Use SLUG
         customer_id: selectedConversation?.contact_id || null,
+        // NEW schema
+        scheduled_at: scheduledAt.toISOString(),
+        status: "pending",
+        // OLD schema
         appointment_date: dateStr,
         start_time: startTimeStr,
         end_time: endTimeStr,
-        duration_minutes: 60,
         appointment_status: "scheduled",
+        // Common
+        duration_minutes: 60,
         service_name: appointmentService || null,
         notes: appointmentNotes.trim() || null,
         reminder_sent: false,
       };
 
-      console.log("Booking appointment - trying SLUG first:", tenantId);
+      console.log("Booking appointment with SLUG:", tenantId);
 
-      // Try SLUG first
-      if (tenantId) {
-        const { data, error } = await supabase
-          .from("appointments")
-          .insert({
-            ...appointmentData,
-            tenant_id: tenantId,
-          })
-          .select();
+      const { data, error } = await supabase
+        .from("appointments")
+        .insert(appointmentData)
+        .select();
 
-        if (!error) {
-          console.log("Appointment created with SLUG:", data);
-          return data;
-        }
-        console.log("SLUG failed:", error.message);
-      }
-
-      // Try UUID
-      if (tenantUuid) {
-        console.log("Trying UUID:", tenantUuid);
-        const { data, error } = await supabase
-          .from("appointments")
-          .insert({
-            ...appointmentData,
-            tenant_id: tenantUuid,
-          })
-          .select();
-
-        if (!error) {
-          console.log("Appointment created with UUID:", data);
-          return data;
-        }
-        console.error("UUID also failed:", error);
+      if (error) {
+        console.error("Appointment insert error:", error);
         throw error;
       }
 
-      throw new Error("No valid tenant ID available");
+      console.log("Appointment created:", data);
+      return data;
     },
     onSuccess: () => {
       setShowBookDialog(false);
@@ -1801,12 +1787,12 @@ export default function Inbox() {
                             <Plus className="h-3 w-3" />
                           </Button>
                         </h4>
-                        {selectedCustomer?.notes ? (
-                          <div className="bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 text-sm text-foreground whitespace-pre-wrap max-h-40 overflow-y-auto">
-                            {selectedCustomer.notes}
+                        {(selectedCustomer?.notes || selectedConversation?.customer?.notes) ? (
+                          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-3 text-sm whitespace-pre-wrap max-h-40 overflow-y-auto">
+                            {selectedCustomer?.notes || selectedConversation?.customer?.notes}
                           </div>
                         ) : (
-                          <p className="text-xs text-muted-foreground italic">No notes yet. Click + to add one.</p>
+                          <p className="text-xs text-muted-foreground italic">No notes yet</p>
                         )}
                       </div>
 
