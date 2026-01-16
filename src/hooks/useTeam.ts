@@ -1,12 +1,20 @@
 // ============================================================================
 // TEAMS MANAGEMENT HOOK - src/hooks/useTeam.ts
-// Copy this file to your Lovable project at src/hooks/useTeam.ts
+// Updated with N8N webhook integration for invitation emails
 // ============================================================================
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
 import { useToast } from "@/hooks/use-toast";
+
+// ============================================================================
+// CONFIGURATION
+// ============================================================================
+
+// N8N Webhook URL for sending invitation emails
+// UPDATE THIS WITH YOUR ACTUAL N8N WEBHOOK URL
+const N8N_INVITATION_WEBHOOK = "https://your-n8n-domain.com/webhook/team-invitation";
 
 // ============================================================================
 // TYPES
@@ -88,13 +96,42 @@ export interface InviteMemberForm {
 }
 
 // ============================================================================
+// HELPER: Send Invitation Email via N8N Webhook
+// ============================================================================
+
+async function sendInvitationEmail(invitationId: string): Promise<boolean> {
+  try {
+    const response = await fetch(N8N_INVITATION_WEBHOOK, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        invitation_id: invitationId,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("Failed to send invitation email:", response.statusText);
+      return false;
+    }
+
+    const result = await response.json();
+    console.log("Invitation email sent:", result);
+    return result.success || false;
+  } catch (error) {
+    console.error("Error calling invitation webhook:", error);
+    return false;
+  }
+}
+
+// ============================================================================
 // useTeam HOOK
 // ============================================================================
 
 export function useTeam() {
-  const { tenantId } = useTenant();
-  const { toast } = useToast();
   const { tenantConfig } = useTenant();
+  const { toast } = useToast();
   const orgId = tenantConfig?.id; // This is the UUID, not the slug
 
   // State
@@ -232,9 +269,9 @@ export function useTeam() {
         capacity: {
           can_add: true,
           current_count: members.length,
-          max_size: 10,
-          plan_name: "Professional",
-          remaining_slots: 10 - members.length,
+          max_size: 1000, // Enterprise default
+          plan_name: "Enterprise",
+          remaining_slots: 1000 - members.length,
         },
       });
     }
@@ -275,6 +312,7 @@ export function useTeam() {
         const { data: user } = await supabase.auth.getUser();
         if (!user.user) throw new Error("Not authenticated");
 
+        // Create the invitation in database
         const { data: result, error } = await supabase.rpc("create_invitation", {
           p_org_id: orgId,
           p_email: data.email,
@@ -288,13 +326,19 @@ export function useTeam() {
         if (error) throw error;
 
         if (result?.success) {
+          // ✅ Send invitation email via N8N webhook
+          const emailSent = await sendInvitationEmail(result.invitation_id);
+
           toast({
-            title: "Invitation Sent",
-            description: `Invitation sent to ${data.email}`,
+            title: emailSent ? "Invitation Sent" : "Invitation Created",
+            description: emailSent
+              ? `Invitation email sent to ${data.email}`
+              : `Invitation created for ${data.email} (email delivery pending)`,
           });
+
           await fetchInvitations();
           await fetchStatistics();
-          return { success: true };
+          return { success: true, emailSent };
         } else {
           toast({
             title: "Error",
@@ -404,6 +448,7 @@ export function useTeam() {
         const { data: user } = await supabase.auth.getUser();
         if (!user.user) throw new Error("Not authenticated");
 
+        // First, update the invitation in database (regenerate token, extend expiry)
         const { data: result, error } = await supabase.rpc("resend_invitation", {
           p_invitation_id: invitationId,
           p_resent_by: user.user.id,
@@ -412,12 +457,18 @@ export function useTeam() {
         if (error) throw error;
 
         if (result?.success) {
+          // ✅ Send invitation email via N8N webhook
+          const emailSent = await sendInvitationEmail(invitationId);
+
           toast({
-            title: "Invitation Resent",
-            description: `New invitation sent to ${result.email}`,
+            title: emailSent ? "Invitation Resent" : "Invitation Updated",
+            description: emailSent
+              ? `New invitation email sent to ${result.email}`
+              : `Invitation updated for ${result.email} (email delivery pending)`,
           });
+
           await fetchInvitations();
-          return { success: true };
+          return { success: true, emailSent };
         } else {
           toast({
             title: "Error",
@@ -567,9 +618,9 @@ export function useTeam() {
       statistics?.capacity || {
         can_add: true,
         current_count: members.length,
-        max_size: 10,
-        plan_name: "Professional",
-        remaining_slots: 10 - members.length,
+        max_size: 1000,
+        plan_name: "Enterprise",
+        remaining_slots: 1000 - members.length,
       },
     [statistics, members],
   );
@@ -648,7 +699,7 @@ export function usePermissions() {
         // In production, load from role_permissions table
         const hierarchy = (memberData?.roles as any)?.hierarchy_level || 0;
         if (hierarchy >= 80) {
-          // Admin or higher
+          // Admin or higher (Owner = 100, Admin = 80)
           setUserPermissions({
             "team.view_members": 4,
             "team.invite": 4,
