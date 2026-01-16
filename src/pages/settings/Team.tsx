@@ -166,25 +166,32 @@ export default function Team() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Team Management</h2>
-          <p className="text-muted-foreground">Manage your team members, roles, and invitations</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={refreshData}>
-            <RefreshCw className="h-4 w-4" />
-          </Button>
-          {canInviteMembers && capacity.can_add && (
-            <Button onClick={() => setIsInviteModalOpen(true)}>
-              <UserPlus className="mr-2 h-4 w-4" />
-              Invite Member
-            </Button>
-          )}
-        </div>
-      </div>
+    {/* Header */}
+<div className="flex items-center justify-between">
+  <div>
+    <h2 className="text-2xl font-semibold tracking-tight">Team Management</h2>
+    <p className="text-muted-foreground">Manage your team members, roles, and invitations</p>
+    <p className="text-xs text-red-500">
+      Debug: canInvite={String(canInviteMembers)}, canAdd={String(capacity.can_add)}, hierarchy={currentUserHierarchy}
+    </p>
+  </div>
+  <div className="flex items-center gap-2">
+    <Button variant="outline" size="icon" onClick={refreshData}>
+      <RefreshCw className="h-4 w-4" />
+    </Button>
+    <Button onClick={() => setIsInviteModalOpen(true)}>
+      <UserPlus className="mr-2 h-4 w-4" />
+      Invite Member
+    </Button>
+  </div>
+</div>
+```
+
+**Tell Lovable:**
+```
+In Team.tsx, find the Header section and:
+1. Add debug text after "Manage your team members..." 
+2. Remove the condition {canInviteMembers && capacity.can_add &&} from the Invite Member button - just show the button always
 
       {/* Capacity Banner */}
       <Card className="border-dashed">
