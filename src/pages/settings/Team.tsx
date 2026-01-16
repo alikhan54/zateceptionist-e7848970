@@ -16,14 +16,14 @@ import {
   AlertCircle,
   TrendingUp,
 } from "lucide-react";
-import { useTeam, usePermissions } from "../hooks/useTeam";
+import { useTeam, usePermissions } from "@/hooks/useTeam";
 import { MemberList } from "./MemberList";
 import { InviteModal } from "./InviteModal";
 import { RoleManager } from "./RoleManager";
 import { InvitationList } from "./InvitationList";
 import { ActivityLog } from "./ActivityLog";
 import { AIInsights } from "./AIInsights";
-import type { TeamMemberFull, InviteMemberForm } from "../types/team.types";
+import type { TeamMemberFull, InviteMemberForm } from "./types/team.types";
 
 // ============================================================================
 // TYPES
