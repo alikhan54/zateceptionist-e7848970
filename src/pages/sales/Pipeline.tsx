@@ -1,5 +1,6 @@
 // ============================================================================
 // UPDATED PIPELINE.TSX - Uses Unified Contacts Table
+// FIXED: Uses tenantConfig?.id (UUID) for all database operations
 // This component shows ALL contacts in a kanban-style pipeline view
 // ============================================================================
 
@@ -677,7 +678,12 @@ function AddContactDialog({ open, onOpenChange, onAdd }: AddContactDialogProps) 
 // ============================================================================
 
 export default function Pipeline() {
-  const { tenantId } = useTenant();
+  // CRITICAL FIX: Get both tenantId (SLUG) and tenantConfig (full object with UUID)
+  const { tenantId, tenantConfig } = useTenant();
+
+  // USE THIS FOR ALL DATABASE OPERATIONS - This is the actual UUID!
+  const tenantUuid = tenantConfig?.id;
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -688,47 +694,50 @@ export default function Pipeline() {
   const [temperatureFilter, setTemperatureFilter] = useState<string>("all");
 
   // Fetch all contacts from unified contacts table
+  // FIXED: Using tenantUuid instead of tenantId
   const {
     data: contacts = [],
     isLoading: contactsLoading,
     refetch: refetchContacts,
   } = useQuery({
-    queryKey: ["contacts", "pipeline", tenantId],
+    queryKey: ["contacts", "pipeline", tenantUuid],
     queryFn: async () => {
-      if (!tenantId) return [];
+      if (!tenantUuid) return [];
 
       const { data, error } = await supabase
         .from("contacts")
         .select("*")
-        .eq("tenant_id", tenantId)
+        .eq("tenant_id", tenantUuid)
         .neq("pipeline_stage", "LOST") // Exclude lost contacts
         .order("lead_score", { ascending: false });
 
       if (error) throw error;
       return data as Contact[];
     },
-    enabled: !!tenantId,
+    enabled: !!tenantUuid,
   });
 
   // Fetch deals for value display
+  // FIXED: Using tenantUuid instead of tenantId
   const { data: deals = [] } = useQuery({
-    queryKey: ["deals", tenantId],
+    queryKey: ["deals", tenantUuid],
     queryFn: async () => {
-      if (!tenantId) return [];
+      if (!tenantUuid) return [];
 
       const { data, error } = await supabase
         .from("deals")
         .select("*")
-        .eq("tenant_id", tenantId)
+        .eq("tenant_id", tenantUuid)
         .not("stage", "in", '("Won","Lost")');
 
       if (error) throw error;
       return data as Deal[];
     },
-    enabled: !!tenantId,
+    enabled: !!tenantUuid,
   });
 
   // Move contact to new pipeline stage
+  // FIXED: Using tenantUuid instead of tenantId
   const moveToStage = useMutation({
     mutationFn: async ({ contactId, newStage }: { contactId: string; newStage: string }) => {
       const { error } = await supabase
@@ -739,12 +748,12 @@ export default function Pipeline() {
           updated_at: new Date().toISOString(),
         })
         .eq("id", contactId)
-        .eq("tenant_id", tenantId);
+        .eq("tenant_id", tenantUuid);
 
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["contacts", "pipeline", tenantId] });
+      queryClient.invalidateQueries({ queryKey: ["contacts", "pipeline", tenantUuid] });
       toast({
         title: "Contact moved",
         description: "Pipeline stage updated successfully",
@@ -760,10 +769,11 @@ export default function Pipeline() {
   });
 
   // Add new contact
+  // FIXED: Using tenantUuid instead of tenantId
   const addContact = useMutation({
     mutationFn: async (contactData: Partial<Contact>) => {
       const { error } = await supabase.from("contacts").insert({
-        tenant_id: tenantId,
+        tenant_id: tenantUuid,
         first_name: contactData.first_name,
         last_name: contactData.last_name,
         email: contactData.email || null,
@@ -779,7 +789,7 @@ export default function Pipeline() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["contacts", "pipeline", tenantId] });
+      queryClient.invalidateQueries({ queryKey: ["contacts", "pipeline", tenantUuid] });
       toast({
         title: "Contact added",
         description: "New contact created successfully",
@@ -864,6 +874,18 @@ export default function Pipeline() {
       setSelectedContact({ ...selectedContact, pipeline_stage: newStage });
     }
   };
+
+  // Show loading state while waiting for tenant config
+  if (!tenantUuid) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading tenant configuration...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col">
