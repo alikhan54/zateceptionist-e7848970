@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 
 // N8N Webhook URL for sending invitation emails
 // UPDATE THIS WITH YOUR ACTUAL N8N WEBHOOK URL
-const N8N_INVITATION_WEBHOOK = "https://your-n8n-domain.com/webhook/team-invitation";
+const N8N_INVITATION_WEBHOOK = "https://webhooks.zatesystems.com/webhook/team-invitation";
 
 // ============================================================================
 // TYPES
