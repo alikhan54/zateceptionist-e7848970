@@ -103,6 +103,9 @@ const CompanySetup = lazy(() => import("./pages/onboarding/CompanySetup"));
 // Auth
 const AuthCallback = lazy(() => import("./pages/auth/Callback"));
 
+// Invite
+const Invite = lazy(() => import("./pages/Invite"));
+
 // Other
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -140,11 +143,12 @@ const App = () => (
             <Sonner richColors closeButton position="top-right" />
             <BrowserRouter>
               <Routes>
-              {/* Public routes */}
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/auth/callback" element={<LazyPage><AuthCallback /></LazyPage>} />
-              <Route path="/onboarding" element={<LazyPage><CompanySetup /></LazyPage>} />
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+{/* Public routes */}
+<Route path="/login" element={<LoginPage />} />
+<Route path="/auth/callback" element={<LazyPage><AuthCallback /></LazyPage>} />
+<Route path="/onboarding" element={<LazyPage><CompanySetup /></LazyPage>} />
+<Route path="/invite" element={<LazyPage><Invite /></LazyPage>} />
+<Route path="/" element={<Navigate to="/dashboard" replace />} />
 
               {/* Protected routes with Layout */}
               <Route
