@@ -48,6 +48,7 @@ import {
   CreditCard,
   HelpCircle,
   LogOut,
+  Search,
 } from "lucide-react";
 import { usePermissions } from "@/hooks/useTeam";
 import { useTenant } from "@/contexts/TenantContext";
@@ -471,15 +472,33 @@ const ALL_COMMAND_GROUPS: CommandGroup[] = [
 // ============================================================================
 
 interface CommandPaletteProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
+export function CommandPalette({ open: controlledOpen, onOpenChange: controlledOnOpenChange }: CommandPaletteProps) {
   const navigate = useNavigate();
   const { currentUserHierarchy } = usePermissions();
-  const { tenantConfig } = useTenant();
   const [isMasterAdmin, setIsMasterAdmin] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+
+  // Support both controlled and uncontrolled modes
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const onOpenChange = isControlled ? controlledOnOpenChange! : setInternalOpen;
+
+  // Keyboard shortcut to open command palette
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        onOpenChange(!open);
+      }
+    };
+
+    document.addEventListener("keydown", down);
+    return () => document.removeEventListener("keydown", down);
+  }, [open, onOpenChange]);
 
   // Check if user is master_admin
   useEffect(() => {
@@ -488,7 +507,6 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
         const { data: session } = await supabase.auth.getSession();
         if (!session.session?.user) return;
 
-        // Check user's role in the profiles or a master admin table
         const { data: profile } = await supabase
           .from("profiles")
           .select("role")
@@ -509,24 +527,18 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
     return ALL_COMMAND_GROUPS.map((group) => ({
       ...group,
       items: group.items.filter((item) => {
-        // Admin-only items
         if (item.adminOnly && !isMasterAdmin) {
           return false;
         }
-
-        // Owner-only items (hierarchy 100)
         if (item.ownerOnly && currentUserHierarchy < 100) {
           return false;
         }
-
-        // Minimum hierarchy requirement
         if (item.minHierarchy && currentUserHierarchy < item.minHierarchy) {
           return false;
         }
-
         return true;
       }),
-    })).filter((group) => group.items.length > 0); // Remove empty groups
+    })).filter((group) => group.items.length > 0);
   }, [currentUserHierarchy, isMasterAdmin]);
 
   const handleSelect = useCallback(
@@ -538,51 +550,65 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   );
 
   return (
-    <CommandDialog open={open} onOpenChange={onOpenChange}>
-      <CommandInput placeholder="Search pages, actions, or type a command..." />
-      <CommandList>
-        <CommandEmpty>No results found.</CommandEmpty>
+    <>
+      {/* Search trigger button */}
+      <button
+        onClick={() => onOpenChange(true)}
+        className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-muted-foreground bg-muted/50 border border-border rounded-md hover:bg-muted transition-colors"
+      >
+        <Search className="h-4 w-4" />
+        <span className="hidden sm:inline">Search...</span>
+        <kbd className="ml-auto hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-background px-1.5 font-mono text-[10px] font-medium opacity-100">
+          <span className="text-xs">⌘</span>K
+        </kbd>
+      </button>
 
-        {filteredGroups.map((group, groupIndex) => (
-          <React.Fragment key={group.name}>
-            {groupIndex > 0 && <CommandSeparator />}
-            <CommandGroup heading={group.name}>
-              {group.items.map((item) => (
-                <CommandItem
-                  key={item.id}
-                  value={`${item.name} ${item.keywords?.join(" ") || ""}`}
-                  onSelect={() => handleSelect(item.path)}
-                >
-                  <item.icon className="mr-2 h-4 w-4" />
-                  <div className="flex flex-col">
-                    <span>{item.name}</span>
-                    {item.description && <span className="text-xs text-muted-foreground">{item.description}</span>}
-                  </div>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </React.Fragment>
-        ))}
+      <CommandDialog open={open} onOpenChange={onOpenChange}>
+        <CommandInput placeholder="Search pages, actions, or type a command..." />
+        <CommandList>
+          <CommandEmpty>No results found.</CommandEmpty>
 
-        <CommandSeparator />
-        <CommandGroup heading="Actions">
-          <CommandItem value="help support" onSelect={() => handleSelect("/help")}>
-            <HelpCircle className="mr-2 h-4 w-4" />
-            <span>Help & Support</span>
-          </CommandItem>
-          <CommandItem
-            value="logout signout"
-            onSelect={async () => {
-              await supabase.auth.signOut();
-              navigate("/login");
-            }}
-          >
-            <LogOut className="mr-2 h-4 w-4" />
-            <span>Logout</span>
-          </CommandItem>
-        </CommandGroup>
-      </CommandList>
-    </CommandDialog>
+          {filteredGroups.map((group, groupIndex) => (
+            <React.Fragment key={group.name}>
+              {groupIndex > 0 && <CommandSeparator />}
+              <CommandGroup heading={group.name}>
+                {group.items.map((item) => (
+                  <CommandItem
+                    key={item.id}
+                    value={`${item.name} ${item.keywords?.join(" ") || ""}`}
+                    onSelect={() => handleSelect(item.path)}
+                  >
+                    <item.icon className="mr-2 h-4 w-4" />
+                    <div className="flex flex-col">
+                      <span>{item.name}</span>
+                      {item.description && <span className="text-xs text-muted-foreground">{item.description}</span>}
+                    </div>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </React.Fragment>
+          ))}
+
+          <CommandSeparator />
+          <CommandGroup heading="Actions">
+            <CommandItem value="help support" onSelect={() => handleSelect("/help")}>
+              <HelpCircle className="mr-2 h-4 w-4" />
+              <span>Help & Support</span>
+            </CommandItem>
+            <CommandItem
+              value="logout signout"
+              onSelect={async () => {
+                await supabase.auth.signOut();
+                navigate("/login");
+              }}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Logout</span>
+            </CommandItem>
+          </CommandGroup>
+        </CommandList>
+      </CommandDialog>
+    </>
   );
 }
 

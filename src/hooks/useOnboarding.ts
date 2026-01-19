@@ -1049,17 +1049,4 @@ export function useOnboardingStatus() {
   };
 }
 
-// ============================================
-// EXPORT ALL HOOKS
-// ============================================
-export {
-  useOnboardingSession,
-  useBusinessAnalysis,
-  useBusinessProfile,
-  useServicesCatalog,
-  useTargetPersonas,
-  useIndustryTemplates,
-  useOnboardingChecklist,
-  useAITraining,
-  useOnboardingStatus,
-};
+// All hooks are already exported at their function definitions
