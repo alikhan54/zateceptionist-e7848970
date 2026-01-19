@@ -1,5 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+// ============================================================================
+// SECURE COMMAND PALETTE - src/components/shared/CommandPalette.tsx
+// This component filters search results based on user role/permissions
+// ============================================================================
+
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   CommandDialog,
   CommandEmpty,
@@ -8,270 +13,577 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
-} from '@/components/ui/command';
+} from "@/components/ui/command";
 import {
   LayoutDashboard,
-  Users,
-  MessageSquare,
+  Inbox,
   Calendar,
+  Users,
+  CheckSquare,
   TrendingUp,
-  Megaphone,
-  UserCircle,
-  Package,
-  Phone,
+  Target,
+  Zap,
+  FileText,
+  Mail,
   BarChart3,
   Settings,
   Shield,
-  Search,
-  Clock,
-  Sparkles,
-  FileText,
-  Mail,
-  DollarSign,
   Building2,
-} from 'lucide-react';
+  UserCog,
+  Activity,
+  Flag,
+  Phone,
+  MessageSquare,
+  Megaphone,
+  Briefcase,
+  DollarSign,
+  Package,
+  Truck,
+  Receipt,
+  Brain,
+  Mic,
+  Bell,
+  Key,
+  Database,
+  CreditCard,
+  HelpCircle,
+  LogOut,
+} from "lucide-react";
+import { usePermissions } from "@/hooks/useTeam";
+import { useTenant } from "@/contexts/TenantContext";
+import { supabase } from "@/integrations/supabase/client";
 
-interface SearchResult {
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface CommandItem {
   id: string;
-  title: string;
+  name: string;
   description?: string;
-  url: string;
-  icon: React.ReactNode;
-  category: string;
+  icon: React.ComponentType<{ className?: string }>;
+  path: string;
+  keywords?: string[];
+  // Permission requirements
+  minHierarchy?: number; // Minimum role hierarchy level required
+  requiredPermission?: string; // Specific permission code required
+  adminOnly?: boolean; // Only master_admin can see
+  ownerOnly?: boolean; // Only org owner can see
 }
 
-const navigationItems: SearchResult[] = [
-  // Core
-  { id: 'dashboard', title: 'Dashboard', url: '/dashboard', icon: <LayoutDashboard className="h-4 w-4" />, category: 'Core' },
-  { id: 'customers', title: 'Customers', url: '/customers', icon: <Users className="h-4 w-4" />, category: 'Core' },
-  { id: 'inbox', title: 'Inbox', url: '/inbox', icon: <MessageSquare className="h-4 w-4" />, category: 'Core' },
-  { id: 'appointments', title: 'Appointments', url: '/appointments', icon: <Calendar className="h-4 w-4" />, category: 'Core' },
-  { id: 'tasks', title: 'Tasks', url: '/tasks', icon: <FileText className="h-4 w-4" />, category: 'Core' },
-  
-  // Sales
-  { id: 'sales-dashboard', title: 'Sales Dashboard', url: '/sales/dashboard', icon: <TrendingUp className="h-4 w-4" />, category: 'Sales' },
-  { id: 'pipeline', title: 'Lead Pipeline', url: '/sales/pipeline', icon: <TrendingUp className="h-4 w-4" />, category: 'Sales' },
-  { id: 'auto-leadgen', title: 'Auto Lead Generation', url: '/sales/auto-leadgen', icon: <Sparkles className="h-4 w-4" />, category: 'Sales' },
-  { id: 'deals', title: 'Deals', url: '/sales/deals', icon: <DollarSign className="h-4 w-4" />, category: 'Sales' },
-  { id: 'sequences', title: 'Sequences', url: '/sales/sequences', icon: <Mail className="h-4 w-4" />, category: 'Sales' },
-  
-  // Marketing
-  { id: 'marketing', title: 'Marketing Hub', url: '/marketing', icon: <Megaphone className="h-4 w-4" />, category: 'Marketing' },
-  { id: 'content-studio', title: 'Content Studio', url: '/marketing/content', icon: <FileText className="h-4 w-4" />, category: 'Marketing' },
-  { id: 'campaigns', title: 'Campaigns', url: '/marketing/campaigns', icon: <Megaphone className="h-4 w-4" />, category: 'Marketing' },
-  { id: 'social', title: 'Social Media', url: '/marketing/social', icon: <Users className="h-4 w-4" />, category: 'Marketing' },
-  
-  // HR
-  { id: 'hr-dashboard', title: 'HR Dashboard', url: '/hr/dashboard', icon: <UserCircle className="h-4 w-4" />, category: 'HR' },
-  { id: 'employees', title: 'Employees', url: '/hr/employees', icon: <Users className="h-4 w-4" />, category: 'HR' },
-  { id: 'attendance', title: 'Attendance', url: '/hr/attendance', icon: <Clock className="h-4 w-4" />, category: 'HR' },
-  { id: 'payroll', title: 'Payroll', url: '/hr/payroll', icon: <DollarSign className="h-4 w-4" />, category: 'HR' },
-  
-  // Operations
-  { id: 'inventory', title: 'Inventory', url: '/operations/inventory', icon: <Package className="h-4 w-4" />, category: 'Operations' },
-  { id: 'orders', title: 'Orders', url: '/operations/orders', icon: <Package className="h-4 w-4" />, category: 'Operations' },
-  { id: 'vendors', title: 'Vendors', url: '/operations/vendors', icon: <Building2 className="h-4 w-4" />, category: 'Operations' },
-  
-  // Communications
-  { id: 'voice-ai', title: 'Voice AI', url: '/communications/voice', icon: <Phone className="h-4 w-4" />, category: 'Communications' },
-  { id: 'whatsapp', title: 'WhatsApp', url: '/communications/whatsapp', icon: <MessageSquare className="h-4 w-4" />, category: 'Communications' },
-  { id: 'email', title: 'Email', url: '/communications/email', icon: <Mail className="h-4 w-4" />, category: 'Communications' },
-  
-  // Analytics
-  { id: 'analytics', title: 'Analytics Hub', url: '/analytics', icon: <BarChart3 className="h-4 w-4" />, category: 'Analytics' },
-  { id: 'realtime', title: 'Realtime Dashboard', url: '/analytics/realtime', icon: <BarChart3 className="h-4 w-4" />, category: 'Analytics' },
-  { id: 'reports', title: 'Reports', url: '/analytics/reports', icon: <FileText className="h-4 w-4" />, category: 'Analytics' },
-  
-  // Settings
-  { id: 'settings', title: 'Settings', url: '/settings', icon: <Settings className="h-4 w-4" />, category: 'Settings' },
-  { id: 'integrations', title: 'Integrations', url: '/settings/integrations', icon: <Settings className="h-4 w-4" />, category: 'Settings' },
-  { id: 'team', title: 'Team', url: '/settings/team', icon: <Users className="h-4 w-4" />, category: 'Settings' },
-  
-  // Admin
-  { id: 'admin', title: 'Admin Panel', url: '/admin', icon: <Shield className="h-4 w-4" />, category: 'Admin' },
-  { id: 'tenants', title: 'Tenants', url: '/admin/tenants', icon: <Building2 className="h-4 w-4" />, category: 'Admin' },
+interface CommandGroup {
+  name: string;
+  items: CommandItem[];
+}
+
+// ============================================================================
+// COMMAND ITEMS CONFIGURATION
+// ============================================================================
+
+const ALL_COMMAND_GROUPS: CommandGroup[] = [
+  {
+    name: "Main",
+    items: [
+      {
+        id: "dashboard",
+        name: "Dashboard",
+        description: "View your dashboard",
+        icon: LayoutDashboard,
+        path: "/dashboard",
+        keywords: ["home", "overview", "main"],
+      },
+      {
+        id: "inbox",
+        name: "Inbox",
+        description: "View messages and conversations",
+        icon: Inbox,
+        path: "/inbox",
+        keywords: ["messages", "chat", "conversations"],
+      },
+      {
+        id: "appointments",
+        name: "Appointments",
+        description: "Manage appointments",
+        icon: Calendar,
+        path: "/appointments",
+        keywords: ["calendar", "schedule", "meetings"],
+      },
+      {
+        id: "customers",
+        name: "Customers",
+        description: "View and manage customers",
+        icon: Users,
+        path: "/customers",
+        keywords: ["contacts", "clients", "leads"],
+      },
+      {
+        id: "tasks",
+        name: "Tasks",
+        description: "View and manage tasks",
+        icon: CheckSquare,
+        path: "/tasks",
+        keywords: ["todo", "checklist", "work"],
+      },
+    ],
+  },
+  {
+    name: "Sales",
+    items: [
+      {
+        id: "sales-dashboard",
+        name: "Sales Dashboard",
+        description: "Sales overview and metrics",
+        icon: TrendingUp,
+        path: "/sales/dashboard",
+        keywords: ["sales", "revenue", "metrics"],
+      },
+      {
+        id: "pipeline",
+        name: "Pipeline",
+        description: "Manage sales pipeline",
+        icon: Target,
+        path: "/sales/pipeline",
+        keywords: ["leads", "deals", "opportunities"],
+      },
+      {
+        id: "auto-leadgen",
+        name: "Auto Lead Generation",
+        description: "Automated lead generation",
+        icon: Zap,
+        path: "/sales/auto-leadgen",
+        keywords: ["automation", "leads", "prospecting"],
+        minHierarchy: 60, // Manager and above
+      },
+      {
+        id: "deals",
+        name: "Deals",
+        description: "Track deals and opportunities",
+        icon: Briefcase,
+        path: "/sales/deals",
+        keywords: ["opportunities", "contracts"],
+      },
+      {
+        id: "proposals",
+        name: "Proposals",
+        description: "Create and manage proposals",
+        icon: FileText,
+        path: "/sales/proposals",
+        keywords: ["quotes", "estimates"],
+      },
+    ],
+  },
+  {
+    name: "Marketing",
+    items: [
+      {
+        id: "marketing-hub",
+        name: "Marketing Hub",
+        description: "Marketing overview",
+        icon: Megaphone,
+        path: "/marketing",
+        keywords: ["campaigns", "advertising"],
+      },
+      {
+        id: "campaigns",
+        name: "Campaigns",
+        description: "Manage marketing campaigns",
+        icon: Mail,
+        path: "/marketing/campaigns",
+        keywords: ["email", "ads"],
+      },
+      {
+        id: "content",
+        name: "Content Studio",
+        description: "Create marketing content",
+        icon: FileText,
+        path: "/marketing/content",
+        keywords: ["blog", "posts", "articles"],
+      },
+    ],
+  },
+  {
+    name: "Communications",
+    items: [
+      {
+        id: "voice-ai",
+        name: "Voice AI",
+        description: "AI voice assistant",
+        icon: Mic,
+        path: "/communications/voice",
+        keywords: ["phone", "calls", "assistant"],
+      },
+      {
+        id: "whatsapp",
+        name: "WhatsApp",
+        description: "WhatsApp messaging",
+        icon: MessageSquare,
+        path: "/communications/whatsapp",
+        keywords: ["chat", "messaging"],
+      },
+      {
+        id: "email-hub",
+        name: "Email Hub",
+        description: "Email communications",
+        icon: Mail,
+        path: "/communications/email",
+        keywords: ["mail", "inbox"],
+      },
+      {
+        id: "call-center",
+        name: "Call Center",
+        description: "Manage calls",
+        icon: Phone,
+        path: "/communications/call-center",
+        keywords: ["phone", "support"],
+      },
+    ],
+  },
+  {
+    name: "HR",
+    items: [
+      {
+        id: "hr-dashboard",
+        name: "HR Dashboard",
+        description: "HR overview",
+        icon: Users,
+        path: "/hr/dashboard",
+        keywords: ["human resources", "employees"],
+        minHierarchy: 60, // Manager and above
+      },
+      {
+        id: "employees",
+        name: "Employees",
+        description: "Manage employees",
+        icon: UserCog,
+        path: "/hr/employees",
+        keywords: ["staff", "team"],
+        minHierarchy: 60,
+      },
+      {
+        id: "recruitment",
+        name: "Recruitment",
+        description: "Hiring and recruitment",
+        icon: Users,
+        path: "/hr/recruitment",
+        keywords: ["hiring", "jobs", "candidates"],
+        minHierarchy: 60,
+      },
+    ],
+  },
+  {
+    name: "Operations",
+    items: [
+      {
+        id: "inventory",
+        name: "Inventory",
+        description: "Manage inventory",
+        icon: Package,
+        path: "/operations/inventory",
+        keywords: ["stock", "products"],
+      },
+      {
+        id: "orders",
+        name: "Orders",
+        description: "View and manage orders",
+        icon: Truck,
+        path: "/operations/orders",
+        keywords: ["shipping", "fulfillment"],
+      },
+      {
+        id: "expenses",
+        name: "Expenses",
+        description: "Track expenses",
+        icon: DollarSign,
+        path: "/operations/expenses",
+        keywords: ["costs", "spending"],
+        minHierarchy: 60,
+      },
+      {
+        id: "invoices",
+        name: "Invoices",
+        description: "Manage invoices",
+        icon: Receipt,
+        path: "/operations/invoices",
+        keywords: ["billing", "payments"],
+      },
+    ],
+  },
+  {
+    name: "Analytics",
+    items: [
+      {
+        id: "analytics-hub",
+        name: "Analytics Hub",
+        description: "View analytics",
+        icon: BarChart3,
+        path: "/analytics",
+        keywords: ["reports", "data", "metrics"],
+      },
+      {
+        id: "ai-insights",
+        name: "AI Insights",
+        description: "AI-powered insights",
+        icon: Brain,
+        path: "/analytics/ai-insights",
+        keywords: ["predictions", "recommendations"],
+        minHierarchy: 60,
+      },
+    ],
+  },
+  {
+    name: "Settings",
+    items: [
+      {
+        id: "general-settings",
+        name: "General Settings",
+        description: "Application settings",
+        icon: Settings,
+        path: "/settings",
+        keywords: ["preferences", "configuration"],
+      },
+      {
+        id: "voice-ai-settings",
+        name: "Voice AI Config",
+        description: "Configure voice AI",
+        icon: Mic,
+        path: "/settings/voice-ai",
+        keywords: ["assistant", "phone"],
+        minHierarchy: 80, // Admin and above
+      },
+      {
+        id: "integrations",
+        name: "Integrations",
+        description: "Manage integrations",
+        icon: Zap,
+        path: "/settings/integrations",
+        keywords: ["apps", "connections", "api"],
+        minHierarchy: 80, // Admin and above
+      },
+      {
+        id: "api-keys",
+        name: "API Keys",
+        description: "Manage API keys",
+        icon: Key,
+        path: "/settings/api-keys",
+        keywords: ["tokens", "access"],
+        minHierarchy: 80, // Admin and above
+      },
+      {
+        id: "team",
+        name: "Team",
+        description: "Manage team members",
+        icon: Users,
+        path: "/settings/team",
+        keywords: ["members", "roles", "permissions"],
+        minHierarchy: 60, // Manager and above for viewing, but full access needs higher
+      },
+      {
+        id: "billing",
+        name: "Billing",
+        description: "Manage billing and subscription",
+        icon: CreditCard,
+        path: "/settings/billing",
+        keywords: ["payment", "subscription", "plan"],
+        minHierarchy: 80, // Admin and above
+      },
+      {
+        id: "notifications",
+        name: "Notifications",
+        description: "Notification settings",
+        icon: Bell,
+        path: "/settings/notifications",
+        keywords: ["alerts", "email"],
+      },
+      {
+        id: "knowledge-base",
+        name: "Knowledge Base",
+        description: "Manage knowledge base",
+        icon: Database,
+        path: "/settings/knowledge-base",
+        keywords: ["docs", "help", "faq"],
+        minHierarchy: 60,
+      },
+    ],
+  },
+  {
+    name: "Admin",
+    items: [
+      {
+        id: "admin-panel",
+        name: "Admin Panel",
+        description: "System administration",
+        icon: Shield,
+        path: "/admin",
+        keywords: ["system", "administration"],
+        adminOnly: true, // Only master_admin
+      },
+      {
+        id: "tenants",
+        name: "Tenants",
+        description: "Manage all tenants",
+        icon: Building2,
+        path: "/admin/tenants",
+        keywords: ["organizations", "companies"],
+        adminOnly: true,
+      },
+      {
+        id: "admin-users",
+        name: "All Users",
+        description: "Manage all users",
+        icon: UserCog,
+        path: "/admin/users",
+        keywords: ["accounts", "members"],
+        adminOnly: true,
+      },
+      {
+        id: "system-health",
+        name: "System Health",
+        description: "Monitor system health",
+        icon: Activity,
+        path: "/admin/health",
+        keywords: ["monitoring", "status"],
+        adminOnly: true,
+      },
+      {
+        id: "audit-logs",
+        name: "Audit Logs",
+        description: "View audit logs",
+        icon: FileText,
+        path: "/admin/logs",
+        keywords: ["history", "activity"],
+        adminOnly: true,
+      },
+      {
+        id: "feature-flags",
+        name: "Feature Flags",
+        description: "Manage feature flags",
+        icon: Flag,
+        path: "/admin/features",
+        keywords: ["toggles", "experiments"],
+        adminOnly: true,
+      },
+    ],
+  },
 ];
 
-const quickActions = [
-  { id: 'new-customer', title: 'Create New Customer', description: 'Add a new customer to CRM', icon: <Users className="h-4 w-4" /> },
-  { id: 'new-campaign', title: 'Create Campaign', description: 'Start a new marketing campaign', icon: <Megaphone className="h-4 w-4" /> },
-  { id: 'new-deal', title: 'Create Deal', description: 'Add a new sales deal', icon: <DollarSign className="h-4 w-4" /> },
-  { id: 'new-task', title: 'Create Task', description: 'Add a new task', icon: <FileText className="h-4 w-4" /> },
-];
+// ============================================================================
+// COMPONENT
+// ============================================================================
 
-const RECENT_SEARCHES_KEY = 'command-palette-recent';
-const MAX_RECENT = 5;
+interface CommandPaletteProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
 
-export function CommandPalette() {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState('');
-  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const navigate = useNavigate();
+  const { currentUserHierarchy } = usePermissions();
+  const { tenantConfig } = useTenant();
+  const [isMasterAdmin, setIsMasterAdmin] = useState(false);
 
-  // Load recent searches from localStorage
+  // Check if user is master_admin
   useEffect(() => {
-    const stored = localStorage.getItem(RECENT_SEARCHES_KEY);
-    if (stored) {
+    const checkMasterAdmin = async () => {
       try {
-        setRecentSearches(JSON.parse(stored));
-      } catch {
-        setRecentSearches([]);
-      }
-    }
-  }, []);
+        const { data: session } = await supabase.auth.getSession();
+        if (!session.session?.user) return;
 
-  // Save recent search
-  const saveRecentSearch = useCallback((term: string) => {
-    if (!term.trim()) return;
-    const updated = [term, ...recentSearches.filter(s => s !== term)].slice(0, MAX_RECENT);
-    setRecentSearches(updated);
-    localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
-  }, [recentSearches]);
+        // Check user's role in the profiles or a master admin table
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", session.session.user.id)
+          .single();
 
-  // Handle keyboard shortcut
-  useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        setOpen((open) => !open);
+        setIsMasterAdmin(profile?.role === "master_admin");
+      } catch (error) {
+        console.error("Error checking master admin status:", error);
       }
     };
 
-    document.addEventListener('keydown', down);
-    return () => document.removeEventListener('keydown', down);
+    checkMasterAdmin();
   }, []);
 
-  const handleSelect = (url: string) => {
-    saveRecentSearch(search);
-    setOpen(false);
-    setSearch('');
-    navigate(url);
-  };
+  // Filter command groups based on user permissions
+  const filteredGroups = useMemo(() => {
+    return ALL_COMMAND_GROUPS.map((group) => ({
+      ...group,
+      items: group.items.filter((item) => {
+        // Admin-only items
+        if (item.adminOnly && !isMasterAdmin) {
+          return false;
+        }
 
-  const handleAction = (actionId: string) => {
-    setOpen(false);
-    setSearch('');
-    // Navigate to relevant page with action param
-    switch (actionId) {
-      case 'new-customer':
-        navigate('/customers?action=new');
-        break;
-      case 'new-campaign':
-        navigate('/marketing/campaigns?action=new');
-        break;
-      case 'new-deal':
-        navigate('/sales/deals?action=new');
-        break;
-      case 'new-task':
-        navigate('/tasks?action=new');
-        break;
-    }
-  };
+        // Owner-only items (hierarchy 100)
+        if (item.ownerOnly && currentUserHierarchy < 100) {
+          return false;
+        }
 
-  // Group navigation items by category
-  const groupedItems = navigationItems.reduce((acc, item) => {
-    if (!acc[item.category]) acc[item.category] = [];
-    acc[item.category].push(item);
-    return acc;
-  }, {} as Record<string, SearchResult[]>);
+        // Minimum hierarchy requirement
+        if (item.minHierarchy && currentUserHierarchy < item.minHierarchy) {
+          return false;
+        }
 
-  // Filter items based on search
-  const filteredGroups = Object.entries(groupedItems).reduce((acc, [category, items]) => {
-    const filtered = items.filter(item =>
-      item.title.toLowerCase().includes(search.toLowerCase()) ||
-      item.category.toLowerCase().includes(search.toLowerCase())
-    );
-    if (filtered.length > 0) acc[category] = filtered;
-    return acc;
-  }, {} as Record<string, SearchResult[]>);
+        return true;
+      }),
+    })).filter((group) => group.items.length > 0); // Remove empty groups
+  }, [currentUserHierarchy, isMasterAdmin]);
+
+  const handleSelect = useCallback(
+    (path: string) => {
+      onOpenChange(false);
+      navigate(path);
+    },
+    [navigate, onOpenChange],
+  );
 
   return (
-    <>
-      {/* Trigger button for header */}
-      <button
-        onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground bg-muted/50 rounded-lg border border-border hover:bg-muted transition-colors"
-        aria-label="Open command palette"
-      >
-        <Search className="h-4 w-4" />
-        <span className="hidden md:inline">Search...</span>
-        <kbd className="hidden md:inline-flex h-5 items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] text-muted-foreground">
-          <span className="text-xs">⌘</span>K
-        </kbd>
-      </button>
+    <CommandDialog open={open} onOpenChange={onOpenChange}>
+      <CommandInput placeholder="Search pages, actions, or type a command..." />
+      <CommandList>
+        <CommandEmpty>No results found.</CommandEmpty>
 
-      <CommandDialog open={open} onOpenChange={setOpen}>
-        <CommandInput
-          placeholder="Search pages, actions, or type a command..."
-          value={search}
-          onValueChange={setSearch}
-        />
-        <CommandList>
-          <CommandEmpty>
-            <div className="flex flex-col items-center gap-2 py-6">
-              <Search className="h-10 w-10 text-muted-foreground/50" />
-              <p className="text-sm text-muted-foreground">No results found for "{search}"</p>
-            </div>
-          </CommandEmpty>
-
-          {/* Recent Searches */}
-          {!search && recentSearches.length > 0 && (
-            <>
-              <CommandGroup heading="Recent Searches">
-                {recentSearches.map((term, i) => (
-                  <CommandItem key={i} onSelect={() => setSearch(term)}>
-                    <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
-                    {term}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-              <CommandSeparator />
-            </>
-          )}
-
-          {/* Quick Actions */}
-          {!search && (
-            <>
-              <CommandGroup heading="Quick Actions">
-                {quickActions.map((action) => (
-                  <CommandItem
-                    key={action.id}
-                    onSelect={() => handleAction(action.id)}
-                    className="flex items-center gap-2"
-                  >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
-                      {action.icon}
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="font-medium">{action.title}</span>
-                      <span className="text-xs text-muted-foreground">{action.description}</span>
-                    </div>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-              <CommandSeparator />
-            </>
-          )}
-
-          {/* Navigation Groups */}
-          {Object.entries(filteredGroups).map(([category, items]) => (
-            <CommandGroup key={category} heading={category}>
-              {items.map((item) => (
+        {filteredGroups.map((group, groupIndex) => (
+          <React.Fragment key={group.name}>
+            {groupIndex > 0 && <CommandSeparator />}
+            <CommandGroup heading={group.name}>
+              {group.items.map((item) => (
                 <CommandItem
                   key={item.id}
-                  onSelect={() => handleSelect(item.url)}
-                  className="flex items-center gap-2"
+                  value={`${item.name} ${item.keywords?.join(" ") || ""}`}
+                  onSelect={() => handleSelect(item.path)}
                 >
-                  <div className="flex h-6 w-6 items-center justify-center text-muted-foreground">
-                    {item.icon}
+                  <item.icon className="mr-2 h-4 w-4" />
+                  <div className="flex flex-col">
+                    <span>{item.name}</span>
+                    {item.description && <span className="text-xs text-muted-foreground">{item.description}</span>}
                   </div>
-                  <span>{item.title}</span>
                 </CommandItem>
               ))}
             </CommandGroup>
-          ))}
-        </CommandList>
-      </CommandDialog>
-    </>
+          </React.Fragment>
+        ))}
+
+        <CommandSeparator />
+        <CommandGroup heading="Actions">
+          <CommandItem value="help support" onSelect={() => handleSelect("/help")}>
+            <HelpCircle className="mr-2 h-4 w-4" />
+            <span>Help & Support</span>
+          </CommandItem>
+          <CommandItem
+            value="logout signout"
+            onSelect={async () => {
+              await supabase.auth.signOut();
+              navigate("/login");
+            }}
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            <span>Logout</span>
+          </CommandItem>
+        </CommandGroup>
+      </CommandList>
+    </CommandDialog>
   );
 }
+
+export default CommandPalette;
