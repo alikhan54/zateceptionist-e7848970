@@ -143,6 +143,44 @@ const COMPANY_SIZES = [
   { id: "500+", label: "500+ employees" },
 ];
 
+// B2C INDUSTRIES
+const B2C_INDUSTRIES = [
+  { id: "aesthetics", label: "Aesthetics & Med Spa", keywords: ["botox", "filler", "laser treatment", "med spa"] },
+  { id: "dental", label: "Dental", keywords: ["dentist", "teeth whitening", "dental implants"] },
+  { id: "healthcare", label: "Healthcare", keywords: ["doctor", "clinic", "specialist"] },
+  { id: "beauty", label: "Beauty & Salon", keywords: ["salon", "hair stylist", "spa", "nails"] },
+  { id: "fitness", label: "Fitness & Gym", keywords: ["gym", "personal trainer", "yoga"] },
+  { id: "real_estate", label: "Real Estate", keywords: ["realtor", "property", "home buying"] },
+  { id: "legal", label: "Legal Services", keywords: ["lawyer", "attorney", "legal advice"] },
+  { id: "financial", label: "Financial Services", keywords: ["financial advisor", "accountant"] },
+  { id: "home_services", label: "Home Services", keywords: ["plumber", "electrician", "handyman"] },
+  { id: "cleaning", label: "Cleaning Services", keywords: ["cleaning service", "maid"] },
+  { id: "automotive", label: "Automotive", keywords: ["mechanic", "car repair", "auto shop"] },
+  { id: "pet_services", label: "Pet Services", keywords: ["vet", "dog groomer", "pet sitter"] },
+  { id: "childcare", label: "Childcare", keywords: ["daycare", "nanny", "babysitter"] },
+  { id: "education", label: "Education & Tutoring", keywords: ["tutor", "online course"] },
+  { id: "events", label: "Events & Wedding", keywords: ["wedding planner", "event venue"] },
+  { id: "photography", label: "Photography", keywords: ["photographer", "headshots"] },
+  { id: "renovation", label: "Renovation", keywords: ["contractor", "remodel"] },
+  { id: "landscaping", label: "Landscaping", keywords: ["landscaper", "lawn care"] },
+  { id: "senior_care", label: "Senior Care", keywords: ["senior care", "caregiver"] },
+  { id: "tech_services", label: "Tech Services", keywords: ["IT support", "web developer"] },
+];
+
+const SOCIAL_PLATFORMS = [
+  { id: "instagram", label: "Instagram", icon: "📸" },
+  { id: "tiktok", label: "TikTok", icon: "🎵" },
+  { id: "twitter", label: "Twitter/X", icon: "🐦" },
+  { id: "linkedin", label: "LinkedIn", icon: "💼" },
+];
+
+const REVIEW_SITES = [
+  { id: "google_reviews", label: "Google Reviews", icon: "⭐" },
+  { id: "yelp", label: "Yelp", icon: "🔴" },
+  { id: "tripadvisor", label: "TripAdvisor", icon: "🦉" },
+  { id: "trustpilot", label: "Trustpilot", icon: "⭐" },
+];
+
 export default function LeadDiscovery() {
   // CRITICAL: Get tenantConfig for UUID
   const { tenantId, tenantConfig } = useTenant();
@@ -221,6 +259,32 @@ export default function LeadDiscovery() {
     company: "",
     title: "",
   });
+
+  // B2C Form States
+  const [intentForm, setIntentForm] = useState({
+    industry: "aesthetics",
+    searchIntent: "",
+    location: "",
+    source: "google_search",
+    maxResults: 25,
+  });
+
+  const [socialForm, setSocialForm] = useState({
+    platform: "instagram",
+    hashtags: "",
+    competitorAccounts: "",
+    maxResults: 25,
+  });
+
+  const [reviewForm, setReviewForm] = useState({
+    competitorName: "",
+    reviewSite: "google_reviews",
+    minRating: 1,
+    maxRating: 3,
+    maxResults: 25,
+  });
+
+  const [b2cResults, setB2cResults] = useState<any>(null);
 
   // Check if tenant has premium API keys
   const hasApolloKey = !!tenantConfig?.apollo_api_key;
@@ -613,6 +677,132 @@ export default function LeadDiscovery() {
       ...prev,
       titles: prev.titles.includes(title) ? prev.titles.filter((t) => t !== title) : [...prev.titles, title],
     }));
+  };
+
+  // Get selected B2C industry keywords
+  const selectedB2CIndustry = B2C_INDUSTRIES.find((i) => i.id === intentForm.industry);
+
+  // B2C Intent Search Handler
+  const handleIntentSearch = async () => {
+    if (!tenantUuid) {
+      toast({ title: "Error", description: "Tenant not loaded", variant: "destructive" });
+      return;
+    }
+    setIsSearching(true);
+    setB2cResults(null);
+    try {
+      const response = await fetch(`${N8N_WEBHOOK_URL}/intent-lead-gen`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tenant_id: tenantUuid,
+          industry: intentForm.industry,
+          search_intent: intentForm.searchIntent,
+          location: intentForm.location,
+          source: intentForm.source,
+          max_results: intentForm.maxResults,
+          auto_activate_sequence: true,
+        }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        setB2cResults(result);
+        toast({ title: "✅ Search Complete!", description: `Saved ${result.leads_saved || 0} new leads` });
+        refetchHistory();
+        refetchStats();
+      } else {
+        throw new Error(result.error || "Search failed");
+      }
+    } catch (error: any) {
+      toast({ title: "Search failed", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // B2C Social Audiences Handler
+  const handleSocialSearch = async () => {
+    if (!tenantUuid) {
+      toast({ title: "Error", description: "Tenant not loaded", variant: "destructive" });
+      return;
+    }
+    const hashtags = socialForm.hashtags.split(",").map((h) => h.trim().replace("#", "")).filter(Boolean);
+    const competitors = socialForm.competitorAccounts.split(",").map((c) => c.trim().replace("@", "")).filter(Boolean);
+    if (hashtags.length === 0 && competitors.length === 0) {
+      toast({ title: "Missing data", description: "Enter hashtags or competitor accounts", variant: "destructive" });
+      return;
+    }
+    setIsSearching(true);
+    setB2cResults(null);
+    try {
+      const response = await fetch(`${N8N_WEBHOOK_URL}/b2c-social-audiences`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tenant_id: tenantUuid,
+          platform: socialForm.platform,
+          hashtags,
+          competitor_accounts: competitors,
+          max_results: socialForm.maxResults,
+          auto_activate_sequence: true,
+        }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        setB2cResults(result);
+        toast({ title: "✅ Search Complete!", description: `Saved ${result.leads_saved || 0} new leads` });
+        refetchHistory();
+        refetchStats();
+      } else {
+        throw new Error(result.error || "Search failed");
+      }
+    } catch (error: any) {
+      toast({ title: "Search failed", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // B2C Review Hunters Handler
+  const handleReviewSearch = async () => {
+    if (!tenantUuid) {
+      toast({ title: "Error", description: "Tenant not loaded", variant: "destructive" });
+      return;
+    }
+    if (!reviewForm.competitorName) {
+      toast({ title: "Missing data", description: "Enter competitor name", variant: "destructive" });
+      return;
+    }
+    setIsSearching(true);
+    setB2cResults(null);
+    try {
+      const response = await fetch(`${N8N_WEBHOOK_URL}/b2c-review-hunters`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tenant_id: tenantUuid,
+          competitor_name: reviewForm.competitorName,
+          review_site: reviewForm.reviewSite,
+          min_rating: reviewForm.minRating,
+          max_rating: reviewForm.maxRating,
+          max_results: reviewForm.maxResults,
+          auto_activate_sequence: true,
+        }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        setB2cResults(result);
+        toast({ title: "✅ Search Complete!", description: `Saved ${result.leads_saved || 0} new leads` });
+        refetchHistory();
+        refetchStats();
+      } else {
+        throw new Error(result.error || "Search failed");
+      }
+    } catch (error: any) {
+      toast({ title: "Search failed", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   return (
@@ -1295,19 +1485,372 @@ export default function LeadDiscovery() {
 
         {/* ==================== B2C TAB ==================== */}
         <TabsContent value="b2c">
-          <Card>
-            <CardHeader>
-              <CardTitle>Consumer (B2C) Lead Discovery</CardTitle>
-              <CardDescription>Find individual consumers with buying intent</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-12 text-muted-foreground">
-                <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="text-lg font-medium">Coming Soon</p>
-                <p className="text-sm">Intent Signals, Social Audiences, and Review Hunters</p>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="space-y-6">
+            {/* B2C Results Summary */}
+            {b2cResults && (
+              <Card className="border-green-200 bg-green-50/50">
+                <CardContent className="pt-6">
+                  <div className="grid grid-cols-5 gap-4 text-center">
+                    <div>
+                      <p className="text-2xl font-bold text-green-600">{b2cResults.leads_saved || 0}</p>
+                      <p className="text-sm text-muted-foreground">Total Saved</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-red-500">{b2cResults.hot_leads || 0}</p>
+                      <p className="text-sm text-muted-foreground">Hot Leads</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-orange-500">{b2cResults.warm_leads || 0}</p>
+                      <p className="text-sm text-muted-foreground">Warm Leads</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-blue-500">{b2cResults.cold_leads || 0}</p>
+                      <p className="text-sm text-muted-foreground">Cold Leads</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-gray-400">{b2cResults.duplicates_skipped || 0}</p>
+                      <p className="text-sm text-muted-foreground">Duplicates Skipped</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* B2C Sub-tabs */}
+            <div className="flex gap-2 mb-6">
+              <Button
+                variant={b2cSubTab === "intent" ? "default" : "outline"}
+                onClick={() => setB2cSubTab("intent")}
+                className={cn("gap-2", b2cSubTab === "intent" && "bg-purple-600 hover:bg-purple-700")}
+              >
+                <Search className="h-4 w-4" /> Intent Signals
+              </Button>
+              <Button
+                variant={b2cSubTab === "social" ? "default" : "outline"}
+                onClick={() => setB2cSubTab("social")}
+                className={cn("gap-2", b2cSubTab === "social" && "bg-pink-600 hover:bg-pink-700")}
+              >
+                <Users className="h-4 w-4" /> Social Audiences
+              </Button>
+              <Button
+                variant={b2cSubTab === "reviews" ? "default" : "outline"}
+                onClick={() => setB2cSubTab("reviews")}
+                className={cn("gap-2", b2cSubTab === "reviews" && "bg-orange-600 hover:bg-orange-700")}
+              >
+                <Star className="h-4 w-4" /> Review Hunters
+              </Button>
+            </div>
+
+            {/* Intent Signals Sub-tab */}
+            {b2cSubTab === "intent" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Search className="h-5 w-5 text-purple-500" /> Intent Signals
+                  </CardTitle>
+                  <CardDescription>Find people actively searching for services in your industry</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Industry</Label>
+                      <Select
+                        value={intentForm.industry}
+                        onValueChange={(v) => setIntentForm({ ...intentForm, industry: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {B2C_INDUSTRIES.map((ind) => (
+                            <SelectItem key={ind.id} value={ind.id}>
+                              {ind.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Location *</Label>
+                      <Input
+                        placeholder="e.g., Miami, Los Angeles, New York"
+                        value={intentForm.location}
+                        onChange={(e) => setIntentForm({ ...intentForm, location: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Custom Search Intent (optional)</Label>
+                    <Input
+                      placeholder="e.g., 'looking for best dentist', 'need botox treatment'"
+                      value={intentForm.searchIntent}
+                      onChange={(e) => setIntentForm({ ...intentForm, searchIntent: e.target.value })}
+                    />
+                  </div>
+
+                  {selectedB2CIndustry && (
+                    <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                      <p className="text-sm font-medium text-purple-700 mb-2">Auto-generated keywords:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {selectedB2CIndustry.keywords.map((kw) => (
+                          <Badge key={kw} variant="outline" className="text-purple-600 border-purple-300">
+                            {kw}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label>Data Source</Label>
+                    <Select
+                      value={intentForm.source}
+                      onValueChange={(v) => setIntentForm({ ...intentForm, source: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="google_search">🔍 Google Search (FREE)</SelectItem>
+                        <SelectItem value="apify">⚡ Premium - Apify (~$0.002/result)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <Label>Max Results</Label>
+                      <span className="font-medium">{intentForm.maxResults}</span>
+                    </div>
+                    <Slider
+                      value={[intentForm.maxResults]}
+                      onValueChange={(v) => setIntentForm({ ...intentForm, maxResults: v[0] })}
+                      min={5}
+                      max={100}
+                      step={5}
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span>💰 Estimated cost:</span>
+                    {intentForm.source === "google_search" ? (
+                      <Badge className="bg-green-500">FREE</Badge>
+                    ) : (
+                      <Badge className="bg-amber-500">~${(intentForm.maxResults * 0.002).toFixed(2)}</Badge>
+                    )}
+                  </div>
+
+                  <Button
+                    onClick={handleIntentSearch}
+                    disabled={isSearching || !intentForm.location}
+                    className="w-full bg-purple-600 hover:bg-purple-700"
+                    size="lg"
+                  >
+                    {isSearching ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Searching...
+                      </>
+                    ) : (
+                      <>
+                        <Search className="h-4 w-4 mr-2" /> Find Interested Consumers
+                      </>
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Social Audiences Sub-tab */}
+            {b2cSubTab === "social" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5 text-pink-500" /> Social Audiences
+                  </CardTitle>
+                  <CardDescription>Find followers of competitors or people engaging with relevant hashtags</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Platform</Label>
+                    <Select
+                      value={socialForm.platform}
+                      onValueChange={(v) => setSocialForm({ ...socialForm, platform: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SOCIAL_PLATFORMS.map((plat) => (
+                          <SelectItem key={plat.id} value={plat.id}>
+                            {plat.icon} {plat.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Hashtags (comma-separated)</Label>
+                    <Input
+                      placeholder="e.g., #botox, #medspa, #skincare"
+                      value={socialForm.hashtags}
+                      onChange={(e) => setSocialForm({ ...socialForm, hashtags: e.target.value })}
+                    />
+                    <p className="text-xs text-muted-foreground">Enter hashtags to find people who engage with them</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Competitor Accounts (comma-separated)</Label>
+                    <Input
+                      placeholder="e.g., @competitor1, @competitor2"
+                      value={socialForm.competitorAccounts}
+                      onChange={(e) => setSocialForm({ ...socialForm, competitorAccounts: e.target.value })}
+                    />
+                    <p className="text-xs text-muted-foreground">Find followers of these competitor accounts</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <Label>Max Results</Label>
+                      <span className="font-medium">{socialForm.maxResults}</span>
+                    </div>
+                    <Slider
+                      value={[socialForm.maxResults]}
+                      onValueChange={(v) => setSocialForm({ ...socialForm, maxResults: v[0] })}
+                      min={5}
+                      max={100}
+                      step={5}
+                    />
+                  </div>
+
+                  <Button
+                    onClick={handleSocialSearch}
+                    disabled={isSearching || (!socialForm.hashtags && !socialForm.competitorAccounts)}
+                    className="w-full bg-pink-600 hover:bg-pink-700"
+                    size="lg"
+                  >
+                    {isSearching ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Searching...
+                      </>
+                    ) : (
+                      <>
+                        <Users className="h-4 w-4 mr-2" /> Find Social Audiences
+                      </>
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Review Hunters Sub-tab */}
+            {b2cSubTab === "reviews" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Star className="h-5 w-5 text-orange-500" /> Review Hunters
+                  </CardTitle>
+                  <CardDescription>Find unhappy customers from competitor reviews</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Competitor Business Name *</Label>
+                    <Input
+                      placeholder="e.g., ABC Dental Clinic, XYZ Med Spa"
+                      value={reviewForm.competitorName}
+                      onChange={(e) => setReviewForm({ ...reviewForm, competitorName: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Review Site</Label>
+                    <Select
+                      value={reviewForm.reviewSite}
+                      onValueChange={(v) => setReviewForm({ ...reviewForm, reviewSite: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {REVIEW_SITES.map((site) => (
+                          <SelectItem key={site.id} value={site.id}>
+                            {site.icon} {site.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <Label>Min Rating</Label>
+                        <span className="font-medium">{reviewForm.minRating} ⭐</span>
+                      </div>
+                      <Slider
+                        value={[reviewForm.minRating]}
+                        onValueChange={(v) => setReviewForm({ ...reviewForm, minRating: v[0] })}
+                        min={1}
+                        max={5}
+                        step={1}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <Label>Max Rating</Label>
+                        <span className="font-medium">{reviewForm.maxRating} ⭐</span>
+                      </div>
+                      <Slider
+                        value={[reviewForm.maxRating]}
+                        onValueChange={(v) => setReviewForm({ ...reviewForm, maxRating: v[0] })}
+                        min={1}
+                        max={5}
+                        step={1}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                    <p className="text-sm text-orange-700">
+                      💡 <strong>Tip:</strong> Target 1-3 star reviews to find dissatisfied customers who might switch to your business.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <Label>Max Results</Label>
+                      <span className="font-medium">{reviewForm.maxResults}</span>
+                    </div>
+                    <Slider
+                      value={[reviewForm.maxResults]}
+                      onValueChange={(v) => setReviewForm({ ...reviewForm, maxResults: v[0] })}
+                      min={5}
+                      max={100}
+                      step={5}
+                    />
+                  </div>
+
+                  <Button
+                    onClick={handleReviewSearch}
+                    disabled={isSearching || !reviewForm.competitorName}
+                    className="w-full bg-orange-600 hover:bg-orange-700"
+                    size="lg"
+                  >
+                    {isSearching ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Searching...
+                      </>
+                    ) : (
+                      <>
+                        <Star className="h-4 w-4 mr-2" /> Find Unhappy Reviewers
+                      </>
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </div>
         </TabsContent>
 
         {/* ==================== AUTO LEAD GEN TAB ==================== */}
