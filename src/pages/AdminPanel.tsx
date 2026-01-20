@@ -48,8 +48,10 @@ import {
   KeyRound,
   UserX,
   Crown,
-  ChevronRight
+  ChevronRight,
+  Loader2
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 // Mock data for tenants
 const mockTenants = [
@@ -199,6 +201,7 @@ export default function AdminPanel() {
   const [isAddWizardOpen, setIsAddWizardOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState(1);
   const [impersonatingTenant, setImpersonatingTenant] = useState<typeof mockTenants[0] | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
 
   // Add tenant wizard state
   const [newTenant, setNewTenant] = useState({
@@ -270,35 +273,154 @@ export default function AdminPanel() {
     });
   };
 
-  const handleAddTenant = () => {
-    toast({
-      title: 'Tenant Created',
-      description: `${newTenant.company_name} has been created successfully.`,
-    });
-    setIsAddWizardOpen(false);
-    setWizardStep(1);
-    setNewTenant({
-      company_name: '',
-      industry: 'general',
-      email: '',
-      admin_name: '',
-      admin_email: '',
-      admin_password: '',
-      features: {
-        whatsapp: true,
-        email: true,
-        voice: false,
-        instagram: false,
-        facebook: false,
-        linkedin: false,
-        hr_module: false,
-        marketing_module: true,
-        sales_module: true
-      },
-      plan: 'professional',
-      messages_limit: 10000,
-      calls_limit: 500
-    });
+  const handleAddTenant = async () => {
+    setIsCreating(true);
+    try {
+      // 1. Generate slug from company name
+      const slug = newTenant.company_name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .substring(0, 50) + '-' + Date.now().toString(36);
+
+      console.log('Creating tenant with slug:', slug);
+
+      // 2. Insert into tenant_config (main tenant table)
+      const { data: tenantData, error: tenantError } = await supabase
+        .from('tenant_config')
+        .insert({
+          tenant_id: slug,
+          company_name: newTenant.company_name,
+          industry: newTenant.industry,
+          email: newTenant.email,
+          subscription_status: 'active',
+          subscription_plan: newTenant.plan,
+          subscription_tier: newTenant.plan,
+          monthly_message_limit: newTenant.messages_limit,
+          monthly_call_limit: newTenant.calls_limit,
+          has_whatsapp: newTenant.features.whatsapp,
+          has_email: newTenant.features.email,
+          has_voice: newTenant.features.voice,
+          has_instagram: newTenant.features.instagram,
+          has_facebook: newTenant.features.facebook,
+          has_linkedin: newTenant.features.linkedin,
+          is_active: true,
+          ai_mode: 'assisted',
+          timezone: 'UTC',
+          currency: 'USD',
+        })
+        .select()
+        .single();
+
+      if (tenantError) {
+        console.error('tenant_config insert error:', tenantError);
+        throw tenantError;
+      }
+
+      console.log('tenant_config created:', tenantData);
+
+      // 3. Insert into organizations (for team management)
+      const { data: orgData, error: orgError } = await supabase
+        .from('organizations')
+        .insert({
+          name: newTenant.company_name,
+          slug: slug,
+          industry: newTenant.industry,
+          email: newTenant.email,
+          timezone: 'UTC',
+          subscription_status: 'active',
+          is_active: true,
+          is_verified: true,
+          onboarding_completed: false,
+        })
+        .select()
+        .single();
+
+      if (orgError) {
+        console.error('organizations insert error:', orgError);
+        // Don't fail completely - tenant_config is more important
+      } else {
+        console.log('Organization created:', orgData);
+      }
+
+      // 4. Create admin user if email/password provided
+      if (newTenant.admin_email && newTenant.admin_password) {
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: newTenant.admin_email,
+          password: newTenant.admin_password,
+          options: {
+            data: {
+              full_name: newTenant.admin_name,
+              tenant_id: slug,
+            },
+          },
+        });
+
+        if (authError) {
+          console.error('Auth signup error:', authError);
+          toast({
+            title: 'Warning',
+            description: `Tenant created but admin user failed: ${authError.message}`,
+            variant: 'destructive',
+          });
+        } else if (authData.user) {
+          // Insert into users table
+          await supabase.from('users').insert({
+            auth_id: authData.user.id,
+            email: newTenant.admin_email,
+            full_name: newTenant.admin_name,
+            tenant_id: slug,
+            role: 'admin',
+            is_active: true,
+          });
+          console.log('Admin user created:', authData.user.id);
+        }
+      }
+
+      // 5. Success!
+      toast({
+        title: 'Tenant Created',
+        description: `${newTenant.company_name} has been created successfully.`,
+      });
+
+      // 6. Reset form and close wizard
+      setIsAddWizardOpen(false);
+      setWizardStep(1);
+      setNewTenant({
+        company_name: '',
+        industry: 'general',
+        email: '',
+        admin_name: '',
+        admin_email: '',
+        admin_password: '',
+        features: {
+          whatsapp: true,
+          email: true,
+          voice: false,
+          instagram: false,
+          facebook: false,
+          linkedin: false,
+          hr_module: false,
+          marketing_module: true,
+          sales_module: true
+        },
+        plan: 'professional',
+        messages_limit: 10000,
+        calls_limit: 500
+      });
+
+      // 7. Refresh the tenant list (if using react-query)
+      // queryClient.invalidateQueries({ queryKey: ['admin', 'tenants'] });
+    } catch (error: any) {
+      console.error('Create tenant failed:', error);
+      toast({
+        title: 'Error Creating Tenant',
+        description: error.message || 'Something went wrong',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const filteredTenants = mockTenants.filter(tenant =>
@@ -1129,9 +1251,18 @@ export default function AdminPanel() {
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             ) : (
-              <Button onClick={handleAddTenant}>
-                <Check className="h-4 w-4 mr-2" />
-                Create Tenant
+              <Button onClick={handleAddTenant} disabled={isCreating}>
+                {isCreating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-4 w-4 mr-2" />
+                    Create Tenant
+                  </>
+                )}
               </Button>
             )}
           </DialogFooter>
