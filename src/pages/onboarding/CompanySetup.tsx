@@ -52,6 +52,7 @@ const INDUSTRIES = [
   { value: "legal", label: "Legal Services", icon: "⚖️" },
   { value: "education", label: "Education", icon: "📚" },
   { value: "finance", label: "Finance", icon: "💰" },
+  { value: "technology", label: "Technology", icon: "💻" },
   { value: "general", label: "Other / General", icon: "🏢" },
 ];
 
@@ -68,6 +69,7 @@ const AI_NAME_SUGGESTIONS: Record<string, string[]> = {
   real_estate: ["Alex", "Sam", "Jordan"],
   restaurant: ["Chef Zoe", "Marco", "Bella"],
   salon: ["Luna", "Ava", "Sophia"],
+  technology: ["Alex", "Nova", "Zate"],
   general: ["Zate", "Luna", "Max"],
 };
 
@@ -87,6 +89,9 @@ const TIMEZONES = [
   { value: "Australia/Sydney", label: "Sydney (AEST)" },
 ];
 
+// ============================================
+// INTERFACES
+// ============================================
 interface CompanyData {
   company_name: string;
   industry: string;
@@ -106,6 +111,40 @@ interface CompanyData {
   logo_url: string;
   suggested_ai_name: string;
   suggested_greeting: string;
+}
+
+// API Response interface (what the n8n webhook actually returns)
+interface APIAnalysisResponse {
+  success: boolean;
+  message: string;
+  data: {
+    company_name?: string;
+    industry?: string;
+    description?: string;
+    services?: Array<{ name: string } | string>;
+    contact?: {
+      email?: string;
+      phone?: string;
+      website?: string;
+      address?: string;
+    };
+    social_links?: {
+      linkedin?: string;
+      instagram?: string;
+      facebook?: string;
+      twitter?: string;
+    };
+    ai_config?: {
+      suggested_ai_name?: string;
+      suggested_ai_role?: string;
+      suggested_greeting?: string;
+      suggested_personality?: string;
+    };
+    logo_url?: string;
+    confidence?: number;
+    tenant_id?: string;
+  };
+  next_step?: string;
 }
 
 interface AIConfig {
@@ -138,21 +177,63 @@ const STEPS = [
 ];
 
 // ============================================
-// DEFAULT VALUES - Used for safe initialization
+// DEFAULT VALUES
 // ============================================
-const DEFAULT_CONTACT = { phone: "", email: "", address: "" };
-const DEFAULT_SOCIAL_LINKS = {};
 const DEFAULT_COMPANY_DATA: CompanyData = {
   company_name: "",
   industry: "general",
   services: [],
   description: "",
-  contact: { ...DEFAULT_CONTACT },
-  social_links: { ...DEFAULT_SOCIAL_LINKS },
+  contact: { phone: "", email: "", address: "" },
+  social_links: {},
   logo_url: "",
   suggested_ai_name: "Zate",
   suggested_greeting: "Hello! I'm your AI assistant. How can I help you today?",
 };
+
+// ============================================
+// HELPER: Transform API response to CompanyData
+// ============================================
+function transformAPIResponse(apiData: APIAnalysisResponse["data"]): Partial<CompanyData> {
+  if (!apiData) return {};
+
+  // Transform services: API returns [{name: "Service"}] or ["Service"], we need string[]
+  let services: string[] = [];
+  if (Array.isArray(apiData.services)) {
+    services = apiData.services
+      .map((s) => {
+        if (typeof s === "string") return s;
+        if (typeof s === "object" && s.name) return s.name;
+        return "";
+      })
+      .filter(Boolean);
+  }
+
+  // Extract AI config from nested structure
+  const aiConfig = apiData.ai_config || {};
+
+  return {
+    company_name: apiData.company_name || "",
+    industry: apiData.industry || "general",
+    description: apiData.description || "",
+    services,
+    contact: {
+      phone: apiData.contact?.phone || "",
+      email: apiData.contact?.email || "",
+      address: apiData.contact?.address || "",
+    },
+    social_links: {
+      website: apiData.contact?.website || apiData.social_links?.linkedin?.replace("/company/", "/") || "",
+      linkedin: apiData.social_links?.linkedin || "",
+      instagram: apiData.social_links?.instagram || "",
+      facebook: apiData.social_links?.facebook || "",
+    },
+    logo_url: apiData.logo_url || "",
+    // Map from nested ai_config to flat structure
+    suggested_ai_name: aiConfig.suggested_ai_name || "Zate",
+    suggested_greeting: aiConfig.suggested_greeting || "Hello! I'm your AI assistant. How can I help you today?",
+  };
+}
 
 // ============================================
 // HELPER: Safe merge function
@@ -161,24 +242,22 @@ function safelyMergeCompanyData(existing: CompanyData, incoming: Partial<Company
   if (!incoming) return existing;
 
   return {
-    company_name: incoming.company_name ?? existing.company_name,
-    industry: incoming.industry ?? existing.industry,
-    services: Array.isArray(incoming.services) && incoming.services.length > 0 ? incoming.services : existing.services,
-    description: incoming.description ?? existing.description,
-    // CRITICAL: Safely merge contact object
+    company_name: incoming.company_name || existing.company_name,
+    industry: incoming.industry || existing.industry,
+    services: incoming.services && incoming.services.length > 0 ? incoming.services : existing.services,
+    description: incoming.description || existing.description,
     contact: {
       phone: incoming.contact?.phone ?? existing.contact?.phone ?? "",
       email: incoming.contact?.email ?? existing.contact?.email ?? "",
       address: incoming.contact?.address ?? existing.contact?.address ?? "",
     },
-    // Safely merge social links
     social_links: {
       ...existing.social_links,
       ...(incoming.social_links || {}),
     },
     logo_url: incoming.logo_url ?? existing.logo_url,
-    suggested_ai_name: incoming.suggested_ai_name ?? existing.suggested_ai_name,
-    suggested_greeting: incoming.suggested_greeting ?? existing.suggested_greeting,
+    suggested_ai_name: incoming.suggested_ai_name || existing.suggested_ai_name,
+    suggested_greeting: incoming.suggested_greeting || existing.suggested_greeting,
   };
 }
 
@@ -192,7 +271,7 @@ export default function CompanySetup() {
   const [inputUrl, setInputUrl] = useState("");
   const [isManualEntry, setIsManualEntry] = useState(false);
 
-  // Company Data (from AI or manual) - initialized with defaults
+  // Company Data (from AI or manual)
   const [companyData, setCompanyData] = useState<CompanyData>({ ...DEFAULT_COMPANY_DATA });
 
   // AI Configuration
@@ -227,7 +306,7 @@ export default function CompanySetup() {
   const progressPercent = (currentStep / STEPS.length) * 100;
 
   // ============================================
-  // ANALYZE COMPANY WITH AI - FIXED VERSION
+  // ANALYZE COMPANY WITH AI - FULLY FIXED
   // ============================================
   const handleAnalyze = async () => {
     if (!inputUrl.trim()) {
@@ -238,27 +317,61 @@ export default function CompanySetup() {
     setIsAnalyzing(true);
 
     try {
-      const response = await callWebhook<CompanyData>(
+      // Call the API - response type is APIAnalysisResponse
+      const response = await callWebhook<APIAnalysisResponse>(
         WEBHOOKS.AI_COMPANY_ANALYZE,
         { url: inputUrl },
         tenantId || "onboarding",
       );
 
-      if (response.success && response.data) {
-        // ✅ FIX: Use safe merge instead of direct assignment
-        setCompanyData((prev) => safelyMergeCompanyData(prev, response.data));
+      console.log("=== API Response ===", response);
 
-        // Update AI config with safe access
-        setAIConfig((prev) => ({
-          ...prev,
-          name: response.data?.suggested_ai_name || prev.name,
-          greeting: response.data?.suggested_greeting || prev.greeting,
-        }));
+      // Check if we got a valid response with data
+      if (response.success && response.data) {
+        // The response structure is: { success, data: { success, message, data: {...} } }
+        // OR it could be: { success, data: {...} } directly
+
+        // Handle nested response structure from n8n
+        let analysisData: APIAnalysisResponse["data"];
+
+        // Check if response.data has the expected API structure
+        if ("data" in response.data && typeof response.data.data === "object") {
+          // Nested structure: response.data = { success, message, data: {...} }
+          analysisData = (response.data as unknown as APIAnalysisResponse).data;
+        } else {
+          // Direct structure: response.data = {...analysis data}
+          analysisData = response.data as unknown as APIAnalysisResponse["data"];
+        }
+
+        console.log("=== Analysis Data ===", analysisData);
+
+        // Transform API response to match CompanyData structure
+        const transformedData = transformAPIResponse(analysisData);
+
+        console.log("=== Transformed Data ===", transformedData);
+
+        // Merge with existing data
+        setCompanyData((prev) => safelyMergeCompanyData(prev, transformedData));
+
+        // Update AI config
+        const apiAiConfig = analysisData.ai_config;
+        if (apiAiConfig) {
+          setAIConfig((prev) => ({
+            ...prev,
+            name: apiAiConfig.suggested_ai_name || prev.name,
+            role: apiAiConfig.suggested_ai_role || prev.role,
+            greeting: apiAiConfig.suggested_greeting || prev.greeting,
+            personality: apiAiConfig.suggested_personality || prev.personality,
+          }));
+        }
 
         setCurrentStep(2);
-        toast({ title: "Analysis complete!", description: "Review the extracted information below." });
+        toast({
+          title: "Analysis complete!",
+          description: `Extracted information for ${transformedData.company_name || "your company"}.`,
+        });
       } else {
-        // Mock data for demo - also using safe merge
+        // Use mock data for demo/fallback
         const mockData: CompanyData = {
           company_name: "Demo Business",
           industry: "general",
@@ -278,9 +391,7 @@ export default function CompanySetup() {
           suggested_greeting: "Hi! I'm Luna, your AI assistant. How can I help you today?",
         };
 
-        // ✅ FIX: Use safe merge for mock data too
         setCompanyData((prev) => safelyMergeCompanyData(prev, mockData));
-
         setAIConfig((prev) => ({
           ...prev,
           name: mockData.suggested_ai_name,
@@ -288,11 +399,18 @@ export default function CompanySetup() {
         }));
 
         setCurrentStep(2);
-        toast({ title: "Demo mode", description: "Using sample data. Connect n8n webhook for real analysis." });
+        toast({
+          title: "Demo mode",
+          description: "Using sample data. Connect n8n webhook for real analysis.",
+        });
       }
     } catch (error) {
       console.error("Analysis error:", error);
-      toast({ title: "Analysis failed", description: "Please try again or enter manually.", variant: "destructive" });
+      toast({
+        title: "Analysis failed",
+        description: "Please try again or enter manually.",
+        variant: "destructive",
+      });
     } finally {
       setIsAnalyzing(false);
     }
@@ -362,6 +480,23 @@ export default function CompanySetup() {
         ...prev.contact,
         [field]: value,
       },
+    }));
+  };
+
+  const addService = () => {
+    const serviceName = prompt("Enter service name:");
+    if (serviceName?.trim()) {
+      setCompanyData((prev) => ({
+        ...prev,
+        services: [...prev.services, serviceName.trim()],
+      }));
+    }
+  };
+
+  const removeService = (index: number) => {
+    setCompanyData((prev) => ({
+      ...prev,
+      services: prev.services.filter((_, i) => i !== index),
     }));
   };
 
@@ -481,6 +616,7 @@ export default function CompanySetup() {
                     <Input
                       value={companyData.company_name}
                       onChange={(e) => setCompanyData((prev) => ({ ...prev, company_name: e.target.value }))}
+                      placeholder="Enter company name"
                     />
                   </div>
 
@@ -491,7 +627,7 @@ export default function CompanySetup() {
                       onValueChange={(v) => setCompanyData((prev) => ({ ...prev, industry: v }))}
                     >
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="Select industry" />
                       </SelectTrigger>
                       <SelectContent>
                         {INDUSTRIES.map((ind) => (
@@ -509,6 +645,7 @@ export default function CompanySetup() {
                       value={companyData.description}
                       onChange={(e) => setCompanyData((prev) => ({ ...prev, description: e.target.value }))}
                       rows={3}
+                      placeholder="Brief description of your business"
                     />
                   </div>
                 </CardContent>
@@ -523,7 +660,6 @@ export default function CompanySetup() {
                     <Label>Phone</Label>
                     <div className="flex items-center gap-2">
                       <Phone className="h-4 w-4 text-muted-foreground" />
-                      {/* ✅ FIX: Using safe update handler with fallback */}
                       <Input
                         value={companyData?.contact?.phone ?? ""}
                         onChange={(e) => updateContactField("phone", e.target.value)}
@@ -536,7 +672,6 @@ export default function CompanySetup() {
                     <Label>Email</Label>
                     <div className="flex items-center gap-2">
                       <Mail className="h-4 w-4 text-muted-foreground" />
-                      {/* ✅ FIX: Using safe update handler with fallback */}
                       <Input
                         value={companyData?.contact?.email ?? ""}
                         onChange={(e) => updateContactField("email", e.target.value)}
@@ -547,7 +682,6 @@ export default function CompanySetup() {
 
                   <div className="space-y-2">
                     <Label>Address</Label>
-                    {/* ✅ FIX: Using safe update handler with fallback */}
                     <Textarea
                       value={companyData?.contact?.address ?? ""}
                       onChange={(e) => updateContactField("address", e.target.value)}
@@ -560,11 +694,17 @@ export default function CompanySetup() {
                     <Label>Services/Products</Label>
                     <div className="flex flex-wrap gap-2">
                       {(companyData.services || []).map((service, i) => (
-                        <Badge key={i} variant="secondary">
-                          {service}
+                        <Badge
+                          key={i}
+                          variant="secondary"
+                          className="cursor-pointer hover:bg-destructive hover:text-destructive-foreground"
+                          onClick={() => removeService(i)}
+                          title="Click to remove"
+                        >
+                          {service} ×
                         </Badge>
                       ))}
-                      <Button variant="outline" size="sm" className="h-6">
+                      <Button variant="outline" size="sm" className="h-6" onClick={addService}>
                         + Add
                       </Button>
                     </div>
@@ -646,6 +786,7 @@ export default function CompanySetup() {
                         <SelectItem value="Sales Assistant">Sales Assistant</SelectItem>
                         <SelectItem value="Customer Support">Customer Support</SelectItem>
                         <SelectItem value="Booking Agent">Booking Agent</SelectItem>
+                        <SelectItem value="Customer Service Representative">Customer Service Representative</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
