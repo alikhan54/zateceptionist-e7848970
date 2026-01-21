@@ -1,12 +1,12 @@
-import { Navigate, Outlet } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { useTenant } from '@/contexts/TenantContext';
-import { NavigationSidebar } from '@/components/NavigationSidebar';
-import { Header } from '@/components/layout/Header';
-import { SidebarProvider } from '@/components/ui/sidebar';
-import { OnboardingFlow } from '@/components/global/OnboardingFlow';
-import { SkipLink } from '@/components/shared/AccessibleComponents';
-import { Loader2 } from 'lucide-react';
+import { Navigate, Outlet } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTenant } from "@/contexts/TenantContext";
+import { NavigationSidebar } from "@/components/NavigationSidebar";
+import { Header } from "@/components/layout/Header";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { OnboardingFlow } from "@/components/global/OnboardingFlow";
+import { SkipLink } from "@/components/shared/AccessibleComponents";
+import { Loader2 } from "lucide-react";
 
 export default function Layout() {
   const { user, isLoading: authLoading } = useAuth();
@@ -29,8 +29,13 @@ export default function Layout() {
     return <Navigate to="/login" replace />;
   }
 
+  // ADD THIS: Redirect to onboarding wizard if not completed
+  if (tenantConfig && tenantConfig.onboarding_completed === false) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
   const tenantStyle = tenantConfig?.primary_color
-    ? { '--primary': tenantConfig.primary_color } as React.CSSProperties
+    ? ({ "--primary": tenantConfig.primary_color } as React.CSSProperties)
     : {};
 
   return (
