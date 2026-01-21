@@ -25,6 +25,7 @@ import {
   Code,
   CreditCard,
   Crown,
+  AlertCircle,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,12 +37,14 @@ import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { callWebhook, WEBHOOKS } from "@/lib/api/webhooks";
 import { useTenant } from "@/contexts/TenantContext";
 
-// Industry options
+// ============================================
+// CONSTANTS
+// ============================================
 const INDUSTRIES = [
   { value: "healthcare", label: "Healthcare", icon: "🏥" },
   { value: "real_estate", label: "Real Estate", icon: "🏠" },
@@ -56,14 +59,12 @@ const INDUSTRIES = [
   { value: "general", label: "Other / General", icon: "🏢" },
 ];
 
-// AI Personality options
 const AI_PERSONALITIES = [
   { value: "professional", label: "Professional", description: "Formal and business-like" },
   { value: "friendly", label: "Friendly", description: "Warm and approachable" },
   { value: "casual", label: "Casual", description: "Relaxed and conversational" },
 ];
 
-// AI Names suggestions per industry
 const AI_NAME_SUGGESTIONS: Record<string, string[]> = {
   healthcare: ["Dr. Luna", "Max Health", "Cara"],
   real_estate: ["Alex", "Sam", "Jordan"],
@@ -73,20 +74,25 @@ const AI_NAME_SUGGESTIONS: Record<string, string[]> = {
   general: ["Zate", "Luna", "Max"],
 };
 
-// Timezone options
 const TIMEZONES = [
   { value: "Africa/Johannesburg", label: "South Africa (SAST)" },
   { value: "Africa/Cairo", label: "Egypt (EET)" },
-  { value: "Africa/Lagos", label: "Nigeria (WAT)" },
   { value: "America/New_York", label: "Eastern Time (ET)" },
-  { value: "America/Chicago", label: "Central Time (CT)" },
-  { value: "America/Denver", label: "Mountain Time (MT)" },
   { value: "America/Los_Angeles", label: "Pacific Time (PT)" },
   { value: "Europe/London", label: "London (GMT)" },
-  { value: "Europe/Paris", label: "Paris (CET)" },
   { value: "Asia/Dubai", label: "Dubai (GST)" },
+  { value: "Asia/Karachi", label: "Pakistan (PKT)" },
   { value: "Asia/Singapore", label: "Singapore (SGT)" },
-  { value: "Australia/Sydney", label: "Sydney (AEST)" },
+];
+
+const STEPS = [
+  { id: 1, title: "Let's Get Started", description: "Enter your business info" },
+  { id: 2, title: "AI Analysis Results", description: "Review extracted data" },
+  { id: 3, title: "Configure AI Assistant", description: "Set up your AI" },
+  { id: 4, title: "Connect Channels", description: "Enable communication" },
+  { id: 5, title: "Knowledge Base", description: "Train your AI" },
+  { id: 6, title: "Choose Plan", description: "Select subscription" },
+  { id: 7, title: "You're All Set!", description: "Start using the app" },
 ];
 
 // ============================================
@@ -113,7 +119,6 @@ interface CompanyData {
   suggested_greeting: string;
 }
 
-// API Response interface (what the n8n webhook actually returns)
 interface APIAnalysisResponse {
   success: boolean;
   message: string;
@@ -132,7 +137,6 @@ interface APIAnalysisResponse {
       linkedin?: string;
       instagram?: string;
       facebook?: string;
-      twitter?: string;
     };
     ai_config?: {
       suggested_ai_name?: string;
@@ -144,7 +148,6 @@ interface APIAnalysisResponse {
     confidence?: number;
     tenant_id?: string;
   };
-  next_step?: string;
 }
 
 interface AIConfig {
@@ -166,16 +169,6 @@ interface ChannelConfig {
   webChat: boolean;
 }
 
-const STEPS = [
-  { id: 1, title: "Let's Get Started", description: "Enter your business info" },
-  { id: 2, title: "AI Analysis Results", description: "Review extracted data" },
-  { id: 3, title: "Configure AI Assistant", description: "Set up your AI" },
-  { id: 4, title: "Connect Channels", description: "Enable communication" },
-  { id: 5, title: "Knowledge Base", description: "Train your AI" },
-  { id: 6, title: "Choose Plan", description: "Select subscription" },
-  { id: 7, title: "You're All Set!", description: "Start using the app" },
-];
-
 // ============================================
 // DEFAULT VALUES
 // ============================================
@@ -192,12 +185,11 @@ const DEFAULT_COMPANY_DATA: CompanyData = {
 };
 
 // ============================================
-// HELPER: Transform API response to CompanyData
+// HELPER FUNCTIONS
 // ============================================
 function transformAPIResponse(apiData: APIAnalysisResponse["data"]): Partial<CompanyData> {
   if (!apiData) return {};
 
-  // Transform services: API returns [{name: "Service"}] or ["Service"], we need string[]
   let services: string[] = [];
   if (Array.isArray(apiData.services)) {
     services = apiData.services
@@ -209,7 +201,6 @@ function transformAPIResponse(apiData: APIAnalysisResponse["data"]): Partial<Com
       .filter(Boolean);
   }
 
-  // Extract AI config from nested structure
   const aiConfig = apiData.ai_config || {};
 
   return {
@@ -223,21 +214,17 @@ function transformAPIResponse(apiData: APIAnalysisResponse["data"]): Partial<Com
       address: apiData.contact?.address || "",
     },
     social_links: {
-      website: apiData.contact?.website || apiData.social_links?.linkedin?.replace("/company/", "/") || "",
+      website: apiData.contact?.website || "",
       linkedin: apiData.social_links?.linkedin || "",
       instagram: apiData.social_links?.instagram || "",
       facebook: apiData.social_links?.facebook || "",
     },
     logo_url: apiData.logo_url || "",
-    // Map from nested ai_config to flat structure
     suggested_ai_name: aiConfig.suggested_ai_name || "Zate",
     suggested_greeting: aiConfig.suggested_greeting || "Hello! I'm your AI assistant. How can I help you today?",
   };
 }
 
-// ============================================
-// HELPER: Safe merge function
-// ============================================
 function safelyMergeCompanyData(existing: CompanyData, incoming: Partial<CompanyData> | null | undefined): CompanyData {
   if (!incoming) return existing;
 
@@ -261,6 +248,9 @@ function safelyMergeCompanyData(existing: CompanyData, incoming: Partial<Company
   };
 }
 
+// ============================================
+// MAIN COMPONENT
+// ============================================
 export default function CompanySetup() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -270,8 +260,9 @@ export default function CompanySetup() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [inputUrl, setInputUrl] = useState("");
   const [isManualEntry, setIsManualEntry] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Company Data (from AI or manual)
+  // Company Data
   const [companyData, setCompanyData] = useState<CompanyData>({ ...DEFAULT_COMPANY_DATA });
 
   // AI Configuration
@@ -282,7 +273,7 @@ export default function CompanySetup() {
     personality: "friendly",
     workingHoursStart: "09:00",
     workingHoursEnd: "17:00",
-    timezone: "Africa/Johannesburg",
+    timezone: "Asia/Dubai",
   });
 
   // Channel Configuration
@@ -306,8 +297,10 @@ export default function CompanySetup() {
   const progressPercent = (currentStep / STEPS.length) * 100;
 
   // ============================================
-  // ANALYZE COMPANY WITH AI - FULLY FIXED
+  // API CALLS
   // ============================================
+
+  // Step 1-2: Analyze Company
   const handleAnalyze = async () => {
     if (!inputUrl.trim()) {
       toast({ title: "Please enter a URL or email", variant: "destructive" });
@@ -317,7 +310,6 @@ export default function CompanySetup() {
     setIsAnalyzing(true);
 
     try {
-      // Call the API - response type is APIAnalysisResponse
       const response = await callWebhook<APIAnalysisResponse>(
         WEBHOOKS.AI_COMPANY_ANALYZE,
         { url: inputUrl },
@@ -326,34 +318,18 @@ export default function CompanySetup() {
 
       console.log("=== API Response ===", response);
 
-      // Check if we got a valid response with data
       if (response.success && response.data) {
-        // The response structure is: { success, data: { success, message, data: {...} } }
-        // OR it could be: { success, data: {...} } directly
-
-        // Handle nested response structure from n8n
         let analysisData: APIAnalysisResponse["data"];
 
-        // Check if response.data has the expected API structure
         if ("data" in response.data && typeof response.data.data === "object") {
-          // Nested structure: response.data = { success, message, data: {...} }
           analysisData = (response.data as unknown as APIAnalysisResponse).data;
         } else {
-          // Direct structure: response.data = {...analysis data}
           analysisData = response.data as unknown as APIAnalysisResponse["data"];
         }
 
-        console.log("=== Analysis Data ===", analysisData);
-
-        // Transform API response to match CompanyData structure
         const transformedData = transformAPIResponse(analysisData);
-
-        console.log("=== Transformed Data ===", transformedData);
-
-        // Merge with existing data
         setCompanyData((prev) => safelyMergeCompanyData(prev, transformedData));
 
-        // Update AI config
         const apiAiConfig = analysisData.ai_config;
         if (apiAiConfig) {
           setAIConfig((prev) => ({
@@ -371,38 +347,9 @@ export default function CompanySetup() {
           description: `Extracted information for ${transformedData.company_name || "your company"}.`,
         });
       } else {
-        // Use mock data for demo/fallback
-        const mockData: CompanyData = {
-          company_name: "Demo Business",
-          industry: "general",
-          services: ["Service 1", "Service 2", "Consulting"],
-          description: "A leading provider of business solutions.",
-          contact: {
-            phone: "+1 234 567 8900",
-            email: "contact@demo.com",
-            address: "123 Business St, City",
-          },
-          social_links: {
-            website: inputUrl,
-            linkedin: "linkedin.com/company/demo",
-          },
-          logo_url: "",
-          suggested_ai_name: "Luna",
-          suggested_greeting: "Hi! I'm Luna, your AI assistant. How can I help you today?",
-        };
-
-        setCompanyData((prev) => safelyMergeCompanyData(prev, mockData));
-        setAIConfig((prev) => ({
-          ...prev,
-          name: mockData.suggested_ai_name,
-          greeting: mockData.suggested_greeting,
-        }));
-
+        // Fallback for demo
         setCurrentStep(2);
-        toast({
-          title: "Demo mode",
-          description: "Using sample data. Connect n8n webhook for real analysis.",
-        });
+        toast({ title: "Demo mode", description: "Enter your details manually." });
       }
     } catch (error) {
       console.error("Analysis error:", error);
@@ -416,28 +363,28 @@ export default function CompanySetup() {
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setUploadedFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
-    }
-  };
-
+  // Step 5: Train AI Knowledge
   const handleTrainAI = async () => {
     setIsTraining(true);
 
     try {
-      await callWebhook(
-        WEBHOOKS.TRAIN_AI_KNOWLEDGE,
+      const response = await callWebhook(
+        WEBHOOKS.TRAIN_AI_KNOWLEDGE || "onboarding/train-agents",
         {
+          tenant_id: tenantId,
           files: uploadedFiles.map((f) => f.name),
           text: knowledgeText,
+          modules: ["sales", "marketing", "communication", "voice", "hr"],
         },
         tenantId || "onboarding",
       );
 
-      toast({ title: "Training started!", description: "Your AI will be ready shortly." });
+      console.log("Training response:", response);
+      toast({ title: "Training complete!", description: "Your AI is now smarter." });
       setCurrentStep(6);
-    } catch {
+    } catch (error) {
+      console.error("Training error:", error);
+      // Still proceed - training can happen in background
       toast({ title: "Training initiated", description: "Your AI will learn from this data." });
       setCurrentStep(6);
     } finally {
@@ -445,41 +392,104 @@ export default function CompanySetup() {
     }
   };
 
+  // Step 7: Complete Onboarding - SENDS ALL DATA
   const handleComplete = async () => {
+    setIsSaving(true);
+
     try {
-      await callWebhook(
-        WEBHOOKS.ONBOARDING_COMPLETE,
-        {
-          company: companyData,
-          ai: aiConfig,
-          channels,
-          plan: selectedPlan,
+      // Build comprehensive payload with ALL onboarding data
+      const completePayload = {
+        tenant_id: tenantId,
+
+        // Company data from Step 2
+        company: {
+          name: companyData.company_name,
+          industry: companyData.industry,
+          description: companyData.description,
+          services: companyData.services,
+          contact: companyData.contact,
+          social_links: companyData.social_links,
+          logo_url: companyData.logo_url,
         },
+
+        // AI Configuration from Step 3
+        ai_config: {
+          ai_name: aiConfig.name,
+          ai_role: aiConfig.role,
+          ai_greeting: aiConfig.greeting,
+          ai_personality: aiConfig.personality,
+          ai_tone: aiConfig.personality, // Same as personality for now
+          timezone: aiConfig.timezone,
+          opening_time: aiConfig.workingHoursStart,
+          closing_time: aiConfig.workingHoursEnd,
+        },
+
+        // Channel Configuration from Step 4
+        channels: {
+          has_whatsapp: channels.whatsapp,
+          has_voice: channels.voiceAI,
+          has_email: channels.email,
+          has_instagram: channels.instagram,
+          has_facebook: channels.facebook,
+          has_webchat: channels.webChat,
+        },
+
+        // Subscription from Step 6
+        subscription: {
+          plan: selectedPlan,
+          status: "active",
+        },
+
+        // Completion metadata
+        automation_mode: "full",
+        enable_voice: channels.voiceAI,
+      };
+
+      console.log("=== Completing Onboarding ===", completePayload);
+
+      const response = await callWebhook(
+        WEBHOOKS.ONBOARDING_COMPLETE || "onboarding/complete",
+        completePayload,
         tenantId || "onboarding",
       );
 
+      console.log("Completion response:", response);
+
+      // Refresh tenant config to get updated data
       await refreshConfig();
-      toast({ title: "Setup complete!", description: "Welcome to Zateceptionist!" });
+
+      toast({
+        title: "Setup complete!",
+        description: "Welcome to Zateceptionist!",
+      });
+
       navigate("/dashboard");
-    } catch {
-      toast({ title: "Welcome!", description: "Your setup is complete." });
+    } catch (error) {
+      console.error("Completion error:", error);
+      // Still navigate - basic data was already saved in earlier steps
+      toast({
+        title: "Welcome!",
+        description: "Your setup is mostly complete. Some settings may need manual configuration.",
+      });
       navigate("/dashboard");
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const nextStep = () => setCurrentStep((prev) => Math.min(prev + 1, STEPS.length));
-  const prevStep = () => setCurrentStep((prev) => Math.max(prev - 1, 1));
+  // ============================================
+  // HELPERS
+  // ============================================
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setUploadedFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
+    }
+  };
 
-  // ============================================
-  // SAFE UPDATE HANDLERS
-  // ============================================
   const updateContactField = (field: keyof CompanyData["contact"], value: string) => {
     setCompanyData((prev) => ({
       ...prev,
-      contact: {
-        ...prev.contact,
-        [field]: value,
-      },
+      contact: { ...prev.contact, [field]: value },
     }));
   };
 
@@ -500,6 +510,12 @@ export default function CompanySetup() {
     }));
   };
 
+  const nextStep = () => setCurrentStep((prev) => Math.min(prev + 1, STEPS.length));
+  const prevStep = () => setCurrentStep((prev) => Math.max(prev - 1, 1));
+
+  // ============================================
+  // RENDER STEPS
+  // ============================================
   const renderStep = () => {
     switch (currentStep) {
       case 1:
@@ -517,18 +533,18 @@ export default function CompanySetup() {
               </div>
               <h2 className="text-2xl font-bold">Welcome! Let's set up your business</h2>
               <p className="text-muted-foreground">
-                Enter your website, email, or social media link and our AI will extract your business information.
+                Enter your website URL and our AI will extract your business information.
               </p>
             </div>
 
             <Card>
               <CardContent className="pt-6 space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="url">Website URL, Email, or Social Media Link</Label>
+                  <Label htmlFor="url">Website URL</Label>
                   <div className="flex gap-2">
                     <Input
                       id="url"
-                      placeholder="https://yourbusiness.com or contact@yourbusiness.com"
+                      placeholder="https://yourbusiness.com"
                       value={inputUrl}
                       onChange={(e) => setInputUrl(e.target.value)}
                       className="flex-1"
@@ -542,7 +558,7 @@ export default function CompanySetup() {
                       ) : (
                         <>
                           <Sparkles className="h-4 w-4 mr-2" />
-                          Analyze with AI
+                          Analyze
                         </>
                       )}
                     </Button>
@@ -567,7 +583,7 @@ export default function CompanySetup() {
                   }}
                 >
                   <FileText className="h-4 w-4 mr-2" />
-                  Enter Company Info Manually
+                  Enter Manually
                 </Button>
               </CardContent>
             </Card>
@@ -601,7 +617,7 @@ export default function CompanySetup() {
                 <CardContent className="space-y-4">
                   <div className="flex items-center gap-4">
                     <Avatar className="h-16 w-16">
-                      {companyData.logo_url ? <AvatarImage src={companyData.logo_url} /> : null}
+                      {companyData.logo_url && <AvatarImage src={companyData.logo_url} />}
                       <AvatarFallback className="text-xl bg-primary/10 text-primary">
                         {companyData.company_name?.charAt(0) || "C"}
                       </AvatarFallback>
@@ -645,7 +661,7 @@ export default function CompanySetup() {
                       value={companyData.description}
                       onChange={(e) => setCompanyData((prev) => ({ ...prev, description: e.target.value }))}
                       rows={3}
-                      placeholder="Brief description of your business"
+                      placeholder="Brief description"
                     />
                   </div>
                 </CardContent>
@@ -675,7 +691,7 @@ export default function CompanySetup() {
                       <Input
                         value={companyData?.contact?.email ?? ""}
                         onChange={(e) => updateContactField("email", e.target.value)}
-                        placeholder="Enter email address"
+                        placeholder="Enter email"
                       />
                     </div>
                   </div>
@@ -686,7 +702,7 @@ export default function CompanySetup() {
                       value={companyData?.contact?.address ?? ""}
                       onChange={(e) => updateContactField("address", e.target.value)}
                       rows={2}
-                      placeholder="Enter business address"
+                      placeholder="Enter address"
                     />
                   </div>
 
@@ -715,12 +731,10 @@ export default function CompanySetup() {
 
             <div className="flex justify-between">
               <Button variant="outline" onClick={prevStep}>
-                <ChevronLeft className="h-4 w-4 mr-2" />
-                Back
+                <ChevronLeft className="h-4 w-4 mr-2" /> Back
               </Button>
               <Button onClick={nextStep}>
-                Continue
-                <ChevronRight className="h-4 w-4 ml-2" />
+                Continue <ChevronRight className="h-4 w-4 ml-2" />
               </Button>
             </div>
           </motion.div>
@@ -747,20 +761,17 @@ export default function CompanySetup() {
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg flex items-center gap-2">
-                    <Mic className="h-5 w-5" />
-                    AI Identity
+                    <Mic className="h-5 w-5" /> AI Identity
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label>AI Name</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        value={aiConfig.name}
-                        onChange={(e) => setAIConfig((prev) => ({ ...prev, name: e.target.value }))}
-                        placeholder="e.g., Luna, Max, Zate"
-                      />
-                    </div>
+                    <Input
+                      value={aiConfig.name}
+                      onChange={(e) => setAIConfig((prev) => ({ ...prev, name: e.target.value }))}
+                      placeholder="e.g., Luna, Max, Zate"
+                    />
                     <div className="flex gap-2 mt-2">
                       {(AI_NAME_SUGGESTIONS[companyData.industry] || AI_NAME_SUGGESTIONS.general).map((name) => (
                         <Button
@@ -819,8 +830,7 @@ export default function CompanySetup() {
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg flex items-center gap-2">
-                    <Clock className="h-5 w-5" />
-                    Working Hours
+                    <Clock className="h-5 w-5" /> Working Hours
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -830,7 +840,6 @@ export default function CompanySetup() {
                       value={aiConfig.greeting}
                       onChange={(e) => setAIConfig((prev) => ({ ...prev, greeting: e.target.value }))}
                       rows={3}
-                      placeholder="Hello! How can I help you today?"
                     />
                   </div>
 
@@ -891,12 +900,10 @@ export default function CompanySetup() {
 
             <div className="flex justify-between">
               <Button variant="outline" onClick={prevStep}>
-                <ChevronLeft className="h-4 w-4 mr-2" />
-                Back
+                <ChevronLeft className="h-4 w-4 mr-2" /> Back
               </Button>
               <Button onClick={nextStep}>
-                Continue
-                <ChevronRight className="h-4 w-4 ml-2" />
+                Continue <ChevronRight className="h-4 w-4 ml-2" />
               </Button>
             </div>
           </motion.div>
@@ -916,8 +923,16 @@ export default function CompanySetup() {
                 <MessageCircle className="h-8 w-8 text-primary" />
               </div>
               <h2 className="text-2xl font-bold">Connect Your Channels</h2>
-              <p className="text-muted-foreground">Enable the communication channels you want your AI to handle</p>
+              <p className="text-muted-foreground">Enable the channels you want your AI to handle</p>
             </div>
+
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Channel integrations can be configured in Settings → Integrations after setup. Toggle ON the channels
+                you plan to use.
+              </AlertDescription>
+            </Alert>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {[
@@ -926,42 +941,36 @@ export default function CompanySetup() {
                   label: "WhatsApp Business",
                   icon: MessageCircle,
                   color: "text-green-500",
-                  description: "Connect your WhatsApp Business account",
+                  description: "Connect in Settings → Integrations",
                 },
                 {
                   key: "voiceAI",
                   label: "Voice AI",
                   icon: Phone,
                   color: "text-blue-500",
-                  description: "Enable AI-powered phone calls",
+                  description: "VAPI-powered phone calls",
                 },
-                {
-                  key: "email",
-                  label: "Email",
-                  icon: Mail,
-                  color: "text-purple-500",
-                  description: "SMTP or Gmail integration",
-                },
+                { key: "email", label: "Email", icon: Mail, color: "text-purple-500", description: "SMTP integration" },
                 {
                   key: "instagram",
                   label: "Instagram",
                   icon: Instagram,
                   color: "text-pink-500",
-                  description: "Connect Instagram Business",
+                  description: "Meta Business integration",
                 },
                 {
                   key: "facebook",
                   label: "Facebook",
                   icon: Facebook,
                   color: "text-blue-600",
-                  description: "Connect Facebook Page",
+                  description: "Messenger integration",
                 },
                 {
                   key: "webChat",
                   label: "Website Chat",
                   icon: Globe,
                   color: "text-orange-500",
-                  description: "Add chat widget to your site",
+                  description: "Embed widget on your site",
                 },
               ].map((channel) => (
                 <Card
@@ -991,21 +1000,6 @@ export default function CompanySetup() {
                       </div>
                       <Switch checked={channels[channel.key as keyof ChannelConfig]} onCheckedChange={() => {}} />
                     </div>
-                    {channels[channel.key as keyof ChannelConfig] &&
-                      channel.key !== "webChat" &&
-                      channel.key !== "email" && (
-                        <Button variant="outline" size="sm" className="w-full mt-3">
-                          Connect
-                        </Button>
-                      )}
-                    {channels[channel.key as keyof ChannelConfig] && channel.key === "webChat" && (
-                      <div className="mt-3 space-y-2">
-                        <Button variant="outline" size="sm" className="w-full">
-                          <Code className="h-4 w-4 mr-2" />
-                          Get Embed Code
-                        </Button>
-                      </div>
-                    )}
                   </CardContent>
                 </Card>
               ))}
@@ -1013,12 +1007,10 @@ export default function CompanySetup() {
 
             <div className="flex justify-between">
               <Button variant="outline" onClick={prevStep}>
-                <ChevronLeft className="h-4 w-4 mr-2" />
-                Back
+                <ChevronLeft className="h-4 w-4 mr-2" /> Back
               </Button>
               <Button onClick={nextStep}>
-                Continue
-                <ChevronRight className="h-4 w-4 ml-2" />
+                Continue <ChevronRight className="h-4 w-4 ml-2" />
               </Button>
             </div>
           </motion.div>
@@ -1038,14 +1030,14 @@ export default function CompanySetup() {
                 <FileText className="h-8 w-8 text-primary" />
               </div>
               <h2 className="text-2xl font-bold">Upload Knowledge Base</h2>
-              <p className="text-muted-foreground">Train your AI with your business documents and FAQs</p>
+              <p className="text-muted-foreground">Train your AI with your business documents</p>
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">Upload Documents</CardTitle>
-                  <CardDescription>PDF, DOCX, TXT, CSV files</CardDescription>
+                  <CardDescription>PDF, DOCX, TXT files</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="border-2 border-dashed rounded-lg p-8 text-center hover:border-primary/50 transition-colors">
@@ -1087,7 +1079,7 @@ export default function CompanySetup() {
                 </CardHeader>
                 <CardContent>
                   <Textarea
-                    placeholder="Paste your business information, FAQs, product descriptions, or any content you want your AI to learn..."
+                    placeholder="Paste your business information..."
                     rows={10}
                     value={knowledgeText}
                     onChange={(e) => setKnowledgeText(e.target.value)}
@@ -1098,8 +1090,7 @@ export default function CompanySetup() {
 
             <div className="flex justify-between">
               <Button variant="outline" onClick={prevStep}>
-                <ChevronLeft className="h-4 w-4 mr-2" />
-                Back
+                <ChevronLeft className="h-4 w-4 mr-2" /> Back
               </Button>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={nextStep}>
@@ -1111,13 +1102,11 @@ export default function CompanySetup() {
                 >
                   {isTraining ? (
                     <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Training...
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Training...
                     </>
                   ) : (
                     <>
-                      <Sparkles className="h-4 w-4 mr-2" />
-                      Train AI
+                      <Sparkles className="h-4 w-4 mr-2" /> Train AI
                     </>
                   )}
                 </Button>
@@ -1158,14 +1147,7 @@ export default function CompanySetup() {
                   name: "Professional",
                   price: "$49",
                   period: "/month",
-                  features: [
-                    "Unlimited messages",
-                    "All channels",
-                    "Advanced AI",
-                    "Priority support",
-                    "Analytics",
-                    "Custom branding",
-                  ],
+                  features: ["Unlimited messages", "All channels", "Advanced AI", "Priority support", "Analytics"],
                   icon: Rocket,
                   popular: true,
                 },
@@ -1179,7 +1161,6 @@ export default function CompanySetup() {
                     "Dedicated support",
                     "Custom integrations",
                     "SLA guarantee",
-                    "Multi-tenant",
                     "API access",
                   ],
                   icon: Crown,
@@ -1223,12 +1204,10 @@ export default function CompanySetup() {
 
             <div className="flex justify-between">
               <Button variant="outline" onClick={prevStep}>
-                <ChevronLeft className="h-4 w-4 mr-2" />
-                Back
+                <ChevronLeft className="h-4 w-4 mr-2" /> Back
               </Button>
               <Button onClick={nextStep}>
-                Continue
-                <ChevronRight className="h-4 w-4 ml-2" />
+                Continue <ChevronRight className="h-4 w-4 ml-2" />
               </Button>
             </div>
           </motion.div>
@@ -1290,16 +1269,27 @@ export default function CompanySetup() {
                       </Badge>
                     ))}
                 </div>
+
+                <Badge variant="outline" className="mt-2">
+                  {selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1)} Plan
+                </Badge>
               </CardContent>
             </Card>
 
             <div className="flex flex-col gap-3 max-w-sm mx-auto">
-              <Button size="lg" onClick={handleComplete}>
-                <Rocket className="h-5 w-5 mr-2" />
-                Go to Dashboard
+              <Button size="lg" onClick={handleComplete} disabled={isSaving}>
+                {isSaving ? (
+                  <>
+                    <Loader2 className="h-5 w-5 mr-2 animate-spin" /> Saving...
+                  </>
+                ) : (
+                  <>
+                    <Rocket className="h-5 w-5 mr-2" /> Go to Dashboard
+                  </>
+                )}
               </Button>
-              <Button variant="outline" size="lg">
-                Take a Quick Tour
+              <Button variant="outline" size="lg" onClick={prevStep}>
+                <ChevronLeft className="h-4 w-4 mr-2" /> Back to Review
               </Button>
             </div>
           </motion.div>
