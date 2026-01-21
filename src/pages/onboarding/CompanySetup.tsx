@@ -1,14 +1,14 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Building2, 
-  Globe, 
-  Mail, 
-  Phone, 
-  Sparkles, 
-  Check, 
-  ChevronRight, 
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Building2,
+  Globe,
+  Mail,
+  Phone,
+  Sparkles,
+  Check,
+  ChevronRight,
   ChevronLeft,
   Upload,
   Loader2,
@@ -24,67 +24,67 @@ import {
   Mic,
   Code,
   CreditCard,
-  Crown
-} from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useToast } from '@/hooks/use-toast';
-import { callWebhook, WEBHOOKS } from '@/lib/api/webhooks';
-import { useTenant } from '@/contexts/TenantContext';
+  Crown,
+} from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
+import { callWebhook, WEBHOOKS } from "@/lib/api/webhooks";
+import { useTenant } from "@/contexts/TenantContext";
 
 // Industry options
 const INDUSTRIES = [
-  { value: 'healthcare', label: 'Healthcare', icon: '🏥' },
-  { value: 'real_estate', label: 'Real Estate', icon: '🏠' },
-  { value: 'restaurant', label: 'Restaurant', icon: '🍽️' },
-  { value: 'salon', label: 'Salon & Spa', icon: '💇' },
-  { value: 'retail', label: 'Retail', icon: '🛍️' },
-  { value: 'automotive', label: 'Automotive', icon: '🚗' },
-  { value: 'legal', label: 'Legal Services', icon: '⚖️' },
-  { value: 'education', label: 'Education', icon: '📚' },
-  { value: 'finance', label: 'Finance', icon: '💰' },
-  { value: 'general', label: 'Other / General', icon: '🏢' },
+  { value: "healthcare", label: "Healthcare", icon: "🏥" },
+  { value: "real_estate", label: "Real Estate", icon: "🏠" },
+  { value: "restaurant", label: "Restaurant", icon: "🍽️" },
+  { value: "salon", label: "Salon & Spa", icon: "💇" },
+  { value: "retail", label: "Retail", icon: "🛍️" },
+  { value: "automotive", label: "Automotive", icon: "🚗" },
+  { value: "legal", label: "Legal Services", icon: "⚖️" },
+  { value: "education", label: "Education", icon: "📚" },
+  { value: "finance", label: "Finance", icon: "💰" },
+  { value: "general", label: "Other / General", icon: "🏢" },
 ];
 
 // AI Personality options
 const AI_PERSONALITIES = [
-  { value: 'professional', label: 'Professional', description: 'Formal and business-like' },
-  { value: 'friendly', label: 'Friendly', description: 'Warm and approachable' },
-  { value: 'casual', label: 'Casual', description: 'Relaxed and conversational' },
+  { value: "professional", label: "Professional", description: "Formal and business-like" },
+  { value: "friendly", label: "Friendly", description: "Warm and approachable" },
+  { value: "casual", label: "Casual", description: "Relaxed and conversational" },
 ];
 
 // AI Names suggestions per industry
 const AI_NAME_SUGGESTIONS: Record<string, string[]> = {
-  healthcare: ['Dr. Luna', 'Max Health', 'Cara'],
-  real_estate: ['Alex', 'Sam', 'Jordan'],
-  restaurant: ['Chef Zoe', 'Marco', 'Bella'],
-  salon: ['Luna', 'Ava', 'Sophia'],
-  general: ['Zate', 'Luna', 'Max'],
+  healthcare: ["Dr. Luna", "Max Health", "Cara"],
+  real_estate: ["Alex", "Sam", "Jordan"],
+  restaurant: ["Chef Zoe", "Marco", "Bella"],
+  salon: ["Luna", "Ava", "Sophia"],
+  general: ["Zate", "Luna", "Max"],
 };
 
 // Timezone options
 const TIMEZONES = [
-  { value: 'Africa/Johannesburg', label: 'South Africa (SAST)' },
-  { value: 'Africa/Cairo', label: 'Egypt (EET)' },
-  { value: 'Africa/Lagos', label: 'Nigeria (WAT)' },
-  { value: 'America/New_York', label: 'Eastern Time (ET)' },
-  { value: 'America/Chicago', label: 'Central Time (CT)' },
-  { value: 'America/Denver', label: 'Mountain Time (MT)' },
-  { value: 'America/Los_Angeles', label: 'Pacific Time (PT)' },
-  { value: 'Europe/London', label: 'London (GMT)' },
-  { value: 'Europe/Paris', label: 'Paris (CET)' },
-  { value: 'Asia/Dubai', label: 'Dubai (GST)' },
-  { value: 'Asia/Singapore', label: 'Singapore (SGT)' },
-  { value: 'Australia/Sydney', label: 'Sydney (AEST)' },
+  { value: "Africa/Johannesburg", label: "South Africa (SAST)" },
+  { value: "Africa/Cairo", label: "Egypt (EET)" },
+  { value: "Africa/Lagos", label: "Nigeria (WAT)" },
+  { value: "America/New_York", label: "Eastern Time (ET)" },
+  { value: "America/Chicago", label: "Central Time (CT)" },
+  { value: "America/Denver", label: "Mountain Time (MT)" },
+  { value: "America/Los_Angeles", label: "Pacific Time (PT)" },
+  { value: "Europe/London", label: "London (GMT)" },
+  { value: "Europe/Paris", label: "Paris (CET)" },
+  { value: "Asia/Dubai", label: "Dubai (GST)" },
+  { value: "Asia/Singapore", label: "Singapore (SGT)" },
+  { value: "Australia/Sydney", label: "Sydney (AEST)" },
 ];
 
 interface CompanyData {
@@ -128,14 +128,59 @@ interface ChannelConfig {
 }
 
 const STEPS = [
-  { id: 1, title: "Let's Get Started", description: 'Enter your business info' },
-  { id: 2, title: 'AI Analysis Results', description: 'Review extracted data' },
-  { id: 3, title: 'Configure AI Assistant', description: 'Set up your AI' },
-  { id: 4, title: 'Connect Channels', description: 'Enable communication' },
-  { id: 5, title: 'Knowledge Base', description: 'Train your AI' },
-  { id: 6, title: 'Choose Plan', description: 'Select subscription' },
-  { id: 7, title: "You're All Set!", description: 'Start using the app' },
+  { id: 1, title: "Let's Get Started", description: "Enter your business info" },
+  { id: 2, title: "AI Analysis Results", description: "Review extracted data" },
+  { id: 3, title: "Configure AI Assistant", description: "Set up your AI" },
+  { id: 4, title: "Connect Channels", description: "Enable communication" },
+  { id: 5, title: "Knowledge Base", description: "Train your AI" },
+  { id: 6, title: "Choose Plan", description: "Select subscription" },
+  { id: 7, title: "You're All Set!", description: "Start using the app" },
 ];
+
+// ============================================
+// DEFAULT VALUES - Used for safe initialization
+// ============================================
+const DEFAULT_CONTACT = { phone: "", email: "", address: "" };
+const DEFAULT_SOCIAL_LINKS = {};
+const DEFAULT_COMPANY_DATA: CompanyData = {
+  company_name: "",
+  industry: "general",
+  services: [],
+  description: "",
+  contact: { ...DEFAULT_CONTACT },
+  social_links: { ...DEFAULT_SOCIAL_LINKS },
+  logo_url: "",
+  suggested_ai_name: "Zate",
+  suggested_greeting: "Hello! I'm your AI assistant. How can I help you today?",
+};
+
+// ============================================
+// HELPER: Safe merge function
+// ============================================
+function safelyMergeCompanyData(existing: CompanyData, incoming: Partial<CompanyData> | null | undefined): CompanyData {
+  if (!incoming) return existing;
+
+  return {
+    company_name: incoming.company_name ?? existing.company_name,
+    industry: incoming.industry ?? existing.industry,
+    services: Array.isArray(incoming.services) && incoming.services.length > 0 ? incoming.services : existing.services,
+    description: incoming.description ?? existing.description,
+    // CRITICAL: Safely merge contact object
+    contact: {
+      phone: incoming.contact?.phone ?? existing.contact?.phone ?? "",
+      email: incoming.contact?.email ?? existing.contact?.email ?? "",
+      address: incoming.contact?.address ?? existing.contact?.address ?? "",
+    },
+    // Safely merge social links
+    social_links: {
+      ...existing.social_links,
+      ...(incoming.social_links || {}),
+    },
+    logo_url: incoming.logo_url ?? existing.logo_url,
+    suggested_ai_name: incoming.suggested_ai_name ?? existing.suggested_ai_name,
+    suggested_greeting: incoming.suggested_greeting ?? existing.suggested_greeting,
+  };
+}
 
 export default function CompanySetup() {
   const navigate = useNavigate();
@@ -144,31 +189,21 @@ export default function CompanySetup() {
 
   const [currentStep, setCurrentStep] = useState(1);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [inputUrl, setInputUrl] = useState('');
+  const [inputUrl, setInputUrl] = useState("");
   const [isManualEntry, setIsManualEntry] = useState(false);
 
-  // Company Data (from AI or manual)
-  const [companyData, setCompanyData] = useState<CompanyData>({
-    company_name: '',
-    industry: 'general',
-    services: [],
-    description: '',
-    contact: { phone: '', email: '', address: '' },
-    social_links: {},
-    logo_url: '',
-    suggested_ai_name: 'Zate',
-    suggested_greeting: "Hello! I'm your AI assistant. How can I help you today?",
-  });
+  // Company Data (from AI or manual) - initialized with defaults
+  const [companyData, setCompanyData] = useState<CompanyData>({ ...DEFAULT_COMPANY_DATA });
 
   // AI Configuration
   const [aiConfig, setAIConfig] = useState<AIConfig>({
-    name: 'Zate',
-    role: 'AI Receptionist',
+    name: "Zate",
+    role: "AI Receptionist",
     greeting: "Hello! I'm your AI assistant. How can I help you today?",
-    personality: 'friendly',
-    workingHoursStart: '09:00',
-    workingHoursEnd: '17:00',
-    timezone: 'Africa/Johannesburg',
+    personality: "friendly",
+    workingHoursStart: "09:00",
+    workingHoursEnd: "17:00",
+    timezone: "Africa/Johannesburg",
   });
 
   // Channel Configuration
@@ -183,70 +218,81 @@ export default function CompanySetup() {
 
   // Knowledge Base
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
-  const [knowledgeText, setKnowledgeText] = useState('');
+  const [knowledgeText, setKnowledgeText] = useState("");
   const [isTraining, setIsTraining] = useState(false);
 
   // Selected Plan
-  const [selectedPlan, setSelectedPlan] = useState<'free' | 'pro' | 'enterprise'>('free');
+  const [selectedPlan, setSelectedPlan] = useState<"free" | "pro" | "enterprise">("free");
 
   const progressPercent = (currentStep / STEPS.length) * 100;
 
-  // Analyze company with AI
+  // ============================================
+  // ANALYZE COMPANY WITH AI - FIXED VERSION
+  // ============================================
   const handleAnalyze = async () => {
     if (!inputUrl.trim()) {
-      toast({ title: 'Please enter a URL or email', variant: 'destructive' });
+      toast({ title: "Please enter a URL or email", variant: "destructive" });
       return;
     }
 
     setIsAnalyzing(true);
-    
+
     try {
       const response = await callWebhook<CompanyData>(
         WEBHOOKS.AI_COMPANY_ANALYZE,
         { url: inputUrl },
-        tenantId || 'onboarding'
+        tenantId || "onboarding",
       );
 
       if (response.success && response.data) {
-        setCompanyData(response.data);
-        setAIConfig(prev => ({
+        // ✅ FIX: Use safe merge instead of direct assignment
+        setCompanyData((prev) => safelyMergeCompanyData(prev, response.data));
+
+        // Update AI config with safe access
+        setAIConfig((prev) => ({
           ...prev,
-          name: response.data!.suggested_ai_name || prev.name,
-          greeting: response.data!.suggested_greeting || prev.greeting,
+          name: response.data?.suggested_ai_name || prev.name,
+          greeting: response.data?.suggested_greeting || prev.greeting,
         }));
+
         setCurrentStep(2);
-        toast({ title: 'Analysis complete!', description: 'Review the extracted information below.' });
+        toast({ title: "Analysis complete!", description: "Review the extracted information below." });
       } else {
-        // Mock data for demo
+        // Mock data for demo - also using safe merge
         const mockData: CompanyData = {
-          company_name: 'Demo Business',
-          industry: 'general',
-          services: ['Service 1', 'Service 2', 'Consulting'],
-          description: 'A leading provider of business solutions.',
+          company_name: "Demo Business",
+          industry: "general",
+          services: ["Service 1", "Service 2", "Consulting"],
+          description: "A leading provider of business solutions.",
           contact: {
-            phone: '+1 234 567 8900',
-            email: 'contact@demo.com',
-            address: '123 Business St, City',
+            phone: "+1 234 567 8900",
+            email: "contact@demo.com",
+            address: "123 Business St, City",
           },
           social_links: {
             website: inputUrl,
-            linkedin: 'linkedin.com/company/demo',
+            linkedin: "linkedin.com/company/demo",
           },
-          logo_url: '',
-          suggested_ai_name: 'Luna',
+          logo_url: "",
+          suggested_ai_name: "Luna",
           suggested_greeting: "Hi! I'm Luna, your AI assistant. How can I help you today?",
         };
-        setCompanyData(mockData);
-        setAIConfig(prev => ({
+
+        // ✅ FIX: Use safe merge for mock data too
+        setCompanyData((prev) => safelyMergeCompanyData(prev, mockData));
+
+        setAIConfig((prev) => ({
           ...prev,
           name: mockData.suggested_ai_name,
           greeting: mockData.suggested_greeting,
         }));
+
         setCurrentStep(2);
-        toast({ title: 'Demo mode', description: 'Using sample data. Connect n8n webhook for real analysis.' });
+        toast({ title: "Demo mode", description: "Using sample data. Connect n8n webhook for real analysis." });
       }
-    } catch {
-      toast({ title: 'Analysis failed', description: 'Please try again or enter manually.', variant: 'destructive' });
+    } catch (error) {
+      console.error("Analysis error:", error);
+      toast({ title: "Analysis failed", description: "Please try again or enter manually.", variant: "destructive" });
     } finally {
       setIsAnalyzing(false);
     }
@@ -254,27 +300,27 @@ export default function CompanySetup() {
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setUploadedFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+      setUploadedFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
     }
   };
 
   const handleTrainAI = async () => {
     setIsTraining(true);
-    
+
     try {
       await callWebhook(
         WEBHOOKS.TRAIN_AI_KNOWLEDGE,
         {
-          files: uploadedFiles.map(f => f.name),
+          files: uploadedFiles.map((f) => f.name),
           text: knowledgeText,
         },
-        tenantId || 'onboarding'
+        tenantId || "onboarding",
       );
-      
-      toast({ title: 'Training started!', description: 'Your AI will be ready shortly.' });
+
+      toast({ title: "Training started!", description: "Your AI will be ready shortly." });
       setCurrentStep(6);
     } catch {
-      toast({ title: 'Training initiated', description: 'Your AI will learn from this data.' });
+      toast({ title: "Training initiated", description: "Your AI will learn from this data." });
       setCurrentStep(6);
     } finally {
       setIsTraining(false);
@@ -291,20 +337,33 @@ export default function CompanySetup() {
           channels,
           plan: selectedPlan,
         },
-        tenantId || 'onboarding'
+        tenantId || "onboarding",
       );
-      
+
       await refreshConfig();
-      toast({ title: 'Setup complete!', description: 'Welcome to Zateceptionist!' });
-      navigate('/dashboard');
+      toast({ title: "Setup complete!", description: "Welcome to Zateceptionist!" });
+      navigate("/dashboard");
     } catch {
-      toast({ title: 'Welcome!', description: 'Your setup is complete.' });
-      navigate('/dashboard');
+      toast({ title: "Welcome!", description: "Your setup is complete." });
+      navigate("/dashboard");
     }
   };
 
-  const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, STEPS.length));
-  const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
+  const nextStep = () => setCurrentStep((prev) => Math.min(prev + 1, STEPS.length));
+  const prevStep = () => setCurrentStep((prev) => Math.max(prev - 1, 1));
+
+  // ============================================
+  // SAFE UPDATE HANDLERS
+  // ============================================
+  const updateContactField = (field: keyof CompanyData["contact"], value: string) => {
+    setCompanyData((prev) => ({
+      ...prev,
+      contact: {
+        ...prev.contact,
+        [field]: value,
+      },
+    }));
+  };
 
   const renderStep = () => {
     switch (currentStep) {
@@ -364,8 +423,8 @@ export default function CompanySetup() {
                   </div>
                 </div>
 
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full"
                   onClick={() => {
                     setIsManualEntry(true);
@@ -394,11 +453,9 @@ export default function CompanySetup() {
                 <Check className="h-8 w-8 text-green-500" />
               </div>
               <h2 className="text-2xl font-bold">
-                {isManualEntry ? 'Enter Your Company Details' : 'AI Analysis Complete'}
+                {isManualEntry ? "Enter Your Company Details" : "AI Analysis Complete"}
               </h2>
-              <p className="text-muted-foreground">
-                Review and edit the information below
-              </p>
+              <p className="text-muted-foreground">Review and edit the information below</p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
@@ -409,29 +466,29 @@ export default function CompanySetup() {
                 <CardContent className="space-y-4">
                   <div className="flex items-center gap-4">
                     <Avatar className="h-16 w-16">
-                      {companyData.logo_url ? (
-                        <AvatarImage src={companyData.logo_url} />
-                      ) : null}
+                      {companyData.logo_url ? <AvatarImage src={companyData.logo_url} /> : null}
                       <AvatarFallback className="text-xl bg-primary/10 text-primary">
-                        {companyData.company_name?.charAt(0) || 'C'}
+                        {companyData.company_name?.charAt(0) || "C"}
                       </AvatarFallback>
                     </Avatar>
-                    <Button variant="outline" size="sm">Change Logo</Button>
+                    <Button variant="outline" size="sm">
+                      Change Logo
+                    </Button>
                   </div>
 
                   <div className="space-y-2">
                     <Label>Company Name</Label>
                     <Input
                       value={companyData.company_name}
-                      onChange={(e) => setCompanyData(prev => ({ ...prev, company_name: e.target.value }))}
+                      onChange={(e) => setCompanyData((prev) => ({ ...prev, company_name: e.target.value }))}
                     />
                   </div>
 
                   <div className="space-y-2">
                     <Label>Industry</Label>
-                    <Select 
-                      value={companyData.industry} 
-                      onValueChange={(v) => setCompanyData(prev => ({ ...prev, industry: v }))}
+                    <Select
+                      value={companyData.industry}
+                      onValueChange={(v) => setCompanyData((prev) => ({ ...prev, industry: v }))}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -450,7 +507,7 @@ export default function CompanySetup() {
                     <Label>Description</Label>
                     <Textarea
                       value={companyData.description}
-                      onChange={(e) => setCompanyData(prev => ({ ...prev, description: e.target.value }))}
+                      onChange={(e) => setCompanyData((prev) => ({ ...prev, description: e.target.value }))}
                       rows={3}
                     />
                   </div>
@@ -466,12 +523,11 @@ export default function CompanySetup() {
                     <Label>Phone</Label>
                     <div className="flex items-center gap-2">
                       <Phone className="h-4 w-4 text-muted-foreground" />
+                      {/* ✅ FIX: Using safe update handler with fallback */}
                       <Input
-                        value={companyData.contact.phone}
-                        onChange={(e) => setCompanyData(prev => ({
-                          ...prev,
-                          contact: { ...prev.contact, phone: e.target.value }
-                        }))}
+                        value={companyData?.contact?.phone ?? ""}
+                        onChange={(e) => updateContactField("phone", e.target.value)}
+                        placeholder="Enter phone number"
                       />
                     </div>
                   </div>
@@ -480,35 +536,37 @@ export default function CompanySetup() {
                     <Label>Email</Label>
                     <div className="flex items-center gap-2">
                       <Mail className="h-4 w-4 text-muted-foreground" />
+                      {/* ✅ FIX: Using safe update handler with fallback */}
                       <Input
-                        value={companyData.contact.email}
-                        onChange={(e) => setCompanyData(prev => ({
-                          ...prev,
-                          contact: { ...prev.contact, email: e.target.value }
-                        }))}
+                        value={companyData?.contact?.email ?? ""}
+                        onChange={(e) => updateContactField("email", e.target.value)}
+                        placeholder="Enter email address"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
                     <Label>Address</Label>
+                    {/* ✅ FIX: Using safe update handler with fallback */}
                     <Textarea
-                      value={companyData.contact.address}
-                      onChange={(e) => setCompanyData(prev => ({
-                        ...prev,
-                        contact: { ...prev.contact, address: e.target.value }
-                      }))}
+                      value={companyData?.contact?.address ?? ""}
+                      onChange={(e) => updateContactField("address", e.target.value)}
                       rows={2}
+                      placeholder="Enter business address"
                     />
                   </div>
 
                   <div className="space-y-2">
                     <Label>Services/Products</Label>
                     <div className="flex flex-wrap gap-2">
-                      {companyData.services.map((service, i) => (
-                        <Badge key={i} variant="secondary">{service}</Badge>
+                      {(companyData.services || []).map((service, i) => (
+                        <Badge key={i} variant="secondary">
+                          {service}
+                        </Badge>
                       ))}
-                      <Button variant="outline" size="sm" className="h-6">+ Add</Button>
+                      <Button variant="outline" size="sm" className="h-6">
+                        + Add
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
@@ -542,9 +600,7 @@ export default function CompanySetup() {
                 <Bot className="h-8 w-8 text-primary" />
               </div>
               <h2 className="text-2xl font-bold">Configure Your AI Assistant</h2>
-              <p className="text-muted-foreground">
-                Personalize how your AI interacts with customers
-              </p>
+              <p className="text-muted-foreground">Personalize how your AI interacts with customers</p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
@@ -561,7 +617,7 @@ export default function CompanySetup() {
                     <div className="flex gap-2">
                       <Input
                         value={aiConfig.name}
-                        onChange={(e) => setAIConfig(prev => ({ ...prev, name: e.target.value }))}
+                        onChange={(e) => setAIConfig((prev) => ({ ...prev, name: e.target.value }))}
                         placeholder="e.g., Luna, Max, Zate"
                       />
                     </div>
@@ -571,7 +627,7 @@ export default function CompanySetup() {
                           key={name}
                           variant="outline"
                           size="sm"
-                          onClick={() => setAIConfig(prev => ({ ...prev, name }))}
+                          onClick={() => setAIConfig((prev) => ({ ...prev, name }))}
                         >
                           {name}
                         </Button>
@@ -581,10 +637,7 @@ export default function CompanySetup() {
 
                   <div className="space-y-2">
                     <Label>AI Role</Label>
-                    <Select 
-                      value={aiConfig.role} 
-                      onValueChange={(v) => setAIConfig(prev => ({ ...prev, role: v }))}
-                    >
+                    <Select value={aiConfig.role} onValueChange={(v) => setAIConfig((prev) => ({ ...prev, role: v }))}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -604,17 +657,15 @@ export default function CompanySetup() {
                         <div
                           key={p.value}
                           className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                            aiConfig.personality === p.value 
-                              ? 'border-primary bg-primary/5' 
-                              : 'hover:border-muted-foreground/50'
+                            aiConfig.personality === p.value
+                              ? "border-primary bg-primary/5"
+                              : "hover:border-muted-foreground/50"
                           }`}
-                          onClick={() => setAIConfig(prev => ({ ...prev, personality: p.value }))}
+                          onClick={() => setAIConfig((prev) => ({ ...prev, personality: p.value }))}
                         >
                           <div className="flex items-center justify-between">
                             <span className="font-medium">{p.label}</span>
-                            {aiConfig.personality === p.value && (
-                              <Check className="h-4 w-4 text-primary" />
-                            )}
+                            {aiConfig.personality === p.value && <Check className="h-4 w-4 text-primary" />}
                           </div>
                           <p className="text-sm text-muted-foreground">{p.description}</p>
                         </div>
@@ -636,7 +687,7 @@ export default function CompanySetup() {
                     <Label>Greeting Message</Label>
                     <Textarea
                       value={aiConfig.greeting}
-                      onChange={(e) => setAIConfig(prev => ({ ...prev, greeting: e.target.value }))}
+                      onChange={(e) => setAIConfig((prev) => ({ ...prev, greeting: e.target.value }))}
                       rows={3}
                       placeholder="Hello! How can I help you today?"
                     />
@@ -648,7 +699,7 @@ export default function CompanySetup() {
                       <Input
                         type="time"
                         value={aiConfig.workingHoursStart}
-                        onChange={(e) => setAIConfig(prev => ({ ...prev, workingHoursStart: e.target.value }))}
+                        onChange={(e) => setAIConfig((prev) => ({ ...prev, workingHoursStart: e.target.value }))}
                       />
                     </div>
                     <div className="space-y-2">
@@ -656,16 +707,16 @@ export default function CompanySetup() {
                       <Input
                         type="time"
                         value={aiConfig.workingHoursEnd}
-                        onChange={(e) => setAIConfig(prev => ({ ...prev, workingHoursEnd: e.target.value }))}
+                        onChange={(e) => setAIConfig((prev) => ({ ...prev, workingHoursEnd: e.target.value }))}
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
                     <Label>Timezone</Label>
-                    <Select 
-                      value={aiConfig.timezone} 
-                      onValueChange={(v) => setAIConfig(prev => ({ ...prev, timezone: v }))}
+                    <Select
+                      value={aiConfig.timezone}
+                      onValueChange={(v) => setAIConfig((prev) => ({ ...prev, timezone: v }))}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -689,9 +740,7 @@ export default function CompanySetup() {
                             {aiConfig.name.charAt(0)}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="bg-card rounded-lg p-3 text-sm">
-                          {aiConfig.greeting}
-                        </div>
+                        <div className="bg-card rounded-lg p-3 text-sm">{aiConfig.greeting}</div>
                       </div>
                     </CardContent>
                   </Card>
@@ -726,36 +775,72 @@ export default function CompanySetup() {
                 <MessageCircle className="h-8 w-8 text-primary" />
               </div>
               <h2 className="text-2xl font-bold">Connect Your Channels</h2>
-              <p className="text-muted-foreground">
-                Enable the communication channels you want your AI to handle
-              </p>
+              <p className="text-muted-foreground">Enable the communication channels you want your AI to handle</p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {[
-                { key: 'whatsapp', label: 'WhatsApp Business', icon: MessageCircle, color: 'text-green-500', description: 'Connect your WhatsApp Business account' },
-                { key: 'voiceAI', label: 'Voice AI', icon: Phone, color: 'text-blue-500', description: 'Enable AI-powered phone calls' },
-                { key: 'email', label: 'Email', icon: Mail, color: 'text-purple-500', description: 'SMTP or Gmail integration' },
-                { key: 'instagram', label: 'Instagram', icon: Instagram, color: 'text-pink-500', description: 'Connect Instagram Business' },
-                { key: 'facebook', label: 'Facebook', icon: Facebook, color: 'text-blue-600', description: 'Connect Facebook Page' },
-                { key: 'webChat', label: 'Website Chat', icon: Globe, color: 'text-orange-500', description: 'Add chat widget to your site' },
+                {
+                  key: "whatsapp",
+                  label: "WhatsApp Business",
+                  icon: MessageCircle,
+                  color: "text-green-500",
+                  description: "Connect your WhatsApp Business account",
+                },
+                {
+                  key: "voiceAI",
+                  label: "Voice AI",
+                  icon: Phone,
+                  color: "text-blue-500",
+                  description: "Enable AI-powered phone calls",
+                },
+                {
+                  key: "email",
+                  label: "Email",
+                  icon: Mail,
+                  color: "text-purple-500",
+                  description: "SMTP or Gmail integration",
+                },
+                {
+                  key: "instagram",
+                  label: "Instagram",
+                  icon: Instagram,
+                  color: "text-pink-500",
+                  description: "Connect Instagram Business",
+                },
+                {
+                  key: "facebook",
+                  label: "Facebook",
+                  icon: Facebook,
+                  color: "text-blue-600",
+                  description: "Connect Facebook Page",
+                },
+                {
+                  key: "webChat",
+                  label: "Website Chat",
+                  icon: Globe,
+                  color: "text-orange-500",
+                  description: "Add chat widget to your site",
+                },
               ].map((channel) => (
-                <Card 
-                  key={channel.key} 
+                <Card
+                  key={channel.key}
                   className={`cursor-pointer transition-all ${
-                    channels[channel.key as keyof ChannelConfig] 
-                      ? 'border-primary ring-1 ring-primary' 
-                      : ''
+                    channels[channel.key as keyof ChannelConfig] ? "border-primary ring-1 ring-primary" : ""
                   }`}
-                  onClick={() => setChannels(prev => ({ 
-                    ...prev, 
-                    [channel.key]: !prev[channel.key as keyof ChannelConfig] 
-                  }))}
+                  onClick={() =>
+                    setChannels((prev) => ({
+                      ...prev,
+                      [channel.key]: !prev[channel.key as keyof ChannelConfig],
+                    }))
+                  }
                 >
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
-                        <div className={`h-10 w-10 rounded-lg bg-muted flex items-center justify-center ${channel.color}`}>
+                        <div
+                          className={`h-10 w-10 rounded-lg bg-muted flex items-center justify-center ${channel.color}`}
+                        >
                           <channel.icon className="h-5 w-5" />
                         </div>
                         <div>
@@ -763,17 +848,16 @@ export default function CompanySetup() {
                           <p className="text-xs text-muted-foreground">{channel.description}</p>
                         </div>
                       </div>
-                      <Switch 
-                        checked={channels[channel.key as keyof ChannelConfig]} 
-                        onCheckedChange={() => {}}
-                      />
+                      <Switch checked={channels[channel.key as keyof ChannelConfig]} onCheckedChange={() => {}} />
                     </div>
-                    {channels[channel.key as keyof ChannelConfig] && channel.key !== 'webChat' && channel.key !== 'email' && (
-                      <Button variant="outline" size="sm" className="w-full mt-3">
-                        Connect
-                      </Button>
-                    )}
-                    {channels[channel.key as keyof ChannelConfig] && channel.key === 'webChat' && (
+                    {channels[channel.key as keyof ChannelConfig] &&
+                      channel.key !== "webChat" &&
+                      channel.key !== "email" && (
+                        <Button variant="outline" size="sm" className="w-full mt-3">
+                          Connect
+                        </Button>
+                      )}
+                    {channels[channel.key as keyof ChannelConfig] && channel.key === "webChat" && (
                       <div className="mt-3 space-y-2">
                         <Button variant="outline" size="sm" className="w-full">
                           <Code className="h-4 w-4 mr-2" />
@@ -813,9 +897,7 @@ export default function CompanySetup() {
                 <FileText className="h-8 w-8 text-primary" />
               </div>
               <h2 className="text-2xl font-bold">Upload Knowledge Base</h2>
-              <p className="text-muted-foreground">
-                Train your AI with your business documents and FAQs
-              </p>
+              <p className="text-muted-foreground">Train your AI with your business documents and FAQs</p>
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">
@@ -837,9 +919,7 @@ export default function CompanySetup() {
                     <Label htmlFor="file-upload" className="cursor-pointer">
                       <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
                       <p className="font-medium">Drop files here or click to upload</p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Max 10MB per file
-                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">Max 10MB per file</p>
                     </Label>
                   </div>
 
@@ -884,8 +964,8 @@ export default function CompanySetup() {
                 <Button variant="outline" onClick={nextStep}>
                   Skip for now
                 </Button>
-                <Button 
-                  onClick={handleTrainAI} 
+                <Button
+                  onClick={handleTrainAI}
                   disabled={isTraining || (uploadedFiles.length === 0 && !knowledgeText.trim())}
                 >
                   {isTraining ? (
@@ -919,51 +999,59 @@ export default function CompanySetup() {
                 <CreditCard className="h-8 w-8 text-primary" />
               </div>
               <h2 className="text-2xl font-bold">Choose Your Plan</h2>
-              <p className="text-muted-foreground">
-                Start free and upgrade anytime
-              </p>
+              <p className="text-muted-foreground">Start free and upgrade anytime</p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-3">
               {[
                 {
-                  id: 'free',
-                  name: 'Free',
-                  price: '$0',
-                  period: 'forever',
-                  features: ['100 messages/month', '1 channel', 'Basic AI', 'Email support'],
+                  id: "free",
+                  name: "Free",
+                  price: "$0",
+                  period: "forever",
+                  features: ["100 messages/month", "1 channel", "Basic AI", "Email support"],
                   icon: Sparkles,
                 },
                 {
-                  id: 'pro',
-                  name: 'Professional',
-                  price: '$49',
-                  period: '/month',
-                  features: ['Unlimited messages', 'All channels', 'Advanced AI', 'Priority support', 'Analytics', 'Custom branding'],
+                  id: "pro",
+                  name: "Professional",
+                  price: "$49",
+                  period: "/month",
+                  features: [
+                    "Unlimited messages",
+                    "All channels",
+                    "Advanced AI",
+                    "Priority support",
+                    "Analytics",
+                    "Custom branding",
+                  ],
                   icon: Rocket,
                   popular: true,
                 },
                 {
-                  id: 'enterprise',
-                  name: 'Enterprise',
-                  price: 'Custom',
-                  period: '',
-                  features: ['Everything in Pro', 'Dedicated support', 'Custom integrations', 'SLA guarantee', 'Multi-tenant', 'API access'],
+                  id: "enterprise",
+                  name: "Enterprise",
+                  price: "Custom",
+                  period: "",
+                  features: [
+                    "Everything in Pro",
+                    "Dedicated support",
+                    "Custom integrations",
+                    "SLA guarantee",
+                    "Multi-tenant",
+                    "API access",
+                  ],
                   icon: Crown,
                 },
               ].map((plan) => (
-                <Card 
+                <Card
                   key={plan.id}
                   className={`cursor-pointer transition-all relative ${
-                    selectedPlan === plan.id 
-                      ? 'border-primary ring-2 ring-primary' 
-                      : 'hover:border-primary/50'
+                    selectedPlan === plan.id ? "border-primary ring-2 ring-primary" : "hover:border-primary/50"
                   }`}
                   onClick={() => setSelectedPlan(plan.id as any)}
                 >
-                  {plan.popular && (
-                    <Badge className="absolute -top-2 right-4">Most Popular</Badge>
-                  )}
+                  {plan.popular && <Badge className="absolute -top-2 right-4">Most Popular</Badge>}
                   <CardHeader>
                     <div className="flex items-center gap-2">
                       <plan.icon className="h-5 w-5 text-primary" />
@@ -1017,11 +1105,9 @@ export default function CompanySetup() {
             <div className="h-20 w-20 rounded-full bg-green-500/10 flex items-center justify-center mx-auto">
               <Check className="h-10 w-10 text-green-500" />
             </div>
-            
+
             <h2 className="text-3xl font-bold">You're All Set! 🎉</h2>
-            <p className="text-muted-foreground text-lg">
-              Your AI assistant is ready to help your customers
-            </p>
+            <p className="text-muted-foreground text-lg">Your AI assistant is ready to help your customers</p>
 
             <Card className="max-w-md mx-auto">
               <CardContent className="p-6 space-y-4">
@@ -1036,11 +1122,11 @@ export default function CompanySetup() {
                     <p className="text-sm text-muted-foreground">{aiConfig.role}</p>
                   </div>
                 </div>
-                
+
                 <div className="text-left space-y-2">
                   <div className="flex items-center gap-2 text-sm">
                     <Building2 className="h-4 w-4 text-muted-foreground" />
-                    <span>{companyData.company_name}</span>
+                    <span>{companyData.company_name || "Your Company"}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <Palette className="h-4 w-4 text-muted-foreground" />
@@ -1048,7 +1134,9 @@ export default function CompanySetup() {
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <Clock className="h-4 w-4 text-muted-foreground" />
-                    <span>{aiConfig.workingHoursStart} - {aiConfig.workingHoursEnd}</span>
+                    <span>
+                      {aiConfig.workingHoursStart} - {aiConfig.workingHoursEnd}
+                    </span>
                   </div>
                 </div>
 
@@ -1057,7 +1145,7 @@ export default function CompanySetup() {
                     .filter(([_, enabled]) => enabled)
                     .map(([channel]) => (
                       <Badge key={channel} variant="secondary">
-                        {channel.replace(/([A-Z])/g, ' $1').trim()}
+                        {channel.replace(/([A-Z])/g, " $1").trim()}
                       </Badge>
                     ))}
                 </div>
@@ -1096,21 +1184,23 @@ export default function CompanySetup() {
                 <p className="text-sm text-muted-foreground">Setup Wizard</p>
               </div>
             </div>
-            <Badge variant="outline">Step {currentStep} of {STEPS.length}</Badge>
+            <Badge variant="outline">
+              Step {currentStep} of {STEPS.length}
+            </Badge>
           </div>
-          
+
           <Progress value={progressPercent} className="h-2" />
-          
+
           <div className="flex justify-between mt-2">
             {STEPS.map((step) => (
-              <div 
+              <div
                 key={step.id}
                 className={`text-xs hidden md:block ${
-                  step.id === currentStep 
-                    ? 'text-primary font-medium' 
-                    : step.id < currentStep 
-                      ? 'text-muted-foreground' 
-                      : 'text-muted-foreground/50'
+                  step.id === currentStep
+                    ? "text-primary font-medium"
+                    : step.id < currentStep
+                      ? "text-muted-foreground"
+                      : "text-muted-foreground/50"
                 }`}
               >
                 {step.title}
@@ -1120,9 +1210,7 @@ export default function CompanySetup() {
         </div>
 
         {/* Step Content */}
-        <AnimatePresence mode="wait">
-          {renderStep()}
-        </AnimatePresence>
+        <AnimatePresence mode="wait">{renderStep()}</AnimatePresence>
       </div>
     </div>
   );
