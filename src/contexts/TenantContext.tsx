@@ -29,7 +29,7 @@ export interface TenantConfig {
   subscription_plan?: string | null;
   ai_mode?: "autonomous" | "assisted" | "manual" | null;
   ai_modules_enabled?: Record<string, boolean> | null;
-  subscription_tier?: "starter" | "professional" | "enterprise" | null;
+  subscription_tier?: "free" | "starter" | "professional" | "enterprise" | null;
   leads_per_month?: number | null;
   b2b_searches_per_day?: number | null;
   intent_searches_per_day?: number | null;
@@ -38,6 +38,7 @@ export interface TenantConfig {
   apify_api_key?: string | null;
   google_api_key?: string | null;
   google_cx_id?: string | null;
+  onboarding_completed?: boolean | null;
 }
 
 // Industry-specific vocabulary translations

@@ -4,7 +4,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import { supabase } from "@/lib/supabase";
 import { useTenant } from "@/contexts/TenantContext";
 
-export type SubscriptionTier = "starter" | "professional" | "enterprise";
+export type SubscriptionTier = "free" | "starter" | "professional" | "enterprise";
 
 export interface TierLimits {
   leads_per_month: number;
@@ -39,6 +39,25 @@ export interface TierConfig {
 
 // DEFAULT TIER LIMITS
 const TIER_DEFAULTS: Record<SubscriptionTier, TierLimits> = {
+  free: {
+    leads_per_month: 10,
+    b2b_searches_per_day: 3,
+    intent_searches_per_day: 0,
+    has_google_search: true,
+    has_apollo_access: false,
+    has_hunter_access: false,
+    has_apify_access: false,
+    has_ai_scoring: false,
+    has_intent_leads: false,
+    has_api_access: false,
+    has_white_label: false,
+    active_sequences: 1,
+    emails_per_day: 10,
+    whatsapp_per_day: 5,
+    calls_per_day: 2,
+    max_users: 1,
+    voice_minutes: 10,
+  },
   starter: {
     leads_per_month: 100,
     b2b_searches_per_day: 10,
@@ -100,6 +119,25 @@ const TIER_DEFAULTS: Record<SubscriptionTier, TierLimits> = {
 
 // FULL TIER CONFIGS - EXPORTED FOR BILLING PAGE
 export const SUBSCRIPTION_TIERS: Record<SubscriptionTier, TierConfig> = {
+  free: {
+    id: "free",
+    name: "Free Trial",
+    price: 0,
+    yearlyPrice: 0,
+    description: "Try out the platform with limited features",
+    limits: TIER_DEFAULTS.free,
+    features: [
+      "10 leads per month",
+      "Google Search only",
+      "1 active sequence",
+      "10 emails per day",
+      "5 WhatsApp messages per day",
+      "2 voice calls per day",
+      "1 team member",
+      "10 voice minutes",
+      "Community support",
+    ],
+  },
   starter: {
     id: "starter",
     name: "Starter",
@@ -208,10 +246,10 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   // GET TIER FROM DATABASE via tenantConfig
   const tier: SubscriptionTier = useMemo(() => {
     const dbTier = (tenantConfig as any)?.subscription_tier;
-    if (dbTier === "enterprise" || dbTier === "professional" || dbTier === "starter") {
+    if (dbTier === "enterprise" || dbTier === "professional" || dbTier === "starter" || dbTier === "free") {
       return dbTier;
     }
-    return "starter";
+    return "free"; // Changed from "starter" to "free"
   }, [(tenantConfig as any)?.subscription_tier]);
 
   const tierConfig = SUBSCRIPTION_TIERS[tier];
