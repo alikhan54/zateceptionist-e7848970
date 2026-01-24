@@ -364,16 +364,64 @@ export default function CompanySetup() {
     }
   };
 
+  // Helper: Convert file to base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        // Remove the data URL prefix (e.g., "data:application/pdf;base64,")
+        const base64 = (reader.result as string).split(",")[1];
+        resolve(base64);
+      };
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
   // Step 5: Train AI Knowledge
   const handleTrainAI = async () => {
     setIsTraining(true);
 
     try {
+      // Step 1: Process each uploaded file through OBD workflow
+      const processedFiles: Array<{ filename: string; success: boolean }> = [];
+
+      for (const file of uploadedFiles) {
+        try {
+          console.log(`Processing file: ${file.name}`);
+          
+          // Convert file to base64
+          const base64Content = await fileToBase64(file);
+          
+          // Call the OBD (analyze-document) webhook
+          const docResponse = await callWebhook(
+            WEBHOOKS.ANALYZE_DOCUMENT || "/onboarding/analyze-document",
+            {
+              tenant_id: tenantId,
+              filename: file.name,
+              content: base64Content,
+              content_type: file.type || "application/octet-stream",
+            },
+            tenantId || "onboarding",
+          );
+
+          console.log(`Document analysis response for ${file.name}:`, docResponse);
+          processedFiles.push({ filename: file.name, success: docResponse.success });
+        } catch (fileError) {
+          console.error(`Error processing file ${file.name}:`, fileError);
+          processedFiles.push({ filename: file.name, success: false });
+        }
+      }
+
+      console.log("All files processed:", processedFiles);
+
+      // Step 2: Call the training webhook with processed files and text
       const response = await callWebhook(
-        WEBHOOKS.TRAIN_AI_KNOWLEDGE || "onboarding/train-agents",
+        WEBHOOKS.TRAIN_AI_KNOWLEDGE || "/onboarding/train-agents",
         {
           tenant_id: tenantId,
-          files: uploadedFiles.map((f) => f.name),
+          files: processedFiles.map((f) => f.filename),
+          files_processed: processedFiles,
           text: knowledgeText,
           modules: ["sales", "marketing", "communication", "voice", "hr"],
         },
@@ -381,7 +429,12 @@ export default function CompanySetup() {
       );
 
       console.log("Training response:", response);
-      toast({ title: "Training complete!", description: "Your AI is now smarter." });
+      
+      const successCount = processedFiles.filter((f) => f.success).length;
+      toast({
+        title: "Training complete!",
+        description: `Your AI processed ${successCount}/${uploadedFiles.length} files and is now smarter.`,
+      });
       setCurrentStep(6);
     } catch (error) {
       console.error("Training error:", error);
