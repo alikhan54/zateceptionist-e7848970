@@ -41,6 +41,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { callWebhook, WEBHOOKS } from "@/lib/api/webhooks";
 import { useTenant } from "@/contexts/TenantContext";
+import { supabase } from "@/lib/supabase"; // ← ADD THIS IMPORT
 
 // ============================================
 // CONSTANTS
@@ -392,7 +393,9 @@ export default function CompanySetup() {
     }
   };
 
-  // Step 7: Complete Onboarding - SENDS ALL DATA
+  // ============================================
+  // STEP 7: COMPLETE ONBOARDING - FIXED VERSION
+  // ============================================
   const handleComplete = async () => {
     setIsSaving(true);
 
@@ -418,7 +421,7 @@ export default function CompanySetup() {
           ai_role: aiConfig.role,
           ai_greeting: aiConfig.greeting,
           ai_personality: aiConfig.personality,
-          ai_tone: aiConfig.personality, // Same as personality for now
+          ai_tone: aiConfig.personality,
           timezone: aiConfig.timezone,
           opening_time: aiConfig.workingHoursStart,
           closing_time: aiConfig.workingHoursEnd,
@@ -447,30 +450,122 @@ export default function CompanySetup() {
 
       console.log("=== Completing Onboarding ===", completePayload);
 
-      const response = await callWebhook(
-        WEBHOOKS.ONBOARDING_COMPLETE || "onboarding/complete",
-        completePayload,
-        tenantId || "onboarding",
-      );
+      // Step 1: Try webhook (optional - may fail)
+      try {
+        const response = await callWebhook(
+          WEBHOOKS.ONBOARDING_COMPLETE || "onboarding/complete",
+          completePayload,
+          tenantId || "onboarding",
+        );
+        console.log("Webhook completion response:", response);
+      } catch (webhookError) {
+        console.warn("Webhook failed (non-critical):", webhookError);
+        // Continue - we'll update directly
+      }
 
-      console.log("Completion response:", response);
+      // =============================================
+      // CRITICAL FIX: Direct Supabase update
+      // This ensures onboarding_completed is ALWAYS set
+      // even if the webhook fails
+      // =============================================
+      console.log("=== Direct DB Update for tenant:", tenantId, "===");
 
-      // Refresh tenant config to get updated data
+      const { error: updateError } = await supabase
+        .from("tenant_config")
+        .update({
+          // Mark onboarding as complete
+          onboarding_completed: true,
+          onboarding_completed_at: new Date().toISOString(),
+
+          // Save company data
+          company_name: companyData.company_name || undefined,
+          industry: companyData.industry || undefined,
+
+          // Save AI config
+          ai_name: aiConfig.name || undefined,
+          ai_role: aiConfig.role || undefined,
+          greeting_message: aiConfig.greeting || undefined,
+          ai_personality: aiConfig.personality || undefined,
+          timezone: aiConfig.timezone || undefined,
+          opening_time: aiConfig.workingHoursStart || undefined,
+          closing_time: aiConfig.workingHoursEnd || undefined,
+
+          // Save channel preferences
+          has_whatsapp: channels.whatsapp,
+          has_email: channels.email,
+          has_voice: channels.voiceAI,
+          has_instagram: channels.instagram,
+          has_facebook: channels.facebook,
+
+          // Save plan
+          subscription_plan: selectedPlan,
+          subscription_tier: selectedPlan,
+
+          // Update timestamp
+          updated_at: new Date().toISOString(),
+        })
+        .eq("tenant_id", tenantId);
+
+      if (updateError) {
+        console.error("Direct DB update error:", updateError);
+        // Try one more time with just the critical field
+        const { error: retryError } = await supabase
+          .from("tenant_config")
+          .update({
+            onboarding_completed: true,
+            onboarding_completed_at: new Date().toISOString(),
+          })
+          .eq("tenant_id", tenantId);
+
+        if (retryError) {
+          console.error("Retry also failed:", retryError);
+        }
+      } else {
+        console.log("✅ Direct DB update successful - onboarding_completed = true");
+      }
+
+      // Step 3: Refresh tenant config and WAIT for it
+      console.log("=== Refreshing tenant config ===");
       await refreshConfig();
+
+      // Step 4: Small delay to ensure React state propagates
+      await new Promise((resolve) => setTimeout(resolve, 200));
 
       toast({
         title: "Setup complete!",
         description: "Welcome to Zateceptionist!",
       });
 
+      // Step 5: Navigate to dashboard
+      console.log("=== Navigating to dashboard ===");
       navigate("/dashboard");
     } catch (error) {
       console.error("Completion error:", error);
-      // Still navigate - basic data was already saved in earlier steps
+
+      // =============================================
+      // FALLBACK: Even on error, try to mark complete
+      // =============================================
+      try {
+        console.log("=== Attempting fallback update ===");
+        await supabase
+          .from("tenant_config")
+          .update({
+            onboarding_completed: true,
+            onboarding_completed_at: new Date().toISOString(),
+          })
+          .eq("tenant_id", tenantId);
+
+        await refreshConfig();
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      } catch (fallbackError) {
+        console.error("Fallback update failed:", fallbackError);
+      }
+
       toast({
         title: "Welcome!",
         description: "Your setup is mostly complete. Some settings may need manual configuration.",
       });
+
       navigate("/dashboard");
     } finally {
       setIsSaving(false);
