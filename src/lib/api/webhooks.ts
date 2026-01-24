@@ -55,6 +55,8 @@ export const WEBHOOKS = {
   // FIXED: Changed from '/onboarding/train-knowledge' to '/onboarding/train-agents'
   // to match n8n OBT.1 webhook path
   TRAIN_AI_KNOWLEDGE: "/onboarding/train-agents",
+  // OBD workflow for document analysis
+  ANALYZE_DOCUMENT: "/onboarding/analyze-document",
 } as const;
 
 export type WebhookEndpoint = (typeof WEBHOOKS)[keyof typeof WEBHOOKS];
