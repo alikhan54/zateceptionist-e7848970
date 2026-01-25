@@ -82,25 +82,30 @@ const channelColors: Record<string, string> = {
 
 export default function Sequences() {
   const navigate = useNavigate();
-  const { tenantId } = useTenant();
+  // CRITICAL FIX: Get both tenantId (slug) and tenantConfig (full object with UUID)
+  const { tenantId, tenantConfig } = useTenant();
+  // USE THIS FOR ALL DATABASE OPERATIONS - This is the actual UUID!
+  const tenantUuid = tenantConfig?.id;
+  
   const { limits, usage } = useSubscription();
   const [sequences, setSequences] = useState<Sequence[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("library");
 
   useEffect(() => {
-    if (tenantId) {
+    if (tenantUuid) {
       fetchSequences();
     }
-  }, [tenantId]);
+  }, [tenantUuid]);
 
   const fetchSequences = async () => {
+    if (!tenantUuid) return;
     setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from("sequences")
         .select("*")
-        .eq("tenant_id", tenantId)
+        .eq("tenant_id", tenantUuid)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -137,9 +142,10 @@ export default function Sequences() {
   };
 
   const duplicateSequence = async (sequence: Sequence) => {
+    if (!tenantUuid) return;
     try {
       const { error } = await supabase.from("sequences").insert({
-        tenant_id: tenantId,
+        tenant_id: tenantUuid,
         name: `${sequence.name} (Copy)`,
         description: sequence.description,
         status: "draft",

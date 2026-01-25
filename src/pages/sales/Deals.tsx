@@ -65,7 +65,11 @@ const PIPELINE_STAGES = [
 
 export default function DealTracker() {
   const navigate = useNavigate();
-  const { tenantId } = useTenant();
+  // CRITICAL FIX: Get both tenantId (slug) and tenantConfig (full object with UUID)
+  const { tenantId, tenantConfig } = useTenant();
+  // USE THIS FOR ALL DATABASE OPERATIONS - This is the actual UUID!
+  const tenantUuid = tenantConfig?.id;
+  
   const [deals, setDeals] = useState<Deal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -81,18 +85,19 @@ export default function DealTracker() {
   });
 
   useEffect(() => {
-    if (tenantId) {
+    if (tenantUuid) {
       fetchDeals();
     }
-  }, [tenantId]);
+  }, [tenantUuid]);
 
   const fetchDeals = async () => {
+    if (!tenantUuid) return;
     setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from("deals")
         .select("*")
-        .eq("tenant_id", tenantId)
+        .eq("tenant_id", tenantUuid)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -105,6 +110,7 @@ export default function DealTracker() {
   };
 
   const createDeal = async () => {
+    if (!tenantUuid) return;
     try {
       const stageConfig = PIPELINE_STAGES.find((s) => s.id === newDeal.stage);
       const value = parseFloat(newDeal.value) || 0;
@@ -114,7 +120,7 @@ export default function DealTracker() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tenant_id: tenantId,
+          tenant_id: tenantUuid,
           title: newDeal.title,
           value: value,
           stage: newDeal.stage,
@@ -128,7 +134,7 @@ export default function DealTracker() {
       if (!response.ok) {
         // Fallback to direct insert if webhook fails
         const { error } = await supabase.from("deals").insert({
-          tenant_id: tenantId,
+          tenant_id: tenantUuid,
           title: newDeal.title,
           value: value,
           weighted_value: (value * (stageConfig?.probability || 10)) / 100,
@@ -152,6 +158,7 @@ export default function DealTracker() {
   };
 
   const updateDealStage = async (dealId: string, newStage: string) => {
+    if (!tenantUuid) return;
     try {
       const stageConfig = PIPELINE_STAGES.find((s) => s.id === newStage);
       const deal = deals.find((d) => d.id === dealId);
@@ -162,7 +169,7 @@ export default function DealTracker() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tenant_id: tenantId,
+          tenant_id: tenantUuid,
           deal_id: dealId,
           stage: newStage,
         }),
