@@ -29,6 +29,7 @@ const LeadPipeline = lazy(() => import("./pages/sales/Pipeline"));
 const AutoLeadGen = lazy(() => import("./pages/sales/AutoLeadGen"));
 const DealTracker = lazy(() => import("./pages/sales/Deals"));
 const Sequences = lazy(() => import("./pages/sales/Sequences"));
+const CreateSequence = lazy(() => import("./pages/sales/CreateSequence"));
 const Proposals = lazy(() => import("./pages/sales/Proposals"));
 const SalesAnalytics = lazy(() => import("./pages/sales/Analytics"));
 const Forecasting = lazy(() => import("./pages/sales/Forecast"));
@@ -174,6 +175,7 @@ const App = () => (
                 <Route path="/sales/auto-leadgen" element={<LazyPage><AutoLeadGen /></LazyPage>} />
                 <Route path="/sales/deals" element={<LazyPage><DealTracker /></LazyPage>} />
                 <Route path="/sales/sequences" element={<LazyPage><Sequences /></LazyPage>} />
+                <Route path="/sales/sequences/new" element={<LazyPage><CreateSequence /></LazyPage>} />
                 <Route path="/sales/proposals" element={<LazyPage><Proposals /></LazyPage>} />
                 <Route path="/sales/analytics" element={<LazyPage><SalesAnalytics /></LazyPage>} />
                 <Route path="/sales/forecast" element={<LazyPage><Forecasting /></LazyPage>} />
