@@ -92,20 +92,28 @@ export default function SalesDashboard() {
   // DATA QUERIES - ALL REAL DATA FROM CONTACTS TABLE
   // =====================================================
 
-  // Fetch all contacts for this tenant using UUID
+  // Fetch all leads for this tenant using UUID from sales_leads table
   const {
     data: contacts = [],
     isLoading: contactsLoading,
     refetch: refetchContacts,
   } = useQuery({
-    queryKey: ["dashboard", "contacts", tenantUuid],
+    queryKey: ["dashboard", "sales_leads", tenantUuid],
     queryFn: async () => {
-      if (!tenantUuid) return [];
+      if (!tenantUuid) {
+        console.log("[SalesDashboard] No tenantUuid, skipping query");
+        return [];
+      }
+      console.log("[SalesDashboard] Fetching sales_leads with tenant UUID:", tenantUuid);
       const { data, error } = await supabase
-        .from("contacts")
-        .select("id, lead_score, lead_temperature, lead_grade, pipeline_stage, sequence_status, source, created_at")
+        .from("sales_leads")
+        .select("id, lead_score, lead_temperature, lead_grade, lead_status, sequence_status, source, created_at")
         .eq("tenant_id", tenantUuid);
-      if (error) throw error;
+      if (error) {
+        console.error("[SalesDashboard] Error fetching sales_leads:", error);
+        throw error;
+      }
+      console.log("[SalesDashboard] Fetched leads count:", data?.length || 0);
       return data || [];
     },
     enabled: !!tenantUuid,
@@ -187,10 +195,23 @@ export default function SalesDashboard() {
     const warmLeads = contacts.filter((c) => c.lead_temperature === "WARM").length;
     const coldLeads = contacts.filter((c) => c.lead_temperature === "COLD").length;
 
-    // Pipeline counts by stage
+    // Pipeline counts by stage - map lead_status to pipeline stages
     const pipelineCounts: Record<string, number> = {};
     PIPELINE_STAGES.forEach((stage) => {
-      pipelineCounts[stage.id] = contacts.filter((c) => c.pipeline_stage === stage.id).length;
+      // Map lead_status values to stage IDs
+      const statusMapping: Record<string, string[]> = {
+        "PROS": ["new", "prospect"],
+        "RES": ["research"],
+        "CONT": ["contacted"],
+        "PITCH": ["pitch", "qualified", "proposal"],
+        "OBJ": ["objection", "negotiation"],
+        "CLOSE": ["closing"],
+        "RET": ["retained", "won"],
+      };
+      const matchingStatuses = statusMapping[stage.id] || [];
+      pipelineCounts[stage.id] = contacts.filter((c) => 
+        matchingStatuses.includes(c.lead_status?.toLowerCase() || "")
+      ).length;
     });
 
     // Active sequences
