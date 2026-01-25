@@ -193,23 +193,35 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const [userRole, setUserRole] = useState<UserRole>("staff");
 
   const setTenantId = useCallback((id: string) => {
+    console.log('[TenantContext] setTenantId called:', id);
     localStorage.setItem(TENANT_ID_KEY, id);
     setTenantIdState(id);
   }, []);
 
   // Called by AuthContext after authentication to set user's tenant and role
+  // FIXED: Always update tenant from user's database assignment to prevent stale cache
   const setUserTenantInfo = useCallback(
     (newTenantId: string | null, role: UserRole) => {
+      console.log('[TenantContext] setUserTenantInfo called:', { newTenantId, role, currentTenantId: tenantId });
       setUserRole(role);
-      if (newTenantId && role !== "master_admin") {
-        // Non-master admins are locked to their tenant
-        localStorage.setItem(TENANT_ID_KEY, newTenantId);
-        setTenantIdState(newTenantId);
-      } else if (newTenantId) {
-        // Master admins can have a default tenant but can switch
-        if (!tenantId) {
+      
+      if (newTenantId) {
+        // CRITICAL FIX: Always update tenant from user's assignment
+        // This ensures database-assigned tenant overrides any cached value
+        const currentCached = localStorage.getItem(TENANT_ID_KEY);
+        
+        if (role !== "master_admin") {
+          // Non-master admins are ALWAYS locked to their assigned tenant
+          console.log('[TenantContext] Non-master admin - forcing tenant to:', newTenantId);
           localStorage.setItem(TENANT_ID_KEY, newTenantId);
           setTenantIdState(newTenantId);
+        } else if (currentCached !== newTenantId && !currentCached) {
+          // Master admin with no cached tenant - set their default
+          console.log('[TenantContext] Master admin - setting default tenant:', newTenantId);
+          localStorage.setItem(TENANT_ID_KEY, newTenantId);
+          setTenantIdState(newTenantId);
+        } else {
+          console.log('[TenantContext] Master admin - keeping current tenant:', currentCached);
         }
       }
     },
@@ -218,10 +230,12 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 
   const fetchTenantConfig = useCallback(async () => {
     if (!tenantId) {
+      console.log('[TenantContext] fetchTenantConfig - no tenantId, skipping');
       setTenantConfig(null);
       return;
     }
 
+    console.log('[TenantContext] fetchTenantConfig - loading for:', tenantId);
     setIsLoading(true);
     setError(null);
 
@@ -235,12 +249,18 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       if (fetchError) throw fetchError;
 
       if (data) {
+        console.log('[TenantContext] Tenant config loaded:', {
+          tenant_id: data.tenant_id,
+          uuid: data.id,
+          company_name: data.company_name
+        });
         setTenantConfig(data as TenantConfig);
         // Update document title
         if (data.company_name) {
           document.title = `${data.company_name} | Zateceptionist`;
         }
       } else {
+        console.warn('[TenantContext] No tenant_config found for:', tenantId);
         // Default config if none exists
         const defaultConfig: TenantConfig = {
           id: "",

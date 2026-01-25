@@ -77,8 +77,15 @@ function AIAgentStatus({ name, status, actions }: { name: string; status: 'activ
 }
 
 export default function Dashboard() {
-  const { tenantConfig, t } = useTenant();
+  const { tenantConfig, tenantId, t } = useTenant();
   const [aiAutonomousMode, setAiAutonomousMode] = useState(false);
+
+  // Debug logging for tenant assignment
+  console.log('[Dashboard] Current tenant:', {
+    tenantId: tenantId,
+    uuid: tenantConfig?.id,
+    company_name: tenantConfig?.company_name
+  });
 
   const stats = [
     {
@@ -128,6 +135,10 @@ export default function Dashboard() {
         <h1 className="text-3xl font-bold">Dashboard</h1>
         <p className="text-muted-foreground mt-1">
           Welcome back, {tenantConfig?.company_name || 'Your Business'}
+        </p>
+        {/* Debug info - remove in production */}
+        <p className="text-xs text-muted-foreground/50 mt-1">
+          Tenant: {tenantId} | UUID: {tenantConfig?.id?.slice(0, 8)}...
         </p>
       </div>
 

@@ -116,6 +116,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Fetch user profile and role from database
   const fetchAuthUser = useCallback(async (authId: string) => {
     try {
+      console.log('[AuthContext] fetchAuthUser - looking up auth_id:', authId);
+      
       // Fetch user from users table
       const { data: userData, error: userError } = await supabase
         .from('users')
@@ -124,14 +126,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .maybeSingle();
 
       if (userError) {
-        console.error('Error fetching user data:', userError);
+        console.error('[AuthContext] Error fetching user data:', userError);
         return null;
       }
 
       if (!userData) {
-        // User doesn't exist in users table yet, return default
+        console.log('[AuthContext] User not found in users table for auth_id:', authId);
         return null;
       }
+
+      console.log('[AuthContext] User found:', {
+        email: userData.email,
+        tenant_id: userData.tenant_id,
+        id: userData.id
+      });
 
       // Fetch user role from user_roles table
       const { data: roleData, error: roleError } = await supabase
@@ -141,10 +149,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .maybeSingle();
 
       if (roleError) {
-        console.error('Error fetching user role:', roleError);
+        console.error('[AuthContext] Error fetching user role:', roleError);
       }
 
       const userRole = (roleData?.role as UserRole) || 'staff';
+      console.log('[AuthContext] User role:', userRole);
 
       // Fetch staff permissions if user is staff
       let staffPermissions: StaffPermissions | undefined;
@@ -188,11 +197,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
 
       // Update TenantContext with user's tenant and role
+      console.log('[AuthContext] Calling setUserTenantInfo with:', userData.tenant_id, userRole);
       setUserTenantInfo(userData.tenant_id, userRole);
 
       return authUserData;
     } catch (error) {
-      console.error('Error in fetchAuthUser:', error);
+      console.error('[AuthContext] Error in fetchAuthUser:', error);
       return null;
     }
   }, [setUserTenantInfo]);
