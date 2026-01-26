@@ -256,11 +256,45 @@ export default function SalesDashboard() {
   };
 
   const handleSendEmailBlast = async () => {
-    toast({
-      title: "Email Blast",
-      description: `Ready to send to ${metrics.hotLeads} hot leads`,
-    });
-    // TODO: Implement actual email blast trigger
+    try {
+      // Show loading toast
+      toast({
+        title: "Sending emails...",
+        description: "Preparing to send to hot leads",
+      });
+
+      // Call webhook
+      const response = await fetch('https://webhooks.zatesystems.com/webhook/email-blast', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          tenant_id: tenantConfig?.id,
+          target: 'hot_leads',
+          temperature: 'HOT',
+        }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Success!",
+          description: "Email blast initiated for hot leads",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to send emails",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Network error",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleStartAICalling = async () => {
