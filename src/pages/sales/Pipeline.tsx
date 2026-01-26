@@ -52,45 +52,49 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 // ============================================================================
-// TYPES
+// TYPES - Updated to match sales_leads table
 // ============================================================================
 
-interface Contact {
+interface SalesLead {
   id: string;
   tenant_id: string;
+  contact_name: string | null;
   first_name: string | null;
   last_name: string | null;
-  full_name: string | null;
   email: string | null;
   phone: string | null;
-  whatsapp_number: string | null;
   company_name: string | null;
   job_title: string | null;
-  source: string;
-  lifecycle_stage: string;
-  pipeline_stage: string;
-  lead_score: number;
-  lead_grade: string;
-  lead_temperature: string;
-  owner_id: string | null;
+  source: string | null;
+  lead_status: string | null;
+  lead_score: number | null;
+  lead_grade: string | null;
+  lead_temperature: string | null;
   linkedin_url: string | null;
   website: string | null;
   city: string | null;
   country_code: string | null;
+  sequence_id: string | null;
+  sequence_status: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+// Alias for backward compatibility in this component
+type Contact = SalesLead & { 
+  pipeline_stage: string;
+  full_name: string | null;
   tags: string[] | null;
   last_contacted_at: string | null;
   last_responded_at: string | null;
   total_conversations: number;
   total_emails_sent: number;
-  active_sequence_id: string | null;
-  sequence_status: string | null;
-  created_at: string;
-  updated_at: string;
-}
+};
 
 interface Deal {
   id: string;
   contact_id: string;
+  lead_id: string | null;
   title: string;
   value: number;
   currency: string;
@@ -98,6 +102,23 @@ interface Deal {
   probability: number;
   expected_close_date: string | null;
 }
+
+// Map lead_status values to pipeline stage IDs
+const STATUS_TO_STAGE_MAP: Record<string, string> = {
+  "new": "PROS",
+  "prospect": "PROS",
+  "research": "RES",
+  "contacted": "CONT",
+  "qualified": "PITCH",
+  "pitch": "PITCH",
+  "proposal": "PITCH",
+  "objection": "OBJ",
+  "negotiation": "OBJ",
+  "closing": "CLOSE",
+  "retained": "RET",
+  "won": "RET",
+  "customer": "RET",
+};
 
 // ============================================================================
 // PIPELINE STAGES CONFIGURATION
@@ -693,26 +714,55 @@ export default function Pipeline() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [temperatureFilter, setTemperatureFilter] = useState<string>("all");
 
-  // Fetch all contacts from unified contacts table
-  // FIXED: Using tenantUuid instead of tenantId
+  // Fetch all leads from sales_leads table
+  // FIXED: Using sales_leads table with proper UUID filtering
   const {
     data: contacts = [],
     isLoading: contactsLoading,
     refetch: refetchContacts,
   } = useQuery({
-    queryKey: ["contacts", "pipeline", tenantUuid],
+    queryKey: ["sales_leads", "pipeline", tenantUuid],
     queryFn: async () => {
       if (!tenantUuid) return [];
+      
+      console.log("[Pipeline] Fetching sales_leads with tenant UUID:", tenantUuid);
 
       const { data, error } = await supabase
-        .from("contacts")
+        .from("sales_leads")
         .select("*")
         .eq("tenant_id", tenantUuid)
-        .neq("pipeline_stage", "LOST") // Exclude lost contacts
-        .order("lead_score", { ascending: false });
+        .not("lead_status", "eq", "lost")
+        .order("lead_score", { ascending: false, nullsFirst: false });
 
-      if (error) throw error;
-      return data as Contact[];
+      if (error) {
+        console.error("[Pipeline] Error fetching sales_leads:", error);
+        throw error;
+      }
+      
+      console.log("[Pipeline] Fetched leads count:", data?.length || 0);
+      
+      // Transform sales_leads to Contact format with pipeline_stage mapping
+      const transformedLeads: Contact[] = (data || []).map((lead: SalesLead) => {
+        const status = lead.lead_status?.toLowerCase() || "prospect";
+        const pipelineStage = STATUS_TO_STAGE_MAP[status] || "PROS";
+        
+        return {
+          ...lead,
+          pipeline_stage: pipelineStage,
+          full_name: lead.contact_name || [lead.first_name, lead.last_name].filter(Boolean).join(" ") || null,
+          tags: null,
+          last_contacted_at: null,
+          last_responded_at: null,
+          total_conversations: 0,
+          total_emails_sent: 0,
+          source: lead.source || "unknown",
+          lead_score: lead.lead_score || 0,
+          lead_grade: lead.lead_grade || "C",
+          lead_temperature: lead.lead_temperature || "COLD",
+        };
+      });
+      
+      return transformedLeads;
     },
     enabled: !!tenantUuid,
   });
@@ -720,7 +770,7 @@ export default function Pipeline() {
   // Fetch deals for value display
   // FIXED: Using tenantUuid instead of tenantId
   const { data: deals = [] } = useQuery({
-    queryKey: ["deals", tenantUuid],
+    queryKey: ["deals", "pipeline", tenantUuid],
     queryFn: async () => {
       if (!tenantUuid) return [];
 
@@ -731,20 +781,32 @@ export default function Pipeline() {
         .not("stage", "in", '("Won","Lost")');
 
       if (error) throw error;
-      return data as Deal[];
+      return (data || []) as Deal[];
     },
     enabled: !!tenantUuid,
   });
 
-  // Move contact to new pipeline stage
-  // FIXED: Using tenantUuid instead of tenantId
+  // Map stage ID back to lead_status for database update
+  const STAGE_TO_STATUS_MAP: Record<string, string> = {
+    "PROS": "prospect",
+    "RES": "research",
+    "CONT": "contacted",
+    "PITCH": "qualified",
+    "OBJ": "objection",
+    "CLOSE": "closing",
+    "RET": "retained",
+  };
+
+  // Move lead to new pipeline stage
+  // FIXED: Using tenantUuid and updating lead_status in sales_leads
   const moveToStage = useMutation({
     mutationFn: async ({ contactId, newStage }: { contactId: string; newStage: string }) => {
+      const newStatus = STAGE_TO_STATUS_MAP[newStage] || "prospect";
+      
       const { error } = await supabase
-        .from("contacts")
+        .from("sales_leads")
         .update({
-          pipeline_stage: newStage,
-          pipeline_stage_updated_at: new Date().toISOString(),
+          lead_status: newStatus,
           updated_at: new Date().toISOString(),
         })
         .eq("id", contactId)
@@ -753,52 +815,56 @@ export default function Pipeline() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["contacts", "pipeline", tenantUuid] });
+      queryClient.invalidateQueries({ queryKey: ["sales_leads", "pipeline", tenantUuid] });
       toast({
-        title: "Contact moved",
+        title: "Lead moved",
         description: "Pipeline stage updated successfully",
       });
     },
     onError: (error) => {
       toast({
         title: "Error",
-        description: "Failed to move contact: " + (error as Error).message,
+        description: "Failed to move lead: " + (error as Error).message,
         variant: "destructive",
       });
     },
   });
 
-  // Add new contact
-  // FIXED: Using tenantUuid instead of tenantId
+  // Add new lead
+  // FIXED: Using tenantUuid and inserting into sales_leads table
   const addContact = useMutation({
     mutationFn: async (contactData: Partial<Contact>) => {
-      const { error } = await supabase.from("contacts").insert({
+      const initialStatus = STAGE_TO_STATUS_MAP[contactData.pipeline_stage || "PROS"] || "prospect";
+      
+      const { error } = await supabase.from("sales_leads").insert({
         tenant_id: tenantUuid,
         first_name: contactData.first_name,
         last_name: contactData.last_name,
+        contact_name: [contactData.first_name, contactData.last_name].filter(Boolean).join(" ") || null,
         email: contactData.email || null,
         phone: contactData.phone || null,
         company_name: contactData.company_name || null,
         job_title: contactData.job_title || null,
-        pipeline_stage: contactData.pipeline_stage || "PROS",
-        lifecycle_stage: "lead",
+        lead_status: initialStatus,
         source: "manual",
         lead_score: 40,
+        lead_grade: "C",
+        lead_temperature: "COLD",
       });
 
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["contacts", "pipeline", tenantUuid] });
+      queryClient.invalidateQueries({ queryKey: ["sales_leads", "pipeline", tenantUuid] });
       toast({
-        title: "Contact added",
-        description: "New contact created successfully",
+        title: "Lead added",
+        description: "New lead created successfully",
       });
     },
     onError: (error) => {
       toast({
         title: "Error",
-        description: "Failed to add contact: " + (error as Error).message,
+        description: "Failed to add lead: " + (error as Error).message,
         variant: "destructive",
       });
     },
