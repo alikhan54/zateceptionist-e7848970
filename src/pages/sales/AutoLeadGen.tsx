@@ -1,6 +1,6 @@
 // ============================================
-// FILE: src/pages/sales/LeadDiscovery.tsx
-// COMPLETE B2B IMPLEMENTATION - ALL FIXES APPLIED
+// FILE: src/pages/sales/AutoLeadGen.tsx
+// COMPLETE FIX - Connected to auto_lead_gen_settings table
 // ============================================
 
 import { useState, useEffect } from "react";
@@ -43,6 +43,7 @@ import {
   MessageSquare,
   Clock,
   Play,
+  Pause,
   Trash2,
   Check,
   AlertTriangle,
@@ -220,14 +221,14 @@ export default function LeadDiscovery() {
     maxResults: 20,
   });
 
-  // B2B LinkedIn Premium form - FIXED
+  // B2B LinkedIn Premium form
   const [linkedinForm, setLinkedinForm] = useState({
     titles: [] as string[],
-    industry: "", // FIXED: string not array
-    keywords: "", // ADDED: keywords field
+    industry: "",
+    keywords: "",
     location: "",
     country: "United States",
-    companySize: "", // FIXED: string not array
+    companySize: "",
     maxResults: 25,
   });
 
@@ -350,13 +351,16 @@ export default function LeadDiscovery() {
     enabled: !!tenantUuid,
   });
 
-  // Fetch saved auto-gen configs using UUID
+  // ============================================================
+  // FIXED: Fetch saved auto-gen configs from auto_lead_gen_settings
+  // This is what Part 35 workflow reads from!
+  // ============================================================
   const { data: savedConfigs = [], refetch: refetchConfigs } = useQuery({
-    queryKey: ["lead-gen-searches", tenantUuid],
+    queryKey: ["auto-lead-gen-settings", tenantUuid],
     queryFn: async () => {
       if (!tenantUuid) return [];
       const { data } = await supabase
-        .from("lead_gen_searches")
+        .from("auto_lead_gen_settings")
         .select("*")
         .eq("tenant_id", tenantUuid)
         .order("created_at", { ascending: false });
@@ -498,7 +502,7 @@ export default function LeadDiscovery() {
     }
   };
 
-  // B2B LinkedIn Premium Search - FIXED
+  // B2B LinkedIn Premium Search
   const handleLinkedInSearch = async () => {
     if (!tenantUuid) {
       toast({ title: "Error", description: "Tenant not loaded", variant: "destructive" });
@@ -514,7 +518,6 @@ export default function LeadDiscovery() {
       return;
     }
 
-    // FIXED: Validate that at least one search parameter is provided
     const hasKeywords = linkedinForm.keywords && linkedinForm.keywords.trim().length > 0;
     const hasIndustry = linkedinForm.industry && linkedinForm.industry.length > 0;
     const hasJobTitles = linkedinForm.titles.length > 0;
@@ -538,7 +541,6 @@ export default function LeadDiscovery() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tenant_id: tenantUuid,
-          // FIXED: Correct field names matching backend expectations
           keywords: linkedinForm.keywords || "",
           industry: linkedinForm.industry || "",
           job_titles: linkedinForm.titles,
@@ -546,7 +548,6 @@ export default function LeadDiscovery() {
           country: linkedinForm.country,
           company_size: linkedinForm.companySize || "all",
           max_leads: linkedinForm.maxResults,
-          // Feature flags
           include_emails: true,
           include_phones: true,
           use_premium_sources: true,
@@ -582,7 +583,10 @@ export default function LeadDiscovery() {
     }
   };
 
-  // Save Auto Lead Gen Config
+  // ============================================================
+  // FIXED: Save Auto Lead Gen Config to auto_lead_gen_settings
+  // This is what Part 35 workflow reads from!
+  // ============================================================
   const handleSaveAutoConfig = async () => {
     if (!tenantUuid) {
       toast({ title: "Error", description: "Tenant not loaded yet. Please wait.", variant: "destructive" });
@@ -595,29 +599,85 @@ export default function LeadDiscovery() {
     }
 
     try {
-      const { error } = await supabase.from("lead_gen_searches").insert({
+      // Map UI source names to workflow generation_type values
+      const generationTypeMap: Record<string, string> = {
+        quick_search: "b2b",
+        local_discovery: "google_places",
+        linkedin_premium: "apollo",
+        b2c_intent: "intent",
+      };
+
+      const configData = {
         tenant_id: tenantUuid,
-        name: `Auto: ${INDUSTRIES.find((i) => i.id === autoSettings.industry)?.label || autoSettings.industry} - ${autoSettings.location}`,
-        search_type: autoSettings.source,
-        keywords: autoSettings.keywords,
-        industry: autoSettings.industry,
-        city: autoSettings.location,
-        max_leads: autoSettings.maxLeadsPerRun,
-        is_scheduled: autoSettings.enabled,
-        schedule_frequency: autoSettings.frequency,
-        schedule_time: autoSettings.time,
         is_active: autoSettings.enabled,
-      });
+        generation_type: generationTypeMap[autoSettings.source] || "b2b",
+        industry: autoSettings.industry,
+        location: autoSettings.location,
+        keywords: autoSettings.keywords || null,
+        leads_per_run: autoSettings.maxLeadsPerRun,
+        // Schedule configuration - matches Part 35 workflow expectations
+        schedule_type: autoSettings.frequency === "hourly" ? "hourly" : "daily",
+        schedule_time: autoSettings.time + ":00",
+        schedule_days: [1, 2, 3, 4, 5], // Mon-Fri
+        timezone: "Asia/Dubai",
+        // Budget defaults
+        daily_budget_usd: 50,
+        monthly_budget_usd: 500,
+      };
+
+      const { error } = await supabase.from("auto_lead_gen_settings").insert(configData);
 
       if (error) throw error;
 
       toast({ title: "✅ Configuration Saved!", description: "Auto lead generation settings saved successfully" });
       refetchConfigs();
+
+      // Reset form
+      setAutoSettings((prev) => ({ ...prev, enabled: false, industry: "", location: "", keywords: "" }));
     } catch (error: any) {
       console.error("Save error:", error);
       toast({ title: "Failed to save", description: error.message, variant: "destructive" });
     }
   };
+
+  // ============================================================
+  // FIXED: Toggle config active/inactive in auto_lead_gen_settings
+  // ============================================================
+  const toggleConfigActive = async (configId: string, currentStatus: boolean) => {
+    try {
+      const { error } = await supabase
+        .from("auto_lead_gen_settings")
+        .update({
+          is_active: !currentStatus,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", configId);
+
+      if (error) throw error;
+
+      toast({
+        title: currentStatus ? "⏸️ Paused" : "▶️ Activated",
+        description: currentStatus ? "Auto lead gen paused" : "Auto lead gen will run on schedule",
+      });
+      refetchConfigs();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  // ============================================================
+  // FIXED: Delete config from auto_lead_gen_settings
+  // ============================================================
+  const deleteConfig = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("auto_lead_gen_settings").delete().eq("id", id).eq("tenant_id", tenantUuid);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: "Deleted" });
+      refetchConfigs();
+    },
+  });
 
   // Manual Entry
   const handleManualEntry = async () => {
@@ -658,18 +718,6 @@ export default function LeadDiscovery() {
       toast({ title: "Failed to add", description: error.message, variant: "destructive" });
     }
   };
-
-  // Delete saved config
-  const deleteConfig = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("lead_gen_searches").delete().eq("id", id).eq("tenant_id", tenantUuid);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast({ title: "Deleted" });
-      refetchConfigs();
-    },
-  });
 
   // Toggle job title selection
   const toggleTitle = (title: string) => {
@@ -726,8 +774,14 @@ export default function LeadDiscovery() {
       toast({ title: "Error", description: "Tenant not loaded", variant: "destructive" });
       return;
     }
-    const hashtags = socialForm.hashtags.split(",").map((h) => h.trim().replace("#", "")).filter(Boolean);
-    const competitors = socialForm.competitorAccounts.split(",").map((c) => c.trim().replace("@", "")).filter(Boolean);
+    const hashtags = socialForm.hashtags
+      .split(",")
+      .map((h) => h.trim().replace("#", ""))
+      .filter(Boolean);
+    const competitors = socialForm.competitorAccounts
+      .split(",")
+      .map((c) => c.trim().replace("@", ""))
+      .filter(Boolean);
     if (hashtags.length === 0 && competitors.length === 0) {
       toast({ title: "Missing data", description: "Enter hashtags or competitor accounts", variant: "destructive" });
       return;
@@ -803,6 +857,18 @@ export default function LeadDiscovery() {
     } finally {
       setIsSearching(false);
     }
+  };
+
+  // Helper function to get generation type label
+  const getGenerationTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      b2b: "🔍 Quick Search",
+      google_places: "📍 Local Discovery",
+      apollo: "💼 LinkedIn Premium",
+      premium: "💼 LinkedIn Premium",
+      intent: "🎯 B2C Intent",
+    };
+    return labels[type] || type;
   };
 
   return (
@@ -1169,75 +1235,10 @@ export default function LeadDiscovery() {
                   </Button>
                 </CardContent>
               </Card>
-
-              {/* Local Discovery Results */}
-              {showResults && searchResults.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Local Businesses Found ({searchResults.length})</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ScrollArea className="h-[400px]">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Business</TableHead>
-                            <TableHead>Address</TableHead>
-                            <TableHead>Rating</TableHead>
-                            <TableHead>Phone</TableHead>
-                            <TableHead>Website</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {searchResults.map((lead: any, idx: number) => (
-                            <TableRow key={idx}>
-                              <TableCell className="font-medium">{lead.company_name || lead.company}</TableCell>
-                              <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
-                                {lead.address || lead.city || "—"}
-                              </TableCell>
-                              <TableCell>
-                                {lead.rating ? (
-                                  <span className="flex items-center gap-1">
-                                    <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
-                                    {lead.rating}
-                                  </span>
-                                ) : (
-                                  "—"
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                {lead.phone ? (
-                                  <span className="flex items-center gap-1 text-green-600">
-                                    <Phone className="h-3 w-3" /> {lead.phone}
-                                  </span>
-                                ) : (
-                                  "—"
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                {lead.website && (
-                                  <a
-                                    href={lead.website}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-blue-500 hover:underline"
-                                  >
-                                    <Globe className="h-4 w-4" />
-                                  </a>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </ScrollArea>
-                  </CardContent>
-                </Card>
-              )}
             </div>
           )}
 
-          {/* LinkedIn Premium - FIXED */}
+          {/* LinkedIn Premium */}
           {b2bSubTab === "linkedin" && (
             <div className="space-y-6">
               <Card>
@@ -1255,33 +1256,16 @@ export default function LeadDiscovery() {
                         Premium search requires API keys. Add your Apollo.io or Hunter.io key in Settings →
                         Integrations.
                       </p>
-                      <div className="mt-2 flex gap-2">
-                        {hasApolloKey && <Badge className="bg-green-100 text-green-700">✓ Apollo Connected</Badge>}
-                        {hasHunterKey && <Badge className="bg-green-100 text-green-700">✓ Hunter Connected</Badge>}
-                        {!hasApolloKey && (
-                          <Badge variant="outline" className="text-gray-500">
-                            Apollo: Not configured
-                          </Badge>
-                        )}
-                        {!hasHunterKey && (
-                          <Badge variant="outline" className="text-gray-500">
-                            Hunter: Not configured
-                          </Badge>
-                        )}
-                      </div>
                     </div>
                   ) : (
                     <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
                       <p className="text-sm text-green-700 flex items-center gap-2">
                         <Check className="h-4 w-4" />
-                        Premium access enabled:
-                        {hasApolloKey && <Badge className="bg-green-100 text-green-700 ml-2">Apollo ✓</Badge>}
-                        {hasHunterKey && <Badge className="bg-green-100 text-green-700 ml-1">Hunter ✓</Badge>}
+                        Premium access enabled
                       </p>
                     </div>
                   )}
 
-                  {/* NEW: Industry and Keywords fields */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Industry</Label>
@@ -1328,30 +1312,6 @@ export default function LeadDiscovery() {
                         </Badge>
                       ))}
                     </div>
-                    {linkedinForm.titles.length > 0 && (
-                      <p className="text-xs text-muted-foreground">{linkedinForm.titles.length} selected</p>
-                    )}
-                  </div>
-
-                  {/* Company Size - Changed to dropdown */}
-                  <div className="space-y-2">
-                    <Label>Company Size (optional)</Label>
-                    <Select
-                      value={linkedinForm.companySize}
-                      onValueChange={(v) => setLinkedinForm({ ...linkedinForm, companySize: v })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Any size" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Any Size</SelectItem>
-                        {COMPANY_SIZES.map((size) => (
-                          <SelectItem key={size.id} value={size.id}>
-                            {size.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -1378,29 +1338,10 @@ export default function LeadDiscovery() {
                           <SelectItem value="United Kingdom">🇬🇧 United Kingdom</SelectItem>
                           <SelectItem value="Canada">🇨🇦 Canada</SelectItem>
                           <SelectItem value="Australia">🇦🇺 Australia</SelectItem>
-                          <SelectItem value="India">🇮🇳 India</SelectItem>
-                          <SelectItem value="Germany">🇩🇪 Germany</SelectItem>
-                          <SelectItem value="France">🇫🇷 France</SelectItem>
-                          <SelectItem value="Saudi Arabia">🇸🇦 Saudi Arabia</SelectItem>
-                          <SelectItem value="Qatar">🇶🇦 Qatar</SelectItem>
                           <SelectItem value="Pakistan">🇵🇰 Pakistan</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <Label>Max Results</Label>
-                      <span>{linkedinForm.maxResults}</span>
-                    </div>
-                    <Slider
-                      value={[linkedinForm.maxResults]}
-                      onValueChange={(v) => setLinkedinForm({ ...linkedinForm, maxResults: v[0] })}
-                      min={10}
-                      max={100}
-                      step={5}
-                    />
                   </div>
 
                   <Button
@@ -1425,60 +1366,6 @@ export default function LeadDiscovery() {
                   </Button>
                 </CardContent>
               </Card>
-
-              {/* Premium Search Results */}
-              {showResults && searchResults.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Decision Makers Found ({searchResults.length})</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ScrollArea className="h-[400px]">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Title</TableHead>
-                            <TableHead>Company</TableHead>
-                            <TableHead>Email</TableHead>
-                            <TableHead>LinkedIn</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {searchResults.map((lead: any, idx: number) => (
-                            <TableRow key={idx}>
-                              <TableCell className="font-medium">{lead.contact_name || lead.name || "—"}</TableCell>
-                              <TableCell>{lead.job_title || lead.title || "—"}</TableCell>
-                              <TableCell>{lead.company_name || lead.company || "—"}</TableCell>
-                              <TableCell>
-                                {lead.email ? (
-                                  <span className="flex items-center gap-1 text-green-600">
-                                    <Mail className="h-3 w-3" /> {lead.email}
-                                  </span>
-                                ) : (
-                                  "—"
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                {lead.linkedin_url && (
-                                  <a
-                                    href={lead.linkedin_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-[#0077B5] hover:underline"
-                                  >
-                                    <Linkedin className="h-4 w-4" />
-                                  </a>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </ScrollArea>
-                  </CardContent>
-                </Card>
-              )}
             </div>
           )}
         </TabsContent>
@@ -1486,36 +1373,6 @@ export default function LeadDiscovery() {
         {/* ==================== B2C TAB ==================== */}
         <TabsContent value="b2c">
           <div className="space-y-6">
-            {/* B2C Results Summary */}
-            {b2cResults && (
-              <Card className="border-green-200 bg-green-50/50">
-                <CardContent className="pt-6">
-                  <div className="grid grid-cols-5 gap-4 text-center">
-                    <div>
-                      <p className="text-2xl font-bold text-green-600">{b2cResults.leads_saved || 0}</p>
-                      <p className="text-sm text-muted-foreground">Total Saved</p>
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-red-500">{b2cResults.hot_leads || 0}</p>
-                      <p className="text-sm text-muted-foreground">Hot Leads</p>
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-orange-500">{b2cResults.warm_leads || 0}</p>
-                      <p className="text-sm text-muted-foreground">Warm Leads</p>
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-blue-500">{b2cResults.cold_leads || 0}</p>
-                      <p className="text-sm text-muted-foreground">Cold Leads</p>
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-gray-400">{b2cResults.duplicates_skipped || 0}</p>
-                      <p className="text-sm text-muted-foreground">Duplicates Skipped</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
             {/* B2C Sub-tabs */}
             <div className="flex gap-2 mb-6">
               <Button
@@ -1580,67 +1437,6 @@ export default function LeadDiscovery() {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Custom Search Intent (optional)</Label>
-                    <Input
-                      placeholder="e.g., 'looking for best dentist', 'need botox treatment'"
-                      value={intentForm.searchIntent}
-                      onChange={(e) => setIntentForm({ ...intentForm, searchIntent: e.target.value })}
-                    />
-                  </div>
-
-                  {selectedB2CIndustry && (
-                    <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
-                      <p className="text-sm font-medium text-purple-700 mb-2">Auto-generated keywords:</p>
-                      <div className="flex flex-wrap gap-1">
-                        {selectedB2CIndustry.keywords.map((kw) => (
-                          <Badge key={kw} variant="outline" className="text-purple-600 border-purple-300">
-                            {kw}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="space-y-2">
-                    <Label>Data Source</Label>
-                    <Select
-                      value={intentForm.source}
-                      onValueChange={(v) => setIntentForm({ ...intentForm, source: v })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="google_search">🔍 Google Search (FREE)</SelectItem>
-                        <SelectItem value="apify">⚡ Premium - Apify (~$0.002/result)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <Label>Max Results</Label>
-                      <span className="font-medium">{intentForm.maxResults}</span>
-                    </div>
-                    <Slider
-                      value={[intentForm.maxResults]}
-                      onValueChange={(v) => setIntentForm({ ...intentForm, maxResults: v[0] })}
-                      min={5}
-                      max={100}
-                      step={5}
-                    />
-                  </div>
-
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <span>💰 Estimated cost:</span>
-                    {intentForm.source === "google_search" ? (
-                      <Badge className="bg-green-500">FREE</Badge>
-                    ) : (
-                      <Badge className="bg-amber-500">~${(intentForm.maxResults * 0.002).toFixed(2)}</Badge>
-                    )}
-                  </div>
-
                   <Button
                     onClick={handleIntentSearch}
                     disabled={isSearching || !intentForm.location}
@@ -1668,59 +1464,17 @@ export default function LeadDiscovery() {
                   <CardTitle className="flex items-center gap-2">
                     <Users className="h-5 w-5 text-pink-500" /> Social Audiences
                   </CardTitle>
-                  <CardDescription>Find followers of competitors or people engaging with relevant hashtags</CardDescription>
+                  <CardDescription>
+                    Find followers of competitors or people engaging with relevant hashtags
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Platform</Label>
-                    <Select
-                      value={socialForm.platform}
-                      onValueChange={(v) => setSocialForm({ ...socialForm, platform: v })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SOCIAL_PLATFORMS.map((plat) => (
-                          <SelectItem key={plat.id} value={plat.id}>
-                            {plat.icon} {plat.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
                   <div className="space-y-2">
                     <Label>Hashtags (comma-separated)</Label>
                     <Input
                       placeholder="e.g., #botox, #medspa, #skincare"
                       value={socialForm.hashtags}
                       onChange={(e) => setSocialForm({ ...socialForm, hashtags: e.target.value })}
-                    />
-                    <p className="text-xs text-muted-foreground">Enter hashtags to find people who engage with them</p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Competitor Accounts (comma-separated)</Label>
-                    <Input
-                      placeholder="e.g., @competitor1, @competitor2"
-                      value={socialForm.competitorAccounts}
-                      onChange={(e) => setSocialForm({ ...socialForm, competitorAccounts: e.target.value })}
-                    />
-                    <p className="text-xs text-muted-foreground">Find followers of these competitor accounts</p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <Label>Max Results</Label>
-                      <span className="font-medium">{socialForm.maxResults}</span>
-                    </div>
-                    <Slider
-                      value={[socialForm.maxResults]}
-                      onValueChange={(v) => setSocialForm({ ...socialForm, maxResults: v[0] })}
-                      min={5}
-                      max={100}
-                      step={5}
                     />
                   </div>
 
@@ -1763,74 +1517,6 @@ export default function LeadDiscovery() {
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Review Site</Label>
-                    <Select
-                      value={reviewForm.reviewSite}
-                      onValueChange={(v) => setReviewForm({ ...reviewForm, reviewSite: v })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {REVIEW_SITES.map((site) => (
-                          <SelectItem key={site.id} value={site.id}>
-                            {site.icon} {site.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <Label>Min Rating</Label>
-                        <span className="font-medium">{reviewForm.minRating} ⭐</span>
-                      </div>
-                      <Slider
-                        value={[reviewForm.minRating]}
-                        onValueChange={(v) => setReviewForm({ ...reviewForm, minRating: v[0] })}
-                        min={1}
-                        max={5}
-                        step={1}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <Label>Max Rating</Label>
-                        <span className="font-medium">{reviewForm.maxRating} ⭐</span>
-                      </div>
-                      <Slider
-                        value={[reviewForm.maxRating]}
-                        onValueChange={(v) => setReviewForm({ ...reviewForm, maxRating: v[0] })}
-                        min={1}
-                        max={5}
-                        step={1}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                    <p className="text-sm text-orange-700">
-                      💡 <strong>Tip:</strong> Target 1-3 star reviews to find dissatisfied customers who might switch to your business.
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <Label>Max Results</Label>
-                      <span className="font-medium">{reviewForm.maxResults}</span>
-                    </div>
-                    <Slider
-                      value={[reviewForm.maxResults]}
-                      onValueChange={(v) => setReviewForm({ ...reviewForm, maxResults: v[0] })}
-                      min={5}
-                      max={100}
-                      step={5}
-                    />
-                  </div>
-
                   <Button
                     onClick={handleReviewSearch}
                     disabled={isSearching || !reviewForm.competitorName}
@@ -1853,7 +1539,7 @@ export default function LeadDiscovery() {
           </div>
         </TabsContent>
 
-        {/* ==================== AUTO LEAD GEN TAB ==================== */}
+        {/* ==================== AUTO LEAD GEN TAB - FIXED ==================== */}
         <TabsContent value="auto">
           <div className="grid gap-6 lg:grid-cols-2">
             <Card>
@@ -1967,15 +1653,22 @@ export default function LeadDiscovery() {
               </CardContent>
             </Card>
 
+            {/* FIXED: Saved Configurations Card */}
             <Card>
               <CardHeader>
-                <CardTitle>Saved Configurations</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Saved Configurations</CardTitle>
+                  <Button variant="outline" size="sm" onClick={() => refetchConfigs()}>
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 {savedConfigs.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <Bot className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>No saved configurations</p>
+                    <p className="text-xs mt-1">Create a configuration to automate lead generation</p>
                   </div>
                 ) : (
                   <ScrollArea className="h-[350px]">
@@ -1983,21 +1676,59 @@ export default function LeadDiscovery() {
                       {savedConfigs.map((config: any) => (
                         <div key={config.id} className="p-4 border rounded-lg">
                           <div className="flex items-start justify-between">
-                            <div>
-                              <p className="font-medium">{config.name}</p>
-                              <p className="text-sm text-muted-foreground">{config.city || "Any location"}</p>
-                              <Badge variant={config.is_active ? "default" : "secondary"} className="mt-2">
-                                {config.is_active ? "Active" : "Paused"}
-                              </Badge>
+                            <div className="flex-1">
+                              <p className="font-medium">
+                                {INDUSTRIES.find((i) => i.id === config.industry)?.label || config.industry} -{" "}
+                                {config.location || "Any location"}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {getGenerationTypeLabel(config.generation_type)}
+                                {" • "}
+                                {config.schedule_type === "hourly"
+                                  ? "Every hour"
+                                  : `Daily at ${config.schedule_time?.slice(0, 5) || "09:00"}`}
+                              </p>
+                              <div className="flex items-center gap-2 mt-2">
+                                <Badge
+                                  variant={config.is_active ? "default" : "secondary"}
+                                  className={config.is_active ? "bg-green-500" : ""}
+                                >
+                                  {config.is_active ? "Active" : "Paused"}
+                                </Badge>
+                                {config.total_leads_generated > 0 && (
+                                  <span className="text-xs text-muted-foreground">
+                                    {config.total_leads_generated} leads found
+                                  </span>
+                                )}
+                              </div>
+                              {config.last_run_at && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Last run: {formatDistanceToNow(new Date(config.last_run_at), { addSuffix: true })}
+                                </p>
+                              )}
                             </div>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="text-red-500"
-                              onClick={() => deleteConfig.mutate(config.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <div className="flex gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => toggleConfigActive(config.id, config.is_active)}
+                                title={config.is_active ? "Pause" : "Activate"}
+                              >
+                                {config.is_active ? (
+                                  <Pause className="h-4 w-4 text-yellow-500" />
+                                ) : (
+                                  <Play className="h-4 w-4 text-green-500" />
+                                )}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-red-500"
+                                onClick={() => deleteConfig.mutate(config.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -2020,9 +1751,6 @@ export default function LeadDiscovery() {
               onClick={() => setImportSubTab("manual")}
             >
               <Plus className="h-4 w-4 mr-2" /> Manual Entry
-            </Button>
-            <Button variant={importSubTab === "crm" ? "default" : "outline"} onClick={() => setImportSubTab("crm")}>
-              <RefreshCw className="h-4 w-4 mr-2" /> CRM Sync
             </Button>
           </div>
 
@@ -2085,26 +1813,6 @@ export default function LeadDiscovery() {
                   <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                   <p>Click to upload or drag and drop</p>
                   <p className="text-sm text-muted-foreground">CSV files up to 10MB</p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {importSubTab === "crm" && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Sync from CRM</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-4 gap-4">
-                  {["Salesforce", "HubSpot", "Pipedrive", "Zoho"].map((crm) => (
-                    <Card key={crm} className="cursor-pointer hover:border-primary">
-                      <CardContent className="pt-6 text-center">
-                        <RefreshCw className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-                        <p className="font-medium">{crm}</p>
-                      </CardContent>
-                    </Card>
-                  ))}
                 </div>
               </CardContent>
             </Card>
