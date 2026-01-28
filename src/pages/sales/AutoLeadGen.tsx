@@ -261,27 +261,30 @@ export default function LeadDiscovery() {
     title: "",
   });
 
-  // B2C Form States
+  // B2C Form States - Enhanced
   const [intentForm, setIntentForm] = useState({
     industry: "aesthetics",
-    searchIntent: "",
+    keywords: "",
     location: "",
-    source: "google_search",
+    platforms: ["reddit", "quora"] as string[],
     maxResults: 25,
   });
 
   const [socialForm, setSocialForm] = useState({
     platform: "instagram",
+    searchMode: "hashtags" as "hashtags" | "competitors",
     hashtags: "",
     competitorAccounts: "",
-    maxResults: 25,
+    maxResults: 50,
   });
 
   const [reviewForm, setReviewForm] = useState({
+    searchMode: "businesses" as "customers" | "businesses",
+    industry: "aesthetics",
+    location: "",
     competitorName: "",
     reviewSite: "google_reviews",
-    minRating: 1,
-    maxRating: 3,
+    maxRating: "3",
     maxResults: 25,
   });
 
@@ -730,32 +733,42 @@ export default function LeadDiscovery() {
   // Get selected B2C industry keywords
   const selectedB2CIndustry = B2C_INDUSTRIES.find((i) => i.id === intentForm.industry);
 
-  // B2C Intent Search Handler
+  // B2C Intent Search Handler - Enhanced
   const handleIntentSearch = async () => {
     if (!tenantUuid) {
       toast({ title: "Error", description: "Tenant not loaded", variant: "destructive" });
       return;
     }
+    if (!intentForm.keywords.trim()) {
+      toast({ title: "Missing keywords", description: "Please enter at least one search keyword", variant: "destructive" });
+      return;
+    }
     setIsSearching(true);
     setB2cResults(null);
     try {
+      const keywords = intentForm.keywords.split(",").map((k) => k.trim()).filter(Boolean);
       const response = await fetch(`${N8N_WEBHOOK_URL}/intent-lead-gen`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tenant_id: tenantUuid,
           industry: intentForm.industry,
-          search_intent: intentForm.searchIntent,
           location: intentForm.location,
-          source: intentForm.source,
+          keywords: keywords,
+          platforms: intentForm.platforms,
           max_results: intentForm.maxResults,
-          auto_activate_sequence: true,
+          method: "intent_signals",
         }),
       });
       const result = await response.json();
       if (result.success) {
         setB2cResults(result);
-        toast({ title: "✅ Search Complete!", description: `Saved ${result.leads_saved || 0} new leads` });
+        const leadsCount = result.leads_saved || 0;
+        const signalsCount = result.signals_found || result.total_found || 0;
+        toast({ 
+          title: "✅ Search Complete!", 
+          description: `Found ${signalsCount} signals | ${leadsCount} contactable leads added` 
+        });
         refetchHistory();
         refetchStats();
       } else {
@@ -768,7 +781,7 @@ export default function LeadDiscovery() {
     }
   };
 
-  // B2C Social Audiences Handler
+  // B2C Social Audiences Handler - Enhanced
   const handleSocialSearch = async () => {
     if (!tenantUuid) {
       toast({ title: "Error", description: "Tenant not loaded", variant: "destructive" });
@@ -782,10 +795,16 @@ export default function LeadDiscovery() {
       .split(",")
       .map((c) => c.trim().replace("@", ""))
       .filter(Boolean);
-    if (hashtags.length === 0 && competitors.length === 0) {
-      toast({ title: "Missing data", description: "Enter hashtags or competitor accounts", variant: "destructive" });
+    
+    if (socialForm.searchMode === "hashtags" && hashtags.length === 0) {
+      toast({ title: "Missing data", description: "Enter at least one hashtag", variant: "destructive" });
       return;
     }
+    if (socialForm.searchMode === "competitors" && competitors.length === 0) {
+      toast({ title: "Missing data", description: "Enter at least one competitor account", variant: "destructive" });
+      return;
+    }
+    
     setIsSearching(true);
     setB2cResults(null);
     try {
@@ -795,10 +814,10 @@ export default function LeadDiscovery() {
         body: JSON.stringify({
           tenant_id: tenantUuid,
           platform: socialForm.platform,
-          hashtags,
-          competitor_accounts: competitors,
+          method: socialForm.searchMode === "hashtags" ? "hashtag_followers" : "competitor_followers",
+          hashtags: socialForm.searchMode === "hashtags" ? hashtags : [],
+          competitor_accounts: socialForm.searchMode === "competitors" ? competitors : [],
           max_results: socialForm.maxResults,
-          auto_activate_sequence: true,
         }),
       });
       const result = await response.json();
@@ -817,14 +836,18 @@ export default function LeadDiscovery() {
     }
   };
 
-  // B2C Review Hunters Handler
+  // B2C Review Hunters Handler - Enhanced
   const handleReviewSearch = async () => {
     if (!tenantUuid) {
       toast({ title: "Error", description: "Tenant not loaded", variant: "destructive" });
       return;
     }
-    if (!reviewForm.competitorName) {
-      toast({ title: "Missing data", description: "Enter competitor name", variant: "destructive" });
+    if (!reviewForm.location) {
+      toast({ title: "Missing data", description: "Please enter a location", variant: "destructive" });
+      return;
+    }
+    if (reviewForm.searchMode === "customers" && !reviewForm.competitorName) {
+      toast({ title: "Missing data", description: "Enter competitor business name", variant: "destructive" });
       return;
     }
     setIsSearching(true);
@@ -835,18 +858,24 @@ export default function LeadDiscovery() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tenant_id: tenantUuid,
-          competitor_name: reviewForm.competitorName,
+          method: reviewForm.searchMode === "customers" ? "unhappy_customers" : "businesses_needing_help",
+          industry: reviewForm.industry,
+          location: reviewForm.location,
+          competitor_name: reviewForm.competitorName || null,
           review_site: reviewForm.reviewSite,
-          min_rating: reviewForm.minRating,
-          max_rating: reviewForm.maxRating,
+          max_rating: parseInt(reviewForm.maxRating),
           max_results: reviewForm.maxResults,
-          auto_activate_sequence: true,
         }),
       });
       const result = await response.json();
       if (result.success) {
         setB2cResults(result);
-        toast({ title: "✅ Search Complete!", description: `Saved ${result.leads_saved || 0} new leads` });
+        const leadsCount = result.leads_saved || 0;
+        const intelCount = result.market_intel_saved || 0;
+        toast({ 
+          title: "✅ Search Complete!", 
+          description: `Found ${result.total_found || leadsCount} results | ${leadsCount} leads, ${intelCount} market intel` 
+        });
         refetchHistory();
         refetchStats();
       } else {
@@ -857,6 +886,16 @@ export default function LeadDiscovery() {
     } finally {
       setIsSearching(false);
     }
+  };
+
+  // Toggle intent platform selection
+  const toggleIntentPlatform = (platform: string) => {
+    setIntentForm((prev) => ({
+      ...prev,
+      platforms: prev.platforms.includes(platform)
+        ? prev.platforms.filter((p) => p !== platform)
+        : [...prev.platforms, platform],
+    }));
   };
 
   // Helper function to get generation type label
@@ -1398,7 +1437,7 @@ export default function LeadDiscovery() {
               </Button>
             </div>
 
-            {/* Intent Signals Sub-tab */}
+            {/* Intent Signals Sub-tab - Enhanced */}
             {b2cSubTab === "intent" && (
               <Card>
                 <CardHeader>
@@ -1428,7 +1467,7 @@ export default function LeadDiscovery() {
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label>Location *</Label>
+                      <Label>Location</Label>
                       <Input
                         placeholder="e.g., Miami, Los Angeles, New York"
                         value={intentForm.location}
@@ -1437,9 +1476,76 @@ export default function LeadDiscovery() {
                     </div>
                   </div>
 
+                  <div className="space-y-2">
+                    <Label>Search Keywords *</Label>
+                    <textarea
+                      className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      placeholder="e.g., botox near me, best med spa, filler recommendations"
+                      value={intentForm.keywords}
+                      onChange={(e) => setIntentForm({ ...intentForm, keywords: e.target.value })}
+                    />
+                    <p className="text-xs text-muted-foreground">Enter specific terms your potential customers might search for (comma-separated)</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Search Platforms</Label>
+                    <div className="flex flex-wrap gap-3">
+                      {[
+                        { id: "reddit", label: "Reddit", icon: "🔴" },
+                        { id: "quora", label: "Quora", icon: "🔵" },
+                        { id: "twitter", label: "Twitter/X", icon: "🐦" },
+                        { id: "facebook_groups", label: "Facebook Groups", icon: "👥" },
+                      ].map((platform) => (
+                        <div
+                          key={platform.id}
+                          onClick={() => toggleIntentPlatform(platform.id)}
+                          className={cn(
+                            "flex items-center gap-2 px-3 py-2 rounded-md border cursor-pointer transition-colors",
+                            intentForm.platforms.includes(platform.id)
+                              ? "bg-purple-100 border-purple-500 dark:bg-purple-900/30"
+                              : "border-input hover:bg-muted"
+                          )}
+                        >
+                          <span>{platform.icon}</span>
+                          <span className="text-sm">{platform.label}</span>
+                          {intentForm.platforms.includes(platform.id) && (
+                            <Check className="h-4 w-4 text-purple-600" />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Select where to search for consumer intent</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Results Limit</Label>
+                    <Select
+                      value={String(intentForm.maxResults)}
+                      onValueChange={(v) => setIntentForm({ ...intentForm, maxResults: parseInt(v) })}
+                    >
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10 results</SelectItem>
+                        <SelectItem value="25">25 results</SelectItem>
+                        <SelectItem value="50">50 results</SelectItem>
+                        <SelectItem value="100">100 results</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Info Box */}
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg dark:bg-blue-900/20 dark:border-blue-800">
+                    <p className="text-sm text-blue-700 dark:text-blue-300 flex items-start gap-2">
+                      <span className="text-lg">💡</span>
+                      <span>Intent Signals finds people actively discussing services like yours. Results are saved as Market Intelligence for trend analysis. Leads with contact info are automatically added to your pipeline.</span>
+                    </p>
+                  </div>
+
                   <Button
                     onClick={handleIntentSearch}
-                    disabled={isSearching || !intentForm.location}
+                    disabled={isSearching || !intentForm.keywords.trim()}
                     className="w-full bg-purple-600 hover:bg-purple-700"
                     size="lg"
                   >
@@ -1449,7 +1555,7 @@ export default function LeadDiscovery() {
                       </>
                     ) : (
                       <>
-                        <Search className="h-4 w-4 mr-2" /> Find Interested Consumers
+                        <Search className="h-4 w-4 mr-2" /> 🔍 Find Intent Signals
                       </>
                     )}
                   </Button>
@@ -1457,12 +1563,15 @@ export default function LeadDiscovery() {
               </Card>
             )}
 
-            {/* Social Audiences Sub-tab */}
+            {/* Social Audiences Sub-tab - Enhanced */}
             {b2cSubTab === "social" && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Users className="h-5 w-5 text-pink-500" /> Social Audiences
+                    <Badge variant="outline" className="ml-2 text-amber-600 border-amber-400">
+                      ⭐ Enterprise Feature
+                    </Badge>
                   </CardTitle>
                   <CardDescription>
                     Find followers of competitors or people engaging with relevant hashtags
@@ -1470,17 +1579,119 @@ export default function LeadDiscovery() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Hashtags (comma-separated)</Label>
-                    <Input
-                      placeholder="e.g., #botox, #medspa, #skincare"
-                      value={socialForm.hashtags}
-                      onChange={(e) => setSocialForm({ ...socialForm, hashtags: e.target.value })}
-                    />
+                    <Label>Platform *</Label>
+                    <Select
+                      value={socialForm.platform}
+                      onValueChange={(v) => setSocialForm({ ...socialForm, platform: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SOCIAL_PLATFORMS.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.icon} {p.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
+
+                  <div className="space-y-2">
+                    <Label>Discovery Method</Label>
+                    <div className="flex gap-3">
+                      <div
+                        onClick={() => setSocialForm({ ...socialForm, searchMode: "hashtags" })}
+                        className={cn(
+                          "flex-1 p-4 rounded-lg border cursor-pointer transition-all",
+                          socialForm.searchMode === "hashtags"
+                            ? "bg-pink-50 border-pink-500 dark:bg-pink-900/20"
+                            : "border-input hover:bg-muted"
+                        )}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <Radio className={cn("h-4 w-4", socialForm.searchMode === "hashtags" ? "text-pink-600" : "text-muted-foreground")} />
+                          <span className="font-medium">Hashtag Followers</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Find users engaging with industry hashtags</p>
+                      </div>
+                      <div
+                        onClick={() => setSocialForm({ ...socialForm, searchMode: "competitors" })}
+                        className={cn(
+                          "flex-1 p-4 rounded-lg border cursor-pointer transition-all",
+                          socialForm.searchMode === "competitors"
+                            ? "bg-pink-50 border-pink-500 dark:bg-pink-900/20"
+                            : "border-input hover:bg-muted"
+                        )}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <Radio className={cn("h-4 w-4", socialForm.searchMode === "competitors" ? "text-pink-600" : "text-muted-foreground")} />
+                          <span className="font-medium">Competitor Followers</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Find followers of competitor accounts</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {socialForm.searchMode === "hashtags" && (
+                    <div className="space-y-2">
+                      <Label>Hashtags (comma-separated)</Label>
+                      <textarea
+                        className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        placeholder="#medspa, #botox, #skincare"
+                        value={socialForm.hashtags}
+                        onChange={(e) => setSocialForm({ ...socialForm, hashtags: e.target.value })}
+                      />
+                      <p className="text-xs text-muted-foreground">Enter hashtags your target audience uses</p>
+                    </div>
+                  )}
+
+                  {socialForm.searchMode === "competitors" && (
+                    <div className="space-y-2">
+                      <Label>Competitor Accounts (comma-separated)</Label>
+                      <textarea
+                        className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        placeholder="@competitor1, @competitor2"
+                        value={socialForm.competitorAccounts}
+                        onChange={(e) => setSocialForm({ ...socialForm, competitorAccounts: e.target.value })}
+                      />
+                      <p className="text-xs text-muted-foreground">Enter competitor Instagram/TikTok handles to analyze their followers</p>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label>Results Limit</Label>
+                    <Select
+                      value={String(socialForm.maxResults)}
+                      onValueChange={(v) => setSocialForm({ ...socialForm, maxResults: parseInt(v) })}
+                    >
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="25">25 results</SelectItem>
+                        <SelectItem value="50">50 results</SelectItem>
+                        <SelectItem value="100">100 results</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {!hasApifyKey && (
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg dark:bg-amber-900/20 dark:border-amber-800">
+                      <p className="text-sm text-amber-700 dark:text-amber-300 flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4" />
+                        Social Audiences requires Apify integration. Configure in Settings → Integrations.
+                      </p>
+                    </div>
+                  )}
 
                   <Button
                     onClick={handleSocialSearch}
-                    disabled={isSearching || (!socialForm.hashtags && !socialForm.competitorAccounts)}
+                    disabled={
+                      isSearching ||
+                      (socialForm.searchMode === "hashtags" && !socialForm.hashtags.trim()) ||
+                      (socialForm.searchMode === "competitors" && !socialForm.competitorAccounts.trim())
+                    }
                     className="w-full bg-pink-600 hover:bg-pink-700"
                     size="lg"
                   >
@@ -1490,7 +1701,7 @@ export default function LeadDiscovery() {
                       </>
                     ) : (
                       <>
-                        <Users className="h-4 w-4 mr-2" /> Find Social Audiences
+                        <Users className="h-4 w-4 mr-2" /> 👥 Find Social Audiences
                       </>
                     )}
                   </Button>
@@ -1498,28 +1709,154 @@ export default function LeadDiscovery() {
               </Card>
             )}
 
-            {/* Review Hunters Sub-tab */}
+            {/* Review Hunters Sub-tab - Enhanced */}
             {b2cSubTab === "reviews" && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Star className="h-5 w-5 text-orange-500" /> Review Hunters
                   </CardTitle>
-                  <CardDescription>Find unhappy customers from competitor reviews</CardDescription>
+                  <CardDescription>Find opportunities from competitor reviews and ratings</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Competitor Business Name *</Label>
-                    <Input
-                      placeholder="e.g., ABC Dental Clinic, XYZ Med Spa"
-                      value={reviewForm.competitorName}
-                      onChange={(e) => setReviewForm({ ...reviewForm, competitorName: e.target.value })}
-                    />
+                    <Label>What to Find</Label>
+                    <div className="flex gap-3">
+                      <div
+                        onClick={() => setReviewForm({ ...reviewForm, searchMode: "businesses" })}
+                        className={cn(
+                          "flex-1 p-4 rounded-lg border cursor-pointer transition-all",
+                          reviewForm.searchMode === "businesses"
+                            ? "bg-orange-50 border-orange-500 dark:bg-orange-900/20"
+                            : "border-input hover:bg-muted"
+                        )}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <Radio className={cn("h-4 w-4", reviewForm.searchMode === "businesses" ? "text-orange-600" : "text-muted-foreground")} />
+                          <span className="font-medium">Businesses Needing Help</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Find businesses with poor ratings - they may need your services!</p>
+                      </div>
+                      <div
+                        onClick={() => setReviewForm({ ...reviewForm, searchMode: "customers" })}
+                        className={cn(
+                          "flex-1 p-4 rounded-lg border cursor-pointer transition-all",
+                          reviewForm.searchMode === "customers"
+                            ? "bg-orange-50 border-orange-500 dark:bg-orange-900/20"
+                            : "border-input hover:bg-muted"
+                        )}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <Radio className={cn("h-4 w-4", reviewForm.searchMode === "customers" ? "text-orange-600" : "text-muted-foreground")} />
+                          <span className="font-medium">Unhappy Customers</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Find people who left negative reviews (market intel)</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Industry *</Label>
+                      <Select
+                        value={reviewForm.industry}
+                        onValueChange={(v) => setReviewForm({ ...reviewForm, industry: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {B2C_INDUSTRIES.map((ind) => (
+                            <SelectItem key={ind.id} value={ind.id}>
+                              {ind.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Location *</Label>
+                      <Input
+                        placeholder="e.g., Dubai, UAE or New York, NY"
+                        value={reviewForm.location}
+                        onChange={(e) => setReviewForm({ ...reviewForm, location: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  {reviewForm.searchMode === "customers" && (
+                    <div className="space-y-2">
+                      <Label>Competitor Business Name</Label>
+                      <Input
+                        placeholder="e.g., ABC Dental Clinic, XYZ Med Spa"
+                        value={reviewForm.competitorName}
+                        onChange={(e) => setReviewForm({ ...reviewForm, competitorName: e.target.value })}
+                      />
+                      <p className="text-xs text-muted-foreground">Enter a specific competitor to find their unhappy customers</p>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Review Platform</Label>
+                      <Select
+                        value={reviewForm.reviewSite}
+                        onValueChange={(v) => setReviewForm({ ...reviewForm, reviewSite: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {REVIEW_SITES.map((site) => (
+                            <SelectItem key={site.id} value={site.id}>
+                              {site.icon} {site.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {reviewForm.searchMode === "businesses" && (
+                      <div className="space-y-2">
+                        <Label>Maximum Rating</Label>
+                        <Select
+                          value={reviewForm.maxRating}
+                          onValueChange={(v) => setReviewForm({ ...reviewForm, maxRating: v })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="2">⭐⭐ 1-2 stars</SelectItem>
+                            <SelectItem value="3">⭐⭐⭐ 1-3 stars</SelectItem>
+                            <SelectItem value="4">⭐⭐⭐⭐ 1-4 stars</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">Find businesses rated at or below this threshold</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Results Limit</Label>
+                    <Select
+                      value={String(reviewForm.maxResults)}
+                      onValueChange={(v) => setReviewForm({ ...reviewForm, maxResults: parseInt(v) })}
+                    >
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10 results</SelectItem>
+                        <SelectItem value="25">25 results</SelectItem>
+                        <SelectItem value="50">50 results</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <Button
                     onClick={handleReviewSearch}
-                    disabled={isSearching || !reviewForm.competitorName}
+                    disabled={isSearching || !reviewForm.location}
                     className="w-full bg-orange-600 hover:bg-orange-700"
                     size="lg"
                   >
@@ -1527,9 +1864,13 @@ export default function LeadDiscovery() {
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Searching...
                       </>
+                    ) : reviewForm.searchMode === "customers" ? (
+                      <>
+                        <Search className="h-4 w-4 mr-2" /> 🔍 Find Unhappy Reviewers
+                      </>
                     ) : (
                       <>
-                        <Star className="h-4 w-4 mr-2" /> Find Unhappy Reviewers
+                        <Building2 className="h-4 w-4 mr-2" /> 🏢 Find Businesses
                       </>
                     )}
                   </Button>
