@@ -76,30 +76,17 @@ export default function AIAssistantPage() {
     setIsLoading(true);
 
     try {
-      // Simulate AI response
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // Call the actual webhook
+      const result = await sendMessage(inputValue.trim(), {
+        channel: 'web'
+      });
 
-      const responses: Record<string, string> = {
-        leave: `Based on your records, here's your current leave balance:\n\n📅 **Annual Leave**: 15 days remaining (out of 20)\n🏥 **Sick Leave**: 8 days remaining (out of 10)\n👤 **Personal Leave**: 4 days remaining (out of 5)\n\nYou have 2 leave requests pending approval. Would you like to submit a new leave request?`,
-        payslip: `Here's a summary of your latest payslip for January 2024:\n\n💰 **Gross Salary**: $8,500\n➕ **Allowances**: $1,200\n➖ **Deductions**: $850\n💵 **Net Pay**: $8,850\n\nYour salary was credited on January 31, 2024. Would you like me to download the full payslip?`,
-        policy: `Here's what I found about our remote work policy:\n\n🏠 **Remote Work Policy**\n\n• Employees can work remotely up to 3 days per week\n• Core hours are 10 AM - 4 PM for meetings\n• VPN must be used for accessing company systems\n• Prior approval needed for fully remote weeks\n\nWould you like more details about any specific aspect?`,
-        employee: `I found 25 employees in the Engineering department. Here are a few:\n\n👤 John Smith - Senior Developer\n👤 Sarah Johnson - Tech Lead\n👤 Mike Brown - DevOps Engineer\n\nWould you like me to search for a specific person or show the full list?`,
-        help: `I can help you with many HR-related tasks:\n\n• **Leave Management**: Check balances, request time off, view history\n• **Payroll**: View payslips, salary details, tax information\n• **Employee Directory**: Find colleagues, view org structure\n• **Policies**: Answer questions about company policies\n• **Benefits**: Information about health insurance, retirement plans\n• **Training**: Find courses, check certifications\n\nJust ask me anything!`,
-      };
+      let responseContent = "I'm sorry, I couldn't process your request. Please try again.";
 
-      let responseContent = `I understand you're asking about "${userMessage.content}". Let me help you with that.\n\nBased on my knowledge, here's what I can tell you...\n\nWould you like me to provide more specific information or take any action?`;
-
-      const lowerContent = userMessage.content.toLowerCase();
-      if (lowerContent.includes('leave') || lowerContent.includes('balance')) {
-        responseContent = responses.leave;
-      } else if (lowerContent.includes('payslip') || lowerContent.includes('salary') || lowerContent.includes('pay')) {
-        responseContent = responses.payslip;
-      } else if (lowerContent.includes('policy') || lowerContent.includes('policies') || lowerContent.includes('remote')) {
-        responseContent = responses.policy;
-      } else if (lowerContent.includes('employee') || lowerContent.includes('find') || lowerContent.includes('engineering')) {
-        responseContent = responses.employee;
-      } else if (lowerContent.includes('help') || lowerContent.includes('what can')) {
-        responseContent = responses.help;
+      if (result?.success && result?.data) {
+        // Use the real AI response from the webhook
+        const data = result.data as Record<string, unknown>;
+        responseContent = (data.response as string) || (data.message as string) || (data.response_message as string) || JSON.stringify(data);
       }
 
       const assistantMessage: Message = {
@@ -111,10 +98,11 @@ export default function AIAssistantPage() {
 
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
+      console.error('HR AI error:', error);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: "I'm sorry, I encountered an error processing your request. Please try again.",
+        content: "I'm sorry, I encountered an error. Please try again.",
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMessage]);
