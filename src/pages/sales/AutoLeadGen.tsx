@@ -232,7 +232,10 @@ export default function LeadDiscovery() {
     maxResults: 25,
   });
 
-  // Auto Lead Gen settings
+  // ============================================================
+  // FIX: Auto Lead Gen settings STATE DECLARATION (was missing!)
+  // This MUST come BEFORE the useEffect that uses it
+  // ============================================================
   const [autoSettings, setAutoSettings] = useState({
     enabled: false,
     source: "quick_search",
@@ -247,6 +250,50 @@ export default function LeadDiscovery() {
     autoSequence: false,
     sequenceId: "",
   });
+
+  // ============================================================
+  // FIX: Load existing auto lead gen settings (useEffect AFTER state)
+  // ============================================================
+  useEffect(() => {
+    const loadAutoSettings = async () => {
+      if (!tenantUuid) return;
+
+      try {
+        const { data, error } = await supabase
+          .from("auto_lead_gen_settings")
+          .select("*")
+          .eq("tenant_id", tenantUuid)
+          .maybeSingle();
+
+        if (error) {
+          console.error("Error loading auto settings:", error);
+          return;
+        }
+
+        if (data) {
+          console.log("Loaded auto settings:", data);
+          setAutoSettings({
+            enabled: data.is_active || false,
+            source: data.generation_type || "quick_search",
+            industry: data.industry || "",
+            location: data.location || data.city || "",
+            keywords: data.keywords || "",
+            maxLeadsPerRun: data.max_leads_per_run || data.leads_per_run || 10,
+            frequency: data.schedule_type || "daily",
+            time: data.schedule_time ? data.schedule_time.substring(0, 5) : "09:00", // Extract HH:mm from HH:mm:ss
+            autoEnrich: data.auto_enrich ?? true,
+            autoScore: data.auto_score ?? true,
+            autoSequence: data.auto_sequence ?? false,
+            sequenceId: data.sequence_id || "",
+          });
+        }
+      } catch (err) {
+        console.error("Failed to load auto settings:", err);
+      }
+    };
+
+    loadAutoSettings();
+  }, [tenantUuid]);
 
   // CSV Upload
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -305,26 +352,26 @@ export default function LeadDiscovery() {
       const { count: total } = await supabase
         .from("sales_leads")
         .select("*", { count: "exact", head: true })
-        .eq("tenant_id", tenantUuid);
+        .eq("tenant_id", tenantId); // NOTE: sales_leads uses TEXT (slug), not UUID
 
       const today = new Date().toISOString().split("T")[0];
       const { count: todayCount } = await supabase
         .from("sales_leads")
         .select("*", { count: "exact", head: true })
-        .eq("tenant_id", tenantUuid)
+        .eq("tenant_id", tenantId)
         .gte("created_at", today);
 
       const { count: inSequences } = await supabase
         .from("sales_leads")
         .select("*", { count: "exact", head: true })
-        .eq("tenant_id", tenantUuid)
+        .eq("tenant_id", tenantId)
         .not("sequence_id", "is", null);
 
       const { count: converted } = await supabase
         .from("sales_leads")
         .select("*", { count: "exact", head: true })
-        .eq("tenant_id", tenantUuid)
-        .eq("status", "converted");
+        .eq("tenant_id", tenantId)
+        .eq("lead_status", "converted");
 
       const convRate = total && total > 0 ? (((converted || 0) / total) * 100).toFixed(0) : "0";
 
@@ -335,7 +382,7 @@ export default function LeadDiscovery() {
         conversion: convRate,
       };
     },
-    enabled: !!tenantUuid,
+    enabled: !!tenantId,
   });
 
   // Fetch history using UUID
@@ -362,11 +409,16 @@ export default function LeadDiscovery() {
     queryKey: ["auto-lead-gen-settings", tenantUuid],
     queryFn: async () => {
       if (!tenantUuid) return [];
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("auto_lead_gen_settings")
         .select("*")
         .eq("tenant_id", tenantUuid)
         .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching configs:", error);
+        return [];
+      }
       return data || [];
     },
     enabled: !!tenantUuid,
@@ -590,7 +642,6 @@ export default function LeadDiscovery() {
   // FIXED: Save Auto Lead Gen Config to auto_lead_gen_settings
   // This is what Part 35 workflow reads from!
   // ============================================================
-  // Save Auto Lead Gen Config - FIXED: Save to correct table
   const handleSaveAutoConfig = async () => {
     if (!tenantUuid) {
       toast({ title: "Error", description: "Tenant not loaded yet. Please wait.", variant: "destructive" });
@@ -604,11 +655,18 @@ export default function LeadDiscovery() {
 
     try {
       // Check if a record already exists for this tenant
-      const { data: existing } = await supabase
+      const { data: existing, error: fetchError } = await supabase
         .from("auto_lead_gen_settings")
         .select("id")
         .eq("tenant_id", tenantUuid)
         .maybeSingle();
+
+      if (fetchError) {
+        console.error("Error checking existing config:", fetchError);
+      }
+
+      // Get browser timezone for proper schedule handling
+      const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
       const settingsData = {
         tenant_id: tenantUuid,
@@ -616,12 +674,12 @@ export default function LeadDiscovery() {
         is_active: autoSettings.enabled,
         generation_type: autoSettings.source,
         industry: autoSettings.industry,
-        keywords: autoSettings.keywords,
+        keywords: autoSettings.keywords || null,
         location: autoSettings.location,
         city: autoSettings.location,
         schedule_type: autoSettings.frequency,
-        schedule_time: autoSettings.time + ":00", // Ensure HH:mm:ss format
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, // Get browser timezone
+        schedule_time: autoSettings.time + ":00", // Ensure HH:mm:ss format for TIME column
+        timezone: browserTimezone,
         max_leads_per_run: autoSettings.maxLeadsPerRun,
         leads_per_run: autoSettings.maxLeadsPerRun,
         auto_enrich: autoSettings.autoEnrich,
@@ -631,18 +689,25 @@ export default function LeadDiscovery() {
         updated_at: new Date().toISOString(),
       };
 
+      console.log("Saving auto settings:", settingsData);
+
       let error;
       if (existing?.id) {
         // Update existing record
+        console.log("Updating existing record:", existing.id);
         const result = await supabase.from("auto_lead_gen_settings").update(settingsData).eq("id", existing.id);
         error = result.error;
       } else {
         // Insert new record
+        console.log("Inserting new record");
         const result = await supabase.from("auto_lead_gen_settings").insert(settingsData);
         error = result.error;
       }
 
-      if (error) throw error;
+      if (error) {
+        console.error("Save error:", error);
+        throw error;
+      }
 
       toast({ title: "✅ Configuration Saved!", description: "Auto lead generation settings saved successfully" });
       refetchConfigs();
@@ -673,6 +738,7 @@ export default function LeadDiscovery() {
       });
       refetchConfigs();
     } catch (error: any) {
+      console.error("Toggle error:", error);
       toast({ title: "Error", description: error.message, variant: "destructive" });
     }
   };
@@ -689,11 +755,14 @@ export default function LeadDiscovery() {
       toast({ title: "Deleted" });
       refetchConfigs();
     },
+    onError: (error: any) => {
+      toast({ title: "Delete failed", description: error.message, variant: "destructive" });
+    },
   });
 
-  // Manual Entry
+  // Manual Entry - NOTE: sales_leads uses TEXT tenant_id (slug)
   const handleManualEntry = async () => {
-    if (!tenantUuid) {
+    if (!tenantId) {
       toast({ title: "Error", description: "Tenant not loaded", variant: "destructive" });
       return;
     }
@@ -707,8 +776,9 @@ export default function LeadDiscovery() {
     }
 
     try {
+      // sales_leads.tenant_id is TEXT (slug), not UUID!
       const { error } = await supabase.from("sales_leads").insert({
-        tenant_id: tenantUuid,
+        tenant_id: tenantId, // Use slug for sales_leads table
         company_name: manualForm.company || null,
         contact_name: manualForm.name || null,
         email: manualForm.email || null,
@@ -716,7 +786,7 @@ export default function LeadDiscovery() {
         job_title: manualForm.title || null,
         source: "manual",
         source_channel: "manual_entry",
-        status: "new",
+        lead_status: "new",
         lead_score: 50,
         temperature: "warm",
       });
@@ -918,9 +988,12 @@ export default function LeadDiscovery() {
   const getGenerationTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
       b2b: "🔍 Quick Search",
+      quick_search: "🎁 Quick Search",
       google_places: "📍 Local Discovery",
+      local_discovery: "📍 Local Discovery",
       apollo: "💼 LinkedIn Premium",
       premium: "💼 LinkedIn Premium",
+      linkedin_premium: "💼 LinkedIn Premium",
       intent: "🎯 B2C Intent",
     };
     return labels[type] || type;
@@ -2029,7 +2102,7 @@ export default function LeadDiscovery() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Time</Label>
+                    <Label>Time (24-hour format)</Label>
                     <Input
                       type="time"
                       value={autoSettings.time}
@@ -2037,6 +2110,11 @@ export default function LeadDiscovery() {
                     />
                   </div>
                 </div>
+
+                {/* Show current timezone */}
+                <p className="text-xs text-muted-foreground">
+                  Schedule will use your timezone: {Intl.DateTimeFormat().resolvedOptions().timeZone}
+                </p>
 
                 <Button onClick={handleSaveAutoConfig} className="w-full" size="lg">
                   <Bot className="h-4 w-4 mr-2" /> Save Configuration
@@ -2069,22 +2147,24 @@ export default function LeadDiscovery() {
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
                               <p className="font-medium">
+                                {INDUSTRIES.find((i) => i.id === config.industry)?.icon || "🏢"}{" "}
                                 {INDUSTRIES.find((i) => i.id === config.industry)?.label || config.industry} -{" "}
-                                {config.location || "Any location"}
+                                {config.location || config.city || "Any location"}
                               </p>
                               <p className="text-sm text-muted-foreground">
                                 {getGenerationTypeLabel(config.generation_type)}
                                 {" • "}
                                 {config.schedule_type === "hourly"
                                   ? "Every hour"
-                                  : `Daily at ${config.schedule_time?.slice(0, 5) || "09:00"}`}
+                                  : `${config.schedule_type || "Daily"} at ${config.schedule_time?.slice(0, 5) || "09:00"}`}
+                                {config.timezone && ` (${config.timezone})`}
                               </p>
                               <div className="flex items-center gap-2 mt-2">
                                 <Badge
                                   variant={config.is_active ? "default" : "secondary"}
                                   className={config.is_active ? "bg-green-500" : ""}
                                 >
-                                  {config.is_active ? "Active" : "Paused"}
+                                  {config.is_active ? "✅ Active" : "⏸️ Paused"}
                                 </Badge>
                                 {config.total_leads_generated > 0 && (
                                   <span className="text-xs text-muted-foreground">
