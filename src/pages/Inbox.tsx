@@ -880,10 +880,7 @@ export default function Inbox() {
 
       console.log("Booking appointment with SLUG:", tenantId);
 
-      const { data, error } = await supabase
-        .from("appointments")
-        .insert(appointmentData)
-        .select();
+      const { data, error } = await supabase.from("appointments").insert(appointmentData).select();
 
       if (error) {
         console.error("Appointment insert error:", error);
@@ -1648,7 +1645,7 @@ export default function Inbox() {
                                 className={cn(
                                   "max-w-[70%] rounded-2xl px-4 py-2.5 shadow-sm",
                                   msg.direction === "outbound"
-                                    ? "bg-primary text-primary-foreground rounded-br-md"
+                                    ? "bg-primary text-white rounded-br-md"
                                     : "bg-muted text-foreground rounded-bl-md border",
                                 )}
                               >
@@ -1657,7 +1654,7 @@ export default function Inbox() {
                                   className={cn(
                                     "flex items-center gap-1.5 mt-1 text-[10px]",
                                     msg.direction === "outbound"
-                                      ? "text-primary-foreground/70 justify-end"
+                                      ? "text-white/80 justify-end"
                                       : "text-muted-foreground",
                                   )}
                                 >
@@ -1789,7 +1786,7 @@ export default function Inbox() {
                             <Plus className="h-3 w-3" />
                           </Button>
                         </h4>
-                        {(selectedCustomer?.notes || selectedConversation?.customer?.notes) ? (
+                        {selectedCustomer?.notes || selectedConversation?.customer?.notes ? (
                           <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-3 text-sm whitespace-pre-wrap max-h-40 overflow-y-auto">
                             {selectedCustomer?.notes || selectedConversation?.customer?.notes}
                           </div>
