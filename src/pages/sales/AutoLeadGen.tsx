@@ -590,6 +590,7 @@ export default function LeadDiscovery() {
   // FIXED: Save Auto Lead Gen Config to auto_lead_gen_settings
   // This is what Part 35 workflow reads from!
   // ============================================================
+  // Save Auto Lead Gen Config - FIXED: Save to correct table
   const handleSaveAutoConfig = async () => {
     if (!tenantUuid) {
       toast({ title: "Error", description: "Tenant not loaded yet. Please wait.", variant: "destructive" });
@@ -602,41 +603,49 @@ export default function LeadDiscovery() {
     }
 
     try {
-      // Map UI source names to workflow generation_type values
-      const generationTypeMap: Record<string, string> = {
-        quick_search: "b2b",
-        local_discovery: "google_places",
-        linkedin_premium: "apollo",
-        b2c_intent: "intent",
-      };
+      // Check if a record already exists for this tenant
+      const { data: existing } = await supabase
+        .from("auto_lead_gen_settings")
+        .select("id")
+        .eq("tenant_id", tenantUuid)
+        .maybeSingle();
 
-      const configData = {
+      const settingsData = {
         tenant_id: tenantUuid,
+        name: `Auto: ${INDUSTRIES.find((i) => i.id === autoSettings.industry)?.label || autoSettings.industry} - ${autoSettings.location}`,
         is_active: autoSettings.enabled,
-        generation_type: generationTypeMap[autoSettings.source] || "b2b",
+        generation_type: autoSettings.source,
         industry: autoSettings.industry,
+        keywords: autoSettings.keywords,
         location: autoSettings.location,
-        keywords: autoSettings.keywords || null,
+        city: autoSettings.location,
+        schedule_type: autoSettings.frequency,
+        schedule_time: autoSettings.time + ":00", // Ensure HH:mm:ss format
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, // Get browser timezone
+        max_leads_per_run: autoSettings.maxLeadsPerRun,
         leads_per_run: autoSettings.maxLeadsPerRun,
-        // Schedule configuration - matches Part 35 workflow expectations
-        schedule_type: autoSettings.frequency === "hourly" ? "hourly" : "daily",
-        schedule_time: autoSettings.time + ":00",
-        schedule_days: [1, 2, 3, 4, 5], // Mon-Fri
-        timezone: "Asia/Dubai",
-        // Budget defaults
-        daily_budget_usd: 50,
-        monthly_budget_usd: 500,
+        auto_enrich: autoSettings.autoEnrich,
+        auto_score: autoSettings.autoScore,
+        auto_sequence: autoSettings.autoSequence,
+        sequence_id: autoSettings.sequenceId || null,
+        updated_at: new Date().toISOString(),
       };
 
-      const { error } = await supabase.from("auto_lead_gen_settings").insert(configData);
+      let error;
+      if (existing?.id) {
+        // Update existing record
+        const result = await supabase.from("auto_lead_gen_settings").update(settingsData).eq("id", existing.id);
+        error = result.error;
+      } else {
+        // Insert new record
+        const result = await supabase.from("auto_lead_gen_settings").insert(settingsData);
+        error = result.error;
+      }
 
       if (error) throw error;
 
       toast({ title: "✅ Configuration Saved!", description: "Auto lead generation settings saved successfully" });
       refetchConfigs();
-
-      // Reset form
-      setAutoSettings((prev) => ({ ...prev, enabled: false, industry: "", location: "", keywords: "" }));
     } catch (error: any) {
       console.error("Save error:", error);
       toast({ title: "Failed to save", description: error.message, variant: "destructive" });
@@ -740,13 +749,20 @@ export default function LeadDiscovery() {
       return;
     }
     if (!intentForm.keywords.trim()) {
-      toast({ title: "Missing keywords", description: "Please enter at least one search keyword", variant: "destructive" });
+      toast({
+        title: "Missing keywords",
+        description: "Please enter at least one search keyword",
+        variant: "destructive",
+      });
       return;
     }
     setIsSearching(true);
     setB2cResults(null);
     try {
-      const keywords = intentForm.keywords.split(",").map((k) => k.trim()).filter(Boolean);
+      const keywords = intentForm.keywords
+        .split(",")
+        .map((k) => k.trim())
+        .filter(Boolean);
       const response = await fetch(`${N8N_WEBHOOK_URL}/intent-lead-gen`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -765,9 +781,9 @@ export default function LeadDiscovery() {
         setB2cResults(result);
         const leadsCount = result.leads_saved || 0;
         const signalsCount = result.signals_found || result.total_found || 0;
-        toast({ 
-          title: "✅ Search Complete!", 
-          description: `Found ${signalsCount} signals | ${leadsCount} contactable leads added` 
+        toast({
+          title: "✅ Search Complete!",
+          description: `Found ${signalsCount} signals | ${leadsCount} contactable leads added`,
         });
         refetchHistory();
         refetchStats();
@@ -795,7 +811,7 @@ export default function LeadDiscovery() {
       .split(",")
       .map((c) => c.trim().replace("@", ""))
       .filter(Boolean);
-    
+
     if (socialForm.searchMode === "hashtags" && hashtags.length === 0) {
       toast({ title: "Missing data", description: "Enter at least one hashtag", variant: "destructive" });
       return;
@@ -804,7 +820,7 @@ export default function LeadDiscovery() {
       toast({ title: "Missing data", description: "Enter at least one competitor account", variant: "destructive" });
       return;
     }
-    
+
     setIsSearching(true);
     setB2cResults(null);
     try {
@@ -872,9 +888,9 @@ export default function LeadDiscovery() {
         setB2cResults(result);
         const leadsCount = result.leads_saved || 0;
         const intelCount = result.market_intel_saved || 0;
-        toast({ 
-          title: "✅ Search Complete!", 
-          description: `Found ${result.total_found || leadsCount} results | ${leadsCount} leads, ${intelCount} market intel` 
+        toast({
+          title: "✅ Search Complete!",
+          description: `Found ${result.total_found || leadsCount} results | ${leadsCount} leads, ${intelCount} market intel`,
         });
         refetchHistory();
         refetchStats();
@@ -1484,7 +1500,9 @@ export default function LeadDiscovery() {
                       value={intentForm.keywords}
                       onChange={(e) => setIntentForm({ ...intentForm, keywords: e.target.value })}
                     />
-                    <p className="text-xs text-muted-foreground">Enter specific terms your potential customers might search for (comma-separated)</p>
+                    <p className="text-xs text-muted-foreground">
+                      Enter specific terms your potential customers might search for (comma-separated)
+                    </p>
                   </div>
 
                   <div className="space-y-2">
@@ -1503,14 +1521,12 @@ export default function LeadDiscovery() {
                             "flex items-center gap-2 px-3 py-2 rounded-md border cursor-pointer transition-colors",
                             intentForm.platforms.includes(platform.id)
                               ? "bg-purple-100 border-purple-500 dark:bg-purple-900/30"
-                              : "border-input hover:bg-muted"
+                              : "border-input hover:bg-muted",
                           )}
                         >
                           <span>{platform.icon}</span>
                           <span className="text-sm">{platform.label}</span>
-                          {intentForm.platforms.includes(platform.id) && (
-                            <Check className="h-4 w-4 text-purple-600" />
-                          )}
+                          {intentForm.platforms.includes(platform.id) && <Check className="h-4 w-4 text-purple-600" />}
                         </div>
                       ))}
                     </div>
@@ -1539,7 +1555,11 @@ export default function LeadDiscovery() {
                   <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg dark:bg-blue-900/20 dark:border-blue-800">
                     <p className="text-sm text-blue-700 dark:text-blue-300 flex items-start gap-2">
                       <span className="text-lg">💡</span>
-                      <span>Intent Signals finds people actively discussing services like yours. Results are saved as Market Intelligence for trend analysis. Leads with contact info are automatically added to your pipeline.</span>
+                      <span>
+                        Intent Signals finds people actively discussing services like yours. Results are saved as Market
+                        Intelligence for trend analysis. Leads with contact info are automatically added to your
+                        pipeline.
+                      </span>
                     </p>
                   </div>
 
@@ -1606,11 +1626,16 @@ export default function LeadDiscovery() {
                           "flex-1 p-4 rounded-lg border cursor-pointer transition-all",
                           socialForm.searchMode === "hashtags"
                             ? "bg-pink-50 border-pink-500 dark:bg-pink-900/20"
-                            : "border-input hover:bg-muted"
+                            : "border-input hover:bg-muted",
                         )}
                       >
                         <div className="flex items-center gap-2 mb-1">
-                          <Radio className={cn("h-4 w-4", socialForm.searchMode === "hashtags" ? "text-pink-600" : "text-muted-foreground")} />
+                          <Radio
+                            className={cn(
+                              "h-4 w-4",
+                              socialForm.searchMode === "hashtags" ? "text-pink-600" : "text-muted-foreground",
+                            )}
+                          />
                           <span className="font-medium">Hashtag Followers</span>
                         </div>
                         <p className="text-xs text-muted-foreground">Find users engaging with industry hashtags</p>
@@ -1621,11 +1646,16 @@ export default function LeadDiscovery() {
                           "flex-1 p-4 rounded-lg border cursor-pointer transition-all",
                           socialForm.searchMode === "competitors"
                             ? "bg-pink-50 border-pink-500 dark:bg-pink-900/20"
-                            : "border-input hover:bg-muted"
+                            : "border-input hover:bg-muted",
                         )}
                       >
                         <div className="flex items-center gap-2 mb-1">
-                          <Radio className={cn("h-4 w-4", socialForm.searchMode === "competitors" ? "text-pink-600" : "text-muted-foreground")} />
+                          <Radio
+                            className={cn(
+                              "h-4 w-4",
+                              socialForm.searchMode === "competitors" ? "text-pink-600" : "text-muted-foreground",
+                            )}
+                          />
                           <span className="font-medium">Competitor Followers</span>
                         </div>
                         <p className="text-xs text-muted-foreground">Find followers of competitor accounts</p>
@@ -1655,7 +1685,9 @@ export default function LeadDiscovery() {
                         value={socialForm.competitorAccounts}
                         onChange={(e) => setSocialForm({ ...socialForm, competitorAccounts: e.target.value })}
                       />
-                      <p className="text-xs text-muted-foreground">Enter competitor Instagram/TikTok handles to analyze their followers</p>
+                      <p className="text-xs text-muted-foreground">
+                        Enter competitor Instagram/TikTok handles to analyze their followers
+                      </p>
                     </div>
                   )}
 
@@ -1728,14 +1760,21 @@ export default function LeadDiscovery() {
                           "flex-1 p-4 rounded-lg border cursor-pointer transition-all",
                           reviewForm.searchMode === "businesses"
                             ? "bg-orange-50 border-orange-500 dark:bg-orange-900/20"
-                            : "border-input hover:bg-muted"
+                            : "border-input hover:bg-muted",
                         )}
                       >
                         <div className="flex items-center gap-2 mb-1">
-                          <Radio className={cn("h-4 w-4", reviewForm.searchMode === "businesses" ? "text-orange-600" : "text-muted-foreground")} />
+                          <Radio
+                            className={cn(
+                              "h-4 w-4",
+                              reviewForm.searchMode === "businesses" ? "text-orange-600" : "text-muted-foreground",
+                            )}
+                          />
                           <span className="font-medium">Businesses Needing Help</span>
                         </div>
-                        <p className="text-xs text-muted-foreground">Find businesses with poor ratings - they may need your services!</p>
+                        <p className="text-xs text-muted-foreground">
+                          Find businesses with poor ratings - they may need your services!
+                        </p>
                       </div>
                       <div
                         onClick={() => setReviewForm({ ...reviewForm, searchMode: "customers" })}
@@ -1743,14 +1782,21 @@ export default function LeadDiscovery() {
                           "flex-1 p-4 rounded-lg border cursor-pointer transition-all",
                           reviewForm.searchMode === "customers"
                             ? "bg-orange-50 border-orange-500 dark:bg-orange-900/20"
-                            : "border-input hover:bg-muted"
+                            : "border-input hover:bg-muted",
                         )}
                       >
                         <div className="flex items-center gap-2 mb-1">
-                          <Radio className={cn("h-4 w-4", reviewForm.searchMode === "customers" ? "text-orange-600" : "text-muted-foreground")} />
+                          <Radio
+                            className={cn(
+                              "h-4 w-4",
+                              reviewForm.searchMode === "customers" ? "text-orange-600" : "text-muted-foreground",
+                            )}
+                          />
                           <span className="font-medium">Unhappy Customers</span>
                         </div>
-                        <p className="text-xs text-muted-foreground">Find people who left negative reviews (market intel)</p>
+                        <p className="text-xs text-muted-foreground">
+                          Find people who left negative reviews (market intel)
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -1792,7 +1838,9 @@ export default function LeadDiscovery() {
                         value={reviewForm.competitorName}
                         onChange={(e) => setReviewForm({ ...reviewForm, competitorName: e.target.value })}
                       />
-                      <p className="text-xs text-muted-foreground">Enter a specific competitor to find their unhappy customers</p>
+                      <p className="text-xs text-muted-foreground">
+                        Enter a specific competitor to find their unhappy customers
+                      </p>
                     </div>
                   )}
 
@@ -1832,7 +1880,9 @@ export default function LeadDiscovery() {
                             <SelectItem value="4">⭐⭐⭐⭐ 1-4 stars</SelectItem>
                           </SelectContent>
                         </Select>
-                        <p className="text-xs text-muted-foreground">Find businesses rated at or below this threshold</p>
+                        <p className="text-xs text-muted-foreground">
+                          Find businesses rated at or below this threshold
+                        </p>
                       </div>
                     )}
                   </div>
