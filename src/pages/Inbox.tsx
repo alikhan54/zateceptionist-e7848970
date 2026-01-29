@@ -414,14 +414,14 @@ export default function Inbox() {
     refetchInterval: 10000,
   });
 
-  // Customers query - try UUID first, then SLUG
+  // Customers query - customers table uses TEXT tenant_id (SLUG)
   const { data: customers = [], refetch: refetchCustomers } = useQuery({
-    queryKey: ["inbox-customers", tenantUuid],
+    queryKey: ["inbox-customers", tenantId],
     queryFn: async () => {
-      if (!tenantUuid) return [];
+      if (!tenantId) return [];
 
-      // Customers linked to conversations use UUID
-      const { data, error } = await supabase.from("customers").select("*").eq("tenant_id", tenantUuid);
+      // Customers table uses TEXT tenant_id (slug), not UUID!
+      const { data, error } = await supabase.from("customers").select("*").eq("tenant_id", tenantId);
 
       if (error) {
         console.error("Customers query error:", error);
@@ -429,7 +429,7 @@ export default function Inbox() {
       }
       return (data || []) as Customer[];
     },
-    enabled: !!tenantUuid,
+    enabled: !!tenantId,
     staleTime: 0,
     refetchOnMount: true,
   });
@@ -693,33 +693,30 @@ export default function Inbox() {
     },
   });
 
-  // ISSUE 7 FIX: Edit Contact - Use correct field names!
+  // Edit Contact - customers table uses TEXT tenant_id (SLUG)
   const updateContactMutation = useMutation({
     mutationFn: async () => {
       if (!selectedConversation?.contact_id) throw new Error("No contact selected");
+      if (!tenantId) throw new Error("No tenant ID");
 
-      // ISSUE 4 FIX: Update BOTH phone columns for schema compatibility
       const updateData: Record<string, any> = {
         updated_at: new Date().toISOString(),
       };
 
-      // Only include non-empty values
       if (editName.trim()) updateData.name = editName.trim();
       if (editPhone.trim()) {
         updateData.phone = editPhone.trim();
-        updateData.phone_number = editPhone.trim(); // Update BOTH!
+        updateData.phone_number = editPhone.trim();
       }
       if (editEmail.trim()) updateData.email = editEmail.trim();
 
-      console.log("Updating contact with data:", updateData);
-      console.log("Customer ID:", selectedConversation.contact_id);
-      console.log("Tenant UUID:", tenantUuid);
+      console.log("Updating contact with tenantId (SLUG):", tenantId);
 
       const { data, error } = await supabase
         .from("customers")
         .update(updateData)
         .eq("id", selectedConversation.contact_id)
-        .eq("tenant_id", tenantUuid)
+        .eq("tenant_id", tenantId)  // USE SLUG!
         .select();
 
       if (error) {
@@ -727,18 +724,14 @@ export default function Inbox() {
         throw error;
       }
 
-      console.log("Update result:", data);
       return { success: true, data };
     },
     onSuccess: () => {
       setShowEditContactDialog(false);
-      // Force refresh all related queries
       queryClient.invalidateQueries({ queryKey: ["inbox-conversations"] });
       queryClient.invalidateQueries({ queryKey: ["inbox-customers"] });
-      setTimeout(() => {
-        refetchCustomers();
-        refetchConversations();
-      }, 500);
+      refetchCustomers();
+      refetchConversations();
       toast.success("Contact updated!");
     },
     onError: (err: any) => {
@@ -747,20 +740,20 @@ export default function Inbox() {
     },
   });
 
-  // ISSUE 3 FIX: Add Note with proper refresh
+  // Add Note - customers table uses TEXT tenant_id (SLUG)
   const addNoteMutation = useMutation({
     mutationFn: async () => {
       if (!selectedConversation?.contact_id) throw new Error("No contact selected");
       if (!noteText.trim()) throw new Error("Note cannot be empty");
+      if (!tenantId) throw new Error("No tenant ID");
 
       const customerId = selectedConversation.contact_id;
 
-      // Get existing notes
       const { data: customerData } = await supabase
         .from("customers")
         .select("notes")
         .eq("id", customerId)
-        .eq("tenant_id", tenantUuid)
+        .eq("tenant_id", tenantId)  // USE SLUG!
         .single();
 
       const existingNotes = customerData?.notes || "";
@@ -769,14 +762,11 @@ export default function Inbox() {
         ? `${existingNotes}\n\n[${timestamp}] ${noteText.trim()}`
         : `[${timestamp}] ${noteText.trim()}`;
 
-      console.log("Adding note to customer:", customerId);
-      console.log("New notes content:", newNotes);
-
       const { error } = await supabase
         .from("customers")
         .update({ notes: newNotes, updated_at: new Date().toISOString() })
         .eq("id", customerId)
-        .eq("tenant_id", tenantUuid);
+        .eq("tenant_id", tenantId);  // USE SLUG!
 
       if (error) throw error;
       return { success: true, notes: newNotes };
@@ -784,13 +774,10 @@ export default function Inbox() {
     onSuccess: () => {
       setShowNoteDialog(false);
       setNoteText("");
-      // Force refresh to show the new note
       queryClient.invalidateQueries({ queryKey: ["inbox-customers"] });
       queryClient.invalidateQueries({ queryKey: ["inbox-conversations"] });
-      setTimeout(() => {
-        refetchCustomers();
-        refetchConversations();
-      }, 300);
+      refetchCustomers();
+      refetchConversations();
       toast.success("Note added!");
     },
     onError: (err: any) => toast.error(`Failed: ${err.message}`),
@@ -847,12 +834,12 @@ export default function Inbox() {
     onError: (err: any) => toast.error(`Failed: ${err.message}`),
   });
 
-  // ISSUE 2 FIX: Book Appointment - try SLUG first, then UUID
+  // Book Appointment - appointments uses TEXT tenant_id + appointment_status column
   const bookAppointmentMutation = useMutation({
     mutationFn: async () => {
       if (!appointmentDate) throw new Error("Date is required");
+      if (!tenantId) throw new Error("No tenant ID");
 
-      // ISSUE 2 FIX: Include BOTH schema formats for compatibility
       const [hours, minutes] = appointmentTime.split(":").map(Number);
       const scheduledAt = setMinutes(setHours(appointmentDate, hours), minutes);
       const dateStr = format(appointmentDate, "yyyy-MM-dd");
@@ -860,25 +847,21 @@ export default function Inbox() {
       const endHour = hours + 1;
       const endTimeStr = `${endHour.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:00`;
 
+      console.log("Booking appointment with tenantId (SLUG):", tenantId);
+
       const appointmentData = {
-        tenant_id: tenantId, // Use SLUG
+        tenant_id: tenantId,  // TEXT - use SLUG!
         customer_id: selectedConversation?.contact_id || null,
-        // NEW schema
         scheduled_at: scheduledAt.toISOString(),
-        status: "pending",
-        // OLD schema
         appointment_date: dateStr,
         start_time: startTimeStr,
         end_time: endTimeStr,
-        appointment_status: "scheduled",
-        // Common
         duration_minutes: 60,
+        appointment_status: "scheduled",  // NOT "status"!
         service_name: appointmentService || null,
         notes: appointmentNotes.trim() || null,
         reminder_sent: false,
       };
-
-      console.log("Booking appointment with SLUG:", tenantId);
 
       const { data, error } = await supabase.from("appointments").insert(appointmentData).select();
 
@@ -887,7 +870,6 @@ export default function Inbox() {
         throw error;
       }
 
-      console.log("Appointment created:", data);
       return data;
     },
     onSuccess: () => {
@@ -1041,14 +1023,14 @@ export default function Inbox() {
     },
   });
 
-  // Consent
+  // Consent - customers table uses TEXT tenant_id (SLUG)
   const updateConsentMutation = useMutation({
     mutationFn: async ({ customerId, field, value }: { customerId: string; field: string; value: boolean }) => {
       const { error } = await supabase
         .from("customers")
         .update({ [field]: value, updated_at: new Date().toISOString() })
         .eq("id", customerId)
-        .eq("tenant_id", tenantUuid);
+        .eq("tenant_id", tenantId);  // USE SLUG!
       if (error) throw error;
     },
     onSuccess: () => {
@@ -1635,28 +1617,35 @@ export default function Inbox() {
                         </div>
                       ) : (
                         <div className="space-y-4">
-                          {messages.map((msg) => (
+                        {messages.map((msg) => (
                             <div
                               key={msg.id}
                               className={cn("flex", msg.direction === "outbound" ? "justify-end" : "justify-start")}
                             >
-                              {/* ISSUE 5 FIX: Better colors for light mode */}
                               <div
                                 className={cn(
                                   "max-w-[70%] rounded-2xl px-4 py-2.5 shadow-sm",
                                   msg.direction === "outbound"
-                                    ? "bg-primary text-white rounded-br-md"
+                                    ? "rounded-br-md"
                                     : "bg-muted text-foreground rounded-bl-md border",
                                 )}
+                                style={msg.direction === "outbound" ? { 
+                                  backgroundColor: '#ec4899', 
+                                  color: '#ffffff' 
+                                } : {}}
                               >
-                                <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                                <p 
+                                  className="text-sm whitespace-pre-wrap"
+                                  style={msg.direction === "outbound" ? { color: '#ffffff' } : {}}
+                                >
+                                  {msg.content}
+                                </p>
                                 <div
                                   className={cn(
                                     "flex items-center gap-1.5 mt-1 text-[10px]",
-                                    msg.direction === "outbound"
-                                      ? "text-white/80 justify-end"
-                                      : "text-muted-foreground",
+                                    msg.direction === "outbound" ? "justify-end" : "text-muted-foreground",
                                   )}
+                                  style={msg.direction === "outbound" ? { color: 'rgba(255,255,255,0.8)' } : {}}
                                 >
                                   {format(new Date(msg.created_at), "HH:mm")}
                                   {msg.sender_type === "ai" && <Bot className="h-3 w-3" />}
