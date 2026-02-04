@@ -715,22 +715,22 @@ export default function Pipeline() {
   const [temperatureFilter, setTemperatureFilter] = useState<string>("all");
 
   // Fetch all leads from sales_leads table
-  // FIXED: Using sales_leads table with proper UUID filtering
+  // FIXED: Using sales_leads table with SLUG (tenant_id is TEXT)
   const {
     data: contacts = [],
     isLoading: contactsLoading,
     refetch: refetchContacts,
   } = useQuery({
-    queryKey: ["sales_leads", "pipeline", tenantUuid],
+    queryKey: ["sales_leads", "pipeline", tenantId],
     queryFn: async () => {
-      if (!tenantUuid) return [];
+      if (!tenantId) return [];
       
-      console.log("[Pipeline] Fetching sales_leads with tenant UUID:", tenantUuid);
+      console.log("[Pipeline] Fetching sales_leads with tenant SLUG:", tenantId);
 
       const { data, error } = await supabase
         .from("sales_leads")
         .select("*")
-        .eq("tenant_id", tenantUuid)
+        .eq("tenant_id", tenantId) // SLUG - sales_leads uses TEXT tenant_id
         .not("lead_status", "eq", "lost")
         .order("lead_score", { ascending: false, nullsFirst: false });
 
@@ -764,26 +764,26 @@ export default function Pipeline() {
       
       return transformedLeads;
     },
-    enabled: !!tenantUuid,
+    enabled: !!tenantId,
   });
 
   // Fetch deals for value display
-  // FIXED: Using tenantUuid instead of tenantId
+  // FIXED: Using tenantId (SLUG) - deals table uses TEXT tenant_id
   const { data: deals = [] } = useQuery({
-    queryKey: ["deals", "pipeline", tenantUuid],
+    queryKey: ["deals", "pipeline", tenantId],
     queryFn: async () => {
-      if (!tenantUuid) return [];
+      if (!tenantId) return [];
 
       const { data, error } = await supabase
         .from("deals")
         .select("*")
-        .eq("tenant_id", tenantUuid)
+        .eq("tenant_id", tenantId) // SLUG - deals uses TEXT tenant_id
         .not("stage", "in", '("Won","Lost")');
 
       if (error) throw error;
       return (data || []) as Deal[];
     },
-    enabled: !!tenantUuid,
+    enabled: !!tenantId,
   });
 
   // Map stage ID back to lead_status for database update
@@ -798,7 +798,7 @@ export default function Pipeline() {
   };
 
   // Move lead to new pipeline stage
-  // FIXED: Using tenantUuid and updating lead_status in sales_leads
+  // FIXED: Using tenantId (SLUG) - sales_leads uses TEXT tenant_id
   const moveToStage = useMutation({
     mutationFn: async ({ contactId, newStage }: { contactId: string; newStage: string }) => {
       const newStatus = STAGE_TO_STATUS_MAP[newStage] || "prospect";
@@ -810,12 +810,12 @@ export default function Pipeline() {
           updated_at: new Date().toISOString(),
         })
         .eq("id", contactId)
-        .eq("tenant_id", tenantUuid);
+        .eq("tenant_id", tenantId); // SLUG - sales_leads uses TEXT tenant_id
 
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sales_leads", "pipeline", tenantUuid] });
+      queryClient.invalidateQueries({ queryKey: ["sales_leads", "pipeline", tenantId] });
       toast({
         title: "Lead moved",
         description: "Pipeline stage updated successfully",
@@ -831,13 +831,13 @@ export default function Pipeline() {
   });
 
   // Add new lead
-  // FIXED: Using tenantUuid and inserting into sales_leads table
+  // FIXED: Using tenantId (SLUG) - sales_leads uses TEXT tenant_id
   const addContact = useMutation({
     mutationFn: async (contactData: Partial<Contact>) => {
       const initialStatus = STAGE_TO_STATUS_MAP[contactData.pipeline_stage || "PROS"] || "prospect";
       
       const { error } = await supabase.from("sales_leads").insert({
-        tenant_id: tenantUuid,
+        tenant_id: tenantId, // SLUG - sales_leads uses TEXT tenant_id
         first_name: contactData.first_name,
         last_name: contactData.last_name,
         contact_name: [contactData.first_name, contactData.last_name].filter(Boolean).join(" ") || null,
@@ -855,7 +855,7 @@ export default function Pipeline() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sales_leads", "pipeline", tenantUuid] });
+      queryClient.invalidateQueries({ queryKey: ["sales_leads", "pipeline", tenantId] });
       toast({
         title: "Lead added",
         description: "New lead created successfully",
@@ -942,7 +942,7 @@ export default function Pipeline() {
   };
 
   // Show loading state while waiting for tenant config
-  if (!tenantUuid) {
+  if (!tenantId) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">

@@ -40,7 +40,7 @@ const mainNavItems = [
 
 const salesNavItems = [
   { title: 'Leads', url: '/leads', icon: Target },
-  { title: 'Deals', url: '/deals', icon: Briefcase },
+  { title: 'Deals', url: '/sales/deals', icon: Briefcase }, // Fixed: point to correct route
 ];
 
 const marketingNavItems = [

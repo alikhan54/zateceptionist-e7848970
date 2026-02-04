@@ -92,23 +92,23 @@ export default function SalesDashboard() {
   // DATA QUERIES - ALL REAL DATA FROM CONTACTS TABLE
   // =====================================================
 
-  // Fetch all leads for this tenant using UUID from sales_leads table
+  // Fetch all leads for this tenant - sales_leads uses TEXT slug for tenant_id
   const {
     data: contacts = [],
     isLoading: contactsLoading,
     refetch: refetchContacts,
   } = useQuery({
-    queryKey: ["dashboard", "sales_leads", tenantUuid],
+    queryKey: ["dashboard", "sales_leads", tenantId],
     queryFn: async () => {
-      if (!tenantUuid) {
-        console.log("[SalesDashboard] No tenantUuid, skipping query");
+      if (!tenantId) {
+        console.log("[SalesDashboard] No tenantId, skipping query");
         return [];
       }
-      console.log("[SalesDashboard] Fetching sales_leads with tenant UUID:", tenantUuid);
+      console.log("[SalesDashboard] Fetching sales_leads with tenant SLUG:", tenantId);
       const { data, error } = await supabase
         .from("sales_leads")
         .select("id, lead_score, lead_temperature, lead_grade, lead_status, sequence_status, source, created_at")
-        .eq("tenant_id", tenantUuid);
+        .eq("tenant_id", tenantId); // SLUG - sales_leads uses TEXT tenant_id
       if (error) {
         console.error("[SalesDashboard] Error fetching sales_leads:", error);
         throw error;
@@ -116,7 +116,7 @@ export default function SalesDashboard() {
       console.log("[SalesDashboard] Fetched leads count:", data?.length || 0);
       return data || [];
     },
-    enabled: !!tenantUuid,
+    enabled: !!tenantId,
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
@@ -155,11 +155,11 @@ export default function SalesDashboard() {
     enabled: !!tenantUuid,
   });
 
-  // Fetch email/call stats from activities (if table exists) using UUID
+  // Fetch email/call stats from activities (if table exists) - activities uses TEXT slug
   const { data: activityStats } = useQuery({
-    queryKey: ["dashboard", "activities", tenantUuid],
+    queryKey: ["dashboard", "activities", tenantId],
     queryFn: async () => {
-      if (!tenantUuid) return { emailsSent: 0, callsMade: 0 };
+      if (!tenantId) return { emailsSent: 0, callsMade: 0 };
       try {
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -167,7 +167,7 @@ export default function SalesDashboard() {
         const { data, error } = await supabase
           .from("activities")
           .select("type")
-          .eq("tenant_id", tenantUuid)
+          .eq("tenant_id", tenantId) // SLUG - activities uses TEXT tenant_id
           .gte("created_at", thirtyDaysAgo.toISOString())
           .in("type", ["email_sent", "call_outbound", "call_inbound"]);
 
@@ -182,7 +182,7 @@ export default function SalesDashboard() {
         return { emailsSent: 0, callsMade: 0 };
       }
     },
-    enabled: !!tenantUuid,
+    enabled: !!tenantId,
   });
 
   // =====================================================
