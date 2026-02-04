@@ -343,7 +343,7 @@ export default function LeadDiscovery() {
   const hasApifyKey = !!tenantConfig?.apify_api_key;
   const hasPremiumAccess = hasApolloKey || hasHunterKey;
 
-  // Fetch stats using UUID
+  // Fetch stats using UUID - sales_leads stores UUID in tenant_id
   const { data: stats, refetch: refetchStats } = useQuery({
     queryKey: ["lead-discovery-stats", tenantUuid],
     queryFn: async () => {
@@ -352,25 +352,25 @@ export default function LeadDiscovery() {
       const { count: total } = await supabase
         .from("sales_leads")
         .select("*", { count: "exact", head: true })
-        .eq("tenant_id", tenantId); // NOTE: sales_leads uses TEXT (slug), not UUID
+        .eq("tenant_id", tenantUuid); // UUID - sales_leads stores UUID
 
       const today = new Date().toISOString().split("T")[0];
       const { count: todayCount } = await supabase
         .from("sales_leads")
         .select("*", { count: "exact", head: true })
-        .eq("tenant_id", tenantId)
+        .eq("tenant_id", tenantUuid) // UUID
         .gte("created_at", today);
 
       const { count: inSequences } = await supabase
         .from("sales_leads")
         .select("*", { count: "exact", head: true })
-        .eq("tenant_id", tenantId)
+        .eq("tenant_id", tenantUuid) // UUID
         .not("sequence_id", "is", null);
 
       const { count: converted } = await supabase
         .from("sales_leads")
         .select("*", { count: "exact", head: true })
-        .eq("tenant_id", tenantId)
+        .eq("tenant_id", tenantUuid) // UUID
         .eq("lead_status", "converted");
 
       const convRate = total && total > 0 ? (((converted || 0) / total) * 100).toFixed(0) : "0";
@@ -382,7 +382,7 @@ export default function LeadDiscovery() {
         conversion: convRate,
       };
     },
-    enabled: !!tenantId,
+    enabled: !!tenantUuid,
   });
 
   // Fetch history using UUID
@@ -776,9 +776,9 @@ export default function LeadDiscovery() {
     }
 
     try {
-      // sales_leads.tenant_id is TEXT (slug), not UUID!
+      // FIXED: sales_leads stores UUID in tenant_id
       const { error } = await supabase.from("sales_leads").insert({
-        tenant_id: tenantId, // Use slug for sales_leads table
+        tenant_id: tenantUuid, // UUID - sales_leads stores UUID
         company_name: manualForm.company || null,
         contact_name: manualForm.name || null,
         email: manualForm.email || null,
