@@ -92,23 +92,23 @@ export default function SalesDashboard() {
   // DATA QUERIES - ALL REAL DATA FROM CONTACTS TABLE
   // =====================================================
 
-  // Fetch all leads for this tenant - sales_leads uses TEXT slug for tenant_id
+  // Fetch all leads for this tenant - sales_leads stores UUID in tenant_id
   const {
     data: contacts = [],
     isLoading: contactsLoading,
     refetch: refetchContacts,
   } = useQuery({
-    queryKey: ["dashboard", "sales_leads", tenantId],
+    queryKey: ["dashboard", "sales_leads", tenantUuid],
     queryFn: async () => {
-      if (!tenantId) {
-        console.log("[SalesDashboard] No tenantId, skipping query");
+      if (!tenantUuid) {
+        console.log("[SalesDashboard] No tenantUuid, skipping query");
         return [];
       }
-      console.log("[SalesDashboard] Fetching sales_leads with tenant SLUG:", tenantId);
+      console.log("[SalesDashboard] Fetching sales_leads with tenant UUID:", tenantUuid);
       const { data, error } = await supabase
         .from("sales_leads")
         .select("id, lead_score, lead_temperature, lead_grade, lead_status, sequence_status, source, created_at")
-        .eq("tenant_id", tenantId); // SLUG - sales_leads uses TEXT tenant_id
+        .eq("tenant_id", tenantUuid); // UUID - sales_leads stores UUID in tenant_id
       if (error) {
         console.error("[SalesDashboard] Error fetching sales_leads:", error);
         throw error;
@@ -116,7 +116,7 @@ export default function SalesDashboard() {
       console.log("[SalesDashboard] Fetched leads count:", data?.length || 0);
       return data || [];
     },
-    enabled: !!tenantId,
+    enabled: !!tenantUuid,
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
@@ -155,11 +155,11 @@ export default function SalesDashboard() {
     enabled: !!tenantUuid,
   });
 
-  // Fetch email/call stats from activities (if table exists) - activities uses TEXT slug
+  // Fetch email/call stats from activities (if table exists) - activities stores UUID
   const { data: activityStats } = useQuery({
-    queryKey: ["dashboard", "activities", tenantId],
+    queryKey: ["dashboard", "activities", tenantUuid],
     queryFn: async () => {
-      if (!tenantId) return { emailsSent: 0, callsMade: 0 };
+      if (!tenantUuid) return { emailsSent: 0, callsMade: 0 };
       try {
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -167,7 +167,7 @@ export default function SalesDashboard() {
         const { data, error } = await supabase
           .from("activities")
           .select("type")
-          .eq("tenant_id", tenantId) // SLUG - activities uses TEXT tenant_id
+          .eq("tenant_id", tenantUuid) // UUID - activities stores UUID in tenant_id
           .gte("created_at", thirtyDaysAgo.toISOString())
           .in("type", ["email_sent", "call_outbound", "call_inbound"]);
 
@@ -182,7 +182,7 @@ export default function SalesDashboard() {
         return { emailsSent: 0, callsMade: 0 };
       }
     },
-    enabled: !!tenantId,
+    enabled: !!tenantUuid,
   });
 
   // =====================================================
