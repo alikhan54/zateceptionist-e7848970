@@ -715,22 +715,22 @@ export default function Pipeline() {
   const [temperatureFilter, setTemperatureFilter] = useState<string>("all");
 
   // Fetch all leads from sales_leads table
-  // FIXED: Using sales_leads table with SLUG (tenant_id is TEXT)
+  // FIXED: Using tenantUuid (UUID) - sales_leads stores UUID in tenant_id
   const {
     data: contacts = [],
     isLoading: contactsLoading,
     refetch: refetchContacts,
   } = useQuery({
-    queryKey: ["sales_leads", "pipeline", tenantId],
+    queryKey: ["sales_leads", "pipeline", tenantUuid],
     queryFn: async () => {
-      if (!tenantId) return [];
+      if (!tenantUuid) return [];
       
-      console.log("[Pipeline] Fetching sales_leads with tenant SLUG:", tenantId);
+      console.log("[Pipeline] Fetching sales_leads with tenant UUID:", tenantUuid);
 
       const { data, error } = await supabase
         .from("sales_leads")
         .select("*")
-        .eq("tenant_id", tenantId) // SLUG - sales_leads uses TEXT tenant_id
+        .eq("tenant_id", tenantUuid) // UUID - sales_leads stores UUID in tenant_id
         .not("lead_status", "eq", "lost")
         .order("lead_score", { ascending: false, nullsFirst: false });
 
@@ -764,7 +764,7 @@ export default function Pipeline() {
       
       return transformedLeads;
     },
-    enabled: !!tenantId,
+    enabled: !!tenantUuid,
   });
 
   // Fetch deals for value display
@@ -798,7 +798,7 @@ export default function Pipeline() {
   };
 
   // Move lead to new pipeline stage
-  // FIXED: Using tenantId (SLUG) - sales_leads uses TEXT tenant_id
+  // FIXED: Using tenantUuid (UUID) - sales_leads stores UUID in tenant_id
   const moveToStage = useMutation({
     mutationFn: async ({ contactId, newStage }: { contactId: string; newStage: string }) => {
       const newStatus = STAGE_TO_STATUS_MAP[newStage] || "prospect";
@@ -810,12 +810,12 @@ export default function Pipeline() {
           updated_at: new Date().toISOString(),
         })
         .eq("id", contactId)
-        .eq("tenant_id", tenantId); // SLUG - sales_leads uses TEXT tenant_id
+        .eq("tenant_id", tenantUuid); // UUID - sales_leads stores UUID in tenant_id
 
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sales_leads", "pipeline", tenantId] });
+      queryClient.invalidateQueries({ queryKey: ["sales_leads", "pipeline", tenantUuid] });
       toast({
         title: "Lead moved",
         description: "Pipeline stage updated successfully",
@@ -831,13 +831,13 @@ export default function Pipeline() {
   });
 
   // Add new lead
-  // FIXED: Using tenantId (SLUG) - sales_leads uses TEXT tenant_id
+  // FIXED: Using tenantUuid (UUID) - sales_leads stores UUID in tenant_id
   const addContact = useMutation({
     mutationFn: async (contactData: Partial<Contact>) => {
       const initialStatus = STAGE_TO_STATUS_MAP[contactData.pipeline_stage || "PROS"] || "prospect";
       
       const { error } = await supabase.from("sales_leads").insert({
-        tenant_id: tenantId, // SLUG - sales_leads uses TEXT tenant_id
+        tenant_id: tenantUuid, // UUID - sales_leads stores UUID in tenant_id
         first_name: contactData.first_name,
         last_name: contactData.last_name,
         contact_name: [contactData.first_name, contactData.last_name].filter(Boolean).join(" ") || null,
@@ -855,7 +855,7 @@ export default function Pipeline() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sales_leads", "pipeline", tenantId] });
+      queryClient.invalidateQueries({ queryKey: ["sales_leads", "pipeline", tenantUuid] });
       toast({
         title: "Lead added",
         description: "New lead created successfully",
@@ -942,7 +942,7 @@ export default function Pipeline() {
   };
 
   // Show loading state while waiting for tenant config
-  if (!tenantId) {
+  if (!tenantUuid) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
