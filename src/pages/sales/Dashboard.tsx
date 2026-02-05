@@ -107,7 +107,7 @@ export default function SalesDashboard() {
       console.log("[SalesDashboard] Fetching sales_leads with tenant UUID:", tenantUuid);
       const { data, error } = await supabase
         .from("sales_leads")
-        .select("id, lead_score, lead_temperature, lead_grade, lead_status, sequence_status, source, created_at")
+        .select("id, lead_score, score, lead_temperature, temperature, lead_grade, lead_status, status, pipeline_stage, sequence_status, source, created_at")
         .eq("tenant_id", tenantUuid); // UUID - sales_leads stores UUID in tenant_id
       if (error) {
         console.error("[SalesDashboard] Error fetching sales_leads:", error);
@@ -190,13 +190,15 @@ export default function SalesDashboard() {
   // =====================================================
 
   const metrics = useMemo(() => {
-    // Contact counts by temperature
-    const hotLeads = contacts.filter((c) => c.lead_temperature === "HOT").length;
-    const warmLeads = contacts.filter((c) => c.lead_temperature === "WARM").length;
-    const coldLeads = contacts.filter((c) => c.lead_temperature === "COLD").length;
+    // Contact counts by temperature - with fallback for n8n column naming
+    const getTemp = (c: any) => (c.lead_temperature || c.temperature || "COLD").toUpperCase();
+    const hotLeads = contacts.filter((c) => getTemp(c) === "HOT").length;
+    const warmLeads = contacts.filter((c) => getTemp(c) === "WARM").length;
+    const coldLeads = contacts.filter((c) => getTemp(c) === "COLD").length;
 
-    // Pipeline counts by stage - map lead_status to pipeline stages
+    // Pipeline counts by stage - check pipeline_stage first (n8n), then derive from lead_status
     const pipelineCounts: Record<string, number> = {};
+    const validStageIds = ["PROS", "RES", "CONT", "PITCH", "OBJ", "CLOSE", "RET"];
     PIPELINE_STAGES.forEach((stage) => {
       // Map lead_status values to stage IDs
       const statusMapping: Record<string, string[]> = {
@@ -208,10 +210,15 @@ export default function SalesDashboard() {
         "CLOSE": ["closing"],
         "RET": ["retained", "won"],
       };
-      const matchingStatuses = statusMapping[stage.id] || [];
-      pipelineCounts[stage.id] = contacts.filter((c) => 
-        matchingStatuses.includes(c.lead_status?.toLowerCase() || "")
-      ).length;
+      pipelineCounts[stage.id] = contacts.filter((c) => {
+        // Check pipeline_stage first (set by n8n), then derive from lead_status
+        const directStage = (c as any).pipeline_stage;
+        if (directStage && validStageIds.includes(directStage)) {
+          return directStage === stage.id;
+        }
+        const matchingStatuses = statusMapping[stage.id] || [];
+        return matchingStatuses.includes(c.lead_status?.toLowerCase() || "");
+      }).length;
     });
 
     // Active sequences
