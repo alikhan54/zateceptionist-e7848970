@@ -90,9 +90,18 @@ export function useSalesLeads(options?: { status?: string; source?: string; assi
     mutationFn: async ({ id, ...updates }: Partial<SalesLead> & { id: string }) => {
       if (!tenantUuid) throw new Error('No tenant UUID');
       
+      // Auto-sync duplicate columns when one side is updated
+      const syncedUpdates: Record<string, unknown> = { ...updates, updated_at: new Date().toISOString() };
+      if ('lead_status' in updates) syncedUpdates.status = updates.lead_status;
+      if ('status' in updates) syncedUpdates.lead_status = (updates as any).status;
+      if ('lead_score' in updates && updates.lead_score !== undefined) syncedUpdates.score = updates.lead_score;
+      if ('lead_temperature' in updates) syncedUpdates.temperature = ((updates as any).lead_temperature || '').toLowerCase();
+      if ('contact_name' in updates) syncedUpdates.name = updates.contact_name;
+      if ('company_name' in updates) syncedUpdates.company = updates.company_name;
+
       const { data, error } = await supabase
         .from('sales_leads')
-        .update({ ...updates, updated_at: new Date().toISOString() })
+        .update(syncedUpdates)
         .eq('id', id)
         .eq('tenant_id', tenantUuid) // UUID
         .select()
@@ -272,7 +281,10 @@ export function useSalesLeads(options?: { status?: string; source?: string; assi
       const { data, error } = await supabase
         .from('sales_leads')
         .update({
+          lead_status: 'won',
           status: 'won',
+          pipeline_stage: 'RET',
+          deal_stage: 'won',
           deal_id: deal.id,
           converted_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
