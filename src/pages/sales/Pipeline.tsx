@@ -78,6 +78,14 @@ interface SalesLead {
   sequence_status: string | null;
   created_at: string;
   updated_at: string | null;
+  // Additional fields that n8n may write to (dual-column support)
+  pipeline_stage: string | null;  // n8n writes stage position here
+  temperature: string | null;     // n8n writes temperature here (lowercase)
+  status: string | null;          // n8n sometimes writes status here
+  score: number | null;           // n8n may write score here
+  name: string | null;            // n8n may write full name here
+  company: string | null;         // n8n may write company here
+  ai_grade: string | null;        // AI enrichment may set grade here
 }
 
 // Alias for backward compatibility in this component
@@ -743,22 +751,73 @@ export default function Pipeline() {
       
       // Transform sales_leads to Contact format with pipeline_stage mapping
       const transformedLeads: Contact[] = (data || []).map((lead: SalesLead) => {
-        const status = lead.lead_status?.toLowerCase() || "prospect";
-        const pipelineStage = STATUS_TO_STAGE_MAP[status] || "PROS";
+        // PRIORITY ORDER for pipeline stage:
+        // 1. pipeline_stage column (set by n8n based on score) - if it's a valid stage ID
+        // 2. Derived from lead_status using STATUS_TO_STAGE_MAP
+        // 3. Derived from status using STATUS_TO_STAGE_MAP (n8n writes 'status' not 'lead_status')
+        // 4. Default to "PROS"
+        const validStageIds = ["PROS", "RES", "CONT", "PITCH", "OBJ", "CLOSE", "RET"];
+        
+        let pipelineStage: string;
+        const rawPipelineStage = lead.pipeline_stage;
+        
+        if (rawPipelineStage && validStageIds.includes(rawPipelineStage)) {
+          // n8n set pipeline_stage directly — use it
+          pipelineStage = rawPipelineStage;
+        } else if (lead.lead_status && lead.lead_status !== "new") {
+          // lead_status was manually changed from default — derive from it
+          pipelineStage = STATUS_TO_STAGE_MAP[lead.lead_status.toLowerCase()] || "PROS";
+        } else {
+          // Check the 'status' column too (n8n sometimes writes here)
+          const altStatus = lead.status;
+          if (altStatus && altStatus !== "new") {
+            pipelineStage = STATUS_TO_STAGE_MAP[altStatus.toLowerCase()] || "PROS";
+          } else {
+            pipelineStage = "PROS";
+          }
+        }
+        
+        // PRIORITY ORDER for temperature:
+        // 1. lead_temperature (frontend convention, UPPERCASE)
+        // 2. temperature (n8n convention, lowercase) — convert to UPPERCASE
+        // 3. Default "COLD"
+        const rawTemp = lead.lead_temperature || lead.temperature;
+        const leadTemperature = rawTemp ? rawTemp.toUpperCase() : "COLD";
+        
+        // PRIORITY ORDER for score:
+        // 1. lead_score (has DB default 0)
+        // 2. score (n8n also writes this)
+        // 3. Default 0
+        const leadScore = lead.lead_score ?? lead.score ?? 0;
+        
+        // PRIORITY ORDER for grade:
+        // 1. lead_grade
+        // 2. ai_grade (from enrichment)
+        // 3. Default "C"
+        const leadGrade = lead.lead_grade || lead.ai_grade || "C";
+        
+        // PRIORITY ORDER for name:
+        // 1. contact_name
+        // 2. first_name + last_name
+        // 3. name (n8n convention)
+        const fullName = lead.contact_name 
+          || [lead.first_name, lead.last_name].filter(Boolean).join(" ") 
+          || lead.name 
+          || null;
         
         return {
           ...lead,
           pipeline_stage: pipelineStage,
-          full_name: lead.contact_name || [lead.first_name, lead.last_name].filter(Boolean).join(" ") || null,
+          full_name: fullName,
           tags: null,
           last_contacted_at: null,
           last_responded_at: null,
           total_conversations: 0,
           total_emails_sent: 0,
           source: lead.source || "unknown",
-          lead_score: lead.lead_score || 0,
-          lead_grade: lead.lead_grade || "C",
-          lead_temperature: lead.lead_temperature || "COLD",
+          lead_score: leadScore,
+          lead_grade: leadGrade,
+          lead_temperature: leadTemperature,
         };
       });
       
@@ -803,16 +862,29 @@ export default function Pipeline() {
     mutationFn: async ({ contactId, newStage }: { contactId: string; newStage: string }) => {
       const newStatus = STAGE_TO_STATUS_MAP[newStage] || "prospect";
       
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("sales_leads")
         .update({
+          // Sync ALL stage/status columns so n8n and frontend stay aligned
           lead_status: newStatus,
+          status: newStatus,
+          pipeline_stage: newStage,
           updated_at: new Date().toISOString(),
         })
         .eq("id", contactId)
-        .eq("tenant_id", tenantUuid); // UUID - sales_leads stores UUID in tenant_id
+        .eq("tenant_id", tenantUuid) // UUID - sales_leads stores UUID in tenant_id
+        .select("id, lead_status, status, pipeline_stage")
+        .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("[Pipeline] moveToStage error:", error);
+        throw error;
+      }
+      if (!data) {
+        throw new Error("Update returned no data — lead may not exist or tenant mismatch");
+      }
+      console.log("[Pipeline] Stage updated:", data);
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sales_leads", "pipeline", tenantUuid] });
@@ -836,23 +908,34 @@ export default function Pipeline() {
     mutationFn: async (contactData: Partial<Contact>) => {
       const initialStatus = STAGE_TO_STATUS_MAP[contactData.pipeline_stage || "PROS"] || "prospect";
       
-      const { error } = await supabase.from("sales_leads").insert({
+      const { data, error } = await supabase.from("sales_leads").insert({
         tenant_id: tenantUuid, // UUID - sales_leads stores UUID in tenant_id
         first_name: contactData.first_name,
         last_name: contactData.last_name,
         contact_name: [contactData.first_name, contactData.last_name].filter(Boolean).join(" ") || null,
+        name: [contactData.first_name, contactData.last_name].filter(Boolean).join(" ") || null,
         email: contactData.email || null,
         phone: contactData.phone || null,
         company_name: contactData.company_name || null,
+        company: contactData.company_name || null,
         job_title: contactData.job_title || null,
+        // Sync BOTH status columns
         lead_status: initialStatus,
-        source: "manual",
-        lead_score: 40,
-        lead_grade: "C",
+        status: initialStatus,
+        // Set pipeline_stage directly
+        pipeline_stage: contactData.pipeline_stage || "PROS",
+        // Sync BOTH temperature columns
         lead_temperature: "COLD",
-      });
+        temperature: "cold",
+        // Sync BOTH score columns
+        lead_score: 40,
+        score: 40,
+        lead_grade: "C",
+        source: "manual",
+      }).select("id").single();
 
       if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sales_leads", "pipeline", tenantUuid] });
