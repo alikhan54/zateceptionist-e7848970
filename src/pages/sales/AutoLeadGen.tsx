@@ -428,7 +428,7 @@ export default function LeadDiscovery() {
 
   // B2B Quick Search
   const handleQuickSearch = async () => {
-    if (!tenantUuid) {
+    if (!tenantId) {
       toast({ title: "Error", description: "Tenant not loaded. Please refresh.", variant: "destructive" });
       return;
     }
@@ -449,7 +449,7 @@ export default function LeadDiscovery() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tenant_id: tenantUuid,
+          tenant_id: tenantId,
           keywords: searchKeywords,
           industry: quickForm.industry,
           location: quickForm.location,
@@ -497,7 +497,7 @@ export default function LeadDiscovery() {
 
   // B2B Local Discovery
   const handleLocalDiscovery = async () => {
-    if (!tenantUuid) {
+    if (!tenantId) {
       toast({ title: "Error", description: "Tenant not loaded", variant: "destructive" });
       return;
     }
@@ -519,7 +519,7 @@ export default function LeadDiscovery() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tenant_id: tenantUuid,
+          tenant_id: tenantId,
           generation_type: "google_places",
           category: localForm.category,
           location: localForm.location,
@@ -559,7 +559,7 @@ export default function LeadDiscovery() {
 
   // B2B LinkedIn Premium Search
   const handleLinkedInSearch = async () => {
-    if (!tenantUuid) {
+    if (!tenantId) {
       toast({ title: "Error", description: "Tenant not loaded", variant: "destructive" });
       return;
     }
@@ -595,7 +595,7 @@ export default function LeadDiscovery() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tenant_id: tenantUuid,
+          tenant_id: tenantId,
           keywords: linkedinForm.keywords || "",
           industry: linkedinForm.industry || "",
           job_titles: linkedinForm.titles,
@@ -814,7 +814,7 @@ export default function LeadDiscovery() {
 
   // B2C Intent Search Handler - Enhanced
   const handleIntentSearch = async () => {
-    if (!tenantUuid) {
+    if (!tenantId) {
       toast({ title: "Error", description: "Tenant not loaded", variant: "destructive" });
       return;
     }
@@ -837,7 +837,7 @@ export default function LeadDiscovery() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tenant_id: tenantUuid,
+          tenant_id: tenantId,
           industry: intentForm.industry,
           location: intentForm.location,
           keywords: keywords,
@@ -924,7 +924,7 @@ export default function LeadDiscovery() {
 
   // B2C Review Hunters Handler - Enhanced
   const handleReviewSearch = async () => {
-    if (!tenantUuid) {
+    if (!tenantId) {
       toast({ title: "Error", description: "Tenant not loaded", variant: "destructive" });
       return;
     }
@@ -943,7 +943,7 @@ export default function LeadDiscovery() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tenant_id: tenantUuid,
+          tenant_id: tenantId,
           method: reviewForm.searchMode === "customers" ? "unhappy_customers" : "businesses_needing_help",
           industry: reviewForm.industry,
           location: reviewForm.location,
