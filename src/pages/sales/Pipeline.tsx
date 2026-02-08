@@ -707,10 +707,10 @@ function AddContactDialog({ open, onOpenChange, onAdd }: AddContactDialogProps) 
 // ============================================================================
 
 export default function Pipeline() {
-  // CRITICAL FIX: Get both tenantId (SLUG) and tenantConfig (full object with UUID)
+  // CRITICAL: Get both tenantId (SLUG) and tenantConfig (full object with UUID)
   const { tenantId, tenantConfig } = useTenant();
 
-  // USE THIS FOR ALL DATABASE OPERATIONS - This is the actual UUID!
+  // tenantId (SLUG) for sales_leads and deals; tenantUuid only for UUID-typed tables
   const tenantUuid = tenantConfig?.id;
 
   const { toast } = useToast();
@@ -723,22 +723,22 @@ export default function Pipeline() {
   const [temperatureFilter, setTemperatureFilter] = useState<string>("all");
 
   // Fetch all leads from sales_leads table
-  // FIXED: Using tenantUuid (UUID) - sales_leads stores UUID in tenant_id
+  // sales_leads uses SLUG (tenantId) — TEXT column
   const {
     data: contacts = [],
     isLoading: contactsLoading,
     refetch: refetchContacts,
   } = useQuery({
-    queryKey: ["sales_leads", "pipeline", tenantUuid],
+    queryKey: ["sales_leads", "pipeline", tenantId],
     queryFn: async () => {
-      if (!tenantUuid) return [];
+      if (!tenantId) return [];
       
-      console.log("[Pipeline] Fetching sales_leads with tenant UUID:", tenantUuid);
+      console.log("[Pipeline] Fetching sales_leads with tenant SLUG:", tenantId);
 
       const { data, error } = await supabase
         .from("sales_leads")
         .select("*")
-        .eq("tenant_id", tenantUuid) // UUID - sales_leads stores UUID in tenant_id
+        .eq("tenant_id", tenantId) // SLUG — sales_leads uses TEXT tenant_id
         .not("lead_status", "eq", "lost")
         .order("lead_score", { ascending: false, nullsFirst: false });
 
@@ -823,7 +823,7 @@ export default function Pipeline() {
       
       return transformedLeads;
     },
-    enabled: !!tenantUuid,
+    enabled: !!tenantId,
   });
 
   // Fetch deals for value display
@@ -857,7 +857,7 @@ export default function Pipeline() {
   };
 
   // Move lead to new pipeline stage
-  // FIXED: Using tenantUuid (UUID) - sales_leads stores UUID in tenant_id
+  // sales_leads uses SLUG (tenantId) — TEXT column
   const moveToStage = useMutation({
     mutationFn: async ({ contactId, newStage }: { contactId: string; newStage: string }) => {
       const newStatus = STAGE_TO_STATUS_MAP[newStage] || "prospect";
@@ -872,7 +872,7 @@ export default function Pipeline() {
           updated_at: new Date().toISOString(),
         })
         .eq("id", contactId)
-        .eq("tenant_id", tenantUuid) // UUID - sales_leads stores UUID in tenant_id
+        .eq("tenant_id", tenantId) // SLUG — sales_leads uses TEXT tenant_id
         .select("id, lead_status, status, pipeline_stage")
         .single();
 
@@ -887,7 +887,7 @@ export default function Pipeline() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sales_leads", "pipeline", tenantUuid] });
+      queryClient.invalidateQueries({ queryKey: ["sales_leads", "pipeline", tenantId] });
       toast({
         title: "Lead moved",
         description: "Pipeline stage updated successfully",
@@ -903,13 +903,13 @@ export default function Pipeline() {
   });
 
   // Add new lead
-  // FIXED: Using tenantUuid (UUID) - sales_leads stores UUID in tenant_id
+  // sales_leads uses SLUG (tenantId) — TEXT column
   const addContact = useMutation({
     mutationFn: async (contactData: Partial<Contact>) => {
       const initialStatus = STAGE_TO_STATUS_MAP[contactData.pipeline_stage || "PROS"] || "prospect";
       
       const { data, error } = await supabase.from("sales_leads").insert({
-        tenant_id: tenantUuid, // UUID - sales_leads stores UUID in tenant_id
+        tenant_id: tenantId, // SLUG — sales_leads uses TEXT tenant_id
         first_name: contactData.first_name,
         last_name: contactData.last_name,
         contact_name: [contactData.first_name, contactData.last_name].filter(Boolean).join(" ") || null,
@@ -938,7 +938,7 @@ export default function Pipeline() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sales_leads", "pipeline", tenantUuid] });
+      queryClient.invalidateQueries({ queryKey: ["sales_leads", "pipeline", tenantId] });
       toast({
         title: "Lead added",
         description: "New lead created successfully",

@@ -32,8 +32,7 @@ const channelConfig = {
 
 export default function CreateSequence() {
   const navigate = useNavigate();
-  const { tenantConfig } = useTenant();
-  const tenantUuid = tenantConfig?.id;
+  const { tenantId } = useTenant();
   const { toast } = useToast();
   
   const [name, setName] = useState("");
@@ -68,7 +67,7 @@ export default function CreateSequence() {
       return;
     }
 
-    if (!tenantUuid) {
+    if (!tenantId) {
       toast({ title: "Tenant not loaded", variant: "destructive" });
       return;
     }
@@ -79,7 +78,7 @@ export default function CreateSequence() {
       const { data, error } = await supabase
         .from("sequences")
         .insert({
-          tenant_id: tenantUuid,
+          tenant_id: tenantId, // SLUG — sequences uses TEXT tenant_id
           name: name.trim(),
           description: description.trim() || null,
           status: "draft",

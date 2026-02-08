@@ -30,9 +30,8 @@ export interface SalesLead {
 export type SalesLeadInput = Omit<SalesLead, 'id' | 'tenant_id' | 'created_at' | 'updated_at' | 'converted_at' | 'deal_id'>;
 
 export function useSalesLeads(options?: { status?: string; source?: string; assignedTo?: string }) {
-  // FIXED: Get both tenantId (slug) for deals and tenantConfig for UUID
   const { tenantId, tenantConfig } = useTenant();
-  const tenantUuid = tenantConfig?.id; // UUID - sales_leads stores UUID in tenant_id
+  const tenantUuid = tenantConfig?.id; // UUID — only for UUID-typed tables (lead_gen_history, etc.)
   const queryClient = useQueryClient();
 
   const {
@@ -41,14 +40,14 @@ export function useSalesLeads(options?: { status?: string; source?: string; assi
     error,
     refetch,
   } = useQuery({
-    queryKey: ['sales-leads', tenantUuid, options?.status, options?.source, options?.assignedTo],
+    queryKey: ['sales-leads', tenantId, options?.status, options?.source, options?.assignedTo],
     queryFn: async () => {
-      if (!tenantUuid) return [];
+      if (!tenantId) return [];
       
       let query = supabase
         .from('sales_leads')
         .select('*')
-        .eq('tenant_id', tenantUuid) // UUID - sales_leads stores UUID
+        .eq('tenant_id', tenantId) // SLUG — sales_leads uses TEXT tenant_id
         .order('score', { ascending: false });
 
       if (options?.status) {
@@ -65,16 +64,16 @@ export function useSalesLeads(options?: { status?: string; source?: string; assi
       if (error) throw error;
       return data as SalesLead[];
     },
-    enabled: !!tenantUuid,
+    enabled: !!tenantId,
   });
 
   const addLead = useMutation({
     mutationFn: async (lead: SalesLeadInput) => {
-      if (!tenantUuid) throw new Error('No tenant UUID');
+      if (!tenantId) throw new Error('No tenant ID');
       
       const { data, error } = await supabase
         .from('sales_leads')
-        .insert({ ...lead, tenant_id: tenantUuid }) // UUID
+        .insert({ ...lead, tenant_id: tenantId }) // SLUG — sales_leads uses TEXT tenant_id
         .select()
         .single();
 
@@ -82,13 +81,13 @@ export function useSalesLeads(options?: { status?: string; source?: string; assi
       return data as SalesLead;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sales-leads', tenantUuid] });
+      queryClient.invalidateQueries({ queryKey: ['sales-leads', tenantId] });
     },
   });
 
   const updateLead = useMutation({
     mutationFn: async ({ id, ...updates }: Partial<SalesLead> & { id: string }) => {
-      if (!tenantUuid) throw new Error('No tenant UUID');
+      if (!tenantId) throw new Error('No tenant ID');
       
       // Auto-sync duplicate columns when one side is updated
       const syncedUpdates: Record<string, unknown> = { ...updates, updated_at: new Date().toISOString() };
@@ -103,7 +102,7 @@ export function useSalesLeads(options?: { status?: string; source?: string; assi
         .from('sales_leads')
         .update(syncedUpdates)
         .eq('id', id)
-        .eq('tenant_id', tenantUuid) // UUID
+        .eq('tenant_id', tenantId) // SLUG — sales_leads uses TEXT tenant_id
         .select()
         .single();
 
@@ -111,31 +110,31 @@ export function useSalesLeads(options?: { status?: string; source?: string; assi
       return data as SalesLead;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sales-leads', tenantUuid] });
+      queryClient.invalidateQueries({ queryKey: ['sales-leads', tenantId] });
     },
   });
 
   const deleteLead = useMutation({
     mutationFn: async (id: string) => {
-      if (!tenantUuid) throw new Error('No tenant UUID');
+      if (!tenantId) throw new Error('No tenant ID');
       
       const { error } = await supabase
         .from('sales_leads')
         .delete()
         .eq('id', id)
-        .eq('tenant_id', tenantUuid); // UUID
+        .eq('tenant_id', tenantId); // SLUG — sales_leads uses TEXT tenant_id
 
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sales-leads', tenantUuid] });
+      queryClient.invalidateQueries({ queryKey: ['sales-leads', tenantId] });
     },
   });
 
   // Sequence control mutations
   const startSequence = useMutation({
     mutationFn: async ({ leadId, sequenceId }: { leadId: string; sequenceId: string }) => {
-      if (!tenantUuid) throw new Error('No tenant UUID');
+      if (!tenantId) throw new Error('No tenant ID');
       
       const { data, error } = await supabase
         .from('sales_leads')
@@ -146,7 +145,7 @@ export function useSalesLeads(options?: { status?: string; source?: string; assi
           updated_at: new Date().toISOString(),
         })
         .eq('id', leadId)
-        .eq('tenant_id', tenantUuid) // UUID
+        .eq('tenant_id', tenantId) // SLUG — sales_leads uses TEXT tenant_id
         .select()
         .single();
 
@@ -154,13 +153,13 @@ export function useSalesLeads(options?: { status?: string; source?: string; assi
       return data as SalesLead;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sales-leads', tenantUuid] });
+      queryClient.invalidateQueries({ queryKey: ['sales-leads', tenantId] });
     },
   });
 
   const pauseSequence = useMutation({
     mutationFn: async (leadId: string) => {
-      if (!tenantUuid) throw new Error('No tenant UUID');
+      if (!tenantId) throw new Error('No tenant ID');
       
       const { data, error } = await supabase
         .from('sales_leads')
@@ -169,7 +168,7 @@ export function useSalesLeads(options?: { status?: string; source?: string; assi
           updated_at: new Date().toISOString(),
         })
         .eq('id', leadId)
-        .eq('tenant_id', tenantUuid) // UUID
+        .eq('tenant_id', tenantId) // SLUG — sales_leads uses TEXT tenant_id
         .select()
         .single();
 
@@ -177,13 +176,13 @@ export function useSalesLeads(options?: { status?: string; source?: string; assi
       return data as SalesLead;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sales-leads', tenantUuid] });
+      queryClient.invalidateQueries({ queryKey: ['sales-leads', tenantId] });
     },
   });
 
   const resumeSequence = useMutation({
     mutationFn: async (leadId: string) => {
-      if (!tenantUuid) throw new Error('No tenant UUID');
+      if (!tenantId) throw new Error('No tenant ID');
       
       const { data, error } = await supabase
         .from('sales_leads')
@@ -192,7 +191,7 @@ export function useSalesLeads(options?: { status?: string; source?: string; assi
           updated_at: new Date().toISOString(),
         })
         .eq('id', leadId)
-        .eq('tenant_id', tenantUuid) // UUID
+        .eq('tenant_id', tenantId) // SLUG — sales_leads uses TEXT tenant_id
         .select()
         .single();
 
@@ -200,13 +199,13 @@ export function useSalesLeads(options?: { status?: string; source?: string; assi
       return data as SalesLead;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sales-leads', tenantUuid] });
+      queryClient.invalidateQueries({ queryKey: ['sales-leads', tenantId] });
     },
   });
 
   const stopSequence = useMutation({
     mutationFn: async (leadId: string) => {
-      if (!tenantUuid) throw new Error('No tenant UUID');
+      if (!tenantId) throw new Error('No tenant ID');
       
       const { data, error } = await supabase
         .from('sales_leads')
@@ -217,7 +216,7 @@ export function useSalesLeads(options?: { status?: string; source?: string; assi
           updated_at: new Date().toISOString(),
         })
         .eq('id', leadId)
-        .eq('tenant_id', tenantUuid) // UUID
+        .eq('tenant_id', tenantId) // SLUG — sales_leads uses TEXT tenant_id
         .select()
         .single();
 
@@ -225,20 +224,20 @@ export function useSalesLeads(options?: { status?: string; source?: string; assi
       return data as SalesLead;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sales-leads', tenantUuid] });
+      queryClient.invalidateQueries({ queryKey: ['sales-leads', tenantId] });
     },
   });
 
   const advanceSequenceStep = useMutation({
     mutationFn: async (leadId: string) => {
-      if (!tenantUuid) throw new Error('No tenant UUID');
+      if (!tenantId) throw new Error('No tenant ID');
       
       // Get current lead
       const { data: lead, error: fetchError } = await supabase
         .from('sales_leads')
         .select('sequence_step')
         .eq('id', leadId)
-        .eq('tenant_id', tenantUuid) // UUID
+        .eq('tenant_id', tenantId) // SLUG — sales_leads uses TEXT tenant_id
         .single();
 
       if (fetchError) throw fetchError;
@@ -251,7 +250,7 @@ export function useSalesLeads(options?: { status?: string; source?: string; assi
           updated_at: new Date().toISOString(),
         })
         .eq('id', leadId)
-        .eq('tenant_id', tenantUuid) // UUID
+        .eq('tenant_id', tenantId) // SLUG — sales_leads uses TEXT tenant_id
         .select()
         .single();
 
@@ -259,25 +258,24 @@ export function useSalesLeads(options?: { status?: string; source?: string; assi
       return data as SalesLead;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sales-leads', tenantUuid] });
+      queryClient.invalidateQueries({ queryKey: ['sales-leads', tenantId] });
     },
   });
 
   const convertToDeal = useMutation({
     mutationFn: async ({ leadId, dealData }: { leadId: string; dealData: Record<string, unknown> }) => {
-      if (!tenantId) throw new Error('No tenant ID (slug) for deals');
-      if (!tenantUuid) throw new Error('No tenant UUID for sales_leads');
+      if (!tenantId) throw new Error('No tenant ID (slug)');
       
-      // Create the deal - deals table uses SLUG (tenantId)
+      // Create the deal — deals table uses SLUG (tenantId)
       const { data: deal, error: dealError } = await supabase
         .from('deals')
-        .insert({ ...dealData, tenant_id: tenantId }) // SLUG for deals!
+        .insert({ ...dealData, tenant_id: tenantId }) // SLUG for deals
         .select()
         .single();
 
       if (dealError) throw dealError;
 
-      // Update the lead - sales_leads uses UUID (tenantUuid)
+      // Update the lead — sales_leads also uses SLUG (tenantId)
       const { data, error } = await supabase
         .from('sales_leads')
         .update({
@@ -290,7 +288,7 @@ export function useSalesLeads(options?: { status?: string; source?: string; assi
           updated_at: new Date().toISOString(),
         })
         .eq('id', leadId)
-        .eq('tenant_id', tenantUuid) // UUID for sales_leads!
+        .eq('tenant_id', tenantId) // SLUG — sales_leads uses TEXT tenant_id
         .select()
         .single();
 
@@ -298,8 +296,8 @@ export function useSalesLeads(options?: { status?: string; source?: string; assi
       return { lead: data as SalesLead, deal };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sales-leads', tenantUuid] }); // UUID
-      queryClient.invalidateQueries({ queryKey: ['deals', tenantId] }); // SLUG
+      queryClient.invalidateQueries({ queryKey: ['sales-leads', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['deals', tenantId] });
     },
   });
 
@@ -321,19 +319,17 @@ export function useSalesLeads(options?: { status?: string; source?: string; assi
 }
 
 export function useLeadsByScore(minScore = 0) {
-  // FIXED: Get tenantConfig for UUID
-  const { tenantConfig } = useTenant();
-  const tenantUuid = tenantConfig?.id; // UUID - sales_leads stores UUID
+  const { tenantId } = useTenant();
 
   return useQuery({
-    queryKey: ['sales-leads', 'by-score', tenantUuid, minScore],
+    queryKey: ['sales-leads', 'by-score', tenantId, minScore],
     queryFn: async () => {
-      if (!tenantUuid) return [];
+      if (!tenantId) return [];
       
       const { data, error } = await supabase
         .from('sales_leads')
         .select('*')
-        .eq('tenant_id', tenantUuid) // UUID
+        .eq('tenant_id', tenantId) // SLUG — sales_leads uses TEXT tenant_id
         .gte('score', minScore)
         .not('status', 'in', '("won","lost")')
         .order('score', { ascending: false });
@@ -341,6 +337,6 @@ export function useLeadsByScore(minScore = 0) {
       if (error) throw error;
       return data as SalesLead[];
     },
-    enabled: !!tenantUuid,
+    enabled: !!tenantId,
   });
 }

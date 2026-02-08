@@ -183,9 +183,9 @@ const REVIEW_SITES = [
 ];
 
 export default function LeadDiscovery() {
-  // CRITICAL: Get tenantConfig for UUID
+  // CRITICAL: Get tenantId (SLUG) for sales_leads; tenantUuid only for UUID-typed tables
   const { tenantId, tenantConfig } = useTenant();
-  const tenantUuid = tenantConfig?.id; // USE THIS FOR ALL DATABASE OPERATIONS!
+  const tenantUuid = tenantConfig?.id; // UUID — only for lead_gen_history, auto_lead_gen_settings
 
   const queryClient = useQueryClient();
 
@@ -343,34 +343,34 @@ export default function LeadDiscovery() {
   const hasApifyKey = !!tenantConfig?.apify_api_key;
   const hasPremiumAccess = hasApolloKey || hasHunterKey;
 
-  // Fetch stats using UUID - sales_leads stores UUID in tenant_id
+  // Fetch stats — sales_leads uses SLUG (tenantId) — TEXT column
   const { data: stats, refetch: refetchStats } = useQuery({
-    queryKey: ["lead-discovery-stats", tenantUuid],
+    queryKey: ["lead-discovery-stats", tenantId],
     queryFn: async () => {
-      if (!tenantUuid) return { total: 0, today: 0, inSequences: 0, conversion: 0 };
+      if (!tenantId) return { total: 0, today: 0, inSequences: 0, conversion: 0 };
 
       const { count: total } = await supabase
         .from("sales_leads")
         .select("*", { count: "exact", head: true })
-        .eq("tenant_id", tenantUuid); // UUID - sales_leads stores UUID
+        .eq("tenant_id", tenantId); // SLUG — sales_leads uses TEXT tenant_id
 
       const today = new Date().toISOString().split("T")[0];
       const { count: todayCount } = await supabase
         .from("sales_leads")
         .select("*", { count: "exact", head: true })
-        .eq("tenant_id", tenantUuid) // UUID
+        .eq("tenant_id", tenantId) // SLUG
         .gte("created_at", today);
 
       const { count: inSequences } = await supabase
         .from("sales_leads")
         .select("*", { count: "exact", head: true })
-        .eq("tenant_id", tenantUuid) // UUID
+        .eq("tenant_id", tenantId) // SLUG
         .not("sequence_id", "is", null);
 
       const { count: converted } = await supabase
         .from("sales_leads")
         .select("*", { count: "exact", head: true })
-        .eq("tenant_id", tenantUuid) // UUID
+        .eq("tenant_id", tenantId) // SLUG
         .eq("lead_status", "converted");
 
       const convRate = total && total > 0 ? (((converted || 0) / total) * 100).toFixed(0) : "0";
@@ -382,7 +382,7 @@ export default function LeadDiscovery() {
         conversion: convRate,
       };
     },
-    enabled: !!tenantUuid,
+    enabled: !!tenantId,
   });
 
   // Fetch history using UUID
@@ -760,7 +760,7 @@ export default function LeadDiscovery() {
     },
   });
 
-  // Manual Entry - NOTE: sales_leads uses TEXT tenant_id (slug)
+  // Manual Entry — sales_leads uses SLUG (tenantId)
   const handleManualEntry = async () => {
     if (!tenantId) {
       toast({ title: "Error", description: "Tenant not loaded", variant: "destructive" });
@@ -776,9 +776,9 @@ export default function LeadDiscovery() {
     }
 
     try {
-      // FIXED: sales_leads stores UUID in tenant_id
+      // sales_leads uses SLUG (tenantId) — TEXT column
       const { error } = await supabase.from("sales_leads").insert({
-        tenant_id: tenantUuid, // UUID - sales_leads stores UUID
+        tenant_id: tenantId, // SLUG — sales_leads uses TEXT tenant_id
         company_name: manualForm.company || null,
         contact_name: manualForm.name || null,
         email: manualForm.email || null,
