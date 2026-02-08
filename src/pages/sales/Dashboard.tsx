@@ -79,9 +79,9 @@ const PIPELINE_STAGES: PipelineStage[] = [
 // ============================================================================
 
 export default function SalesDashboard() {
-  // CRITICAL FIX: Get both tenantId (slug) and tenantConfig (full object with UUID)
+  // CRITICAL: Get both tenantId (slug) and tenantConfig (full object with UUID)
   const { tenantId, tenantConfig } = useTenant();
-  // USE THIS FOR ALL DATABASE OPERATIONS - This is the actual UUID!
+  // tenantId (SLUG) for sales_leads and deals; tenantUuid only for UUID-typed tables
   const tenantUuid = tenantConfig?.id;
   
   const { toast } = useToast();
@@ -92,23 +92,23 @@ export default function SalesDashboard() {
   // DATA QUERIES - ALL REAL DATA FROM CONTACTS TABLE
   // =====================================================
 
-  // Fetch all leads for this tenant - sales_leads stores UUID in tenant_id
+  // Fetch all leads for this tenant — sales_leads uses SLUG (tenantId) — TEXT column
   const {
     data: contacts = [],
     isLoading: contactsLoading,
     refetch: refetchContacts,
   } = useQuery({
-    queryKey: ["dashboard", "sales_leads", tenantUuid],
+    queryKey: ["dashboard", "sales_leads", tenantId],
     queryFn: async () => {
-      if (!tenantUuid) {
-        console.log("[SalesDashboard] No tenantUuid, skipping query");
+      if (!tenantId) {
+        console.log("[SalesDashboard] No tenantId, skipping query");
         return [];
       }
-      console.log("[SalesDashboard] Fetching sales_leads with tenant UUID:", tenantUuid);
+      console.log("[SalesDashboard] Fetching sales_leads with tenant SLUG:", tenantId);
       const { data, error } = await supabase
         .from("sales_leads")
         .select("id, lead_score, score, lead_temperature, temperature, lead_grade, lead_status, status, pipeline_stage, sequence_status, source, created_at")
-        .eq("tenant_id", tenantUuid); // UUID - sales_leads stores UUID in tenant_id
+        .eq("tenant_id", tenantId); // SLUG — sales_leads uses TEXT tenant_id
       if (error) {
         console.error("[SalesDashboard] Error fetching sales_leads:", error);
         throw error;
@@ -116,8 +116,8 @@ export default function SalesDashboard() {
       console.log("[SalesDashboard] Fetched leads count:", data?.length || 0);
       return data || [];
     },
-    enabled: !!tenantUuid,
-    refetchInterval: 30000, // Refresh every 30 seconds
+    enabled: !!tenantId,
+    refetchInterval: 30000,
   });
 
   // Fetch deals for this tenant - NOTE: Deals table uses slug per established pattern
