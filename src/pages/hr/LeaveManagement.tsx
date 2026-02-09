@@ -49,9 +49,9 @@ export default function LeaveManagementPage() {
       leave_type: leaveType,
       start_date: format(dateRange.from, 'yyyy-MM-dd'),
       end_date: dateRange.to ? format(dateRange.to, 'yyyy-MM-dd') : format(dateRange.from, 'yyyy-MM-dd'),
-      half_day: isHalfDay,
+      is_half_day: isHalfDay,
       reason,
-      days: dateRange.to ? differenceInDays(dateRange.to, dateRange.from) + 1 : 1,
+      requested_days: dateRange.to ? differenceInDays(dateRange.to, dateRange.from) + 1 : 1,
     });
     
     setIsDialogOpen(false);
@@ -239,24 +239,24 @@ export default function LeaveManagementPage() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium">{balance.leave_type}</span>
-                {balance.pending > 0 && (
+                {balance.pending_days > 0 && (
                   <Badge variant="outline" className="bg-chart-4/10 text-chart-4 text-xs">
-                    {balance.pending} pending
+                    {balance.pending_days} pending
                   </Badge>
                 )}
               </div>
               <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-bold">{balance.remaining}</span>
-                <span className="text-muted-foreground text-sm">/ {balance.total}</span>
+                <span className="text-3xl font-bold">{balance.remaining_days}</span>
+                <span className="text-muted-foreground text-sm">/ {balance.total_days}</span>
               </div>
               <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-primary rounded-full transition-all"
-                  style={{ width: `${(balance.remaining / balance.total) * 100}%` }}
+                  style={{ width: `${(balance.remaining_days / balance.total_days) * 100}%` }}
                 />
               </div>
               <p className="text-xs text-muted-foreground mt-2">
-                {balance.used} days used
+                {balance.used_days} days used
               </p>
             </CardContent>
           </Card>
@@ -311,7 +311,7 @@ export default function LeaveManagementPage() {
                         <TableCell className="font-medium">{request.leave_type}</TableCell>
                         <TableCell>{request.start_date}</TableCell>
                         <TableCell>{request.end_date}</TableCell>
-                        <TableCell>{request.days}</TableCell>
+                        <TableCell>{request.requested_days}</TableCell>
                         <TableCell className="max-w-[200px] truncate">{request.reason}</TableCell>
                         <TableCell>{getStatusBadge(request.status)}</TableCell>
                       </TableRow>
