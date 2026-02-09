@@ -38,6 +38,18 @@ export const WEBHOOKS = {
   HR_DASHBOARD: "/hr/dashboard",
   HR_REPORTS: "/hr/reports",
   HR_AI_ASSISTANT: "/hr/ai-assistant",
+  HR_ATTENDANCE_TODAY: "/hr/attendance/today",
+  HR_LEAVE_BALANCE: "/hr/leave/balance",
+  HR_PAYROLL_SUMMARY: "/hr/payroll/summary",
+  HR_DEPARTMENTS: "/hr/departments",
+  HR_PERFORMANCE_REVIEW: "/hr/performance/review",
+  HR_TRAINING_PROGRAMS: "/hr/training/programs",
+  HR_TRAINING_ENROLLMENTS: "/hr/training/enrollments",
+  HR_DOCUMENTS: "/hr/documents",
+  HR_GET_EMPLOYEES: "/hr/employees",
+  HR_GET_EMPLOYEE: "/hr/employee",
+  HR_UPDATE_EMPLOYEE: "/hr/employee/update",
+  HR_TERMINATE_EMPLOYEE: "/hr/employee/terminate",
 
   // Voice
   VAPI_OUTBOUND: "/vapi/outbound-call",
