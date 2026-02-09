@@ -8,13 +8,13 @@ export interface Employee {
   id: string;
   first_name: string;
   last_name: string;
-  email: string;
+  company_email: string;
   phone?: string;
   department: string;
   position: string;
   employee_id: string;
-  hire_date: string;
-  status: 'active' | 'on_leave' | 'terminated';
+  date_of_joining: string;
+  employment_status: 'active' | 'on_leave' | 'terminated' | 'suspended';
   manager_id?: string;
   salary?: number;
   created_at: string;
@@ -36,15 +36,16 @@ export interface OnboardingRequest {
 export interface AttendanceRecord {
   id: string;
   employee_id: string;
-  check_in: string;
-  check_out?: string;
+  work_date: string;
+  check_in_time: string;
+  check_out_time?: string;
   status: 'present' | 'late' | 'absent' | 'half_day';
   notes?: string;
 }
 
 export interface LeaveRequest {
   employee_id: string;
-  type: 'annual' | 'sick' | 'personal' | 'maternity' | 'paternity' | 'unpaid';
+  leave_type: string;
   start_date: string;
   end_date: string;
   reason?: string;
