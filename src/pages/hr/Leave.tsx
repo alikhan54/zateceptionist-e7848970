@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
-import { useLeaveBalance, useLeaveRequests } from '@/hooks/useHR';
+import { useLeaveBalance, useLeaveRequests, type LeaveBalance } from '@/hooks/useHR';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,11 +50,11 @@ import {
 } from 'recharts';
 
 // Mock data
-const mockBalances = [
-  { leave_type: 'Annual Leave', total: 20, used: 8, remaining: 12, pending: 2 },
-  { leave_type: 'Sick Leave', total: 10, used: 3, remaining: 7, pending: 0 },
-  { leave_type: 'Personal Leave', total: 5, used: 2, remaining: 3, pending: 1 },
-  { leave_type: 'Parental Leave', total: 90, used: 0, remaining: 90, pending: 0 },
+const mockBalances: LeaveBalance[] = [
+  { leave_type: 'Annual Leave', total_days: 20, used_days: 8, remaining_days: 12, pending_days: 2 },
+  { leave_type: 'Sick Leave', total_days: 10, used_days: 3, remaining_days: 7, pending_days: 0 },
+  { leave_type: 'Personal Leave', total_days: 5, used_days: 2, remaining_days: 3, pending_days: 1 },
+  { leave_type: 'Parental Leave', total_days: 90, used_days: 0, remaining_days: 90, pending_days: 0 },
 ];
 
 const mockRequests = [
@@ -118,9 +118,9 @@ export default function LeavePage() {
       leave_type: leaveType,
       start_date: format(dateRange.from, 'yyyy-MM-dd'),
       end_date: dateRange.to ? format(dateRange.to, 'yyyy-MM-dd') : format(dateRange.from, 'yyyy-MM-dd'),
-      half_day: isHalfDay,
+      is_half_day: isHalfDay,
       reason,
-      days: dateRange.to ? differenceInDays(dateRange.to, dateRange.from) + 1 : 1,
+      requested_days: dateRange.to ? differenceInDays(dateRange.to, dateRange.from) + 1 : 1,
     });
     
     toast({ title: 'Leave request submitted successfully' });
@@ -179,9 +179,9 @@ export default function LeavePage() {
     { value: 'unpaid', label: 'Unpaid Leave' },
   ];
 
-  const totalDays = displayBalances.reduce((acc, b) => acc + b.total, 0);
-  const usedDays = displayBalances.reduce((acc, b) => acc + b.used, 0);
-  const pendingDays = displayBalances.reduce((acc, b) => acc + b.pending, 0);
+  const totalDays = displayBalances.reduce((acc, b) => acc + b.total_days, 0);
+  const usedDays = displayBalances.reduce((acc, b) => acc + b.used_days, 0);
+  const pendingDays = displayBalances.reduce((acc, b) => acc + b.pending_days, 0);
 
   return (
     <div className="space-y-6">
@@ -352,22 +352,22 @@ export default function LeavePage() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium">{balance.leave_type}</span>
-                {balance.pending > 0 && (
+                {balance.pending_days > 0 && (
                   <Badge variant="outline" className="bg-chart-4/10 text-chart-4 text-xs">
-                    {balance.pending} pending
+                    {balance.pending_days} pending
                   </Badge>
                 )}
               </div>
               <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-bold">{balance.remaining}</span>
-                <span className="text-muted-foreground text-sm">/ {balance.total}</span>
+                <span className="text-3xl font-bold">{balance.remaining_days}</span>
+                <span className="text-muted-foreground text-sm">/ {balance.total_days}</span>
               </div>
               <Progress 
-                value={(balance.remaining / balance.total) * 100} 
+                value={(balance.remaining_days / balance.total_days) * 100} 
                 className="h-2 mt-3"
               />
               <p className="text-xs text-muted-foreground mt-2">
-                {balance.used} days used this year
+                {balance.used_days} days used this year
               </p>
             </CardContent>
           </Card>
@@ -625,7 +625,7 @@ export default function LeavePage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={displayBalances.map((b, i) => ({ name: b.leave_type, value: b.used }))}
+                        data={displayBalances.map((b, i) => ({ name: b.leave_type, value: b.used_days }))}
                         cx="50%"
                         cy="50%"
                         innerRadius={50}

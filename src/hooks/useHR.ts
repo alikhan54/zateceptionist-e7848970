@@ -10,53 +10,70 @@ export interface Employee {
   employee_id: string;
   first_name: string;
   last_name: string;
-  email: string;
+  full_name?: string;
+  company_email: string;
+  personal_email?: string;
   phone?: string;
+  mobile?: string;
   department_id?: string;
   department_name?: string;
   position: string;
-  hire_date: string;
-  status: 'active' | 'inactive' | 'on_leave' | 'terminated';
+  job_title?: string;
+  date_of_joining: string;
+  employment_status: 'active' | 'on_leave' | 'terminated' | 'suspended';
+  employment_type?: string;
   avatar_url?: string;
   manager_id?: string;
   salary?: number;
+  nationality?: string;
   created_at: string;
 }
 
 export interface AttendanceRecord {
   id: string;
   employee_id: string;
-  employee_name: string;
-  date: string;
-  check_in?: string;
-  check_out?: string;
+  employee_name?: string;
+  work_date: string;
+  check_in_time?: string;
+  check_out_time?: string;
   status: 'present' | 'absent' | 'late' | 'half_day' | 'on_leave';
   work_hours?: number;
-  overtime_hours?: number;
-  location?: { lat: number; lng: number };
+  total_hours?: number;
+  overtime_minutes?: number;
+  late_minutes?: number;
+  work_type?: string;
+  source?: string;
+  check_in_location?: any;
+  check_out_location?: any;
 }
 
 export interface LeaveBalance {
+  id?: string;
+  employee_id?: string;
   leave_type: string;
-  total: number;
-  used: number;
-  remaining: number;
-  pending: number;
+  leave_type_id?: string;
+  total_days: number;
+  used_days: number;
+  remaining_days: number;
+  pending_days: number;
 }
 
 export interface LeaveRequest {
   id: string;
   employee_id: string;
-  employee_name: string;
-  leave_type: string;
+  employee_name?: string;
+  leave_type_id?: string;
+  leave_type?: string;
   start_date: string;
   end_date: string;
-  days: number;
-  half_day?: boolean;
+  requested_days: number;
+  is_half_day?: boolean;
   reason: string;
   status: 'pending' | 'approved' | 'rejected';
-  attachment_url?: string;
   approved_by?: string;
+  approved_at?: string;
+  approver_comment?: string;
+  attachment_url?: string;
   created_at: string;
 }
 
@@ -91,11 +108,13 @@ export interface PerformanceReview {
   employee_name: string;
   reviewer_id: string;
   reviewer_name: string;
-  period: string;
+  review_period_start?: string;
+  review_period_end?: string;
+  period?: string;
   status: 'draft' | 'submitted' | 'reviewed' | 'completed';
   overall_rating?: number;
+  reviewer_comments?: string;
   goals: Goal[];
-  feedback?: string;
   created_at: string;
 }
 
@@ -104,7 +123,7 @@ export interface Goal {
   title: string;
   description?: string;
   target_date: string;
-  progress: number;
+  progress_percent: number;
   status: 'not_started' | 'in_progress' | 'completed' | 'cancelled';
 }
 
@@ -153,15 +172,16 @@ export function useEmployees() {
   const query = useQuery({
     queryKey: ['employees', tenantId],
     queryFn: async () => {
-      // Mock data for now - replace with actual API call
-      return [] as Employee[];
+      if (!tenantId) return [];
+      const result = await callWebhook<Employee[]>(WEBHOOKS.HR_GET_EMPLOYEES, { action: 'list' }, tenantId);
+      return result.data || [];
     },
     enabled: !!tenantId,
   });
 
   const createEmployee = useMutation({
     mutationFn: async (data: Partial<Employee>) => {
-      return callWebhook(WEBHOOKS.HR_GET_EMPLOYEES, { action: 'create', ...data }, tenantId!);
+      return callWebhook(WEBHOOKS.EMPLOYEE_ONBOARDING, data, tenantId!);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employees', tenantId] });
@@ -191,11 +211,16 @@ export function useAttendance(date?: string) {
   const query = useQuery({
     queryKey: ['attendance', tenantId, date],
     queryFn: async () => {
-      // Mock data
-      return {
-        records: [] as AttendanceRecord[],
-        summary: { present: 0, absent: 0, late: 0, on_leave: 0 },
+      if (!tenantId) return { records: [] as AttendanceRecord[], summary: { present: 0, absent: 0, late: 0, on_leave: 0 } };
+      const result = await callWebhook<any>(WEBHOOKS.HR_ATTENDANCE_TODAY, { date: date || new Date().toISOString().split('T')[0] }, tenantId);
+      const records = Array.isArray(result.data) ? result.data : (result.data?.records || []);
+      const summary = result.data?.summary || {
+        present: records.filter((r: any) => r.status === 'present').length,
+        absent: records.filter((r: any) => r.status === 'absent').length,
+        late: records.filter((r: any) => r.status === 'late').length,
+        on_leave: records.filter((r: any) => r.status === 'on_leave').length,
       };
+      return { records, summary };
     },
     enabled: !!tenantId,
   });
@@ -231,13 +256,9 @@ export function useLeaveBalance() {
   return useQuery({
     queryKey: ['leave-balance', tenantId],
     queryFn: async () => {
-      // Mock data
-      return [
-        { leave_type: 'Annual', total: 20, used: 5, remaining: 15, pending: 2 },
-        { leave_type: 'Sick', total: 10, used: 2, remaining: 8, pending: 0 },
-        { leave_type: 'Personal', total: 5, used: 1, remaining: 4, pending: 0 },
-        { leave_type: 'Maternity/Paternity', total: 60, used: 0, remaining: 60, pending: 0 },
-      ] as LeaveBalance[];
+      if (!tenantId) return [];
+      const result = await callWebhook<LeaveBalance[]>(WEBHOOKS.HR_LEAVE_BALANCE, { action: 'list' }, tenantId);
+      return result.data || [];
     },
     enabled: !!tenantId,
   });
@@ -250,7 +271,11 @@ export function useLeaveRequests(status?: string) {
   const query = useQuery({
     queryKey: ['leave-requests', tenantId, status],
     queryFn: async () => {
-      return [] as LeaveRequest[];
+      if (!tenantId) return [];
+      const params: any = { action: 'list' };
+      if (status) params.status = status;
+      const result = await callWebhook<LeaveRequest[]>(WEBHOOKS.LEAVE_REQUEST, params, tenantId);
+      return result.data || [];
     },
     enabled: !!tenantId,
   });
@@ -287,10 +312,9 @@ export function usePayroll(period?: string) {
   return useQuery({
     queryKey: ['payroll', tenantId, period],
     queryFn: async () => {
-      return {
-        records: [] as PayrollRecord[],
-        summary: { total_payroll: 0, avg_salary: 0, headcount: 0, period: '' },
-      };
+      if (!tenantId) return { records: [] as PayrollRecord[], summary: { total_payroll: 0, avg_salary: 0, headcount: 0, period: period || '' } };
+      const result = await callWebhook<any>(WEBHOOKS.HR_PAYROLL_SUMMARY, { period: period || 'current' }, tenantId);
+      return result.data || { records: [], summary: { total_payroll: 0, avg_salary: 0, headcount: 0, period: '' } };
     },
     enabled: !!tenantId,
   });
@@ -303,7 +327,9 @@ export function useDepartments() {
   const query = useQuery({
     queryKey: ['departments', tenantId],
     queryFn: async () => {
-      return [] as Department[];
+      if (!tenantId) return [];
+      const result = await callWebhook<Department[]>(WEBHOOKS.HR_DEPARTMENTS, { action: 'list' }, tenantId);
+      return result.data || [];
     },
     enabled: !!tenantId,
   });
@@ -328,11 +354,9 @@ export function usePerformance() {
   return useQuery({
     queryKey: ['performance', tenantId],
     queryFn: async () => {
-      return {
-        reviews: [] as PerformanceReview[],
-        goals: [] as Goal[],
-        activeCycle: null as { name: string; start_date: string; end_date: string } | null,
-      };
+      if (!tenantId) return { reviews: [] as PerformanceReview[], goals: [] as Goal[], activeCycle: null };
+      const result = await callWebhook<any>(WEBHOOKS.HR_PERFORMANCE_REVIEW, { action: 'list' }, tenantId);
+      return result.data || { reviews: [], goals: [], activeCycle: null };
     },
     enabled: !!tenantId,
   });
@@ -345,7 +369,9 @@ export function useTraining() {
   const programsQuery = useQuery({
     queryKey: ['training-programs', tenantId],
     queryFn: async () => {
-      return [] as TrainingProgram[];
+      if (!tenantId) return [];
+      const result = await callWebhook<TrainingProgram[]>(WEBHOOKS.HR_TRAINING_PROGRAMS, { action: 'list' }, tenantId);
+      return result.data || [];
     },
     enabled: !!tenantId,
   });
@@ -353,7 +379,9 @@ export function useTraining() {
   const enrollmentsQuery = useQuery({
     queryKey: ['training-enrollments', tenantId],
     queryFn: async () => {
-      return [] as TrainingEnrollment[];
+      if (!tenantId) return [];
+      const result = await callWebhook<TrainingEnrollment[]>(WEBHOOKS.HR_TRAINING_ENROLLMENTS, { action: 'list' }, tenantId);
+      return result.data || [];
     },
     enabled: !!tenantId,
   });
@@ -379,7 +407,11 @@ export function useHRDocuments(category?: string) {
   const query = useQuery({
     queryKey: ['hr-documents', tenantId, category],
     queryFn: async () => {
-      return [] as HRDocument[];
+      if (!tenantId) return [];
+      const params: any = { action: 'list' };
+      if (category) params.category = category;
+      const result = await callWebhook<HRDocument[]>(WEBHOOKS.HR_DOCUMENTS, params, tenantId);
+      return result.data || [];
     },
     enabled: !!tenantId,
   });
