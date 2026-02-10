@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
+import { useMarketingCampaigns } from '@/hooks/useMarketingCampaigns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -36,79 +37,20 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 
-interface Campaign {
-  id: string;
-  name: string;
-  type: 'marketing' | 'promotional' | 'reminder' | 'follow_up';
-  channel: 'whatsapp' | 'email' | 'sms';
-  status: 'draft' | 'scheduled' | 'sending' | 'sent' | 'cancelled';
-  sent_count: number;
-  total_count: number;
-  success_rate: number;
-  created_at: string;
-  scheduled_at?: string;
-}
-
-// Mock data for demo
-const mockCampaigns: Campaign[] = [
-  {
-    id: '1',
-    name: 'Summer Promotion',
-    type: 'promotional',
-    channel: 'whatsapp',
-    status: 'sent',
-    sent_count: 450,
-    total_count: 500,
-    success_rate: 92,
-    created_at: '2024-01-15',
-  },
-  {
-    id: '2',
-    name: 'Appointment Reminders',
-    type: 'reminder',
-    channel: 'sms',
-    status: 'sending',
-    sent_count: 120,
-    total_count: 200,
-    success_rate: 98,
-    created_at: '2024-01-18',
-  },
-  {
-    id: '3',
-    name: 'New Year Newsletter',
-    type: 'marketing',
-    channel: 'email',
-    status: 'scheduled',
-    sent_count: 0,
-    total_count: 1500,
-    success_rate: 0,
-    created_at: '2024-01-20',
-    scheduled_at: '2024-01-25T09:00:00',
-  },
-];
-
-const mockStats = {
-  totalCampaigns: 12,
-  messagesSent: 4850,
-  deliveryRate: 96.5,
-  openRate: 42.3,
-  responseRate: 18.7,
-};
 
 export default function MarketingEngine() {
   const { tenantId, translate, isLoading: tenantLoading } = useTenant();
   const { toast } = useToast();
-  const [campaigns] = useState<Campaign[]>(mockCampaigns);
+  const { campaigns, isLoading, stats, createCampaign, sendCampaign, refetch } = useMarketingCampaigns();
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState(1);
-  const [isLoading] = useState(false);
   const [generatingContent, setGeneratingContent] = useState(false);
 
   // Campaign wizard state
   const [campaignData, setCampaignData] = useState({
     name: '',
-    type: 'marketing' as Campaign['type'],
-    channel: 'whatsapp' as Campaign['channel'],
+    type: 'marketing' as string,
+    channel: 'whatsapp' as string,
     audienceFilter: 'all',
     temperatureFilter: [] as string[],
     lifecycleFilter: [] as string[],
@@ -175,34 +117,25 @@ export default function MarketingEngine() {
     if (!tenantId) return;
     
     try {
-      const result = await callWebhook(
-        WEBHOOKS.SEND_CAMPAIGN,
-        {
-          campaign_name: campaignData.name,
-          type: campaignData.type,
-          channel: campaignData.channel,
-          message: campaignData.message,
-          audience_filter: campaignData.audienceFilter,
-          temperature_filter: campaignData.temperatureFilter,
-          lifecycle_filter: campaignData.lifecycleFilter,
-          schedule_type: campaignData.scheduleType,
-          scheduled_at: campaignData.scheduleType === 'schedule' && campaignData.scheduledDate
-            ? `${format(campaignData.scheduledDate, 'yyyy-MM-dd')}T${campaignData.scheduledTime}:00`
-            : null,
-        },
-        tenantId
-      );
-      
-      if (result.success) {
-        toast({
-          title: campaignData.scheduleType === 'now' ? 'Campaign Sent!' : 'Campaign Scheduled!',
-          description: campaignData.scheduleType === 'now' 
-            ? 'Your campaign is being sent to the selected audience.'
-            : `Your campaign will be sent on ${format(campaignData.scheduledDate!, 'PPP')} at ${campaignData.scheduledTime}.`,
-        });
-        setIsWizardOpen(false);
-        resetWizard();
+      const scheduledAt = campaignData.scheduleType === 'schedule' && campaignData.scheduledDate
+        ? `${format(campaignData.scheduledDate, 'yyyy-MM-dd')}T${campaignData.scheduledTime}:00`
+        : undefined;
+
+      const created = await createCampaign.mutateAsync({
+        name: campaignData.name,
+        type: campaignData.type,
+        message_template: campaignData.message,
+        media_url: campaignData.mediaUrl || undefined,
+        scheduled_at: scheduledAt,
+        send_now: campaignData.scheduleType === 'now',
+      });
+
+      if (campaignData.scheduleType === 'now' && created?.id) {
+        await sendCampaign.mutateAsync(created.id);
       }
+
+      setIsWizardOpen(false);
+      resetWizard();
     } catch (error) {
       toast({
         title: 'Campaign Failed',
@@ -247,27 +180,6 @@ export default function MarketingEngine() {
     setAudienceCount(count);
   };
 
-  const handleDuplicateCampaign = (campaign: Campaign) => {
-    setCampaignData({
-      name: `${campaign.name} (Copy)`,
-      type: campaign.type,
-      channel: campaign.channel,
-      audienceFilter: 'all',
-      temperatureFilter: [],
-      lifecycleFilter: [],
-      message: '',
-      mediaUrl: '',
-      scheduleType: 'now',
-      scheduledDate: undefined,
-      scheduledTime: '09:00',
-    });
-    setIsWizardOpen(true);
-    setWizardStep(1);
-    toast({
-      title: 'Campaign Duplicated',
-      description: 'You can now edit and send the duplicated campaign.',
-    });
-  };
 
   if (tenantLoading) {
     return (
@@ -302,7 +214,7 @@ export default function MarketingEngine() {
               <Label>Campaign Type</Label>
               <Select
                 value={campaignData.type}
-                onValueChange={(value: Campaign['type']) => 
+                onValueChange={(value: string) => 
                   setCampaignData(prev => ({ ...prev, type: value }))
                 }
               >
@@ -418,7 +330,7 @@ export default function MarketingEngine() {
                   <Users className="h-5 w-5 text-primary" />
                   <span className="font-medium">Audience Preview:</span>
                   <span className="text-2xl font-bold text-primary">
-                    {audienceCount || mockStats.messagesSent}
+                   {audienceCount || stats.totalSent}
                   </span>
                   <span className="text-muted-foreground">{translate('customers')}</span>
                 </div>
@@ -564,7 +476,7 @@ export default function MarketingEngine() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Audience:</span>
-                  <span className="font-medium">{audienceCount || mockStats.messagesSent} recipients</span>
+                  <span className="font-medium">{audienceCount || stats.totalSent} recipients</span>
                 </div>
                 {campaignData.scheduleType === 'schedule' && campaignData.scheduledDate && (
                   <div className="flex justify-between">
@@ -663,7 +575,7 @@ export default function MarketingEngine() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Campaigns</p>
-                <p className="text-2xl font-bold">{mockStats.totalCampaigns}</p>
+                <p className="text-2xl font-bold">{stats.total}</p>
               </div>
             </div>
           </CardContent>
@@ -677,7 +589,7 @@ export default function MarketingEngine() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Messages Sent</p>
-                <p className="text-2xl font-bold">{mockStats.messagesSent.toLocaleString()}</p>
+                <p className="text-2xl font-bold">{stats.totalSent.toLocaleString()}</p>
               </div>
             </div>
           </CardContent>
@@ -691,7 +603,7 @@ export default function MarketingEngine() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Delivery Rate</p>
-                <p className="text-2xl font-bold">{mockStats.deliveryRate}%</p>
+                <p className="text-2xl font-bold">{stats.totalDelivered > 0 ? Math.round((stats.totalDelivered / stats.totalSent) * 100) : 0}%</p>
               </div>
             </div>
           </CardContent>
@@ -705,7 +617,7 @@ export default function MarketingEngine() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Open Rate</p>
-                <p className="text-2xl font-bold">{mockStats.openRate}%</p>
+                <p className="text-2xl font-bold">{stats.avgOpenRate}%</p>
               </div>
             </div>
           </CardContent>
@@ -719,7 +631,7 @@ export default function MarketingEngine() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Response Rate</p>
-                <p className="text-2xl font-bold">{mockStats.responseRate}%</p>
+                <p className="text-2xl font-bold">{stats.avgClickRate}%</p>
               </div>
             </div>
           </CardContent>
@@ -821,23 +733,23 @@ export default function MarketingEngine() {
                     <TableCell className="capitalize">{campaign.type.replace('_', ' ')}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        {channelIcons[campaign.channel]}
-                        <span className="capitalize">{campaign.channel}</span>
+                        {channelIcons[campaign.type] || <Mail className="h-4 w-4" />}
+                        <span className="capitalize">{campaign.type}</span>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge className={statusColors[campaign.status]}>
+                      <Badge className={statusColors[campaign.status] || ''}>
                         {campaign.status}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <span className="text-muted-foreground">
-                        {campaign.sent_count} / {campaign.total_count}
+                        {campaign.sent_count} / {campaign.delivered_count}
                       </span>
                     </TableCell>
                     <TableCell>
-                      <span className={campaign.success_rate >= 90 ? 'text-green-500' : campaign.success_rate >= 70 ? 'text-yellow-500' : 'text-destructive'}>
-                        {campaign.success_rate}%
+                      <span className={(campaign.open_rate || 0) >= 90 ? 'text-green-500' : (campaign.open_rate || 0) >= 70 ? 'text-yellow-500' : 'text-destructive'}>
+                        {campaign.open_rate || 0}%
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
@@ -849,7 +761,23 @@ export default function MarketingEngine() {
                           variant="ghost" 
                           size="icon" 
                           title="Duplicate"
-                          onClick={() => handleDuplicateCampaign(campaign)}
+                          onClick={() => {
+                            setCampaignData({
+                              name: `${campaign.name} (Copy)`,
+                              type: campaign.type as any,
+                              channel: campaign.type as any,
+                              audienceFilter: 'all',
+                              temperatureFilter: [],
+                              lifecycleFilter: [],
+                              message: campaign.message_template || '',
+                              mediaUrl: campaign.media_url || '',
+                              scheduleType: 'now',
+                              scheduledDate: undefined,
+                              scheduledTime: '09:00',
+                            });
+                            setIsWizardOpen(true);
+                            setWizardStep(1);
+                          }}
                         >
                           <Copy className="h-4 w-4" />
                         </Button>
