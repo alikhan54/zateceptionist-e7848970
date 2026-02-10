@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useTenant } from '@/contexts/TenantContext';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -59,9 +60,9 @@ export default function HRDashboard() {
     description: ''
   });
 
-  // Check feature flag
-  if (!tenantConfig?.features?.hr_module) {
-    return <Navigate to="/" replace />;
+  const { isEnabled } = useFeatureFlags();
+  if (!isEnabled('hr_module')) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   const handleAddJob = () => {
