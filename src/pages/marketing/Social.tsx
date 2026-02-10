@@ -11,10 +11,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Switch } from '@/components/ui/switch';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/contexts/TenantContext';
+import { useSocialPosts, useSocialAccounts } from '@/hooks/useSocialPosts';
 import { format, addDays, startOfWeek, addWeeks, eachDayOfInterval } from 'date-fns';
 import {
   Instagram,
@@ -27,12 +28,9 @@ import {
   Calendar as CalendarIcon,
   Clock,
   Image as ImageIcon,
-  Smile,
   Hash,
-  AtSign,
   Link2,
   Sparkles,
-  TrendingUp,
   MessageSquare,
   Heart,
   Share2,
@@ -41,16 +39,12 @@ import {
   Edit,
   Trash2,
   Copy,
-  ExternalLink,
   RefreshCw,
   CheckCircle2,
-  AlertCircle,
   Settings,
   Users,
   BarChart3,
-  Globe,
   Inbox,
-  Bell
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -59,91 +53,6 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu';
-
-// Types
-interface SocialAccount {
-  id: string;
-  platform: 'instagram' | 'facebook' | 'twitter' | 'linkedin' | 'youtube';
-  name: string;
-  username: string;
-  avatar: string;
-  followers: number;
-  connected: boolean;
-}
-
-interface ScheduledPost {
-  id: string;
-  content: string;
-  platforms: string[];
-  scheduledDate: Date;
-  status: 'scheduled' | 'published' | 'failed' | 'draft';
-  mediaUrl?: string;
-  engagement?: {
-    likes: number;
-    comments: number;
-    shares: number;
-  };
-}
-
-interface SocialMessage {
-  id: string;
-  platform: string;
-  from: string;
-  avatar: string;
-  content: string;
-  timestamp: Date;
-  read: boolean;
-}
-
-// Mock data
-const mockAccounts: SocialAccount[] = [
-  { id: '1', platform: 'instagram', name: 'Business Account', username: '@yourbusiness', avatar: '', followers: 12500, connected: true },
-  { id: '2', platform: 'facebook', name: 'Business Page', username: 'Your Business', avatar: '', followers: 8200, connected: true },
-  { id: '3', platform: 'twitter', name: 'Twitter Account', username: '@yourbiz', avatar: '', followers: 3400, connected: true },
-  { id: '4', platform: 'linkedin', name: 'Company Page', username: 'Your Business Inc', avatar: '', followers: 5800, connected: true },
-  { id: '5', platform: 'youtube', name: 'YouTube Channel', username: 'Your Business', avatar: '', followers: 2100, connected: false },
-];
-
-const mockPosts: ScheduledPost[] = [
-  {
-    id: '1',
-    content: '🚀 Exciting news! We are launching our new product next week. Stay tuned for exclusive offers! #NewProduct #Launch',
-    platforms: ['instagram', 'facebook', 'twitter'],
-    scheduledDate: addDays(new Date(), 1),
-    status: 'scheduled',
-  },
-  {
-    id: '2',
-    content: 'Behind the scenes look at our team working on something special ✨ #TeamWork #BTS',
-    platforms: ['instagram', 'linkedin'],
-    scheduledDate: addDays(new Date(), 2),
-    status: 'scheduled',
-    mediaUrl: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=400',
-  },
-  {
-    id: '3',
-    content: 'Thank you for 10K followers! Your support means everything to us 🎉 #Milestone #ThankYou',
-    platforms: ['instagram', 'facebook'],
-    scheduledDate: new Date(),
-    status: 'published',
-    engagement: { likes: 342, comments: 56, shares: 23 },
-  },
-  {
-    id: '4',
-    content: 'Check out our latest blog post on industry trends 📊 Link in bio!',
-    platforms: ['linkedin', 'twitter'],
-    scheduledDate: addDays(new Date(), -1),
-    status: 'published',
-    engagement: { likes: 128, comments: 18, shares: 45 },
-  },
-];
-
-const mockMessages: SocialMessage[] = [
-  { id: '1', platform: 'instagram', from: 'John Doe', avatar: '', content: 'Hi! I love your products. Can you tell me more about the new collection?', timestamp: new Date(), read: false },
-  { id: '2', platform: 'facebook', from: 'Jane Smith', avatar: '', content: 'When will the sale start?', timestamp: addDays(new Date(), -1), read: false },
-  { id: '3', platform: 'twitter', from: 'Mike Johnson', avatar: '', content: 'Great post! Looking forward to the launch.', timestamp: addDays(new Date(), -1), read: true },
-  { id: '4', platform: 'linkedin', from: 'Sarah Williams', avatar: '', content: 'Would love to connect and discuss a potential partnership.', timestamp: addDays(new Date(), -2), read: true },
-];
 
 const bestPostingTimes = [
   { platform: 'instagram', times: ['9:00 AM', '12:00 PM', '7:00 PM'], bestDay: 'Wednesday' },
@@ -157,14 +66,27 @@ const suggestedHashtags = [
   '#digitalmarketing', '#socialmedia', '#branding', '#startup', '#growth'
 ];
 
+function extractHashtags(text: string): string[] {
+  const matches = text.match(/#\w+/g);
+  return matches || [];
+}
+
+function combineDateAndTime(date: Date, time: string): Date {
+  const [hours, minutes] = time.split(':').map(Number);
+  const combined = new Date(date);
+  combined.setHours(hours, minutes, 0, 0);
+  return combined;
+}
+
 export default function SocialCommander() {
   const { tenantId } = useTenant();
   const { toast } = useToast();
 
-  // State
-  const [accounts, setAccounts] = useState<SocialAccount[]>(mockAccounts);
-  const [posts, setPosts] = useState<ScheduledPost[]>(mockPosts);
-  const [messages, setMessages] = useState<SocialMessage[]>(mockMessages);
+  // Real data hooks
+  const { posts, isLoading: postsLoading, createPost, deletePost, publishNow, stats: postStats } = useSocialPosts();
+  const { accounts, connectedAccounts, totalFollowers, isLoading: accountsLoading } = useSocialAccounts();
+
+  // Local UI state
   const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [postContent, setPostContent] = useState('');
@@ -172,9 +94,10 @@ export default function SocialCommander() {
   const [scheduleDate, setScheduleDate] = useState<Date | undefined>();
   const [scheduleTime, setScheduleTime] = useState('09:00');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [selectedPost, setSelectedPost] = useState<ScheduledPost | null>(null);
+  const [selectedPost, setSelectedPost] = useState<any | null>(null);
   const [calendarWeekStart, setCalendarWeekStart] = useState(startOfWeek(new Date()));
   const [activeTab, setActiveTab] = useState('overview');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const platformConfig: Record<string, { icon: React.ComponentType<{ className?: string }>; color: string; bgColor: string }> = {
     instagram: { icon: Instagram, color: 'text-pink-500', bgColor: 'bg-pink-500/10' },
@@ -210,7 +133,7 @@ export default function SocialCommander() {
     toast({ title: 'Image Generated', description: 'AI has created an image for your post.' });
   };
 
-  const handleSchedulePost = () => {
+  const handleSchedulePost = async () => {
     if (!postContent.trim()) {
       toast({ title: 'Content Required', description: 'Please add content to your post.', variant: 'destructive' });
       return;
@@ -220,25 +143,37 @@ export default function SocialCommander() {
       return;
     }
 
-    const newPost: ScheduledPost = {
-      id: Date.now().toString(),
-      content: postContent,
-      platforms: selectedPlatforms,
-      scheduledDate: scheduleDate || new Date(),
-      status: scheduleDate ? 'scheduled' : 'published',
-      mediaUrl: postMedia || undefined,
-    };
+    setIsSubmitting(true);
+    try {
+      const hashtags = extractHashtags(postContent);
+      const scheduledAt = scheduleDate ? combineDateAndTime(scheduleDate, scheduleTime).toISOString() : undefined;
 
-    setPosts(prev => [newPost, ...prev]);
-    setIsComposerOpen(false);
-    resetComposer();
+      // Create one post per platform
+      for (const platform of selectedPlatforms) {
+        await createPost.mutateAsync({
+          platform: platform as any,
+          post_text: postContent,
+          hashtags,
+          media_urls: postMedia ? [postMedia] : [],
+          scheduled_at: scheduledAt,
+          publish_now: !scheduleDate,
+        });
+      }
 
-    toast({
-      title: scheduleDate ? 'Post Scheduled' : 'Post Published',
-      description: scheduleDate
-        ? `Scheduled for ${format(scheduleDate, 'PPP')} at ${scheduleTime}`
-        : 'Your post has been published to selected platforms.',
-    });
+      setIsComposerOpen(false);
+      resetComposer();
+
+      toast({
+        title: scheduleDate ? 'Post Scheduled' : 'Post Published',
+        description: scheduleDate
+          ? `Scheduled for ${format(scheduleDate, 'PPP')} at ${scheduleTime}`
+          : 'Your post has been published to selected platforms.',
+      });
+    } catch (error) {
+      toast({ title: 'Failed', description: 'Could not create post. Please try again.', variant: 'destructive' });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const resetComposer = () => {
@@ -249,20 +184,12 @@ export default function SocialCommander() {
     setScheduleTime('09:00');
   };
 
-  const handleDeletePost = (postId: string) => {
-    setPosts(prev => prev.filter(p => p.id !== postId));
-    toast({ title: 'Post Deleted' });
-  };
-
-  const handleDuplicatePost = (post: ScheduledPost) => {
-    const duplicate: ScheduledPost = {
-      ...post,
-      id: Date.now().toString(),
-      status: 'draft',
-      scheduledDate: addDays(new Date(), 1),
-    };
-    setPosts(prev => [duplicate, ...prev]);
-    toast({ title: 'Post Duplicated' });
+  const handleDeletePost = async (postId: string) => {
+    try {
+      await deletePost.mutateAsync(postId);
+    } catch {
+      toast({ title: 'Failed to delete post', variant: 'destructive' });
+    }
   };
 
   const calendarDays = eachDayOfInterval({
@@ -271,14 +198,24 @@ export default function SocialCommander() {
   });
 
   const getPostsForDay = (date: Date) => {
-    return posts.filter(p => 
-      format(p.scheduledDate, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
-    );
+    return posts.filter(p => {
+      const postDate = p.scheduled_at || p.published_at;
+      if (!postDate) return false;
+      return format(new Date(postDate), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd');
+    });
   };
 
-  const connectedAccounts = accounts.filter(a => a.connected);
-  const totalFollowers = connectedAccounts.reduce((sum, a) => sum + a.followers, 0);
-  const unreadMessages = messages.filter(m => !m.read).length;
+  if (postsLoading && accountsLoading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-10 w-64" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-24" />)}
+        </div>
+        <Skeleton className="h-96" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -305,7 +242,7 @@ export default function SocialCommander() {
                 <Users className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{(totalFollowers / 1000).toFixed(1)}K</p>
+                <p className="text-2xl font-bold">{totalFollowers > 1000 ? `${(totalFollowers / 1000).toFixed(1)}K` : totalFollowers}</p>
                 <p className="text-xs text-muted-foreground">Total Followers</p>
               </div>
             </div>
@@ -331,7 +268,7 @@ export default function SocialCommander() {
                 <CalendarIcon className="h-5 w-5 text-blue-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{posts.filter(p => p.status === 'scheduled').length}</p>
+                <p className="text-2xl font-bold">{postStats.scheduled}</p>
                 <p className="text-xs text-muted-foreground">Scheduled Posts</p>
               </div>
             </div>
@@ -344,8 +281,8 @@ export default function SocialCommander() {
                 <Inbox className="h-5 w-5 text-orange-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{unreadMessages}</p>
-                <p className="text-xs text-muted-foreground">Unread Messages</p>
+                <p className="text-2xl font-bold">{postStats.published}</p>
+                <p className="text-xs text-muted-foreground">Published Posts</p>
               </div>
             </div>
           </CardContent>
@@ -357,7 +294,6 @@ export default function SocialCommander() {
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="calendar">Calendar</TabsTrigger>
-          <TabsTrigger value="inbox">Inbox</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="accounts">Accounts</TabsTrigger>
         </TabsList>
@@ -366,20 +302,20 @@ export default function SocialCommander() {
         <TabsContent value="overview" className="space-y-6">
           {/* Connected Accounts */}
           <div className="grid md:grid-cols-5 gap-4">
-            {accounts.map((account) => {
-              const config = platformConfig[account.platform];
+            {accounts.map((account: any) => {
+              const config = platformConfig[account.platform] || platformConfig.instagram;
               const PlatformIcon = config.icon;
               return (
-                <Card key={account.id} className={!account.connected ? 'opacity-60' : ''}>
+                <Card key={account.id} className={!account.is_active ? 'opacity-60' : ''}>
                   <CardContent className="p-4 text-center">
                     <div className={`w-12 h-12 rounded-full ${config.bgColor} flex items-center justify-center mx-auto mb-2`}>
                       <PlatformIcon className={`h-6 w-6 ${config.color}`} />
                     </div>
-                    <p className="font-medium text-sm">{account.username}</p>
+                    <p className="font-medium text-sm">{account.account_name || account.platform}</p>
                     <p className="text-xs text-muted-foreground">
-                      {account.connected ? `${(account.followers / 1000).toFixed(1)}K followers` : 'Not connected'}
+                      {account.is_active ? `${((account.followers_count || 0) / 1000).toFixed(1)}K followers` : 'Not connected'}
                     </p>
-                    {!account.connected && (
+                    {!account.is_active && (
                       <Button variant="outline" size="sm" className="mt-2">
                         Connect
                       </Button>
@@ -388,6 +324,11 @@ export default function SocialCommander() {
                 </Card>
               );
             })}
+            {accounts.length === 0 && (
+              <div className="col-span-5 text-center py-8 text-muted-foreground">
+                <p>No social accounts connected yet</p>
+              </div>
+            )}
           </div>
 
           {/* Recent Posts */}
@@ -395,74 +336,73 @@ export default function SocialCommander() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>Recent & Scheduled Posts</CardTitle>
-                <Button variant="outline" size="sm">View All</Button>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {posts.slice(0, 5).map((post) => (
-                  <div key={post.id} className="flex gap-4 p-4 border rounded-lg">
-                    {post.mediaUrl && (
-                      <img src={post.mediaUrl} alt="" className="w-20 h-20 rounded-lg object-cover" />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm line-clamp-2">{post.content}</p>
-                      <div className="flex items-center gap-2 mt-2">
-                        {post.platforms.map((platform) => {
-                          const config = platformConfig[platform];
-                          const PlatformIcon = config.icon;
-                          return (
-                            <PlatformIcon key={platform} className={`h-4 w-4 ${config.color}`} />
-                          );
-                        })}
-                        <span className="text-xs text-muted-foreground ml-2">
-                          {format(post.scheduledDate, 'MMM d, h:mm a')}
-                        </span>
-                      </div>
-                      {post.engagement && (
-                        <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Heart className="h-3 w-3" /> {post.engagement.likes}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <MessageSquare className="h-3 w-3" /> {post.engagement.comments}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Share2 className="h-3 w-3" /> {post.engagement.shares}
-                          </span>
+              {posts.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Send className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No posts yet</p>
+                  <p className="text-sm">Create your first post to get started</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {posts.slice(0, 5).map((post) => {
+                    const config = platformConfig[post.platform] || platformConfig.instagram;
+                    const PlatformIcon = config.icon;
+                    return (
+                      <div key={post.id} className="flex gap-4 p-4 border rounded-lg">
+                        {post.media_urls?.[0] && (
+                          <img src={post.media_urls[0]} alt="" className="w-20 h-20 rounded-lg object-cover" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm line-clamp-2">{post.post_text}</p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <PlatformIcon className={`h-4 w-4 ${config.color}`} />
+                            <span className="text-xs text-muted-foreground ml-2">
+                              {post.scheduled_at ? format(new Date(post.scheduled_at), 'MMM d, h:mm a') : 'No date'}
+                            </span>
+                          </div>
+                          {post.status === 'published' && (
+                            <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <Heart className="h-3 w-3" /> {post.likes_count}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <MessageSquare className="h-3 w-3" /> {post.comments_count}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Share2 className="h-3 w-3" /> {post.shares_count}
+                              </span>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                    <div className="flex flex-col items-end gap-2">
-                      <Badge variant={post.status === 'published' ? 'default' : post.status === 'scheduled' ? 'outline' : 'secondary'}>
-                        {post.status}
-                      </Badge>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setSelectedPost(post)}>
-                            <Eye className="h-4 w-4 mr-2" /> View
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Edit className="h-4 w-4 mr-2" /> Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDuplicatePost(post)}>
-                            <Copy className="h-4 w-4 mr-2" /> Duplicate
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive" onClick={() => handleDeletePost(post.id)}>
-                            <Trash2 className="h-4 w-4 mr-2" /> Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                        <div className="flex flex-col items-end gap-2">
+                          <Badge variant={post.status === 'published' ? 'default' : post.status === 'scheduled' ? 'outline' : 'secondary'}>
+                            {post.status}
+                          </Badge>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => setSelectedPost(post)}>
+                                <Eye className="h-4 w-4 mr-2" /> View
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem className="text-destructive" onClick={() => handleDeletePost(post.id)}>
+                                <Trash2 className="h-4 w-4 mr-2" /> Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -556,68 +496,25 @@ export default function SocialCommander() {
                         {format(day, 'EEE d')}
                       </p>
                       <div className="space-y-1">
-                        {dayPosts.slice(0, 3).map((post) => (
-                          <div
-                            key={post.id}
-                            className="p-1 bg-muted rounded text-xs truncate cursor-pointer hover:bg-muted/80"
-                            onClick={() => setSelectedPost(post)}
-                          >
-                            <div className="flex items-center gap-1 mb-0.5">
-                              {post.platforms.slice(0, 2).map((platform) => {
-                                const config = platformConfig[platform];
-                                const PlatformIcon = config.icon;
-                                return <PlatformIcon key={platform} className={`h-3 w-3 ${config.color}`} />;
-                              })}
+                        {dayPosts.slice(0, 3).map((post) => {
+                          const config = platformConfig[post.platform] || platformConfig.instagram;
+                          const PlatformIcon = config.icon;
+                          return (
+                            <div
+                              key={post.id}
+                              className="p-1 bg-muted rounded text-xs truncate cursor-pointer hover:bg-muted/80"
+                              onClick={() => setSelectedPost(post)}
+                            >
+                              <div className="flex items-center gap-1 mb-0.5">
+                                <PlatformIcon className={`h-3 w-3 ${config.color}`} />
+                              </div>
+                              {post.post_text.slice(0, 30)}...
                             </div>
-                            {post.content.slice(0, 30)}...
-                          </div>
-                        ))}
+                          );
+                        })}
                         {dayPosts.length > 3 && (
                           <p className="text-xs text-muted-foreground">+{dayPosts.length - 3} more</p>
                         )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Inbox Tab */}
-        <TabsContent value="inbox" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Social Inbox</CardTitle>
-              <CardDescription>Unified messages from all platforms</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {messages.map((message) => {
-                  const config = platformConfig[message.platform];
-                  const PlatformIcon = config.icon;
-                  return (
-                    <div
-                      key={message.id}
-                      className={`p-4 border rounded-lg cursor-pointer hover:bg-muted/50 ${!message.read ? 'bg-primary/5 border-primary/20' : ''}`}
-                      onClick={() => setMessages(prev => prev.map(m => m.id === message.id ? { ...m, read: true } : m))}
-                    >
-                      <div className="flex items-start gap-3">
-                        <Avatar>
-                          <AvatarFallback>{message.from[0]}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium text-sm">{message.from}</p>
-                            <PlatformIcon className={`h-4 w-4 ${config.color}`} />
-                            {!message.read && <Badge className="h-2 w-2 p-0 rounded-full" />}
-                          </div>
-                          <p className="text-sm text-muted-foreground line-clamp-2">{message.content}</p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {format(message.timestamp, 'MMM d, h:mm a')}
-                          </p>
-                        </div>
-                        <Button variant="outline" size="sm">Reply</Button>
                       </div>
                     </div>
                   );
@@ -631,16 +528,15 @@ export default function SocialCommander() {
         <TabsContent value="analytics" className="space-y-6">
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { label: 'Total Engagement', value: '12.5K', change: '+18%', icon: Heart },
-              { label: 'Profile Views', value: '8.2K', change: '+12%', icon: Eye },
-              { label: 'Link Clicks', value: '1.8K', change: '+24%', icon: Link2 },
-              { label: 'New Followers', value: '+542', change: '+8%', icon: Users },
+              { label: 'Total Likes', value: postStats.totalLikes.toLocaleString(), icon: Heart },
+              { label: 'Total Impressions', value: postStats.totalImpressions.toLocaleString(), icon: Eye },
+              { label: 'Published', value: postStats.published.toString(), icon: CheckCircle2 },
+              { label: 'Total Posts', value: postStats.total.toString(), icon: Users },
             ].map((stat) => (
               <Card key={stat.label}>
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <stat.icon className="h-5 w-5 text-muted-foreground" />
-                    <Badge variant="secondary" className="text-green-500">{stat.change}</Badge>
                   </div>
                   <p className="text-2xl font-bold mt-2">{stat.value}</p>
                   <p className="text-sm text-muted-foreground">{stat.label}</p>
@@ -672,8 +568,8 @@ export default function SocialCommander() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {accounts.map((account) => {
-                  const config = platformConfig[account.platform];
+                {accounts.map((account: any) => {
+                  const config = platformConfig[account.platform] || platformConfig.instagram;
                   const PlatformIcon = config.icon;
                   return (
                     <div key={account.id} className="flex items-center justify-between p-4 border rounded-lg">
@@ -682,15 +578,15 @@ export default function SocialCommander() {
                           <PlatformIcon className={`h-6 w-6 ${config.color}`} />
                         </div>
                         <div>
-                          <p className="font-medium">{account.name}</p>
-                          <p className="text-sm text-muted-foreground">{account.username}</p>
+                          <p className="font-medium">{account.account_name || account.platform}</p>
+                          <p className="text-sm text-muted-foreground">{account.platform_username || ''}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-4">
-                        {account.connected && (
-                          <p className="text-sm text-muted-foreground">{account.followers.toLocaleString()} followers</p>
+                        {account.is_active && (
+                          <p className="text-sm text-muted-foreground">{(account.followers_count || 0).toLocaleString()} followers</p>
                         )}
-                        <Switch checked={account.connected} />
+                        <Switch checked={account.is_active} />
                         <Button variant="ghost" size="icon">
                           <Settings className="h-4 w-4" />
                         </Button>
@@ -698,6 +594,11 @@ export default function SocialCommander() {
                     </div>
                   );
                 })}
+                {accounts.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>No accounts connected</p>
+                  </div>
+                )}
               </div>
               <Button variant="outline" className="w-full mt-4">
                 <Plus className="h-4 w-4 mr-2" />
@@ -720,8 +621,8 @@ export default function SocialCommander() {
             <div className="space-y-2">
               <Label>Select Platforms</Label>
               <div className="flex flex-wrap gap-2">
-                {connectedAccounts.map((account) => {
-                  const config = platformConfig[account.platform];
+                {connectedAccounts.map((account: any) => {
+                  const config = platformConfig[account.platform] || platformConfig.instagram;
                   const PlatformIcon = config.icon;
                   const isSelected = selectedPlatforms.includes(account.platform);
                   return (
@@ -737,6 +638,9 @@ export default function SocialCommander() {
                     </Button>
                   );
                 })}
+                {connectedAccounts.length === 0 && (
+                  <p className="text-sm text-muted-foreground">No connected accounts. Connect accounts first.</p>
+                )}
               </div>
             </div>
 
@@ -846,19 +750,16 @@ export default function SocialCommander() {
             <Button variant="outline" onClick={() => { setIsComposerOpen(false); resetComposer(); }}>
               Cancel
             </Button>
-            <Button variant="outline" onClick={() => handleSchedulePost()}>
-              Save Draft
-            </Button>
-            <Button onClick={handleSchedulePost}>
+            <Button onClick={handleSchedulePost} disabled={isSubmitting}>
               {scheduleDate ? (
                 <>
                   <CalendarIcon className="h-4 w-4 mr-2" />
-                  Schedule
+                  {isSubmitting ? 'Scheduling...' : 'Schedule'}
                 </>
               ) : (
                 <>
                   <Send className="h-4 w-4 mr-2" />
-                  Post Now
+                  {isSubmitting ? 'Posting...' : 'Post Now'}
                 </>
               )}
             </Button>
