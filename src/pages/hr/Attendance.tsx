@@ -249,12 +249,12 @@ export default function AttendancePage() {
                     {data.records.map((record) => (
                       <TableRow key={record.id}>
                         <TableCell className="font-medium">{record.employee_name}</TableCell>
-                        <TableCell>{record.check_in || '-'}</TableCell>
-                        <TableCell>{record.check_out || '-'}</TableCell>
-                        <TableCell>{record.work_hours ? `${record.work_hours}h` : '-'}</TableCell>
+                        <TableCell>{record.check_in_time || '-'}</TableCell>
+                        <TableCell>{record.check_out_time || '-'}</TableCell>
+                        <TableCell>{record.work_hours ? `${record.work_hours}h` : (record.total_hours ? `${record.total_hours}h` : '-')}</TableCell>
                         <TableCell>
-                          {record.overtime_hours ? (
-                            <span className="text-chart-4">{record.overtime_hours}h OT</span>
+                          {record.overtime_minutes ? (
+                            <span className="text-chart-4">{Math.round(record.overtime_minutes / 60)}h OT</span>
                           ) : '-'}
                         </TableCell>
                         <TableCell>{getStatusBadge(record.status)}</TableCell>
@@ -300,7 +300,7 @@ export default function AttendancePage() {
                 <CardDescription>Weekly attendance rate</CardDescription>
               </CardHeader>
               <CardContent className="h-64 flex items-center justify-center">
-                <p className="text-muted-foreground">Chart coming soon</p>
+                <p className="text-muted-foreground">No trend data available yet</p>
               </CardContent>
             </Card>
             <Card>
