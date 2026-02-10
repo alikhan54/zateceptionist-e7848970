@@ -224,7 +224,7 @@ export default function EmailBuilder() {
                   <p className="font-medium">{template.name}</p>
                   <p className="text-sm text-muted-foreground">{template.subject || 'No subject'}</p>
                   <Badge variant="secondary" className="mt-2">{template.category}</Badge>
-                  {template.times_used > 0 && <p className="text-xs text-muted-foreground mt-1">Used {template.times_used} times</p>}
+                  {template.times_sent && template.times_sent > 0 && <p className="text-xs text-muted-foreground mt-1">Used {template.times_sent} times</p>}
                 </CardContent>
               </Card>
             ))}
