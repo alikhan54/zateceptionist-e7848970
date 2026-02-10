@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { useTenant } from '@/contexts/TenantContext';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { useEmployees, useLeaveRequests, useAttendance, useDepartments } from '@/hooks/useHR';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -42,9 +43,9 @@ export default function HRDashboardPage() {
   const { data: attendance } = useAttendance();
   const { data: departments } = useDepartments();
 
-  // Check feature flag
-  if (!tenantConfig?.features?.hr_module) {
-    return <Navigate to="/" replace />;
+  const { isEnabled } = useFeatureFlags();
+  if (!isEnabled('hr_module')) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   const stats = {
