@@ -25,6 +25,9 @@ export default function PerformancePage() {
   const { t } = useTenant();
   const { data, isLoading } = usePerformance();
 
+  const reviews = data?.reviews || [];
+  const goals = data?.goals || [];
+
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
       draft: 'bg-muted text-muted-foreground',
@@ -48,19 +51,9 @@ export default function PerformancePage() {
     ));
   };
 
-  // Mock data
-  const mockGoals = [
-    { id: '1', title: 'Complete Q1 Sales Target', progress: 75, status: 'in_progress' as const, target_date: '2024-03-31' },
-    { id: '2', title: 'Launch New Product Feature', progress: 45, status: 'in_progress' as const, target_date: '2024-02-28' },
-    { id: '3', title: 'Improve Customer Satisfaction', progress: 90, status: 'in_progress' as const, target_date: '2024-01-31' },
-    { id: '4', title: 'Reduce Response Time', progress: 100, status: 'completed' as const, target_date: '2024-01-15' },
-  ];
-
-  const mockReviews = [
-    { id: '1', employee_name: 'John Doe', reviewer_name: 'Jane Smith', period: 'Q4 2023', status: 'completed', overall_rating: 4 },
-    { id: '2', employee_name: 'Mike Johnson', reviewer_name: 'Jane Smith', period: 'Q4 2023', status: 'reviewed', overall_rating: 3 },
-    { id: '3', employee_name: 'Sarah Wilson', reviewer_name: 'Jane Smith', period: 'Q4 2023', status: 'submitted', overall_rating: undefined },
-  ];
+  const avgRating = reviews.length > 0
+    ? (reviews.reduce((acc, r) => acc + (r.overall_rating || 0), 0) / reviews.filter(r => r.overall_rating).length).toFixed(1)
+    : '0';
 
   return (
     <div className="space-y-6">
@@ -78,33 +71,6 @@ export default function PerformancePage() {
         </Button>
       </div>
 
-      {/* Active Review Cycle Banner */}
-      <Card className="border-chart-3/20 bg-gradient-to-r from-chart-3/5 to-transparent">
-        <CardContent className="p-6">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-xl bg-chart-3/10 flex items-center justify-center">
-                <Calendar className="h-6 w-6 text-chart-3" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-lg">Q1 2024 Performance Review Cycle</h3>
-                <p className="text-sm text-muted-foreground">
-                  Self-assessment deadline: January 31, 2024
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="text-right mr-4">
-                <p className="text-sm text-muted-foreground">Completion</p>
-                <p className="text-lg font-semibold">65%</p>
-              </div>
-              <Button variant="outline">View Details</Button>
-            </div>
-          </div>
-          <Progress value={65} className="mt-4 h-2" />
-        </CardContent>
-      </Card>
-
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
@@ -114,7 +80,7 @@ export default function PerformancePage() {
                 <Target className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{mockGoals.length}</p>
+                <p className="text-2xl font-bold">{goals.filter(g => g.status !== 'completed' && g.status !== 'cancelled').length}</p>
                 <p className="text-sm text-muted-foreground">Active Goals</p>
               </div>
             </div>
@@ -127,7 +93,7 @@ export default function PerformancePage() {
                 <ClipboardCheck className="h-5 w-5 text-chart-2" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{mockReviews.length}</p>
+                <p className="text-2xl font-bold">{reviews.filter(r => r.status !== 'completed').length}</p>
                 <p className="text-sm text-muted-foreground">Pending Reviews</p>
               </div>
             </div>
@@ -140,7 +106,7 @@ export default function PerformancePage() {
                 <Star className="h-5 w-5 text-chart-4" />
               </div>
               <div>
-                <p className="text-2xl font-bold">4.2</p>
+                <p className="text-2xl font-bold">{avgRating}</p>
                 <p className="text-sm text-muted-foreground">Avg Rating</p>
               </div>
             </div>
@@ -153,7 +119,7 @@ export default function PerformancePage() {
                 <Award className="h-5 w-5 text-chart-3" />
               </div>
               <div>
-                <p className="text-2xl font-bold">12</p>
+                <p className="text-2xl font-bold">{reviews.filter(r => (r.overall_rating || 0) >= 4).length}</p>
                 <p className="text-sm text-muted-foreground">Top Performers</p>
               </div>
             </div>
@@ -195,31 +161,41 @@ export default function PerformancePage() {
               </Button>
             </CardHeader>
             <CardContent className="space-y-4">
-              {mockGoals.map((goal) => (
-                <div key={goal.id} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-medium">{goal.title}</h4>
-                        <Badge 
-                          variant="outline" 
-                          className={goal.status === 'completed' 
-                            ? 'bg-chart-2/10 text-chart-2' 
-                            : 'bg-chart-3/10 text-chart-3'
-                          }
-                        >
-                          {goal.status.replace('_', ' ')}
-                        </Badge>
+              {isLoading ? (
+                [...Array(3)].map((_, i) => <Skeleton key={i} className="h-20 w-full" />)
+              ) : goals.length > 0 ? (
+                goals.map((goal) => (
+                  <div key={goal.id} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-medium">{goal.title}</h4>
+                          <Badge 
+                            variant="outline" 
+                            className={goal.status === 'completed' 
+                              ? 'bg-chart-2/10 text-chart-2' 
+                              : 'bg-chart-3/10 text-chart-3'
+                            }
+                          >
+                            {goal.status.replace('_', ' ')}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Target: {goal.target_date}
+                        </p>
                       </div>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Target: {goal.target_date}
-                      </p>
+                      <span className="text-lg font-bold">{goal.progress_percent}%</span>
                     </div>
-                    <span className="text-lg font-bold">{goal.progress}%</span>
+                    <Progress value={goal.progress_percent} className="h-2" />
                   </div>
-                  <Progress value={goal.progress} className="h-2" />
+                ))
+              ) : (
+                <div className="text-center py-12">
+                  <Target className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                  <p className="text-muted-foreground">No goals set yet</p>
+                  <p className="text-sm text-muted-foreground">Click "Add Goal" to create your first objective</p>
                 </div>
-              ))}
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -255,20 +231,20 @@ export default function PerformancePage() {
                     <Skeleton key={i} className="h-20 w-full" />
                   ))}
                 </div>
-              ) : (
+              ) : reviews.length > 0 ? (
                 <div className="space-y-4">
-                  {mockReviews.map((review) => (
+                  {reviews.map((review) => (
                     <div 
                       key={review.id} 
                       className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
                     >
                       <div className="flex items-center gap-4">
                         <Avatar>
-                          <AvatarFallback>{review.employee_name.charAt(0)}</AvatarFallback>
+                          <AvatarFallback>{review.employee_name?.charAt(0) || 'E'}</AvatarFallback>
                         </Avatar>
                         <div>
                           <p className="font-medium">{review.employee_name}</p>
-                          <p className="text-sm text-muted-foreground">{review.period}</p>
+                          <p className="text-sm text-muted-foreground">{review.period || `${review.review_period_start || ''} - ${review.review_period_end || ''}`}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-4">
@@ -282,6 +258,12 @@ export default function PerformancePage() {
                       </div>
                     </div>
                   ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <Users className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                  <p className="text-muted-foreground">No team reviews available</p>
+                  <p className="text-sm text-muted-foreground">Reviews will appear when a cycle starts</p>
                 </div>
               )}
             </CardContent>
@@ -317,36 +299,6 @@ export default function PerformancePage() {
           </Card>
         </TabsContent>
       </Tabs>
-
-      {/* Rating Distribution */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Rating Distribution</CardTitle>
-          <CardDescription>Team performance ratings overview</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {[5, 4, 3, 2, 1].map((rating) => {
-              const counts = [5, 25, 45, 20, 5];
-              const count = counts[5 - rating];
-              return (
-                <div key={rating} className="flex items-center gap-4">
-                  <div className="flex items-center gap-1 w-24">
-                    {getRatingStars(rating)}
-                  </div>
-                  <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-chart-4 rounded-full transition-all"
-                      style={{ width: `${count}%` }}
-                    />
-                  </div>
-                  <span className="text-sm text-muted-foreground w-12 text-right">{count}%</span>
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

@@ -35,67 +35,15 @@ import {
   BarChart3,
   Download
 } from 'lucide-react';
-import { format, differenceInDays, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isWeekend } from 'date-fns';
+import { format, differenceInDays, isWeekend } from 'date-fns';
 import { DateRange } from 'react-day-picker';
-import { 
-  PieChart, 
-  Pie, 
-  Cell, 
-  ResponsiveContainer, 
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip
-} from 'recharts';
-
-// Mock data
-const mockBalances: LeaveBalance[] = [
-  { leave_type: 'Annual Leave', total_days: 20, used_days: 8, remaining_days: 12, pending_days: 2 },
-  { leave_type: 'Sick Leave', total_days: 10, used_days: 3, remaining_days: 7, pending_days: 0 },
-  { leave_type: 'Personal Leave', total_days: 5, used_days: 2, remaining_days: 3, pending_days: 1 },
-  { leave_type: 'Parental Leave', total_days: 90, used_days: 0, remaining_days: 90, pending_days: 0 },
-];
-
-const mockRequests = [
-  { id: '1', leave_type: 'Annual Leave', start_date: '2024-02-15', end_date: '2024-02-20', days: 4, reason: 'Family vacation', status: 'approved' },
-  { id: '2', leave_type: 'Sick Leave', start_date: '2024-01-10', end_date: '2024-01-11', days: 2, reason: 'Medical appointment', status: 'approved' },
-  { id: '3', leave_type: 'Annual Leave', start_date: '2024-03-01', end_date: '2024-03-05', days: 3, reason: 'Personal travel', status: 'pending' },
-];
-
-const mockPendingApprovals = [
-  { id: '1', employee: 'Sarah Johnson', avatar: null, leave_type: 'Annual Leave', start_date: '2024-02-20', end_date: '2024-02-22', days: 3, reason: 'Family event', submitted: '2 days ago' },
-  { id: '2', employee: 'Mike Chen', avatar: null, leave_type: 'Sick Leave', start_date: '2024-02-18', end_date: '2024-02-18', days: 1, reason: 'Doctor visit', submitted: 'Yesterday' },
-  { id: '3', employee: 'Emily Davis', avatar: null, leave_type: 'Personal Leave', start_date: '2024-02-25', end_date: '2024-02-26', days: 2, reason: 'Moving house', submitted: 'Today' },
-];
-
-const mockTeamLeave = [
-  { date: addDays(new Date(), 1), employees: ['Sarah J.', 'Mike C.'] },
-  { date: addDays(new Date(), 3), employees: ['Emily D.'] },
-  { date: addDays(new Date(), 5), employees: ['John S.', 'Lisa W.', 'Tom B.'] },
-];
-
-const leaveUsageData = [
-  { month: 'Jan', used: 45, available: 200 },
-  { month: 'Feb', used: 62, available: 190 },
-  { month: 'Mar', used: 38, available: 175 },
-  { month: 'Apr', used: 55, available: 160 },
-  { month: 'May', used: 70, available: 145 },
-  { month: 'Jun', used: 48, available: 130 },
-];
-
-const leaveTypeColors = [
-  { type: 'Annual Leave', color: 'hsl(var(--chart-1))' },
-  { type: 'Sick Leave', color: 'hsl(var(--chart-2))' },
-  { type: 'Personal Leave', color: 'hsl(var(--chart-3))' },
-  { type: 'Parental Leave', color: 'hsl(var(--chart-4))' },
-];
 
 export default function LeavePage() {
   const { t } = useTenant();
   const { toast } = useToast();
   const { data: balances, isLoading: balanceLoading } = useLeaveBalance();
   const { data: requests, isLoading: requestsLoading, requestLeave, approveLeave } = useLeaveRequests();
+  const { data: pendingRequests } = useLeaveRequests('pending');
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [leaveType, setLeaveType] = useState('');
@@ -105,8 +53,9 @@ export default function LeavePage() {
   const [coveragePerson, setCoveragePerson] = useState('');
   const [calendarMonth, setCalendarMonth] = useState(new Date());
 
-  const displayBalances = balances && balances.length > 0 ? balances : mockBalances;
-  const displayRequests = requests && requests.length > 0 ? requests : mockRequests;
+  const displayBalances = balances || [];
+  const displayRequests = requests || [];
+  const displayPendingApprovals = pendingRequests || [];
 
   const handleSubmitLeave = () => {
     if (!leaveType || !dateRange?.from) {
@@ -343,62 +292,82 @@ export default function LeavePage() {
               </CardContent>
             </Card>
           ))
-        ) : displayBalances.map((balance, index) => (
-          <Card key={balance.leave_type} className="overflow-hidden">
-            <div 
-              className="h-1" 
-              style={{ backgroundColor: leaveTypeColors[index]?.color || 'hsl(var(--primary))' }} 
-            />
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">{balance.leave_type}</span>
-                {balance.pending_days > 0 && (
-                  <Badge variant="outline" className="bg-chart-4/10 text-chart-4 text-xs">
-                    {balance.pending_days} pending
-                  </Badge>
-                )}
-              </div>
-              <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-bold">{balance.remaining_days}</span>
-                <span className="text-muted-foreground text-sm">/ {balance.total_days}</span>
-              </div>
-              <Progress 
-                value={(balance.remaining_days / balance.total_days) * 100} 
-                className="h-2 mt-3"
-              />
-              <p className="text-xs text-muted-foreground mt-2">
-                {balance.used_days} days used this year
-              </p>
+        ) : displayBalances.length > 0 ? (
+          displayBalances.map((balance, index) => {
+            const colors = [
+              'hsl(var(--chart-1))',
+              'hsl(var(--chart-2))',
+              'hsl(var(--chart-3))',
+              'hsl(var(--chart-4))',
+            ];
+            return (
+              <Card key={balance.leave_type} className="overflow-hidden">
+                <div 
+                  className="h-1" 
+                  style={{ backgroundColor: colors[index % colors.length] }} 
+                />
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">{balance.leave_type}</span>
+                    {balance.pending_days > 0 && (
+                      <Badge variant="outline" className="bg-chart-4/10 text-chart-4 text-xs">
+                        {balance.pending_days} pending
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-3xl font-bold">{balance.remaining_days}</span>
+                    <span className="text-muted-foreground text-sm">/ {balance.total_days}</span>
+                  </div>
+                  <Progress 
+                    value={balance.total_days > 0 ? (balance.remaining_days / balance.total_days) * 100 : 0} 
+                    className="h-2 mt-3"
+                  />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {balance.used_days} days used this year
+                  </p>
+                </CardContent>
+              </Card>
+            );
+          })
+        ) : (
+          <Card className="col-span-full">
+            <CardContent className="p-8 text-center">
+              <CalendarDays className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
+              <p className="text-muted-foreground">No leave balances available</p>
+              <p className="text-sm text-muted-foreground">Leave balances will appear once configured</p>
             </CardContent>
           </Card>
-        ))}
+        )}
       </div>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        <Card className="bg-primary/5 border-primary/20">
-          <CardContent className="p-4 text-center">
-            <p className="text-3xl font-bold">{totalDays}</p>
-            <p className="text-sm text-muted-foreground">Total Allowance</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-chart-2/5 border-chart-2/20">
-          <CardContent className="p-4 text-center">
-            <p className="text-3xl font-bold">{usedDays}</p>
-            <p className="text-sm text-muted-foreground">Days Used</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-chart-4/5 border-chart-4/20">
-          <CardContent className="p-4 text-center">
-            <p className="text-3xl font-bold">{pendingDays}</p>
-            <p className="text-sm text-muted-foreground">Pending Approval</p>
-          </CardContent>
-        </Card>
-      </div>
+      {displayBalances.length > 0 && (
+        <div className="grid grid-cols-3 gap-4">
+          <Card className="bg-primary/5 border-primary/20">
+            <CardContent className="p-4 text-center">
+              <p className="text-3xl font-bold">{totalDays}</p>
+              <p className="text-sm text-muted-foreground">Total Allowance</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-chart-2/5 border-chart-2/20">
+            <CardContent className="p-4 text-center">
+              <p className="text-3xl font-bold">{usedDays}</p>
+              <p className="text-sm text-muted-foreground">Days Used</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-chart-4/5 border-chart-4/20">
+            <CardContent className="p-4 text-center">
+              <p className="text-3xl font-bold">{pendingDays}</p>
+              <p className="text-sm text-muted-foreground">Pending Approval</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Tabs */}
       <Tabs defaultValue="requests" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+        <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
           <TabsTrigger value="requests" className="gap-2">
             <FileText className="h-4 w-4" />
             My Requests
@@ -406,19 +375,15 @@ export default function LeavePage() {
           <TabsTrigger value="pending" className="gap-2">
             <AlertCircle className="h-4 w-4" />
             Approvals
-            {mockPendingApprovals.length > 0 && (
+            {displayPendingApprovals.length > 0 && (
               <Badge variant="secondary" className="ml-1 h-5 w-5 p-0 flex items-center justify-center">
-                {mockPendingApprovals.length}
+                {displayPendingApprovals.length}
               </Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="calendar" className="gap-2">
             <CalendarDays className="h-4 w-4" />
             Team Calendar
-          </TabsTrigger>
-          <TabsTrigger value="analytics" className="gap-2">
-            <BarChart3 className="h-4 w-4" />
-            Analytics
           </TabsTrigger>
         </TabsList>
 
@@ -454,7 +419,7 @@ export default function LeavePage() {
                         <TableCell>{request.start_date}</TableCell>
                         <TableCell>{request.end_date}</TableCell>
                         <TableCell>
-                          <Badge variant="secondary">{request.days}</Badge>
+                          <Badge variant="secondary">{request.requested_days}</Badge>
                         </TableCell>
                         <TableCell className="max-w-[200px] truncate">{request.reason}</TableCell>
                         <TableCell>{getStatusBadge(request.status)}</TableCell>
@@ -482,20 +447,20 @@ export default function LeavePage() {
               <CardDescription>Leave requests from your team awaiting your approval</CardDescription>
             </CardHeader>
             <CardContent>
-              {mockPendingApprovals.length > 0 ? (
+              {displayPendingApprovals.length > 0 ? (
                 <div className="space-y-4">
-                  {mockPendingApprovals.map((request) => (
+                  {displayPendingApprovals.map((request) => (
                     <div key={request.id} className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border">
                       <div className="flex items-center gap-4">
                         <Avatar>
                           <AvatarFallback className="bg-primary/10 text-primary">
-                            {request.employee.split(' ').map(n => n[0]).join('')}
+                            {(request.employee_name || 'E').split(' ').map(n => n[0]).join('')}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="font-medium">{request.employee}</p>
+                          <p className="font-medium">{request.employee_name || 'Employee'}</p>
                           <p className="text-sm text-muted-foreground">
-                            {request.leave_type} • {request.days} day{request.days > 1 ? 's' : ''}
+                            {request.leave_type} • {request.requested_days} day{request.requested_days > 1 ? 's' : ''}
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {request.start_date} - {request.end_date}
@@ -505,7 +470,6 @@ export default function LeavePage() {
                       <div className="flex items-center gap-4">
                         <div className="text-right text-sm">
                           <p className="text-muted-foreground">{request.reason}</p>
-                          <p className="text-xs text-muted-foreground">Submitted {request.submitted}</p>
                         </div>
                         <div className="flex gap-2">
                           <Button 
@@ -542,119 +506,20 @@ export default function LeavePage() {
         </TabsContent>
 
         <TabsContent value="calendar">
-          <div className="grid md:grid-cols-3 gap-6">
-            <Card className="md:col-span-2">
-              <CardHeader>
-                <CardTitle>Team Leave Calendar</CardTitle>
-                <CardDescription>See who's on leave and when</CardDescription>
-              </CardHeader>
-              <CardContent className="flex justify-center">
-                <Calendar
-                  mode="single"
-                  month={calendarMonth}
-                  onMonthChange={setCalendarMonth}
-                  className="rounded-md border"
-                  modifiers={{
-                    hasLeave: mockTeamLeave.map(l => l.date),
-                  }}
-                  modifiersStyles={{
-                    hasLeave: { backgroundColor: 'hsl(var(--primary) / 0.1)', fontWeight: 'bold' },
-                  }}
-                />
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Upcoming Leave</CardTitle>
-                <CardDescription>Next 7 days</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[300px]">
-                  <div className="space-y-4">
-                    {mockTeamLeave.map((item, i) => (
-                      <div key={i} className="p-3 bg-muted/50 rounded-lg">
-                        <p className="font-medium text-sm">{format(item.date, 'EEEE, MMM d')}</p>
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {item.employees.map((emp, j) => (
-                            <Badge key={j} variant="secondary">{emp}</Badge>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="analytics">
-          <div className="grid md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Leave Usage Trend</CardTitle>
-                <CardDescription>Monthly leave consumption</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={leaveUsageData}>
-                      <XAxis dataKey="month" />
-                      <YAxis />
-                      <Tooltip />
-                      <Area 
-                        type="monotone" 
-                        dataKey="used" 
-                        stroke="hsl(var(--primary))" 
-                        fill="hsl(var(--primary) / 0.2)" 
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Leave Distribution</CardTitle>
-                <CardDescription>By leave type</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[200px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={displayBalances.map((b, i) => ({ name: b.leave_type, value: b.used_days }))}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={50}
-                        outerRadius={80}
-                        paddingAngle={2}
-                        dataKey="value"
-                      >
-                        {displayBalances.map((_, index) => (
-                          <Cell key={`cell-${index}`} fill={leaveTypeColors[index]?.color || 'hsl(var(--primary))'} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="mt-4 grid grid-cols-2 gap-2">
-                  {displayBalances.map((balance, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <div 
-                        className="h-3 w-3 rounded-full" 
-                        style={{ backgroundColor: leaveTypeColors[i]?.color || 'hsl(var(--primary))' }} 
-                      />
-                      <span className="text-xs text-muted-foreground">{balance.leave_type}</span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Team Leave Calendar</CardTitle>
+              <CardDescription>See who's on leave and when</CardDescription>
+            </CardHeader>
+            <CardContent className="flex justify-center">
+              <Calendar
+                mode="single"
+                month={calendarMonth}
+                onMonthChange={setCalendarMonth}
+                className="rounded-md border"
+              />
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 

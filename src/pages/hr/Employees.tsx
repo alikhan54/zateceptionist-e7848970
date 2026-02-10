@@ -58,106 +58,6 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 
-// Mock employee data
-const mockEmployees = [
-  { 
-    id: '1', 
-    first_name: 'Sarah', 
-    last_name: 'Johnson', 
-    email: 'sarah.johnson@company.com',
-    phone: '+1 555-0101',
-    avatar: null,
-    department: 'Engineering',
-    position: 'Senior Developer',
-    manager: 'John Smith',
-    employment_type: 'Full-time',
-    status: 'active',
-    location: 'San Francisco, CA',
-    hire_date: '2021-03-15',
-    salary: 145000
-  },
-  { 
-    id: '2', 
-    first_name: 'Michael', 
-    last_name: 'Chen', 
-    email: 'michael.chen@company.com',
-    phone: '+1 555-0102',
-    avatar: null,
-    department: 'Sales',
-    position: 'Account Executive',
-    manager: 'Lisa Wang',
-    employment_type: 'Full-time',
-    status: 'active',
-    location: 'New York, NY',
-    hire_date: '2022-01-10',
-    salary: 85000
-  },
-  { 
-    id: '3', 
-    first_name: 'Emily', 
-    last_name: 'Davis', 
-    email: 'emily.davis@company.com',
-    phone: '+1 555-0103',
-    avatar: null,
-    department: 'Marketing',
-    position: 'Marketing Manager',
-    manager: 'Tom Brown',
-    employment_type: 'Full-time',
-    status: 'active',
-    location: 'Chicago, IL',
-    hire_date: '2020-08-20',
-    salary: 95000
-  },
-  { 
-    id: '4', 
-    first_name: 'David', 
-    last_name: 'Kim', 
-    email: 'david.kim@company.com',
-    phone: '+1 555-0104',
-    avatar: null,
-    department: 'Engineering',
-    position: 'DevOps Engineer',
-    manager: 'John Smith',
-    employment_type: 'Full-time',
-    status: 'on_leave',
-    location: 'Remote',
-    hire_date: '2021-11-01',
-    salary: 125000
-  },
-  { 
-    id: '5', 
-    first_name: 'Jessica', 
-    last_name: 'Martinez', 
-    email: 'jessica.m@company.com',
-    phone: '+1 555-0105',
-    avatar: null,
-    department: 'HR',
-    position: 'HR Specialist',
-    manager: 'Kate Wilson',
-    employment_type: 'Full-time',
-    status: 'active',
-    location: 'Austin, TX',
-    hire_date: '2023-02-14',
-    salary: 72000
-  },
-  { 
-    id: '6', 
-    first_name: 'Robert', 
-    last_name: 'Taylor', 
-    email: 'robert.t@company.com',
-    phone: '+1 555-0106',
-    avatar: null,
-    department: 'Finance',
-    position: 'Financial Analyst',
-    manager: 'Alex Green',
-    employment_type: 'Part-time',
-    status: 'active',
-    location: 'Boston, MA',
-    hire_date: '2022-06-30',
-    salary: 65000
-  },
-];
-
 const departments = ['All', 'Engineering', 'Sales', 'Marketing', 'HR', 'Finance', 'Operations'];
 const statuses = ['All', 'Active', 'On Leave', 'Terminated'];
 const employmentTypes = ['All', 'Full-time', 'Part-time', 'Contract', 'Intern'];
@@ -173,22 +73,21 @@ export default function EmployeesPage() {
   const [filterStatus, setFilterStatus] = useState('All');
   const [filterType, setFilterType] = useState('All');
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
-  const [selectedEmployee, setSelectedEmployee] = useState<typeof mockEmployees[0] | null>(null);
+  const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState(1);
   const [profileTab, setProfileTab] = useState('personal');
 
-  // Always use mock data for display consistency
-  const displayEmployees = mockEmployees;
+  const displayEmployees = employees || [];
   
   const filteredEmployees = displayEmployees.filter(emp => {
     const matchesSearch = 
       `${emp.first_name} ${emp.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      emp.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (emp.company_email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       emp.position.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesDept = filterDept === 'All' || emp.department === filterDept;
-    const matchesStatus = filterStatus === 'All' || emp.status.toLowerCase().replace('_', ' ') === filterStatus.toLowerCase();
+    const matchesDept = filterDept === 'All' || emp.department_name === filterDept;
+    const matchesStatus = filterStatus === 'All' || (emp.employment_status || '').toLowerCase().replace('_', ' ') === filterStatus.toLowerCase();
     const matchesType = filterType === 'All' || emp.employment_type === filterType;
     return matchesSearch && matchesDept && matchesStatus && matchesType;
   });
@@ -198,10 +97,11 @@ export default function EmployeesPage() {
       active: 'bg-chart-2/10 text-chart-2 border-chart-2/20',
       on_leave: 'bg-chart-4/10 text-chart-4 border-chart-4/20',
       terminated: 'bg-destructive/10 text-destructive border-destructive/20',
+      suspended: 'bg-muted text-muted-foreground border-muted',
     };
     return (
       <Badge variant="outline" className={styles[status] || styles.active}>
-        {status.replace('_', ' ')}
+        {(status || '').replace('_', ' ')}
       </Badge>
     );
   };
@@ -222,7 +122,7 @@ export default function EmployeesPage() {
     }
   };
 
-  const openProfile = (employee: typeof mockEmployees[0]) => {
+  const openProfile = (employee: any) => {
     setSelectedEmployee(employee);
     setIsProfileOpen(true);
   };
@@ -509,7 +409,7 @@ export default function EmployeesPage() {
                 <CheckCircle2 className="h-5 w-5 text-chart-2" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{displayEmployees.filter(e => e.status === 'active').length}</p>
+                <p className="text-2xl font-bold">{displayEmployees.filter(e => e.employment_status === 'active').length}</p>
                 <p className="text-sm text-muted-foreground">Active</p>
               </div>
             </div>
@@ -522,7 +422,7 @@ export default function EmployeesPage() {
                 <Clock className="h-5 w-5 text-chart-4" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{displayEmployees.filter(e => e.status === 'on_leave').length}</p>
+                <p className="text-2xl font-bold">{displayEmployees.filter(e => e.employment_status === 'on_leave').length}</p>
                 <p className="text-sm text-muted-foreground">On Leave</p>
               </div>
             </div>
@@ -535,7 +435,7 @@ export default function EmployeesPage() {
                 <Building2 className="h-5 w-5 text-chart-3" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{new Set(displayEmployees.map(e => e.department)).size}</p>
+                <p className="text-2xl font-bold">{new Set(displayEmployees.map(e => e.department_name).filter(Boolean)).size}</p>
                 <p className="text-sm text-muted-foreground">Departments</p>
               </div>
             </div>
@@ -655,9 +555,9 @@ export default function EmployeesPage() {
                       onClick={(e) => e.stopPropagation()}
                     />
                     <Avatar className="h-12 w-12">
-                      <AvatarImage src={employee.avatar || undefined} />
+                      <AvatarImage src={employee.avatar_url || undefined} />
                       <AvatarFallback className="bg-primary/10 text-primary">
-                        {employee.first_name[0]}{employee.last_name[0]}
+                        {employee.first_name?.[0]}{employee.last_name?.[0]}
                       </AvatarFallback>
                     </Avatar>
                   </div>
@@ -690,22 +590,22 @@ export default function EmployeesPage() {
                 </div>
                 
                 <div onClick={() => openProfile(employee)}>
-                  <h3 className="font-semibold">{employee.first_name} {employee.last_name}</h3>
+                  <h3 className="font-semibold">{employee.full_name || `${employee.first_name} ${employee.last_name}`}</h3>
                   <p className="text-sm text-muted-foreground">{employee.position}</p>
                   
                   <div className="flex items-center gap-2 mt-3">
-                    <Badge variant="secondary">{employee.department}</Badge>
-                    {getStatusBadge(employee.status)}
+                    <Badge variant="secondary">{employee.department_name || 'Unassigned'}</Badge>
+                    {getStatusBadge(employee.employment_status)}
                   </div>
                   
                   <div className="mt-4 pt-4 border-t space-y-2 text-sm text-muted-foreground">
                     <div className="flex items-center gap-2">
                       <Mail className="h-3.5 w-3.5" />
-                      <span className="truncate">{employee.email}</span>
+                      <span className="truncate">{employee.company_email}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <MapPin className="h-3.5 w-3.5" />
-                      <span>{employee.location}</span>
+                      <Calendar className="h-3.5 w-3.5" />
+                      <span>Joined {employee.date_of_joining}</span>
                     </div>
                   </div>
                 </div>
@@ -720,14 +620,14 @@ export default function EmployeesPage() {
               <TableRow>
                 <TableHead className="w-12">
                   <Checkbox 
-                    checked={selectedEmployees.length === filteredEmployees.length}
+                    checked={selectedEmployees.length === filteredEmployees.length && filteredEmployees.length > 0}
                     onCheckedChange={handleSelectAll}
                   />
                 </TableHead>
                 <TableHead>{t('staff')}</TableHead>
                 <TableHead>Department</TableHead>
                 <TableHead>Position</TableHead>
-                <TableHead>Location</TableHead>
+                <TableHead>Joined</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead></TableHead>
               </TableRow>
@@ -745,19 +645,19 @@ export default function EmployeesPage() {
                     <div className="flex items-center gap-3">
                       <Avatar className="h-9 w-9">
                         <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                          {employee.first_name[0]}{employee.last_name[0]}
+                          {employee.first_name?.[0]}{employee.last_name?.[0]}
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-medium">{employee.first_name} {employee.last_name}</p>
-                        <p className="text-xs text-muted-foreground">{employee.email}</p>
+                        <p className="font-medium">{employee.full_name || `${employee.first_name} ${employee.last_name}`}</p>
+                        <p className="text-xs text-muted-foreground">{employee.company_email}</p>
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>{employee.department}</TableCell>
+                  <TableCell>{employee.department_name || 'Unassigned'}</TableCell>
                   <TableCell>{employee.position}</TableCell>
-                  <TableCell>{employee.location}</TableCell>
-                  <TableCell>{getStatusBadge(employee.status)}</TableCell>
+                  <TableCell>{employee.date_of_joining}</TableCell>
+                  <TableCell>{getStatusBadge(employee.employment_status)}</TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -793,17 +693,17 @@ export default function EmployeesPage() {
                 <div className="flex items-center gap-4">
                   <Avatar className="h-16 w-16">
                     <AvatarFallback className="bg-primary/10 text-primary text-xl">
-                      {selectedEmployee.first_name[0]}{selectedEmployee.last_name[0]}
+                      {selectedEmployee.first_name?.[0]}{selectedEmployee.last_name?.[0]}
                     </AvatarFallback>
                   </Avatar>
                   <div>
                     <SheetTitle className="text-xl">
-                      {selectedEmployee.first_name} {selectedEmployee.last_name}
+                      {selectedEmployee.full_name || `${selectedEmployee.first_name} ${selectedEmployee.last_name}`}
                     </SheetTitle>
                     <SheetDescription>{selectedEmployee.position}</SheetDescription>
                     <div className="flex items-center gap-2 mt-1">
-                      {getStatusBadge(selectedEmployee.status)}
-                      <Badge variant="secondary">{selectedEmployee.department}</Badge>
+                      {getStatusBadge(selectedEmployee.employment_status)}
+                      <Badge variant="secondary">{selectedEmployee.department_name || 'Unassigned'}</Badge>
                     </div>
                   </div>
                 </div>
@@ -837,21 +737,14 @@ export default function EmployeesPage() {
                       <Mail className="h-4 w-4 text-muted-foreground" />
                       <div>
                         <p className="text-xs text-muted-foreground">Email</p>
-                        <p className="text-sm">{selectedEmployee.email}</p>
+                        <p className="text-sm">{selectedEmployee.company_email}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                       <Phone className="h-4 w-4 text-muted-foreground" />
                       <div>
                         <p className="text-xs text-muted-foreground">Phone</p>
-                        <p className="text-sm">{selectedEmployee.phone}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                      <MapPin className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Location</p>
-                        <p className="text-sm">{selectedEmployee.location}</p>
+                        <p className="text-sm">{selectedEmployee.phone || selectedEmployee.mobile || '-'}</p>
                       </div>
                     </div>
                   </div>
@@ -863,7 +756,7 @@ export default function EmployeesPage() {
                       <Building2 className="h-4 w-4 text-muted-foreground" />
                       <div>
                         <p className="text-xs text-muted-foreground">Department</p>
-                        <p className="text-sm">{selectedEmployee.department}</p>
+                        <p className="text-sm">{selectedEmployee.department_name || 'Unassigned'}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
@@ -874,24 +767,17 @@ export default function EmployeesPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                      <UserCircle className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Manager</p>
-                        <p className="text-sm">{selectedEmployee.manager}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
                       <div>
-                        <p className="text-xs text-muted-foreground">Hire Date</p>
-                        <p className="text-sm">{selectedEmployee.hire_date}</p>
+                        <p className="text-xs text-muted-foreground">Date of Joining</p>
+                        <p className="text-sm">{selectedEmployee.date_of_joining}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                       <DollarSign className="h-4 w-4 text-muted-foreground" />
                       <div>
                         <p className="text-xs text-muted-foreground">Salary</p>
-                        <p className="text-sm">{formatCurrency(selectedEmployee.salary)}/year</p>
+                        <p className="text-sm">{selectedEmployee.salary ? formatCurrency(selectedEmployee.salary) + '/year' : '-'}</p>
                       </div>
                     </div>
                   </div>

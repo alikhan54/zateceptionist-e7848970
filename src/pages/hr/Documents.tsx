@@ -41,17 +41,7 @@ export default function DocumentsPage() {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const { data: documents, isLoading, uploadDocument } = useHRDocuments(selectedCategory !== 'all' ? selectedCategory : undefined);
 
-  // Mock documents
-  const mockDocuments = [
-    { id: '1', name: 'Employee Handbook 2024', category: 'policy', file_type: 'pdf', uploaded_by: 'HR Admin', uploaded_at: '2024-01-01', acknowledged: true, version: '2.0' },
-    { id: '2', name: 'Leave Request Form', category: 'template', file_type: 'docx', uploaded_by: 'HR Admin', uploaded_at: '2024-01-05', acknowledged: false, version: '1.0' },
-    { id: '3', name: 'Performance Review Template', category: 'template', file_type: 'xlsx', uploaded_by: 'HR Admin', uploaded_at: '2024-01-10', acknowledged: false, version: '1.2' },
-    { id: '4', name: 'IT Security Policy', category: 'policy', file_type: 'pdf', uploaded_by: 'IT Admin', uploaded_at: '2024-01-15', acknowledged: false, version: '3.1' },
-    { id: '5', name: 'Employment Contract', category: 'contract', file_type: 'pdf', uploaded_by: 'HR Admin', uploaded_at: '2023-12-01', acknowledged: true, version: '1.0' },
-    { id: '6', name: 'Tax Declaration Form', category: 'personal', file_type: 'pdf', uploaded_by: 'John Doe', uploaded_at: '2024-01-20', acknowledged: false, version: '1.0' },
-  ];
-
-  const displayDocuments = documents && documents.length > 0 ? documents : mockDocuments;
+  const displayDocuments = documents || [];
   const filteredDocuments = displayDocuments.filter(doc => 
     (selectedCategory === 'all' || doc.category === selectedCategory) &&
     doc.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -254,7 +244,7 @@ export default function DocumentsPage() {
                     <TableCell>{doc.uploaded_by}</TableCell>
                     <TableCell className="text-muted-foreground">{doc.uploaded_at}</TableCell>
                     <TableCell>
-                      <Badge variant="secondary">v{doc.version}</Badge>
+                      <Badge variant="secondary">v{doc.version || '1.0'}</Badge>
                     </TableCell>
                     <TableCell>
                       {doc.acknowledged ? (
@@ -303,6 +293,12 @@ export default function DocumentsPage() {
               <p className="text-sm text-muted-foreground">
                 {searchQuery ? 'Try a different search term' : 'Upload your first document to get started'}
               </p>
+              {!searchQuery && (
+                <Button className="mt-4" onClick={() => setIsUploadOpen(true)}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload Document
+                </Button>
+              )}
             </div>
           )}
         </CardContent>

@@ -50,17 +50,7 @@ export default function DepartmentsPage() {
     }).format(amount);
   };
 
-  // Mock departments for display
-  const mockDepartments = [
-    { id: '1', name: 'Engineering', code: 'ENG', manager_name: 'John Smith', employee_count: 25, budget: 500000 },
-    { id: '2', name: 'Sales', code: 'SLS', manager_name: 'Sarah Johnson', employee_count: 15, budget: 300000 },
-    { id: '3', name: 'Marketing', code: 'MKT', manager_name: 'Mike Brown', employee_count: 10, budget: 200000 },
-    { id: '4', name: 'Human Resources', code: 'HR', manager_name: 'Emily Davis', employee_count: 5, budget: 100000 },
-    { id: '5', name: 'Finance', code: 'FIN', manager_name: 'Robert Wilson', employee_count: 8, budget: 150000 },
-    { id: '6', name: 'Operations', code: 'OPS', manager_name: 'Lisa Anderson', employee_count: 12, budget: 250000 },
-  ];
-
-  const displayDepartments = departments && departments.length > 0 ? departments : mockDepartments;
+  const displayDepartments = departments || [];
 
   return (
     <div className="space-y-6">
@@ -170,7 +160,7 @@ export default function DepartmentsPage() {
                 <UserCircle className="h-5 w-5 text-chart-3" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{displayDepartments.length}</p>
+                <p className="text-2xl font-bold">{displayDepartments.filter(d => d.manager_name).length}</p>
                 <p className="text-sm text-muted-foreground">Managers</p>
               </div>
             </div>
@@ -221,7 +211,7 @@ export default function DepartmentsPage() {
                 </Card>
               ))}
             </div>
-          ) : (
+          ) : displayDepartments.length > 0 ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {displayDepartments.map((dept) => (
                 <Card key={dept.id} className="hover:shadow-md transition-shadow">
@@ -277,6 +267,20 @@ export default function DepartmentsPage() {
                 </Card>
               ))}
             </div>
+          ) : (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <Building2 className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                <p className="text-lg font-medium text-muted-foreground">No departments configured yet</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Click "Add Department" to get started
+                </p>
+                <Button className="mt-4" onClick={() => setIsDialogOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Department
+                </Button>
+              </CardContent>
+            </Card>
           )}
         </TabsContent>
 
@@ -287,87 +291,98 @@ export default function DepartmentsPage() {
               <CardDescription>Visual representation of your organization structure</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col items-center py-8">
-                {/* CEO/Top Level */}
-                <div className="p-4 bg-primary/10 rounded-xl border-2 border-primary/20 text-center mb-4">
-                  <p className="font-semibold">CEO</p>
-                  <p className="text-sm text-muted-foreground">Executive</p>
-                </div>
-                
-                {/* Connector */}
-                <div className="w-px h-8 bg-border" />
-                <div className="w-3/4 h-px bg-border" />
-                
-                {/* Departments */}
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mt-4 w-full">
-                  {displayDepartments.map((dept) => (
-                    <div key={dept.id} className="flex flex-col items-center">
-                      <div className="w-px h-4 bg-border" />
-                      <div className="p-3 bg-muted rounded-lg text-center w-full">
-                        <p className="font-medium text-sm">{dept.name}</p>
-                        <p className="text-xs text-muted-foreground">{dept.employee_count} people</p>
+              {displayDepartments.length > 0 ? (
+                <div className="flex flex-col items-center py-8">
+                  <div className="p-4 bg-primary/10 rounded-xl border-2 border-primary/20 text-center mb-4">
+                    <p className="font-semibold">CEO</p>
+                    <p className="text-sm text-muted-foreground">Executive</p>
+                  </div>
+                  <div className="w-px h-8 bg-border" />
+                  <div className="w-3/4 h-px bg-border" />
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mt-4 w-full">
+                    {displayDepartments.map((dept) => (
+                      <div key={dept.id} className="flex flex-col items-center">
+                        <div className="w-px h-4 bg-border" />
+                        <div className="p-3 bg-muted rounded-lg text-center w-full">
+                          <p className="font-medium text-sm">{dept.name}</p>
+                          <p className="text-xs text-muted-foreground">{dept.employee_count} people</p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="text-center py-12">
+                  <GitBranch className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                  <p className="text-muted-foreground">No departments to display</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="analytics">
-          <div className="grid md:grid-cols-2 gap-4">
+          {displayDepartments.length > 0 ? (
+            <div className="grid md:grid-cols-2 gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Headcount by Department</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {displayDepartments.map((dept) => {
+                    const maxCount = Math.max(...displayDepartments.map(d => d.employee_count), 1);
+                    const percentage = (dept.employee_count / maxCount) * 100;
+                    return (
+                      <div key={dept.id} className="space-y-1">
+                        <div className="flex items-center justify-between text-sm">
+                          <span>{dept.name}</span>
+                          <span className="font-medium">{dept.employee_count}</span>
+                        </div>
+                        <div className="h-2 bg-muted rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-primary rounded-full transition-all"
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Budget Allocation</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {displayDepartments.map((dept) => {
+                    const totalBudget = displayDepartments.reduce((acc, d) => acc + (d.budget || 0), 0) || 1;
+                    const percentage = ((dept.budget || 0) / totalBudget) * 100;
+                    return (
+                      <div key={dept.id} className="space-y-1">
+                        <div className="flex items-center justify-between text-sm">
+                          <span>{dept.name}</span>
+                          <span className="font-medium">{formatCurrency(dept.budget || 0)}</span>
+                        </div>
+                        <div className="h-2 bg-muted rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-chart-2 rounded-full transition-all"
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            </div>
+          ) : (
             <Card>
-              <CardHeader>
-                <CardTitle>Headcount by Department</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {displayDepartments.map((dept) => {
-                  const maxCount = Math.max(...displayDepartments.map(d => d.employee_count));
-                  const percentage = (dept.employee_count / maxCount) * 100;
-                  return (
-                    <div key={dept.id} className="space-y-1">
-                      <div className="flex items-center justify-between text-sm">
-                        <span>{dept.name}</span>
-                        <span className="font-medium">{dept.employee_count}</span>
-                      </div>
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-primary rounded-full transition-all"
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
+              <CardContent className="p-12 text-center">
+                <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                <p className="text-muted-foreground">No data available for analytics</p>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Budget Allocation</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {displayDepartments.map((dept) => {
-                  const totalBudget = displayDepartments.reduce((acc, d) => acc + (d.budget || 0), 0);
-                  const percentage = ((dept.budget || 0) / totalBudget) * 100;
-                  return (
-                    <div key={dept.id} className="space-y-1">
-                      <div className="flex items-center justify-between text-sm">
-                        <span>{dept.name}</span>
-                        <span className="font-medium">{formatCurrency(dept.budget || 0)}</span>
-                      </div>
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-chart-2 rounded-full transition-all"
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </CardContent>
-            </Card>
-          </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>
