@@ -134,8 +134,8 @@ export default function EmailBuilder() {
         name: emailSubject || 'Untitled Email',
         subject: emailSubject,
         category: 'general',
-        html_content: JSON.stringify(emailBlocks),
-        available_tokens: personalizationTokens.map(t => t.token),
+        body_html: JSON.stringify(emailBlocks),
+        variables: Object.fromEntries(personalizationTokens.map(t => [t.token, t.label])),
       });
     } catch {}
     setIsSaving(false);
@@ -148,7 +148,7 @@ export default function EmailBuilder() {
         name: newTemplateName,
         subject: newTemplateSubject,
         category: newTemplateCategory,
-        html_content: '',
+        body_html: '',
       });
       setIsCreateTemplateOpen(false);
       setNewTemplateName('');
