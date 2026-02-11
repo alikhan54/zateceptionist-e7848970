@@ -59,11 +59,11 @@ export const WEBHOOKS = {
   HR_BATCH_IMPORT: "/hr-batch-import",
 
   // HR - Recruitment Webhooks
-  HR_TRIGGER_SOURCING: "/hr-trigger-sourcing",
-  HR_TRIGGER_AI_INTERVIEW: "/hr-trigger-ai-interview",
-  HR_APPROVE_OUTREACH: "/hr-approve-outreach",
+  HR_TRIGGER_SOURCING: "/hr/trigger-sourcing",
+  HR_TRIGGER_AI_INTERVIEW: "/hr/ai-interview/trigger",
+  HR_APPROVE_OUTREACH: "/hr/approve-outreach",
   HR_RECRUITMENT_OUTREACH: "/hr-recruitment-outreach",
-  HR_SOURCING_STATUS: "/hr-sourcing-status",
+  HR_SOURCING_STATUS: "/hr/sourcing-status",
 
   // Voice
   VAPI_OUTBOUND: "/vapi/outbound-call",
