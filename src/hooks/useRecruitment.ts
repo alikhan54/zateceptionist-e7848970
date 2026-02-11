@@ -1,9 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useTenant } from '@/contexts/TenantContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useTenant } from '@/contexts/TenantContext';
+import { callWebhook } from '@/lib/api/webhooks';
 import { toast } from 'sonner';
-
-const WEBHOOK_BASE = 'https://webhooks.zatesystems.com/webhook';
 
 // ========================
 // TYPES
@@ -79,7 +78,7 @@ export interface JobApplication {
   updated_at: string;
   // Joined fields
   candidate?: Candidate;
-  job?: JobRequisition;
+  requisition?: Pick<JobRequisition, 'id' | 'job_title' | 'department_id' | 'location_city' | 'employment_type'>;
 }
 
 export interface Candidate {
@@ -127,6 +126,9 @@ export interface AIInterview {
   scheduled_at: string | null;
   completed_at: string | null;
   created_at: string;
+  // Joined fields
+  candidate?: Pick<Candidate, 'id' | 'first_name' | 'last_name' | 'email'>;
+  requisition?: Pick<JobRequisition, 'id' | 'job_title'>;
 }
 
 export interface SourcingRun {
@@ -150,20 +152,21 @@ export interface SourcingRun {
 }
 
 // ========================
-// HOOKS
+// QUERY HOOKS
 // ========================
 
 export function useJobRequisitions(status?: string) {
-  const { tenantId } = useTenant();
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
 
   return useQuery({
-    queryKey: ['job-requisitions', tenantId, status],
+    queryKey: ['hr_job_requisitions', tenantUuid, status],
     queryFn: async () => {
-      if (!tenantId) return [];
+      if (!tenantUuid) return [];
       let query = supabase
         .from('hr_job_requisitions')
         .select('*')
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', tenantUuid)
         .order('created_at', { ascending: false });
 
       if (status) {
@@ -174,17 +177,18 @@ export function useJobRequisitions(status?: string) {
       if (error) throw error;
       return (data || []) as JobRequisition[];
     },
-    enabled: !!tenantId,
+    enabled: !!tenantUuid,
   });
 }
 
 export function useJobApplications(jobRequisitionId?: string) {
-  const { tenantId } = useTenant();
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
 
   return useQuery({
-    queryKey: ['job-applications', tenantId, jobRequisitionId],
+    queryKey: ['hr_job_applications', tenantUuid, jobRequisitionId],
     queryFn: async () => {
-      if (!tenantId) return [];
+      if (!tenantUuid) return [];
       let query = supabase
         .from('hr_job_applications')
         .select(`
@@ -195,11 +199,11 @@ export function useJobApplications(jobRequisitionId?: string) {
             total_experience_years, skills, linkedin_url, resume_url,
             source, enrichment_status, match_score, contact_strategy, status
           ),
-          job:hr_job_requisitions(
+          requisition:hr_job_requisitions(
             id, job_title, department_id, location_city, employment_type
           )
         `)
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', tenantUuid)
         .order('ai_match_score', { ascending: false, nullsFirst: false });
 
       if (jobRequisitionId) {
@@ -210,41 +214,47 @@ export function useJobApplications(jobRequisitionId?: string) {
       if (error) throw error;
       return (data || []) as JobApplication[];
     },
-    enabled: !!tenantId,
+    enabled: !!tenantUuid,
   });
 }
 
 export function useCandidates() {
-  const { tenantId } = useTenant();
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
 
   return useQuery({
-    queryKey: ['hr-candidates', tenantId],
+    queryKey: ['hr_candidates', tenantUuid],
     queryFn: async () => {
-      if (!tenantId) return [];
+      if (!tenantUuid) return [];
       const { data, error } = await supabase
         .from('hr_candidates')
         .select('*')
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', tenantUuid)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       return (data || []) as Candidate[];
     },
-    enabled: !!tenantId,
+    enabled: !!tenantUuid,
   });
 }
 
 export function useAIInterviews(applicationId?: string) {
-  const { tenantId } = useTenant();
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
 
   return useQuery({
-    queryKey: ['ai-interviews', tenantId, applicationId],
+    queryKey: ['hr_ai_interviews', tenantUuid, applicationId],
     queryFn: async () => {
-      if (!tenantId) return [];
+      if (!tenantUuid) return [];
       let query = supabase
         .from('hr_ai_interviews')
-        .select('*')
-        .eq('tenant_id', tenantId)
+        .select(`
+          *,
+          candidate:hr_candidates(id, first_name, last_name, email),
+          requisition:hr_job_requisitions(id, job_title)
+        `)
+        .eq('tenant_id', tenantUuid)
         .order('created_at', { ascending: false });
 
       if (applicationId) {
@@ -255,21 +265,22 @@ export function useAIInterviews(applicationId?: string) {
       if (error) throw error;
       return (data || []) as AIInterview[];
     },
-    enabled: !!tenantId,
+    enabled: !!tenantUuid,
   });
 }
 
 export function useSourcingRuns(jobRequisitionId?: string) {
-  const { tenantId } = useTenant();
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
 
   return useQuery({
-    queryKey: ['sourcing-runs', tenantId, jobRequisitionId],
+    queryKey: ['hr_sourcing_runs', tenantUuid, jobRequisitionId],
     queryFn: async () => {
-      if (!tenantId) return [];
+      if (!tenantUuid) return [];
       let query = supabase
         .from('hr_sourcing_runs')
         .select('*')
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', tenantUuid)
         .order('created_at', { ascending: false })
         .limit(20);
 
@@ -281,27 +292,63 @@ export function useSourcingRuns(jobRequisitionId?: string) {
       if (error) throw error;
       return (data || []) as SourcingRun[];
     },
-    enabled: !!tenantId,
+    enabled: !!tenantUuid,
   });
 }
 
 export function useInterviewSchedules() {
-  const { tenantId } = useTenant();
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
 
   return useQuery({
-    queryKey: ['interview-schedules', tenantId],
+    queryKey: ['hr_interview_schedules', tenantUuid],
     queryFn: async () => {
-      if (!tenantId) return [];
+      if (!tenantUuid) return [];
       const { data, error } = await supabase
         .from('hr_interview_schedules')
         .select('*')
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', tenantUuid)
         .order('scheduled_date', { ascending: true });
 
       if (error) throw error;
       return data || [];
     },
-    enabled: !!tenantId,
+    enabled: !!tenantUuid,
+  });
+}
+
+// ========================
+// STATS
+// ========================
+
+export function useRecruitmentStats() {
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
+
+  return useQuery({
+    queryKey: ['recruitment_stats', tenantUuid],
+    queryFn: async () => {
+      if (!tenantUuid) return { openJobs: 0, totalCandidates: 0, aiInterviews: 0, offersPending: 0 };
+
+      const [jobsRes, candidatesRes, interviewsRes, offersRes] = await Promise.all([
+        supabase.from('hr_job_requisitions').select('id', { count: 'exact', head: true })
+          .eq('tenant_id', tenantUuid).in('status', ['open', 'on_hold']),
+        supabase.from('hr_candidates').select('id', { count: 'exact', head: true })
+          .eq('tenant_id', tenantUuid),
+        supabase.from('hr_ai_interviews').select('id', { count: 'exact', head: true })
+          .eq('tenant_id', tenantUuid).eq('status', 'completed'),
+        supabase.from('hr_job_applications').select('id', { count: 'exact', head: true })
+          .eq('tenant_id', tenantUuid).eq('stage', 'offered'),
+      ]);
+
+      return {
+        openJobs: jobsRes.count || 0,
+        totalCandidates: candidatesRes.count || 0,
+        aiInterviews: interviewsRes.count || 0,
+        offersPending: offersRes.count || 0,
+      };
+    },
+    enabled: !!tenantUuid,
   });
 }
 
@@ -310,45 +357,46 @@ export function useInterviewSchedules() {
 // ========================
 
 export function useCreateJob() {
-  const { tenantId } = useTenant();
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: Partial<JobRequisition>) => {
-      if (!tenantId) throw new Error('No tenant');
+    mutationFn: async (jobData: Partial<JobRequisition>) => {
+      if (!tenantUuid) throw new Error('No tenant');
       const reqNumber = `REQ-${Date.now().toString(36).toUpperCase()}`;
-      const { data: result, error } = await supabase
+      const { data, error } = await supabase
         .from('hr_job_requisitions')
         .insert({
-          tenant_id: tenantId,
+          tenant_id: tenantUuid,
           requisition_number: reqNumber,
-          job_title: data.job_title,
-          job_description: data.job_description,
-          responsibilities: data.responsibilities,
-          required_skills: data.required_skills,
-          required_experience_years: data.required_experience_years,
-          salary_min: data.salary_min,
-          salary_max: data.salary_max,
-          salary_currency: data.salary_currency || 'AED',
-          employment_type: data.employment_type || 'full_time',
-          work_location: data.work_location || 'office',
-          location_city: data.location_city,
-          location_country: data.location_country || 'UAE',
-          number_of_openings: data.number_of_openings || 1,
+          job_title: jobData.job_title,
+          job_description: jobData.job_description,
+          responsibilities: jobData.responsibilities,
+          required_skills: jobData.required_skills,
+          required_experience_years: jobData.required_experience_years,
+          salary_min: jobData.salary_min,
+          salary_max: jobData.salary_max,
+          salary_currency: jobData.salary_currency || 'AED',
+          employment_type: jobData.employment_type || 'full_time',
+          work_location: jobData.work_location || 'office',
+          location_city: jobData.location_city,
+          location_country: jobData.location_country || 'UAE',
+          number_of_openings: jobData.number_of_openings || 1,
           status: 'open',
-          auto_source_enabled: data.auto_source_enabled ?? true,
-          min_match_score: data.min_match_score || 50,
-          search_keywords: data.search_keywords,
+          auto_source_enabled: jobData.auto_source_enabled ?? true,
+          min_match_score: jobData.min_match_score || 50,
+          search_keywords: jobData.search_keywords,
         })
         .select()
         .single();
 
       if (error) throw error;
-      return result;
+      return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['job-requisitions'] });
-      queryClient.invalidateQueries({ queryKey: ['recruitment-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['hr_job_requisitions'] });
+      queryClient.invalidateQueries({ queryKey: ['recruitment_stats'] });
       toast.success('Job posted successfully');
     },
     onError: () => toast.error('Failed to create job posting'),
@@ -356,22 +404,23 @@ export function useCreateJob() {
 }
 
 export function useUpdateApplicationStage() {
-  const { tenantId } = useTenant();
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ applicationId, stage }: { applicationId: string; stage: string }) => {
-      if (!tenantId) throw new Error('No tenant');
+      if (!tenantUuid) throw new Error('No tenant');
       const { error } = await supabase
         .from('hr_job_applications')
         .update({ stage, stage_updated_at: new Date().toISOString() })
         .eq('id', applicationId)
-        .eq('tenant_id', tenantId);
+        .eq('tenant_id', tenantUuid);
 
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['job-applications'] });
+      queryClient.invalidateQueries({ queryKey: ['hr_job_applications'] });
       toast.success('Stage updated');
     },
     onError: () => toast.error('Failed to update stage'),
@@ -385,21 +434,14 @@ export function useTriggerSourcing() {
   return useMutation({
     mutationFn: async (jobRequisitionId: string) => {
       if (!tenantId) throw new Error('No tenant');
-      const response = await fetch(`${WEBHOOK_BASE}/hr-ai-source`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tenant_id: tenantId,
-          job_requisition_id: jobRequisitionId,
-          trigger_type: 'manual',
-        }),
-      });
-      if (!response.ok) throw new Error('Sourcing trigger failed');
-      return response.json();
+      return callWebhook('/hr/trigger-sourcing', {
+        job_requisition_id: jobRequisitionId,
+        trigger_type: 'manual',
+      }, tenantId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['job-requisitions'] });
-      queryClient.invalidateQueries({ queryKey: ['sourcing-runs'] });
+      queryClient.invalidateQueries({ queryKey: ['hr_job_requisitions'] });
+      queryClient.invalidateQueries({ queryKey: ['hr_sourcing_runs'] });
       toast.success('AI sourcing started');
     },
     onError: () => toast.error('Failed to trigger AI sourcing'),
@@ -417,59 +459,18 @@ export function useTriggerAIInterview() {
       jobRequisitionId: string;
     }) => {
       if (!tenantId) throw new Error('No tenant');
-      const response = await fetch(`${WEBHOOK_BASE}/hr-ai-interview`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tenant_id: tenantId,
-          application_id: applicationId,
-          candidate_id: candidateId,
-          job_requisition_id: jobRequisitionId,
-          interview_type: 'screening',
-        }),
-      });
-      if (!response.ok) throw new Error('Interview trigger failed');
-      return response.json();
+      return callWebhook('/hr/ai-interview/trigger', {
+        application_id: applicationId,
+        candidate_id: candidateId,
+        job_requisition_id: jobRequisitionId,
+        interview_type: 'screening',
+      }, tenantId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ai-interviews'] });
-      queryClient.invalidateQueries({ queryKey: ['job-applications'] });
+      queryClient.invalidateQueries({ queryKey: ['hr_ai_interviews'] });
+      queryClient.invalidateQueries({ queryKey: ['hr_job_applications'] });
       toast.success('AI interview scheduled');
     },
     onError: () => toast.error('Failed to schedule AI interview'),
-  });
-}
-
-// ========================
-// STATS HOOK
-// ========================
-
-export function useRecruitmentStats() {
-  const { tenantId } = useTenant();
-
-  return useQuery({
-    queryKey: ['recruitment-stats', tenantId],
-    queryFn: async () => {
-      if (!tenantId) return { openJobs: 0, totalCandidates: 0, aiInterviews: 0, offersPending: 0 };
-
-      const [jobsRes, candidatesRes, interviewsRes, offersRes] = await Promise.all([
-        supabase.from('hr_job_requisitions').select('id', { count: 'exact', head: true })
-          .eq('tenant_id', tenantId).in('status', ['open', 'on_hold']),
-        supabase.from('hr_candidates').select('id', { count: 'exact', head: true })
-          .eq('tenant_id', tenantId),
-        supabase.from('hr_ai_interviews').select('id', { count: 'exact', head: true })
-          .eq('tenant_id', tenantId).eq('status', 'completed'),
-        supabase.from('hr_job_applications').select('id', { count: 'exact', head: true })
-          .eq('tenant_id', tenantId).eq('stage', 'offered'),
-      ]);
-
-      return {
-        openJobs: jobsRes.count || 0,
-        totalCandidates: candidatesRes.count || 0,
-        aiInterviews: interviewsRes.count || 0,
-        offersPending: offersRes.count || 0,
-      };
-    },
-    enabled: !!tenantId,
   });
 }
