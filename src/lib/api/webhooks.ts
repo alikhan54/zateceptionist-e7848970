@@ -51,6 +51,13 @@ export const WEBHOOKS = {
   HR_UPDATE_EMPLOYEE: "/hr/employee/update",
   HR_TERMINATE_EMPLOYEE: "/hr/employee/terminate",
 
+  // HR - Recruitment AI
+  HR_AI_SOURCE: "/hr-ai-source",
+  HR_AI_INTERVIEW: "/hr-ai-interview",
+  HR_AI_INTERVIEW_CALLBACK: "/hr-ai-interview-callback",
+  HR_OUTREACH_APPROVE: "/hr-outreach-approve",
+  HR_BATCH_IMPORT: "/hr-batch-import",
+
   // Voice
   VAPI_OUTBOUND: "/vapi/outbound-call",
   VAPI_CONFIG: "/vapi/config",
