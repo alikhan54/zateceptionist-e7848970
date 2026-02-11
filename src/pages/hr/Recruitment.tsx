@@ -690,8 +690,8 @@ export default function RecruitmentPage() {
                                 </Avatar>
                                 <span className="font-medium text-sm truncate">{getCandidateName(app)}</span>
                               </div>
-                              {app.job && (
-                                <p className="text-xs text-muted-foreground mb-2 truncate">{app.job.job_title}</p>
+                              {app.requisition && (
+                                <p className="text-xs text-muted-foreground mb-2 truncate">{app.requisition.job_title}</p>
                               )}
                               <div className="flex items-center justify-between">
                                 {app.ai_match_score != null ? (
