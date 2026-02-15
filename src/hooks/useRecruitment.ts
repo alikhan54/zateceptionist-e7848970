@@ -306,9 +306,13 @@ export function useInterviewSchedules() {
       if (!tenantUuid) return [];
       const { data, error } = await supabase
         .from('hr_interview_schedules')
-        .select('*')
+        .select(`
+          *,
+          candidate:hr_candidates(id, first_name, last_name, full_name, email),
+          application:hr_job_applications(id, job_requisition_id)
+        `)
         .eq('tenant_id', tenantUuid)
-        .order('scheduled_date', { ascending: true });
+        .order('scheduled_at', { ascending: true });
 
       if (error) throw error;
       return data || [];

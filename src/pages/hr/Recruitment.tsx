@@ -774,18 +774,18 @@ export default function RecruitmentPage() {
                           <Video className="h-6 w-6 text-chart-3" />
                         </div>
                         <div>
-                          <p className="font-medium">{(interview.candidate_name as string) || 'Candidate'}</p>
+                          <p className="font-medium">{(interview as any).candidate?.full_name || `${(interview as any).candidate?.first_name || ''} ${(interview as any).candidate?.last_name || ''}`.trim() || 'Candidate'}</p>
                           <p className="text-sm text-muted-foreground">
                             {(interview.interview_type as string) || 'Interview'}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-6">
-                        {interview.scheduled_date && (
+                        {interview.scheduled_at && (
                           <div className="text-right">
-                            <p className="font-medium">{format(new Date(interview.scheduled_date as string), 'MMM d, yyyy')}</p>
+                            <p className="font-medium">{format(new Date(interview.scheduled_at as string), 'MMM d, yyyy')}</p>
                             <p className="text-sm text-muted-foreground">
-                              {(interview.scheduled_time as string) || ''}
+                              {format(new Date(interview.scheduled_at as string), 'h:mm a')}
                             </p>
                           </div>
                         )}
