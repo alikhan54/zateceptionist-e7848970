@@ -482,9 +482,9 @@ export default function CompanySetup() {
 
         // Channel Configuration from Step 4
         channels: {
+          // NOTE: has_email is NOT set here — only when SMTP creds are configured
           has_whatsapp: channels.whatsapp,
           has_voice: channels.voiceAI,
-          has_email: channels.email,
           has_instagram: channels.instagram,
           has_facebook: channels.facebook,
           has_webchat: channels.webChat,
@@ -544,8 +544,8 @@ export default function CompanySetup() {
           closing_time: aiConfig.workingHoursEnd || undefined,
 
           // Save channel preferences
+          // NOTE: has_email is NOT set here — only when SMTP creds are configured
           has_whatsapp: channels.whatsapp,
-          has_email: channels.email,
           has_voice: channels.voiceAI,
           has_instagram: channels.instagram,
           has_facebook: channels.facebook,
