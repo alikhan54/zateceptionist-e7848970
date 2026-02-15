@@ -143,6 +143,8 @@ const CHANNELS: ChannelConfig[] = [
       { key: "smtp_port", label: "SMTP Port", placeholder: "587", type: "number" },
       { key: "smtp_user", label: "SMTP Username", placeholder: "user@example.com", type: "text" },
       { key: "smtp_pass", label: "SMTP Password", placeholder: "••••••••", type: "password" },
+      { key: "smtp_from_email", label: "From Email", placeholder: "noreply@yourbusiness.com", type: "text" },
+      { key: "smtp_from_name", label: "From Name", placeholder: "Your Business Name", type: "text" },
     ],
   },
 ];
