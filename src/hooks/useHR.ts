@@ -1,7 +1,7 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useTenant } from '@/contexts/TenantContext';
-import { callWebhook, WEBHOOKS } from '@/lib/webhook';
-import { toast } from 'sonner';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTenant } from "@/contexts/TenantContext";
+import { callWebhook, WEBHOOKS } from "@/lib/webhook";
+import { toast } from "sonner";
 
 // Types
 export interface Employee {
@@ -20,7 +20,7 @@ export interface Employee {
   position: string;
   job_title?: string;
   date_of_joining: string;
-  employment_status: 'active' | 'on_leave' | 'terminated' | 'suspended';
+  employment_status: "active" | "on_leave" | "terminated" | "suspended";
   employment_type?: string;
   avatar_url?: string;
   manager_id?: string;
@@ -36,7 +36,7 @@ export interface AttendanceRecord {
   work_date: string;
   check_in_time?: string;
   check_out_time?: string;
-  status: 'present' | 'absent' | 'late' | 'half_day' | 'on_leave';
+  status: "present" | "absent" | "late" | "half_day" | "on_leave";
   work_hours?: number;
   total_hours?: number;
   overtime_minutes?: number;
@@ -69,7 +69,7 @@ export interface LeaveRequest {
   requested_days: number;
   is_half_day?: boolean;
   reason: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: "pending" | "approved" | "rejected";
   approved_by?: string;
   approved_at?: string;
   approver_comment?: string;
@@ -87,7 +87,7 @@ export interface PayrollRecord {
   deductions: number;
   tax: number;
   net_pay: number;
-  status: 'draft' | 'processed' | 'paid';
+  status: "draft" | "processed" | "paid";
   pay_date?: string;
 }
 
@@ -111,7 +111,7 @@ export interface PerformanceReview {
   review_period_start?: string;
   review_period_end?: string;
   period?: string;
-  status: 'draft' | 'submitted' | 'reviewed' | 'completed';
+  status: "draft" | "submitted" | "reviewed" | "completed";
   overall_rating?: number;
   reviewer_comments?: string;
   goals: Goal[];
@@ -124,7 +124,7 @@ export interface Goal {
   description?: string;
   target_date: string;
   progress_percent: number;
-  status: 'not_started' | 'in_progress' | 'completed' | 'cancelled';
+  status: "not_started" | "in_progress" | "completed" | "cancelled";
 }
 
 export interface TrainingProgram {
@@ -134,10 +134,10 @@ export interface TrainingProgram {
   provider: string;
   duration_hours: number;
   category: string;
-  format: 'online' | 'classroom' | 'hybrid';
+  format: "online" | "classroom" | "hybrid";
   completion_rate: number;
   enrolled_count: number;
-  status: 'active' | 'draft' | 'archived';
+  status: "active" | "draft" | "archived";
 }
 
 export interface TrainingEnrollment {
@@ -147,7 +147,7 @@ export interface TrainingEnrollment {
   employee_id: string;
   enrolled_at: string;
   progress: number;
-  status: 'enrolled' | 'in_progress' | 'completed' | 'dropped';
+  status: "enrolled" | "in_progress" | "completed" | "dropped";
   completed_at?: string;
   certificate_url?: string;
 }
@@ -155,7 +155,7 @@ export interface TrainingEnrollment {
 export interface HRDocument {
   id: string;
   name: string;
-  category: 'policy' | 'template' | 'personal' | 'contract';
+  category: "policy" | "template" | "personal" | "contract";
   file_url: string;
   file_type: string;
   uploaded_by: string;
@@ -170,10 +170,10 @@ export function useEmployees() {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ['employees', tenantId],
+    queryKey: ["employees", tenantId],
     queryFn: async () => {
       if (!tenantId) return [];
-      const result = await callWebhook<Employee[]>(WEBHOOKS.HR_GET_EMPLOYEES, { action: 'list' }, tenantId);
+      const result = await callWebhook<Employee[]>(WEBHOOKS.HR_GET_EMPLOYEES, { action: "list" }, tenantId);
       return result.data || [];
     },
     enabled: !!tenantId,
@@ -184,10 +184,10 @@ export function useEmployees() {
       return callWebhook(WEBHOOKS.EMPLOYEE_ONBOARDING, data, tenantId!);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['employees', tenantId] });
-      toast.success('Employee added successfully');
+      queryClient.invalidateQueries({ queryKey: ["employees", tenantId] });
+      toast.success("Employee added successfully");
     },
-    onError: () => toast.error('Failed to add employee'),
+    onError: () => toast.error("Failed to add employee"),
   });
 
   const updateEmployee = useMutation({
@@ -195,10 +195,10 @@ export function useEmployees() {
       return callWebhook(WEBHOOKS.HR_UPDATE_EMPLOYEE, data, tenantId!);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['employees', tenantId] });
-      toast.success('Employee updated successfully');
+      queryClient.invalidateQueries({ queryKey: ["employees", tenantId] });
+      toast.success("Employee updated successfully");
     },
-    onError: () => toast.error('Failed to update employee'),
+    onError: () => toast.error("Failed to update employee"),
   });
 
   return { ...query, createEmployee, updateEmployee };
@@ -209,16 +209,21 @@ export function useAttendance(date?: string) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ['attendance', tenantId, date],
+    queryKey: ["attendance", tenantId, date],
     queryFn: async () => {
-      if (!tenantId) return { records: [] as AttendanceRecord[], summary: { present: 0, absent: 0, late: 0, on_leave: 0 } };
-      const result = await callWebhook<any>(WEBHOOKS.HR_ATTENDANCE_TODAY, { date: date || new Date().toISOString().split('T')[0] }, tenantId);
-      const records = Array.isArray(result.data) ? result.data : (result.data?.records || []);
+      if (!tenantId)
+        return { records: [] as AttendanceRecord[], summary: { present: 0, absent: 0, late: 0, on_leave: 0 } };
+      const result = await callWebhook<any>(
+        WEBHOOKS.HR_ATTENDANCE_TODAY,
+        { date: date || new Date().toISOString().split("T")[0] },
+        tenantId,
+      );
+      const records = Array.isArray(result.data) ? result.data : result.data?.records || [];
       const summary = result.data?.summary || {
-        present: records.filter((r: any) => r.status === 'present').length,
-        absent: records.filter((r: any) => r.status === 'absent').length,
-        late: records.filter((r: any) => r.status === 'late').length,
-        on_leave: records.filter((r: any) => r.status === 'on_leave').length,
+        present: records.filter((r: any) => r.status === "present").length,
+        absent: records.filter((r: any) => r.status === "absent").length,
+        late: records.filter((r: any) => r.status === "late").length,
+        on_leave: records.filter((r: any) => r.status === "on_leave").length,
       };
       return { records, summary };
     },
@@ -230,10 +235,10 @@ export function useAttendance(date?: string) {
       return callWebhook(WEBHOOKS.ATTENDANCE_CHECK_IN, data, tenantId!);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['attendance', tenantId] });
-      toast.success('Checked in successfully');
+      queryClient.invalidateQueries({ queryKey: ["attendance", tenantId] });
+      toast.success("Checked in successfully");
     },
-    onError: () => toast.error('Failed to check in'),
+    onError: () => toast.error("Failed to check in"),
   });
 
   const checkOut = useMutation({
@@ -241,10 +246,10 @@ export function useAttendance(date?: string) {
       return callWebhook(WEBHOOKS.ATTENDANCE_CHECK_OUT, data, tenantId!);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['attendance', tenantId] });
-      toast.success('Checked out successfully');
+      queryClient.invalidateQueries({ queryKey: ["attendance", tenantId] });
+      toast.success("Checked out successfully");
     },
-    onError: () => toast.error('Failed to check out'),
+    onError: () => toast.error("Failed to check out"),
   });
 
   return { ...query, checkIn, checkOut };
@@ -254,10 +259,10 @@ export function useLeaveBalance() {
   const { tenantId } = useTenant();
 
   return useQuery({
-    queryKey: ['leave-balance', tenantId],
+    queryKey: ["leave-balance", tenantId],
     queryFn: async () => {
       if (!tenantId) return [];
-      const result = await callWebhook<LeaveBalance[]>(WEBHOOKS.HR_LEAVE_BALANCE, { action: 'list' }, tenantId);
+      const result = await callWebhook<LeaveBalance[]>(WEBHOOKS.HR_LEAVE_BALANCE, { action: "list" }, tenantId);
       return result.data || [];
     },
     enabled: !!tenantId,
@@ -269,10 +274,10 @@ export function useLeaveRequests(status?: string) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ['leave-requests', tenantId, status],
+    queryKey: ["leave-requests", tenantId, status],
     queryFn: async () => {
       if (!tenantId) return [];
-      const params: any = { action: 'list' };
+      const params: any = { action: "list" };
       if (status) params.status = status;
       const result = await callWebhook<LeaveRequest[]>(WEBHOOKS.LEAVE_REQUEST, params, tenantId);
       return result.data || [];
@@ -285,11 +290,11 @@ export function useLeaveRequests(status?: string) {
       return callWebhook(WEBHOOKS.LEAVE_REQUEST, data, tenantId!);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['leave-requests', tenantId] });
-      queryClient.invalidateQueries({ queryKey: ['leave-balance', tenantId] });
-      toast.success('Leave request submitted');
+      queryClient.invalidateQueries({ queryKey: ["leave-requests", tenantId] });
+      queryClient.invalidateQueries({ queryKey: ["leave-balance", tenantId] });
+      toast.success("Leave request submitted");
     },
-    onError: () => toast.error('Failed to submit leave request'),
+    onError: () => toast.error("Failed to submit leave request"),
   });
 
   const approveLeave = useMutation({
@@ -297,10 +302,10 @@ export function useLeaveRequests(status?: string) {
       return callWebhook(WEBHOOKS.LEAVE_APPROVE, data, tenantId!);
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['leave-requests', tenantId] });
-      toast.success(variables.approved ? 'Leave approved' : 'Leave rejected');
+      queryClient.invalidateQueries({ queryKey: ["leave-requests", tenantId] });
+      toast.success(variables.approved ? "Leave approved" : "Leave rejected");
     },
-    onError: () => toast.error('Failed to process leave request'),
+    onError: () => toast.error("Failed to process leave request"),
   });
 
   return { ...query, requestLeave, approveLeave };
@@ -310,11 +315,15 @@ export function usePayroll(period?: string) {
   const { tenantId } = useTenant();
 
   return useQuery({
-    queryKey: ['payroll', tenantId, period],
+    queryKey: ["payroll", tenantId, period],
     queryFn: async () => {
-      if (!tenantId) return { records: [] as PayrollRecord[], summary: { total_payroll: 0, avg_salary: 0, headcount: 0, period: period || '' } };
-      const result = await callWebhook<any>(WEBHOOKS.HR_PAYROLL_SUMMARY, { period: period || 'current' }, tenantId);
-      return result.data || { records: [], summary: { total_payroll: 0, avg_salary: 0, headcount: 0, period: '' } };
+      if (!tenantId)
+        return {
+          records: [] as PayrollRecord[],
+          summary: { total_payroll: 0, avg_salary: 0, headcount: 0, period: period || "" },
+        };
+      const result = await callWebhook<any>(WEBHOOKS.HR_PAYROLL_SUMMARY, { period: period || "current" }, tenantId);
+      return result.data || { records: [], summary: { total_payroll: 0, avg_salary: 0, headcount: 0, period: "" } };
     },
     enabled: !!tenantId,
   });
@@ -325,10 +334,10 @@ export function useDepartments() {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ['departments', tenantId],
+    queryKey: ["departments", tenantId],
     queryFn: async () => {
       if (!tenantId) return [];
-      const result = await callWebhook<Department[]>(WEBHOOKS.HR_DEPARTMENTS, { action: 'list' }, tenantId);
+      const result = await callWebhook<Department[]>(WEBHOOKS.HR_DEPARTMENTS, { action: "list" }, tenantId);
       return result.data || [];
     },
     enabled: !!tenantId,
@@ -336,13 +345,13 @@ export function useDepartments() {
 
   const createDepartment = useMutation({
     mutationFn: async (data: Partial<Department>) => {
-      return callWebhook(WEBHOOKS.HR_DEPARTMENTS, { action: 'create', ...data }, tenantId!);
+      return callWebhook(WEBHOOKS.HR_DEPARTMENTS, { action: "create", ...data }, tenantId!);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['departments', tenantId] });
-      toast.success('Department created');
+      queryClient.invalidateQueries({ queryKey: ["departments", tenantId] });
+      toast.success("Department created");
     },
-    onError: () => toast.error('Failed to create department'),
+    onError: () => toast.error("Failed to create department"),
   });
 
   return { ...query, createDepartment };
@@ -352,10 +361,10 @@ export function usePerformance() {
   const { tenantId } = useTenant();
 
   return useQuery({
-    queryKey: ['performance', tenantId],
+    queryKey: ["performance", tenantId],
     queryFn: async () => {
       if (!tenantId) return { reviews: [] as PerformanceReview[], goals: [] as Goal[], activeCycle: null };
-      const result = await callWebhook<any>(WEBHOOKS.HR_PERFORMANCE_REVIEW, { action: 'list' }, tenantId);
+      const result = await callWebhook<any>(WEBHOOKS.HR_PERFORMANCE_REVIEW, { action: "list" }, tenantId);
       return result.data || { reviews: [], goals: [], activeCycle: null };
     },
     enabled: !!tenantId,
@@ -367,20 +376,24 @@ export function useTraining() {
   const queryClient = useQueryClient();
 
   const programsQuery = useQuery({
-    queryKey: ['training-programs', tenantId],
+    queryKey: ["training-programs", tenantId],
     queryFn: async () => {
       if (!tenantId) return [];
-      const result = await callWebhook<TrainingProgram[]>(WEBHOOKS.HR_TRAINING_PROGRAMS, { action: 'list' }, tenantId);
+      const result = await callWebhook<TrainingProgram[]>(WEBHOOKS.HR_TRAINING_PROGRAMS, { action: "list" }, tenantId);
       return result.data || [];
     },
     enabled: !!tenantId,
   });
 
   const enrollmentsQuery = useQuery({
-    queryKey: ['training-enrollments', tenantId],
+    queryKey: ["training-enrollments", tenantId],
     queryFn: async () => {
       if (!tenantId) return [];
-      const result = await callWebhook<TrainingEnrollment[]>(WEBHOOKS.HR_TRAINING_ENROLLMENTS, { action: 'list' }, tenantId);
+      const result = await callWebhook<TrainingEnrollment[]>(
+        WEBHOOKS.HR_TRAINING_ENROLLMENTS,
+        { action: "list" },
+        tenantId,
+      );
       return result.data || [];
     },
     enabled: !!tenantId,
@@ -388,13 +401,13 @@ export function useTraining() {
 
   const enroll = useMutation({
     mutationFn: async (data: { program_id: string }) => {
-      return callWebhook(WEBHOOKS.HR_TRAINING_ENROLLMENTS, { action: 'enroll', ...data }, tenantId!);
+      return callWebhook(WEBHOOKS.HR_TRAINING_ENROLLMENTS, { action: "enroll", ...data }, tenantId!);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['training-enrollments', tenantId] });
-      toast.success('Enrolled successfully');
+      queryClient.invalidateQueries({ queryKey: ["training-enrollments", tenantId] });
+      toast.success("Enrolled successfully");
     },
-    onError: () => toast.error('Failed to enroll'),
+    onError: () => toast.error("Failed to enroll"),
   });
 
   return { programs: programsQuery, enrollments: enrollmentsQuery, enroll };
@@ -405,10 +418,10 @@ export function useHRDocuments(category?: string) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ['hr-documents', tenantId, category],
+    queryKey: ["hr-documents", tenantId, category],
     queryFn: async () => {
       if (!tenantId) return [];
-      const params: any = { action: 'list' };
+      const params: any = { action: "list" };
       if (category) params.category = category;
       const result = await callWebhook<HRDocument[]>(WEBHOOKS.HR_DOCUMENTS, params, tenantId);
       return result.data || [];
@@ -418,13 +431,13 @@ export function useHRDocuments(category?: string) {
 
   const uploadDocument = useMutation({
     mutationFn: async (data: { name: string; category: string; file: File }) => {
-      return callWebhook(WEBHOOKS.HR_DOCUMENTS, { action: 'upload', ...data }, tenantId!);
+      return callWebhook(WEBHOOKS.HR_DOCUMENTS, { action: "upload", ...data }, tenantId!);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['hr-documents', tenantId] });
-      toast.success('Document uploaded');
+      queryClient.invalidateQueries({ queryKey: ["hr-documents", tenantId] });
+      toast.success("Document uploaded");
     },
-    onError: () => toast.error('Failed to upload document'),
+    onError: () => toast.error("Failed to upload document"),
   });
 
   return { ...query, uploadDocument };
@@ -441,10 +454,30 @@ export function useHRReports() {
 }
 
 export function useHRAI() {
-  const { tenantId } = useTenant();
+  const { tenantId, tenantConfig } = useTenant();
+  const { authUser } = useAuth();
 
   const sendMessage = async (message: string, context?: Record<string, unknown>) => {
-    return callWebhook(WEBHOOKS.HR_AI_ASSISTANT, { message, context }, tenantId!);
+    return callWebhook(
+      WEBHOOKS.HR_AI_ASSISTANT,
+      {
+        message,
+        // Tenant context
+        company_name: tenantConfig?.company_name || tenantId || "",
+        industry: tenantConfig?.industry || "general",
+        currency: tenantConfig?.currency || "AED",
+        country: "AE",
+        // Employee identity
+        employee_id: authUser?.id || "",
+        name: authUser?.full_name || "Unknown",
+        email: authUser?.email || "",
+        // Channel
+        channel: "web",
+        // Merge any extra context
+        ...(context || {}),
+      },
+      tenantId!,
+    );
   };
 
   return { sendMessage };
