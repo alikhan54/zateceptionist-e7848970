@@ -1,6 +1,23 @@
 // Core hooks
 export { useWebhook, useWebhookMutation } from './useWebhook';
 
+// Integration hooks
+export {
+  useCustomer360,
+  useSystemEvents,
+  useRevenueAttribution,
+  usePredictiveScores,
+  useAutomationRules,
+} from './useIntegrationHooks';
+
+export type {
+  Customer360,
+  SystemEvent,
+  RevenueAttribution,
+  PredictiveScore,
+  AutomationRule,
+} from './useIntegrationHooks';
+
 // Module-specific webhook hooks
 export { useSalesWebhooks } from './useSalesWebhooks';
 export { useMarketingWebhooks } from './useMarketingWebhooks';
