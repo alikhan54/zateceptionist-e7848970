@@ -1,3 +1,4 @@
+import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTenant } from "@/contexts/TenantContext";
 import { callWebhook, WEBHOOKS } from "@/lib/webhook";
@@ -454,30 +455,10 @@ export function useHRReports() {
 }
 
 export function useHRAI() {
-  const { tenantId, tenantConfig } = useTenant();
-  const { authUser } = useAuth();
+  const { tenantId } = useTenant();
 
   const sendMessage = async (message: string, context?: Record<string, unknown>) => {
-    return callWebhook(
-      WEBHOOKS.HR_AI_ASSISTANT,
-      {
-        message,
-        // Tenant context
-        company_name: tenantConfig?.company_name || tenantId || "",
-        industry: tenantConfig?.industry || "general",
-        currency: tenantConfig?.currency || "AED",
-        country: "AE",
-        // Employee identity
-        employee_id: authUser?.id || "",
-        name: authUser?.full_name || "Unknown",
-        email: authUser?.email || "",
-        // Channel
-        channel: "web",
-        // Merge any extra context
-        ...(context || {}),
-      },
-      tenantId!,
-    );
+    return callWebhook(WEBHOOKS.HR_AI_ASSISTANT, { message, context }, tenantId!);
   };
 
   return { sendMessage };
