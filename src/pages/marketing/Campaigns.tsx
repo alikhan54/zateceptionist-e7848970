@@ -1,4 +1,8 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useMarketingCampaigns } from '@/hooks/useMarketingCampaigns';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -85,89 +89,6 @@ interface AudienceSegment {
   isAI?: boolean;
 }
 
-// Mock data
-const mockCampaigns: Campaign[] = [
-  {
-    id: '1',
-    name: 'Summer Sale 2024',
-    type: 'email',
-    status: 'active',
-    audience: 15000,
-    sent: 14500,
-    delivered: 14200,
-    opened: 5800,
-    clicked: 1200,
-    converted: 340,
-    createdAt: new Date('2024-01-10'),
-    content: 'Summer sale with 40% off...'
-  },
-  {
-    id: '2',
-    name: 'Product Launch Announcement',
-    type: 'multi-channel',
-    status: 'scheduled',
-    audience: 25000,
-    sent: 0,
-    delivered: 0,
-    opened: 0,
-    clicked: 0,
-    converted: 0,
-    scheduledDate: addDays(new Date(), 2),
-    createdAt: new Date('2024-01-15'),
-    content: 'Introducing our new product...'
-  },
-  {
-    id: '3',
-    name: 'WhatsApp Promo',
-    type: 'whatsapp',
-    status: 'completed',
-    audience: 8000,
-    sent: 7800,
-    delivered: 7600,
-    opened: 6200,
-    clicked: 2100,
-    converted: 580,
-    createdAt: new Date('2024-01-05'),
-    content: 'Exclusive WhatsApp discount...'
-  },
-  {
-    id: '4',
-    name: 'Flash Sale Alert',
-    type: 'sms',
-    status: 'paused',
-    audience: 5000,
-    sent: 2500,
-    delivered: 2400,
-    opened: 0,
-    clicked: 320,
-    converted: 85,
-    createdAt: new Date('2024-01-12'),
-    content: 'Flash sale 24 hours only...'
-  },
-  {
-    id: '5',
-    name: 'Newsletter Draft',
-    type: 'email',
-    status: 'draft',
-    audience: 12000,
-    sent: 0,
-    delivered: 0,
-    opened: 0,
-    clicked: 0,
-    converted: 0,
-    createdAt: new Date('2024-01-18'),
-    content: 'Monthly newsletter content...'
-  },
-];
-
-const mockSegments: AudienceSegment[] = [
-  { id: '1', name: 'All Subscribers', description: 'Everyone in your mailing list', count: 25000 },
-  { id: '2', name: 'Active Customers', description: 'Customers who purchased in last 30 days', count: 8500, isAI: true },
-  { id: '3', name: 'High Value', description: 'Customers with LTV > $500', count: 3200, isAI: true },
-  { id: '4', name: 'At Risk', description: 'Customers showing churn signals', count: 1200, isAI: true },
-  { id: '5', name: 'New Leads', description: 'Leads acquired in last 7 days', count: 450 },
-  { id: '6', name: 'Re-engagement', description: 'Inactive for 60+ days', count: 4800, isAI: true },
-];
 
 const campaignTemplates = [
   { id: 't1', name: 'Welcome Series', type: 'email', description: 'Automated welcome emails for new subscribers', icon: Mail },
@@ -177,18 +98,53 @@ const campaignTemplates = [
 ];
 
 export default function MarketingCampaigns() {
-  const { tenantId } = useTenant();
+  const { tenantId, tenantConfig } = useTenant();
   const { toast } = useToast();
-  
+  const tenantUuid = tenantConfig?.id || null;
+
+  // Real data hooks
+  const { campaigns: rawCampaigns, isLoading, createCampaign, updateCampaign, deleteCampaign } = useMarketingCampaigns();
+
+  // Map DB fields to UI shape
+  const campaigns: Campaign[] = rawCampaigns.map(c => ({
+    id: c.id,
+    name: c.name,
+    type: (c.type as Campaign['type']) || 'email',
+    status: (c.status as Campaign['status']) || 'draft',
+    audience: 0,
+    sent: c.sent_count || 0,
+    delivered: c.delivered_count || 0,
+    opened: c.opened_count || 0,
+    clicked: c.clicked_count || 0,
+    converted: c.converted_count || 0,
+    scheduledDate: c.scheduled_at ? new Date(c.scheduled_at) : undefined,
+    createdAt: new Date(c.created_at),
+    content: c.message_template || '',
+  }));
+
+  // Real audience segments query
+  const { data: segments = [] } = useQuery({
+    queryKey: ['audience_segments', tenantUuid],
+    queryFn: async () => {
+      if (!tenantUuid) return [];
+      const { data, error } = await supabase
+        .from('audience_segments')
+        .select('*')
+        .eq('tenant_id', tenantUuid);
+      if (error) return [];
+      return (data || []) as AudienceSegment[];
+    },
+    enabled: !!tenantUuid,
+  });
+
   // State
-  const [campaigns, setCampaigns] = useState<Campaign[]>(mockCampaigns);
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterType, setFilterType] = useState<string>('all');
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
-  
+
   // Wizard form state
   const [campaignForm, setCampaignForm] = useState({
     name: '',
@@ -260,82 +216,61 @@ export default function MarketingCampaigns() {
     });
   };
 
-  const handleCreateCampaign = () => {
-    const audienceCount = mockSegments
-      .filter(s => campaignForm.selectedSegments.includes(s.id))
-      .reduce((sum, s) => sum + s.count, 0);
-
-    const newCampaign: Campaign = {
-      id: Date.now().toString(),
-      name: campaignForm.name,
-      type: campaignForm.type,
-      status: campaignForm.sendNow ? 'active' : 'scheduled',
-      audience: audienceCount,
-      sent: 0,
-      delivered: 0,
-      opened: 0,
-      clicked: 0,
-      converted: 0,
-      scheduledDate: campaignForm.scheduleDate,
-      createdAt: new Date(),
-      content: campaignForm.content,
-    };
-
-    setCampaigns(prev => [newCampaign, ...prev]);
-    setIsWizardOpen(false);
-    setWizardStep(1);
-    setCampaignForm({
-      name: '',
-      type: 'email',
-      subject: '',
-      content: '',
-      selectedSegments: [],
-      scheduleDate: undefined,
-      scheduleTime: '09:00',
-      sendNow: false,
-    });
-
-    toast({
-      title: campaignForm.sendNow ? 'Campaign Launched!' : 'Campaign Scheduled',
-      description: campaignForm.sendNow 
-        ? 'Your campaign is now being sent.' 
-        : `Scheduled for ${format(campaignForm.scheduleDate!, 'PPP')} at ${campaignForm.scheduleTime}`,
-    });
+  const handleCreateCampaign = async () => {
+    try {
+      await createCampaign.mutateAsync({
+        name: campaignForm.name,
+        type: campaignForm.type,
+        message_template: campaignForm.content,
+        scheduled_at: campaignForm.scheduleDate?.toISOString(),
+        send_now: campaignForm.sendNow,
+      });
+      setIsWizardOpen(false);
+      setWizardStep(1);
+      setCampaignForm({
+        name: '',
+        type: 'email',
+        subject: '',
+        content: '',
+        selectedSegments: [],
+        scheduleDate: undefined,
+        scheduleTime: '09:00',
+        sendNow: false,
+      });
+      toast({
+        title: campaignForm.sendNow ? 'Campaign Launched!' : 'Campaign Scheduled',
+        description: campaignForm.sendNow
+          ? 'Your campaign is now being sent.'
+          : campaignForm.scheduleDate
+            ? `Scheduled for ${format(campaignForm.scheduleDate, 'PPP')} at ${campaignForm.scheduleTime}`
+            : 'Campaign saved as draft.',
+      });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to create campaign', variant: 'destructive' });
+    }
   };
 
-  const handlePauseCampaign = (campaign: Campaign) => {
-    setCampaigns(prev => prev.map(c => 
-      c.id === campaign.id ? { ...c, status: 'paused' as const } : c
-    ));
+  const handlePauseCampaign = async (campaign: Campaign) => {
+    await updateCampaign.mutateAsync({ id: campaign.id, status: 'paused' });
     toast({ title: 'Campaign Paused' });
   };
 
-  const handleResumeCampaign = (campaign: Campaign) => {
-    setCampaigns(prev => prev.map(c => 
-      c.id === campaign.id ? { ...c, status: 'active' as const } : c
-    ));
+  const handleResumeCampaign = async (campaign: Campaign) => {
+    await updateCampaign.mutateAsync({ id: campaign.id, status: 'active' });
     toast({ title: 'Campaign Resumed' });
   };
 
-  const handleDuplicateCampaign = (campaign: Campaign) => {
-    const duplicate: Campaign = {
-      ...campaign,
-      id: Date.now().toString(),
+  const handleDuplicateCampaign = async (campaign: Campaign) => {
+    await createCampaign.mutateAsync({
       name: `${campaign.name} (Copy)`,
-      status: 'draft',
-      sent: 0,
-      delivered: 0,
-      opened: 0,
-      clicked: 0,
-      converted: 0,
-      createdAt: new Date(),
-    };
-    setCampaigns(prev => [duplicate, ...prev]);
+      type: campaign.type,
+      message_template: campaign.content,
+    });
     toast({ title: 'Campaign Duplicated' });
   };
 
-  const handleDeleteCampaign = (campaign: Campaign) => {
-    setCampaigns(prev => prev.filter(c => c.id !== campaign.id));
+  const handleDeleteCampaign = async (campaign: Campaign) => {
+    await deleteCampaign.mutateAsync(campaign.id);
     toast({ title: 'Campaign Deleted' });
   };
 
@@ -398,7 +333,7 @@ export default function MarketingCampaigns() {
             <div>
               <Label className="mb-3 block">Select Audience Segments</Label>
               <div className="space-y-3">
-                {mockSegments.map((segment) => (
+                {segments.map((segment) => (
                   <div 
                     key={segment.id}
                     className={`p-4 border rounded-lg cursor-pointer transition-colors ${
@@ -443,7 +378,7 @@ export default function MarketingCampaigns() {
             <div className="p-4 bg-muted/50 rounded-lg">
               <p className="text-sm text-muted-foreground">
                 Total audience: <span className="font-bold text-foreground">
-                  {mockSegments
+                  {segments
                     .filter(s => campaignForm.selectedSegments.includes(s.id))
                     .reduce((sum, s) => sum + s.count, 0)
                     .toLocaleString()}
@@ -583,9 +518,9 @@ export default function MarketingCampaigns() {
         );
 
       case 5:
-        const selectedSegmentCount = mockSegments
+        const selectedSegmentCount = segments
           .filter(s => campaignForm.selectedSegments.includes(s.id))
-          .reduce((sum, s) => sum + s.count, 0);
+          .reduce((sum, s) => sum + (s.count || 0), 0);
 
         return (
           <div className="space-y-6">
@@ -626,8 +561,8 @@ export default function MarketingCampaigns() {
               </p>
             </div>
 
-            <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
-              <div className="flex items-center gap-2 text-green-600">
+            <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg">
+              <div className="flex items-center gap-2 text-primary">
                 <CheckCircle2 className="h-5 w-5" />
                 <p className="font-medium">Ready to launch</p>
               </div>
@@ -642,6 +577,18 @@ export default function MarketingCampaigns() {
         return null;
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-10 w-48" />
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-20" />)}
+        </div>
+        <Skeleton className="h-64" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -980,7 +927,7 @@ export default function MarketingCampaigns() {
 
                 <div>
                   <Label className="text-sm text-muted-foreground">Conversions</Label>
-                  <p className="text-3xl font-bold text-green-500">
+                  <p className="text-3xl font-bold text-primary">
                     {selectedCampaign.converted.toLocaleString()}
                   </p>
                 </div>
