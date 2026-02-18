@@ -1,79 +1,140 @@
-import { useState } from 'react';
-import { useTenant } from '@/contexts/TenantContext';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Switch } from '@/components/ui/switch';
-import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
+import { useState } from "react";
+import { useTenant } from "@/contexts/TenantContext";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  UserPlus, Plus, Search, Briefcase, MapPin, Clock, Users, Star, Eye, Edit,
-  MoreHorizontal, Mail, Phone, FileText, Calendar, Video, CheckCircle2, XCircle,
-  Sparkles, Bot, ExternalLink, GripVertical, DollarSign, Loader2, Zap,
-  PhoneCall, Brain, Target, TrendingUp, RefreshCw,
-} from 'lucide-react';
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuTrigger, DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
-import { format } from 'date-fns';
+  UserPlus,
+  Plus,
+  Search,
+  Briefcase,
+  MapPin,
+  Clock,
+  Users,
+  Star,
+  Eye,
+  Edit,
+  MoreHorizontal,
+  Mail,
+  Phone,
+  FileText,
+  Calendar,
+  Video,
+  CheckCircle2,
+  XCircle,
+  Sparkles,
+  Bot,
+  ExternalLink,
+  GripVertical,
+  DollarSign,
+  Loader2,
+  Zap,
+  PhoneCall,
+  Brain,
+  Target,
+  TrendingUp,
+  RefreshCw,
+} from "lucide-react";
 import {
-  useJobRequisitions, useJobApplications, useCandidates,
-  useAIInterviews, useSourcingRuns, useInterviewSchedules,
-  useCreateJob, useUpdateApplicationStage, useTriggerSourcing,
-  useTriggerAIInterview, useRecruitmentStats,
-  type JobRequisition, type JobApplication, type AIInterview, type SourcingRun,
-} from '@/hooks/useRecruitment';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { format } from "date-fns";
+import {
+  useJobRequisitions,
+  useJobApplications,
+  useCandidates,
+  useAIInterviews,
+  useSourcingRuns,
+  useInterviewSchedules,
+  useCreateJob,
+  useUpdateApplicationStage,
+  useTriggerSourcing,
+  useTriggerAIInterview,
+  useRecruitmentStats,
+  type JobRequisition,
+  type JobApplication,
+  type AIInterview,
+  type SourcingRun,
+} from "@/hooks/useRecruitment";
 
-const pipelineStages = ['applied', 'screening', 'shortlisted', 'ai_interview', 'interview', 'offered', 'hired'];
+const pipelineStages = [
+  "sourced",
+  "applied",
+  "screening",
+  "shortlisted",
+  "ai_interview",
+  "interview",
+  "offered",
+  "hired",
+  "rejected",
+];
 
 const stageLabels: Record<string, string> = {
-  applied: 'Applied',
-  screening: 'Screening',
-  shortlisted: 'Shortlisted',
-  ai_interview: 'AI Interview',
-  interview: 'Interview',
-  offered: 'Offered',
-  hired: 'Hired',
+  sourced: "AI Sourced",
+  applied: "Applied",
+  screening: "Screening",
+  shortlisted: "Shortlisted",
+  ai_interview: "AI Interview",
+  interview: "Interview",
+  offered: "Offered",
+  hired: "Hired",
+  rejected: "Rejected",
 };
 
 const stageColors: Record<string, string> = {
-  applied: 'bg-muted text-muted-foreground',
-  screening: 'bg-primary/10 text-primary',
-  shortlisted: 'bg-chart-3/10 text-chart-3',
-  ai_interview: 'bg-chart-4/10 text-chart-4',
-  interview: 'bg-chart-5/10 text-chart-5',
-  offered: 'bg-chart-2/10 text-chart-2',
-  hired: 'bg-chart-1/10 text-chart-1',
+  sourced: "bg-violet-500/10 text-violet-600",
+  applied: "bg-muted text-muted-foreground",
+  screening: "bg-primary/10 text-primary",
+  shortlisted: "bg-chart-3/10 text-chart-3",
+  ai_interview: "bg-chart-4/10 text-chart-4",
+  interview: "bg-chart-5/10 text-chart-5",
+  offered: "bg-chart-2/10 text-chart-2",
+  hired: "bg-chart-1/10 text-chart-1",
+  rejected: "bg-destructive/10 text-destructive",
 };
 
 const statusColors: Record<string, string> = {
-  open: 'bg-chart-2/10 text-chart-2',
-  on_hold: 'bg-chart-4/10 text-chart-4',
-  closed: 'bg-muted text-muted-foreground',
-  filled: 'bg-primary/10 text-primary',
-  draft: 'bg-muted text-muted-foreground',
+  open: "bg-chart-2/10 text-chart-2",
+  on_hold: "bg-chart-4/10 text-chart-4",
+  closed: "bg-muted text-muted-foreground",
+  filled: "bg-primary/10 text-primary",
+  draft: "bg-muted text-muted-foreground",
 };
 
 const getScoreColor = (score: number) => {
-  if (score >= 80) return 'text-chart-2';
-  if (score >= 60) return 'text-chart-3';
-  if (score >= 40) return 'text-chart-4';
-  return 'text-destructive';
+  if (score >= 80) return "text-chart-2";
+  if (score >= 60) return "text-chart-3";
+  if (score >= 40) return "text-chart-4";
+  return "text-destructive";
 };
 
-const formatSalary = (min: number | null, max: number | null, currency = 'AED') => {
-  if (!min && !max) return 'Not specified';
-  const fmt = (n: number) => currency === 'USD' ? `$${Math.round(n / 1000)}k` : `${currency} ${n.toLocaleString()}`;
+const formatSalary = (min: number | null, max: number | null, currency = "AED") => {
+  if (!min && !max) return "Not specified";
+  const fmt = (n: number) => (currency === "USD" ? `$${Math.round(n / 1000)}k` : `${currency} ${n.toLocaleString()}`);
   if (min && max) return `${fmt(min)} – ${fmt(max)}`;
   if (min) return `From ${fmt(min)}`;
   return `Up to ${fmt(max!)}`;
@@ -82,8 +143,12 @@ const formatSalary = (min: number | null, max: number | null, currency = 'AED') 
 function StatsLoading() {
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-      {[1, 2, 3, 4].map(i => (
-        <Card key={i}><CardContent className="p-4"><Skeleton className="h-12 w-full" /></CardContent></Card>
+      {[1, 2, 3, 4].map((i) => (
+        <Card key={i}>
+          <CardContent className="p-4">
+            <Skeleton className="h-12 w-full" />
+          </CardContent>
+        </Card>
       ))}
     </div>
   );
@@ -101,22 +166,22 @@ function TableLoading({ rows = 5 }: { rows?: number }) {
 
 export default function RecruitmentPage() {
   const { tenantId } = useTenant();
-  const [activeTab, setActiveTab] = useState('jobs');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState("jobs");
+  const [searchQuery, setSearchQuery] = useState("");
   const [isAddJobOpen, setIsAddJobOpen] = useState(false);
 
   // Form state for new job
   const [jobForm, setJobForm] = useState({
-    job_title: '',
-    job_description: '',
-    location_city: '',
-    location_country: 'UAE',
-    work_location: 'office',
-    employment_type: 'full_time',
-    required_skills: '',
-    required_experience_years: '',
-    salary_min: '',
-    salary_max: '',
+    job_title: "",
+    job_description: "",
+    location_city: "",
+    location_country: "UAE",
+    work_location: "office",
+    employment_type: "full_time",
+    required_skills: "",
+    required_experience_years: "",
+    salary_min: "",
+    salary_max: "",
     auto_source_enabled: true,
   });
 
@@ -134,34 +199,39 @@ export default function RecruitmentPage() {
   const triggerSourcing = useTriggerSourcing();
   const triggerAIInterview = useTriggerAIInterview();
 
-  const filteredJobs = jobs.filter(j =>
-    j.job_title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (j.location_city || '').toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredJobs = jobs.filter(
+    (j) =>
+      j.job_title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (j.location_city || "").toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  const filteredCandidates = candidates.filter(c =>
-    (c.full_name || `${c.first_name} ${c.last_name}`).toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (c.current_position || '').toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredCandidates = candidates.filter(
+    (c) =>
+      (c.full_name || `${c.first_name} ${c.last_name}`).toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (c.current_position || "").toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  const getApplicationsByStage = (stage: string) => applications.filter(a => a.stage === stage);
+  const getApplicationsByStage = (stage: string) => applications.filter((a) => a.stage === stage);
 
   const getCandidateName = (app: JobApplication) => {
     if (app.candidate?.full_name) return app.candidate.full_name;
     if (app.candidate) return `${app.candidate.first_name} ${app.candidate.last_name}`;
-    return 'Unknown';
+    return "Unknown";
   };
 
   const getCandidateInitials = (app: JobApplication) => {
     if (app.candidate) {
-      return `${app.candidate.first_name?.[0] || ''}${app.candidate.last_name?.[0] || ''}`;
+      return `${app.candidate.first_name?.[0] || ""}${app.candidate.last_name?.[0] || ""}`;
     }
-    return '?';
+    return "?";
   };
 
   const handlePostJob = async () => {
     const skills = jobForm.required_skills
-      ? jobForm.required_skills.split(',').map(s => s.trim()).filter(Boolean)
+      ? jobForm.required_skills
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
       : undefined;
 
     await createJob.mutateAsync({
@@ -172,7 +242,9 @@ export default function RecruitmentPage() {
       work_location: jobForm.work_location,
       employment_type: jobForm.employment_type,
       required_skills: skills,
-      required_experience_years: jobForm.required_experience_years ? Number(jobForm.required_experience_years) : undefined,
+      required_experience_years: jobForm.required_experience_years
+        ? Number(jobForm.required_experience_years)
+        : undefined,
       salary_min: jobForm.salary_min ? Number(jobForm.salary_min) : undefined,
       salary_max: jobForm.salary_max ? Number(jobForm.salary_max) : undefined,
       auto_source_enabled: jobForm.auto_source_enabled,
@@ -180,17 +252,25 @@ export default function RecruitmentPage() {
 
     setIsAddJobOpen(false);
     setJobForm({
-      job_title: '', job_description: '', location_city: '', location_country: 'UAE',
-      work_location: 'office', employment_type: 'full_time', required_skills: '',
-      required_experience_years: '', salary_min: '', salary_max: '', auto_source_enabled: true,
+      job_title: "",
+      job_description: "",
+      location_city: "",
+      location_country: "UAE",
+      work_location: "office",
+      employment_type: "full_time",
+      required_skills: "",
+      required_experience_years: "",
+      salary_min: "",
+      salary_max: "",
+      auto_source_enabled: true,
     });
   };
 
   const getRecommendationColor = (rec: string | null) => {
-    if (!rec) return 'bg-muted text-muted-foreground';
-    if (rec.includes('advance') || rec.includes('hire')) return 'bg-chart-2/10 text-chart-2';
-    if (rec.includes('review') || rec.includes('consider')) return 'bg-chart-4/10 text-chart-4';
-    return 'bg-destructive/10 text-destructive';
+    if (!rec) return "bg-muted text-muted-foreground";
+    if (rec.includes("advance") || rec.includes("hire")) return "bg-chart-2/10 text-chart-2";
+    if (rec.includes("review") || rec.includes("consider")) return "bg-chart-4/10 text-chart-4";
+    return "bg-destructive/10 text-destructive";
   };
 
   return (
@@ -202,13 +282,14 @@ export default function RecruitmentPage() {
             <UserPlus className="h-8 w-8 text-primary" />
             Recruitment
           </h1>
-          <p className="text-muted-foreground mt-1">
-            AI-powered hiring pipeline
-          </p>
+          <p className="text-muted-foreground mt-1">AI-powered hiring pipeline</p>
         </div>
         <Dialog open={isAddJobOpen} onOpenChange={setIsAddJobOpen}>
           <DialogTrigger asChild>
-            <Button><Plus className="h-4 w-4 mr-2" />Post Job</Button>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Post Job
+            </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
@@ -221,7 +302,7 @@ export default function RecruitmentPage() {
                 <Input
                   placeholder="e.g., Senior Software Engineer"
                   value={jobForm.job_title}
-                  onChange={e => setJobForm(f => ({ ...f, job_title: e.target.value }))}
+                  onChange={(e) => setJobForm((f) => ({ ...f, job_title: e.target.value }))}
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -230,13 +311,18 @@ export default function RecruitmentPage() {
                   <Input
                     placeholder="e.g., Dubai"
                     value={jobForm.location_city}
-                    onChange={e => setJobForm(f => ({ ...f, location_city: e.target.value }))}
+                    onChange={(e) => setJobForm((f) => ({ ...f, location_city: e.target.value }))}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Country</Label>
-                  <Select value={jobForm.location_country} onValueChange={v => setJobForm(f => ({ ...f, location_country: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  <Select
+                    value={jobForm.location_country}
+                    onValueChange={(v) => setJobForm((f) => ({ ...f, location_country: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="UAE">UAE</SelectItem>
                       <SelectItem value="SA">Saudi Arabia</SelectItem>
@@ -251,8 +337,13 @@ export default function RecruitmentPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Work Location</Label>
-                  <Select value={jobForm.work_location} onValueChange={v => setJobForm(f => ({ ...f, work_location: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  <Select
+                    value={jobForm.work_location}
+                    onValueChange={(v) => setJobForm((f) => ({ ...f, work_location: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="office">Office</SelectItem>
                       <SelectItem value="hybrid">Hybrid</SelectItem>
@@ -262,8 +353,13 @@ export default function RecruitmentPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Employment Type</Label>
-                  <Select value={jobForm.employment_type} onValueChange={v => setJobForm(f => ({ ...f, employment_type: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  <Select
+                    value={jobForm.employment_type}
+                    onValueChange={(v) => setJobForm((f) => ({ ...f, employment_type: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="full_time">Full-time</SelectItem>
                       <SelectItem value="part_time">Part-time</SelectItem>
@@ -279,7 +375,7 @@ export default function RecruitmentPage() {
                     type="number"
                     placeholder="e.g., 15000"
                     value={jobForm.salary_min}
-                    onChange={e => setJobForm(f => ({ ...f, salary_min: e.target.value }))}
+                    onChange={(e) => setJobForm((f) => ({ ...f, salary_min: e.target.value }))}
                   />
                 </div>
                 <div className="space-y-2">
@@ -288,7 +384,7 @@ export default function RecruitmentPage() {
                     type="number"
                     placeholder="e.g., 25000"
                     value={jobForm.salary_max}
-                    onChange={e => setJobForm(f => ({ ...f, salary_max: e.target.value }))}
+                    onChange={(e) => setJobForm((f) => ({ ...f, salary_max: e.target.value }))}
                   />
                 </div>
               </div>
@@ -297,7 +393,7 @@ export default function RecruitmentPage() {
                 <Input
                   placeholder="e.g., React, TypeScript, Node.js (comma-separated)"
                   value={jobForm.required_skills}
-                  onChange={e => setJobForm(f => ({ ...f, required_skills: e.target.value }))}
+                  onChange={(e) => setJobForm((f) => ({ ...f, required_skills: e.target.value }))}
                 />
               </div>
               <div className="space-y-2">
@@ -306,7 +402,7 @@ export default function RecruitmentPage() {
                   type="number"
                   placeholder="e.g., 3"
                   value={jobForm.required_experience_years}
-                  onChange={e => setJobForm(f => ({ ...f, required_experience_years: e.target.value }))}
+                  onChange={(e) => setJobForm((f) => ({ ...f, required_experience_years: e.target.value }))}
                 />
               </div>
               <div className="space-y-2">
@@ -315,7 +411,7 @@ export default function RecruitmentPage() {
                   placeholder="Describe the role, responsibilities, and requirements..."
                   rows={5}
                   value={jobForm.job_description}
-                  onChange={e => setJobForm(f => ({ ...f, job_description: e.target.value }))}
+                  onChange={(e) => setJobForm((f) => ({ ...f, job_description: e.target.value }))}
                 />
               </div>
               <div className="flex items-center justify-between p-3 bg-primary/5 rounded-lg border border-primary/20">
@@ -328,16 +424,15 @@ export default function RecruitmentPage() {
                 </div>
                 <Switch
                   checked={jobForm.auto_source_enabled}
-                  onCheckedChange={v => setJobForm(f => ({ ...f, auto_source_enabled: v }))}
+                  onCheckedChange={(v) => setJobForm((f) => ({ ...f, auto_source_enabled: v }))}
                 />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddJobOpen(false)}>Cancel</Button>
-              <Button
-                onClick={handlePostJob}
-                disabled={!jobForm.job_title || createJob.isPending}
-              >
+              <Button variant="outline" onClick={() => setIsAddJobOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handlePostJob} disabled={!jobForm.job_title || createJob.isPending}>
                 {createJob.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 Post Job
               </Button>
@@ -347,7 +442,9 @@ export default function RecruitmentPage() {
       </div>
 
       {/* Stats */}
-      {statsLoading ? <StatsLoading /> : (
+      {statsLoading ? (
+        <StatsLoading />
+      ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card>
             <CardContent className="p-4">
@@ -430,23 +527,31 @@ export default function RecruitmentPage() {
                     placeholder="Search jobs..."
                     className="pl-10"
                     value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              {jobsLoading ? <TableLoading /> : filteredJobs.length === 0 ? (
+              {jobsLoading ? (
+                <TableLoading />
+              ) : filteredJobs.length === 0 ? (
                 <div className="text-center py-16">
                   <Briefcase className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                   <h3 className="text-lg font-semibold mb-1">No job postings yet</h3>
                   <p className="text-muted-foreground mb-4">Post your first job to start the AI hiring pipeline</p>
-                  <Button onClick={() => setIsAddJobOpen(true)}><Plus className="h-4 w-4 mr-2" />Post Job</Button>
+                  <Button onClick={() => setIsAddJobOpen(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Post Job
+                  </Button>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {filteredJobs.map(job => (
-                    <div key={job.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                  {filteredJobs.map((job) => (
+                    <div
+                      key={job.id}
+                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                    >
                       <div className="flex items-start gap-4">
                         <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
                           <Briefcase className="h-6 w-6 text-primary" />
@@ -464,16 +569,24 @@ export default function RecruitmentPage() {
                               <DollarSign className="h-3.5 w-3.5" />
                               {formatSalary(job.salary_min, job.salary_max, job.salary_currency)}
                             </span>
-                            <Badge variant="outline" className="text-xs">{job.employment_type.replace('_', '-')}</Badge>
-                            <Badge variant="outline" className="text-xs">{job.work_location}</Badge>
+                            <Badge variant="outline" className="text-xs">
+                              {job.employment_type.replace("_", "-")}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              {job.work_location}
+                            </Badge>
                           </div>
                           {job.required_skills && job.required_skills.length > 0 && (
                             <div className="flex gap-1 mt-2 flex-wrap">
-                              {job.required_skills.slice(0, 4).map(skill => (
-                                <Badge key={skill} variant="secondary" className="text-xs">{skill}</Badge>
+                              {job.required_skills.slice(0, 4).map((skill) => (
+                                <Badge key={skill} variant="secondary" className="text-xs">
+                                  {skill}
+                                </Badge>
                               ))}
                               {job.required_skills.length > 4 && (
-                                <Badge variant="secondary" className="text-xs">+{job.required_skills.length - 4}</Badge>
+                                <Badge variant="secondary" className="text-xs">
+                                  +{job.required_skills.length - 4}
+                                </Badge>
                               )}
                             </div>
                           )}
@@ -490,7 +603,7 @@ export default function RecruitmentPage() {
                             <p className="text-xs text-muted-foreground">AI found</p>
                           </div>
                         )}
-                        <Badge className={statusColors[job.status] || 'bg-muted text-muted-foreground'}>
+                        <Badge className={statusColors[job.status] || "bg-muted text-muted-foreground"}>
                           {job.status}
                         </Badge>
                         {job.ai_sourcing_status && (
@@ -508,18 +621,32 @@ export default function RecruitmentPage() {
                           {triggerSourcing.isPending ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
-                            <><Target className="h-4 w-4 mr-1" />Find Candidates</>
+                            <>
+                              <Target className="h-4 w-4 mr-1" />
+                              Find Candidates
+                            </>
                           )}
                         </Button>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem><Eye className="h-4 w-4 mr-2" />View</DropdownMenuItem>
-                            <DropdownMenuItem><Edit className="h-4 w-4 mr-2" />Edit</DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Eye className="h-4 w-4 mr-2" />
+                              View
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem><ExternalLink className="h-4 w-4 mr-2" />Share Link</DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <ExternalLink className="h-4 w-4 mr-2" />
+                              Share Link
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
@@ -546,13 +673,15 @@ export default function RecruitmentPage() {
                     placeholder="Search candidates..."
                     className="pl-10"
                     value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              {candidatesLoading ? <TableLoading rows={6} /> : filteredCandidates.length === 0 ? (
+              {candidatesLoading ? (
+                <TableLoading rows={6} />
+              ) : filteredCandidates.length === 0 ? (
                 <div className="text-center py-16">
                   <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                   <h3 className="text-lg font-semibold mb-1">No candidates yet</h3>
@@ -572,9 +701,9 @@ export default function RecruitmentPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredCandidates.map(candidate => {
+                    {filteredCandidates.map((candidate) => {
                       const name = candidate.full_name || `${candidate.first_name} ${candidate.last_name}`;
-                      const initials = `${candidate.first_name?.[0] || ''}${candidate.last_name?.[0] || ''}`;
+                      const initials = `${candidate.first_name?.[0] || ""}${candidate.last_name?.[0] || ""}`;
                       return (
                         <TableRow key={candidate.id}>
                           <TableCell>
@@ -586,28 +715,26 @@ export default function RecruitmentPage() {
                               </Avatar>
                               <div>
                                 <p className="font-medium">{name}</p>
-                                <p className="text-xs text-muted-foreground">{candidate.email || 'No email'}</p>
+                                <p className="text-xs text-muted-foreground">{candidate.email || "No email"}</p>
                               </div>
                             </div>
                           </TableCell>
                           <TableCell>
                             <div>
-                              <p className="text-sm">{candidate.current_position || '—'}</p>
+                              <p className="text-sm">{candidate.current_position || "—"}</p>
                               {candidate.current_company && (
                                 <p className="text-xs text-muted-foreground">{candidate.current_company}</p>
                               )}
                             </div>
                           </TableCell>
                           <TableCell>
-                            {candidate.total_experience_years != null
-                              ? `${candidate.total_experience_years} yrs`
-                              : '—'}
+                            {candidate.total_experience_years != null ? `${candidate.total_experience_years} yrs` : "—"}
                           </TableCell>
                           <TableCell>
                             {candidate.match_score != null ? (
                               <div className="flex items-center gap-2 w-24">
                                 <Progress value={candidate.match_score} className="h-2" />
-                                <span className={cn('text-xs font-medium', getScoreColor(candidate.match_score))}>
+                                <span className={cn("text-xs font-medium", getScoreColor(candidate.match_score))}>
                                   {candidate.match_score}%
                                 </span>
                               </div>
@@ -619,9 +746,9 @@ export default function RecruitmentPage() {
                             <Badge
                               variant="outline"
                               className={cn(
-                                'text-xs',
-                                candidate.enrichment_status === 'completed' && 'bg-chart-2/10 text-chart-2',
-                                candidate.enrichment_status === 'pending' && 'bg-chart-4/10 text-chart-4',
+                                "text-xs",
+                                candidate.enrichment_status === "completed" && "bg-chart-2/10 text-chart-2",
+                                candidate.enrichment_status === "pending" && "bg-chart-4/10 text-chart-4",
                               )}
                             >
                               {candidate.enrichment_status}
@@ -631,14 +758,25 @@ export default function RecruitmentPage() {
                           <TableCell>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem><Eye className="h-4 w-4 mr-2" />View Profile</DropdownMenuItem>
+                                <DropdownMenuItem>
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  View Profile
+                                </DropdownMenuItem>
                                 {candidate.linkedin_url && (
-                                  <DropdownMenuItem><ExternalLink className="h-4 w-4 mr-2" />LinkedIn</DropdownMenuItem>
+                                  <DropdownMenuItem>
+                                    <ExternalLink className="h-4 w-4 mr-2" />
+                                    LinkedIn
+                                  </DropdownMenuItem>
                                 )}
-                                <DropdownMenuItem><Mail className="h-4 w-4 mr-2" />Send Email</DropdownMenuItem>
+                                <DropdownMenuItem>
+                                  <Mail className="h-4 w-4 mr-2" />
+                                  Send Email
+                                </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>
@@ -660,7 +798,9 @@ export default function RecruitmentPage() {
               <CardDescription>Track candidates across hiring stages</CardDescription>
             </CardHeader>
             <CardContent>
-              {appsLoading ? <TableLoading rows={4} /> : applications.length === 0 ? (
+              {appsLoading ? (
+                <TableLoading rows={4} />
+              ) : applications.length === 0 ? (
                 <div className="text-center py-16">
                   <TrendingUp className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                   <h3 className="text-lg font-semibold mb-1">No applications yet</h3>
@@ -668,7 +808,7 @@ export default function RecruitmentPage() {
                 </div>
               ) : (
                 <div className="flex gap-4 overflow-x-auto pb-4">
-                  {pipelineStages.map(stage => {
+                  {pipelineStages.map((stage) => {
                     const stageApps = getApplicationsByStage(stage);
                     return (
                       <div key={stage} className="flex-shrink-0 w-64">
@@ -677,7 +817,7 @@ export default function RecruitmentPage() {
                           <Badge variant="secondary">{stageApps.length}</Badge>
                         </div>
                         <div className="space-y-2 min-h-[400px] p-2 bg-muted/30 rounded-lg">
-                          {stageApps.map(app => (
+                          {stageApps.map((app) => (
                             <div
                               key={app.id}
                               className="p-3 bg-background rounded-lg border shadow-sm hover:shadow-md transition-shadow"
@@ -691,11 +831,18 @@ export default function RecruitmentPage() {
                                 <span className="font-medium text-sm truncate">{getCandidateName(app)}</span>
                               </div>
                               {app.requisition && (
-                                <p className="text-xs text-muted-foreground mb-2 truncate">{app.requisition.job_title}</p>
+                                <p className="text-xs text-muted-foreground mb-2 truncate">
+                                  {app.requisition.job_title}
+                                </p>
                               )}
                               <div className="flex items-center justify-between">
                                 {app.ai_match_score != null ? (
-                                  <span className={cn('text-xs font-medium flex items-center gap-1', getScoreColor(app.ai_match_score))}>
+                                  <span
+                                    className={cn(
+                                      "text-xs font-medium flex items-center gap-1",
+                                      getScoreColor(app.ai_match_score),
+                                    )}
+                                  >
                                     <Star className="h-3 w-3" />
                                     {app.ai_match_score}%
                                   </span>
@@ -703,12 +850,14 @@ export default function RecruitmentPage() {
                                   <span className="text-xs text-muted-foreground">No score</span>
                                 )}
                                 {app.source && (
-                                  <Badge variant="outline" className="text-xs">{app.source}</Badge>
+                                  <Badge variant="outline" className="text-xs">
+                                    {app.source}
+                                  </Badge>
                                 )}
                               </div>
                               {/* Stage move buttons */}
                               <div className="flex gap-1 mt-2">
-                                {stage !== 'hired' && (
+                                {stage !== "hired" && stage !== "rejected" && (
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                       <Button variant="ghost" size="sm" className="h-6 text-xs w-full">
@@ -717,8 +866,8 @@ export default function RecruitmentPage() {
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent>
                                       {pipelineStages
-                                        .filter(s => s !== stage)
-                                        .map(s => (
+                                        .filter((s) => s !== stage)
+                                        .map((s) => (
                                           <DropdownMenuItem
                                             key={s}
                                             onClick={() => updateStage.mutate({ applicationId: app.id, stage: s })}
@@ -733,9 +882,7 @@ export default function RecruitmentPage() {
                             </div>
                           ))}
                           {stageApps.length === 0 && (
-                            <div className="text-center py-8 text-muted-foreground text-sm">
-                              No candidates
-                            </div>
+                            <div className="text-center py-8 text-muted-foreground text-sm">No candidates</div>
                           )}
                         </div>
                       </div>
@@ -759,39 +906,53 @@ export default function RecruitmentPage() {
               </div>
             </CardHeader>
             <CardContent>
-              {schedulesLoading ? <TableLoading rows={3} /> : interviewSchedules.length === 0 ? (
+              {schedulesLoading ? (
+                <TableLoading rows={3} />
+              ) : interviewSchedules.length === 0 ? (
                 <div className="text-center py-16">
                   <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                   <h3 className="text-lg font-semibold mb-1">No interviews scheduled</h3>
-                  <p className="text-muted-foreground">Interviews will appear here once candidates progress through the pipeline</p>
+                  <p className="text-muted-foreground">
+                    Interviews will appear here once candidates progress through the pipeline
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {interviewSchedules.map((interview: Record<string, unknown>) => (
-                    <div key={interview.id as string} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div
+                      key={interview.id as string}
+                      className="flex items-center justify-between p-4 border rounded-lg"
+                    >
                       <div className="flex items-center gap-4">
                         <div className="h-12 w-12 rounded-lg bg-chart-3/10 flex items-center justify-center">
                           <Video className="h-6 w-6 text-chart-3" />
                         </div>
                         <div>
-                          <p className="font-medium">{(interview as any).candidate?.full_name || `${(interview as any).candidate?.first_name || ''} ${(interview as any).candidate?.last_name || ''}`.trim() || 'Candidate'}</p>
+                          <p className="font-medium">
+                            {(interview as any).candidate?.full_name ||
+                              `${(interview as any).candidate?.first_name || ""} ${(interview as any).candidate?.last_name || ""}`.trim() ||
+                              "Candidate"}
+                          </p>
                           <p className="text-sm text-muted-foreground">
-                            {(interview.interview_type as string) || 'Interview'}
+                            {(interview.interview_type as string) || "Interview"}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-6">
                         {interview.scheduled_at && (
                           <div className="text-right">
-                            <p className="font-medium">{format(new Date(interview.scheduled_at as string), 'MMM d, yyyy')}</p>
+                            <p className="font-medium">
+                              {format(new Date(interview.scheduled_at as string), "MMM d, yyyy")}
+                            </p>
                             <p className="text-sm text-muted-foreground">
-                              {format(new Date(interview.scheduled_at as string), 'h:mm a')}
+                              {format(new Date(interview.scheduled_at as string), "h:mm a")}
                             </p>
                           </div>
                         )}
-                        <Badge variant="outline">{(interview.status as string) || 'scheduled'}</Badge>
+                        <Badge variant="outline">{(interview.status as string) || "scheduled"}</Badge>
                         <Button variant="outline" size="sm">
-                          <Video className="h-4 w-4 mr-1" />Join
+                          <Video className="h-4 w-4 mr-1" />
+                          Join
                         </Button>
                       </div>
                     </div>
@@ -813,15 +974,19 @@ export default function RecruitmentPage() {
               <CardDescription>Automated screening interviews conducted by AI</CardDescription>
             </CardHeader>
             <CardContent>
-              {aiInterviewsLoading ? <TableLoading rows={4} /> : aiInterviews.length === 0 ? (
+              {aiInterviewsLoading ? (
+                <TableLoading rows={4} />
+              ) : aiInterviews.length === 0 ? (
                 <div className="text-center py-16">
                   <Bot className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                   <h3 className="text-lg font-semibold mb-1">No AI interviews yet</h3>
-                  <p className="text-muted-foreground">Move candidates to the AI Interview stage to start automated screening</p>
+                  <p className="text-muted-foreground">
+                    Move candidates to the AI Interview stage to start automated screening
+                  </p>
                 </div>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2">
-                  {aiInterviews.map(interview => (
+                  {aiInterviews.map((interview) => (
                     <Card key={interview.id} className="border">
                       <CardContent className="p-4 space-y-4">
                         <div className="flex items-center justify-between">
@@ -831,32 +996,34 @@ export default function RecruitmentPage() {
                           </div>
                           <Badge
                             className={cn(
-                              interview.status === 'completed' && 'bg-chart-2/10 text-chart-2',
-                              interview.status === 'in_progress' && 'bg-chart-4/10 text-chart-4',
-                              interview.status === 'scheduled' && 'bg-primary/10 text-primary',
-                              interview.status === 'failed' && 'bg-destructive/10 text-destructive',
-                              interview.status === 'cancelled' && 'bg-muted text-muted-foreground',
+                              interview.status === "completed" && "bg-chart-2/10 text-chart-2",
+                              interview.status === "in_progress" && "bg-chart-4/10 text-chart-4",
+                              interview.status === "scheduled" && "bg-primary/10 text-primary",
+                              interview.status === "failed" && "bg-destructive/10 text-destructive",
+                              interview.status === "cancelled" && "bg-muted text-muted-foreground",
                             )}
                           >
                             {interview.status}
                           </Badge>
                         </div>
 
-                        {interview.status === 'completed' && (
+                        {interview.status === "completed" && (
                           <>
                             {/* Scores */}
                             <div className="grid grid-cols-2 gap-3">
                               {[
-                                { label: 'Overall', score: interview.ai_overall_score },
-                                { label: 'Technical', score: interview.ai_technical_score },
-                                { label: 'Communication', score: interview.ai_communication_score },
-                                { label: 'Cultural Fit', score: interview.ai_cultural_score },
-                              ].map(item => (
+                                { label: "Overall", score: interview.ai_overall_score },
+                                { label: "Technical", score: interview.ai_technical_score },
+                                { label: "Communication", score: interview.ai_communication_score },
+                                { label: "Cultural Fit", score: interview.ai_cultural_score },
+                              ].map((item) => (
                                 <div key={item.label} className="space-y-1">
                                   <div className="flex items-center justify-between text-xs">
                                     <span className="text-muted-foreground">{item.label}</span>
-                                    <span className={cn('font-medium', item.score != null ? getScoreColor(item.score) : '')}>
-                                      {item.score != null ? `${item.score}%` : '—'}
+                                    <span
+                                      className={cn("font-medium", item.score != null ? getScoreColor(item.score) : "")}
+                                    >
+                                      {item.score != null ? `${item.score}%` : "—"}
                                     </span>
                                   </div>
                                   <Progress value={item.score || 0} className="h-1.5" />
@@ -875,11 +1042,14 @@ export default function RecruitmentPage() {
                             {interview.ai_strengths && interview.ai_strengths.length > 0 && (
                               <div>
                                 <p className="text-xs font-medium mb-1 flex items-center gap-1">
-                                  <CheckCircle2 className="h-3 w-3 text-chart-2" />Strengths
+                                  <CheckCircle2 className="h-3 w-3 text-chart-2" />
+                                  Strengths
                                 </p>
                                 <div className="flex flex-wrap gap-1">
                                   {interview.ai_strengths.map((s, i) => (
-                                    <Badge key={i} variant="secondary" className="text-xs">{s}</Badge>
+                                    <Badge key={i} variant="secondary" className="text-xs">
+                                      {s}
+                                    </Badge>
                                   ))}
                                 </div>
                               </div>
@@ -889,11 +1059,14 @@ export default function RecruitmentPage() {
                             {interview.ai_concerns && interview.ai_concerns.length > 0 && (
                               <div>
                                 <p className="text-xs font-medium mb-1 flex items-center gap-1">
-                                  <XCircle className="h-3 w-3 text-destructive" />Concerns
+                                  <XCircle className="h-3 w-3 text-destructive" />
+                                  Concerns
                                 </p>
                                 <div className="flex flex-wrap gap-1">
                                   {interview.ai_concerns.map((c, i) => (
-                                    <Badge key={i} variant="outline" className="text-xs">{c}</Badge>
+                                    <Badge key={i} variant="outline" className="text-xs">
+                                      {c}
+                                    </Badge>
                                   ))}
                                 </div>
                               </div>
@@ -915,7 +1088,7 @@ export default function RecruitmentPage() {
 
                         {interview.completed_at && (
                           <p className="text-xs text-muted-foreground">
-                            Completed {format(new Date(interview.completed_at), 'MMM d, yyyy')}
+                            Completed {format(new Date(interview.completed_at), "MMM d, yyyy")}
                           </p>
                         )}
                       </CardContent>
@@ -942,7 +1115,9 @@ export default function RecruitmentPage() {
               </div>
             </CardHeader>
             <CardContent>
-              {sourcingLoading ? <TableLoading rows={4} /> : sourcingRuns.length === 0 ? (
+              {sourcingLoading ? (
+                <TableLoading rows={4} />
+              ) : sourcingRuns.length === 0 ? (
                 <div className="text-center py-16">
                   <Target className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                   <h3 className="text-lg font-semibold mb-1">No sourcing runs yet</h3>
@@ -966,47 +1141,51 @@ export default function RecruitmentPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sourcingRuns.map(run => (
+                    {sourcingRuns.map((run) => (
                       <TableRow key={run.id}>
                         <TableCell className="text-xs text-muted-foreground">
-                          {format(new Date(run.created_at), 'MMM d, HH:mm')}
+                          {format(new Date(run.created_at), "MMM d, HH:mm")}
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline" className="text-xs">{run.trigger_type}</Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {run.trigger_type}
+                          </Badge>
                         </TableCell>
                         <TableCell>
                           <Badge
                             className={cn(
-                              'text-xs',
-                              run.status === 'completed' && 'bg-chart-2/10 text-chart-2',
-                              run.status === 'running' && 'bg-primary/10 text-primary',
-                              run.status === 'failed' && 'bg-destructive/10 text-destructive',
+                              "text-xs",
+                              run.status === "completed" && "bg-chart-2/10 text-chart-2",
+                              run.status === "running" && "bg-primary/10 text-primary",
+                              run.status === "failed" && "bg-destructive/10 text-destructive",
                             )}
                           >
-                            {run.status === 'running' && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                            {run.status === "running" && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
                             {run.status}
                           </Badge>
                         </TableCell>
-                        {(['phase1_status', 'phase2_status', 'phase3_status', 'phase4_status'] as const).map(phase => (
-                          <TableCell key={phase}>
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                'text-xs',
-                                run[phase] === 'completed' && 'bg-chart-2/10 text-chart-2',
-                                run[phase] === 'running' && 'bg-chart-4/10 text-chart-4',
-                                run[phase] === 'failed' && 'bg-destructive/10 text-destructive',
-                              )}
-                            >
-                              {run[phase]}
-                            </Badge>
-                          </TableCell>
-                        ))}
+                        {(["phase1_status", "phase2_status", "phase3_status", "phase4_status"] as const).map(
+                          (phase) => (
+                            <TableCell key={phase}>
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "text-xs",
+                                  run[phase] === "completed" && "bg-chart-2/10 text-chart-2",
+                                  run[phase] === "running" && "bg-chart-4/10 text-chart-4",
+                                  run[phase] === "failed" && "bg-destructive/10 text-destructive",
+                                )}
+                              >
+                                {run[phase]}
+                              </Badge>
+                            </TableCell>
+                          ),
+                        )}
                         <TableCell className="font-medium">{run.total_candidates_found}</TableCell>
                         <TableCell className="font-medium">{run.total_candidates_matched}</TableCell>
                         <TableCell className="font-medium">{run.total_candidates_contacted}</TableCell>
                         <TableCell className="text-muted-foreground text-sm">
-                          {run.duration_seconds ? `${Math.round(run.duration_seconds / 60)}m` : '—'}
+                          {run.duration_seconds ? `${Math.round(run.duration_seconds / 60)}m` : "—"}
                         </TableCell>
                       </TableRow>
                     ))}
