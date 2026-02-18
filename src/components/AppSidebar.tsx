@@ -27,6 +27,7 @@ import {
   Building2,
   Zap,
   ChevronRight,
+  Brain,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -50,6 +51,10 @@ const marketingNavItems = [
 const hrNavItems = [
   { title: 'HR Dashboard', url: '/hr/dashboard', icon: Building2 },
   { title: 'Employees', url: '/hr/employees', icon: Users },
+];
+
+const intelligenceNavItems = [
+  { title: 'Intelligence Hub', url: '/intelligence', icon: Brain },
 ];
 
 export function AppSidebar() {
@@ -155,6 +160,17 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {hrNavItems.map((item) => (
+                <NavItem key={item.url} item={item} />
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          {!collapsed && <SidebarGroupLabel>AI</SidebarGroupLabel>}
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {intelligenceNavItems.map((item) => (
                 <NavItem key={item.url} item={item} />
               ))}
             </SidebarMenu>

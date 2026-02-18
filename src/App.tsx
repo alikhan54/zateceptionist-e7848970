@@ -108,6 +108,9 @@ const AuthCallback = lazy(() => import("./pages/auth/Callback"));
 // Invite
 const Invite = lazy(() => import("./pages/Invite"));
 
+// Intelligence
+const Intelligence = lazy(() => import("./pages/Intelligence"));
+
 // Other
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -230,6 +233,9 @@ const App = () => (
                 <Route path="/analytics/reports" element={<LazyPage><CustomReports /></LazyPage>} />
                 <Route path="/analytics/ai-insights" element={<LazyPage><AIInsights /></LazyPage>} />
                 <Route path="/analytics/predictions" element={<LazyPage><Predictions /></LazyPage>} />
+
+                {/* Intelligence */}
+                <Route path="/intelligence" element={<LazyPage><Intelligence /></LazyPage>} />
 
                 {/* Settings Module */}
                 <Route path="/settings" element={<LazyPage><GeneralSettings /></LazyPage>} />
