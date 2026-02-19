@@ -3,6 +3,7 @@
 @tailwind utilities;
 
 @import './styles/marketing.css';
+@import './styles/theme-fixes.css';
 
 @layer base {
   :root {

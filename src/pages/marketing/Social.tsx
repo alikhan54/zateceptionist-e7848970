@@ -644,9 +644,12 @@ export default function SocialCommander() {
               </Button>
             ))}
           </div>
-          <p className="text-xs text-muted-foreground text-center mt-2">
-            OAuth integration required. Configure API keys in Settings → Integrations.
-          </p>
+          <div className="text-center text-sm text-muted-foreground border-t pt-4">
+            <p>To connect social accounts, configure your API keys in:</p>
+            <Button variant="link" className="p-0 h-auto" onClick={() => window.location.href = '/settings/integrations'}>
+              Settings → Integrations
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 

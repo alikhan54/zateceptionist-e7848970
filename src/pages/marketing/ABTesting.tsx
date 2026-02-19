@@ -62,12 +62,20 @@ export default function ABTesting() {
 
       {/* Tests List */}
       {tests.length === 0 ? (
-        <Card>
-          <CardContent className="text-center py-12 text-muted-foreground">
-            <GitBranch className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No A/B tests yet</p>
-            <p className="text-sm">Create your first test to optimize your campaigns</p>
-          </CardContent>
+        <Card className="p-12">
+          <div className="flex flex-col items-center justify-center text-center">
+            <div className="p-4 rounded-full bg-purple-100 dark:bg-purple-900/20 mb-4">
+              <GitBranch className="h-12 w-12 text-purple-500" />
+            </div>
+            <h3 className="text-xl font-semibold mb-2">No A/B Tests Yet</h3>
+            <p className="text-muted-foreground mb-6 max-w-md">
+              Create your first A/B test to optimize your campaigns. Test different subject lines,
+              content variations, or send times to improve engagement.
+            </p>
+            <Button onClick={() => setIsCreateOpen(true)} className="marketing-gradient text-white">
+              <Plus className="h-4 w-4 mr-2" /> Create Your First Test
+            </Button>
+          </div>
         </Card>
       ) : (
         <div className="space-y-4">
@@ -100,16 +108,23 @@ export default function ABTesting() {
                   {variants.length > 0 ? (
                     <div className="grid grid-cols-2 gap-4">
                       {variants.map((v: any, i: number) => (
-                        <div key={v.id || i} className={`p-3 rounded-lg ${test.winner_variant === v.id ? 'bg-primary/10 border border-primary/20' : 'bg-muted'}`}>
+              <div key={v.id || i} className={`p-3 rounded-lg border-2 transition-all ${test.winner_variant === v.id ? 'border-green-500 bg-green-50 dark:bg-green-950/20' : 'border-muted bg-muted'}`}>
                           <div className="flex items-center justify-between mb-2">
-                            <p className="text-sm font-medium">{v.name || `Variant ${String.fromCharCode(65 + i)}`}</p>
-                            {test.winner_variant === v.id && <Trophy className="h-4 w-4 text-primary" />}
+                             <p className="text-sm font-semibold">{v.name || `Variant ${String.fromCharCode(65 + i)}`}</p>
+                            {test.winner_variant === v.id && <Trophy className="h-4 w-4 text-green-500" />}
                           </div>
                           <div className="grid grid-cols-3 gap-2 text-center">
                             <div><p className="text-lg font-bold">{v.sent || 0}</p><p className="text-xs text-muted-foreground">Sent</p></div>
                             <div><p className="text-lg font-bold">{v.opened || 0}</p><p className="text-xs text-muted-foreground">Opened</p></div>
                             <div><p className="text-lg font-bold">{v.clicked || 0}</p><p className="text-xs text-muted-foreground">Clicked</p></div>
                           </div>
+                          {v.sent > 0 && (
+                            <div className="mt-2 pt-2 border-t text-center">
+                              <p className={`text-sm font-medium ${test.winner_variant === v.id ? 'text-green-500' : ''}`}>
+                                {((v.opened / v.sent) * 100).toFixed(1)}% open rate
+                              </p>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
