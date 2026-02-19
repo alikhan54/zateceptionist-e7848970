@@ -86,6 +86,19 @@ export default function ContentStudio() {
   const [editItem, setEditItem] = useState<any | null>(null);
   const [editContent, setEditContent] = useState('');
 
+  const generateMockContent = (type: ContentType, topicText: string, toneText: string) => {
+    const templates: Record<string, string> = {
+      social_media: `🎯 ${topicText}\n\nDiscover how ${topicText} can transform your business!\n\n✨ Key benefits:\n• Increased efficiency\n• Better customer engagement\n• Measurable ROI\n\n👉 Learn more at the link in bio\n\n#${topicText.replace(/\s+/g, '')} #Business #Growth #Marketing`,
+      social: `🎯 ${topicText}\n\nDiscover how ${topicText} can transform your business!\n\n✨ Key benefits:\n• Increased efficiency\n• Better results\n• Happier customers\n\n#${topicText.replace(/\s+/g, '')} #Business #Growth`,
+      email: `Subject: Exciting news about ${topicText}!\n\nHi {{first_name}},\n\nWe wanted to share some exciting updates about ${topicText}.\n\nHere's what you need to know:\n\n1. Industry-leading innovation\n2. Proven results for businesses like yours\n3. Easy to get started today\n\nReady to take the next step?\n\nBest regards,\nYour Team`,
+      blog: `# ${topicText}: A Complete Guide\n\n## Introduction\n${topicText} has become increasingly important in today's business landscape. In this guide, we'll explore everything you need to know.\n\n## Why ${topicText} Matters\nBusinesses that embrace ${topicText} see an average of 40% improvement in key metrics.\n\n## How to Get Started\n1. Assess your current situation\n2. Set clear goals\n3. Implement step by step\n\n## Conclusion\nDon't wait — start leveraging ${topicText} today to stay ahead of the competition.`,
+      whatsapp: `Hi! 👋\n\nQuick update about ${topicText}!\n\n${topicText} can help you:\n✅ Save time\n✅ Increase sales\n✅ Grow faster\n\nInterested? Reply YES to learn more! 🚀`,
+      ad_copy: `🔥 ${topicText.toUpperCase()} 🔥\n\nTransform your business today!\n\n✓ Proven results\n✓ Easy setup\n✓ 24/7 support\n\n👉 Get Started Now — Limited Time Offer!`,
+      ad: `🔥 ${topicText.toUpperCase()} 🔥\n\nTransform your business today!\n\n✓ Proven results\n✓ Easy setup\n✓ 24/7 support\n\n👉 Get Started Now!`,
+    };
+    return templates[type] || templates.social_media;
+  };
+
   const handleGenerate = async () => {
     if (!tenantId || !topic.trim()) {
       toast({ title: 'Missing Information', description: 'Please enter a topic.', variant: 'destructive' });
@@ -95,12 +108,24 @@ export default function ContentStudio() {
     try {
       const result = await callWebhook(WEBHOOKS.GENERATE_CONTENT, { content_type: contentType, topic, tone, language, industry: tenantConfig?.industry }, tenantId);
       if (result.success && result.data) {
-        setGeneratedContent((result.data as any)?.content || `Generated ${contentType} content about "${topic}"`);
+        const content = (result.data as any)?.content;
+        if (content) {
+          setGeneratedContent(content);
+          toast({ title: 'Content Generated!', description: 'AI has created your content.' });
+        } else {
+          const mock = generateMockContent(contentType, topic, tone);
+          setGeneratedContent(mock);
+          toast({ title: 'Content Generated (Demo)', description: 'Connect n8n webhook for full AI generation.' });
+        }
       } else {
-        setGeneratedContent(`🎯 ${topic}\n\nSample ${contentType} content in ${tone} tone.\n\nConnect webhook for real AI content.`);
+        const mock = generateMockContent(contentType, topic, tone);
+        setGeneratedContent(mock);
+        toast({ title: 'Content Generated (Demo)', description: 'Connect n8n webhook for full AI generation.' });
       }
     } catch {
-      setGeneratedContent(`📝 Sample ${contentType}\n\nTopic: ${topic}\nTone: ${tone}`);
+      const mock = generateMockContent(contentType, topic, tone);
+      setGeneratedContent(mock);
+      toast({ title: 'Content Generated (Demo)', description: 'Sample content created.' });
     } finally {
       setIsGenerating(false);
     }
