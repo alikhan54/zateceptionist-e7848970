@@ -43,6 +43,7 @@ const EmailBuilder = lazy(() => import("./pages/marketing/EmailBuilder"));
 const LandingPages = lazy(() => import("./pages/marketing/LandingPages"));
 const MarketingAnalytics = lazy(() => import("./pages/marketing/Analytics"));
 const ABTesting = lazy(() => import("./pages/marketing/ABTesting"));
+const MarketingSequences = lazy(() => import("./pages/marketing/Sequences"));
 
 // HR Module
 const HRDashboardOverview = lazy(() => import("./pages/hr/Dashboard"));
@@ -193,6 +194,7 @@ const App = () => (
                 <Route path="/marketing/landing" element={<LazyPage><LandingPages /></LazyPage>} />
                 <Route path="/marketing/analytics" element={<LazyPage><MarketingAnalytics /></LazyPage>} />
                 <Route path="/marketing/ab-testing" element={<LazyPage><ABTesting /></LazyPage>} />
+                <Route path="/marketing/sequences" element={<LazyPage><MarketingSequences /></LazyPage>} />
 
                 {/* HR Module */}
                 <Route path="/hr" element={<Navigate to="/hr/dashboard" replace />} />
