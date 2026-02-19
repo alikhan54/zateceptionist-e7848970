@@ -81,6 +81,7 @@ export default function ContentStudio() {
   const [language, setLanguage] = useState('en');
   const [generatedContent, setGeneratedContent] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [activeTab, setActiveTab] = useState('generator');
   const [librarySearch, setLibrarySearch] = useState('');
   const [libraryFilter, setLibraryFilter] = useState<string>('all');
   const [editItem, setEditItem] = useState<any | null>(null);
@@ -182,7 +183,7 @@ export default function ContentStudio() {
         </div>
       </div>
 
-      <Tabs defaultValue="generator" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>
           <TabsTrigger value="generator" className="gap-2"><Sparkles className="h-4 w-4" />AI Generator</TabsTrigger>
           <TabsTrigger value="library" className="gap-2"><FolderOpen className="h-4 w-4" />Content Library</TabsTrigger>
@@ -366,7 +367,12 @@ export default function ContentStudio() {
                           <p className="text-muted-foreground">{typeof trend.ai_content_suggestions === 'string' ? trend.ai_content_suggestions : JSON.stringify(trend.ai_content_suggestions).slice(0, 150)}</p>
                         </div>
                       )}
-                      <Button size="sm" variant="outline" className="w-full mt-2" onClick={() => { setTopic(trend.trend_keyword); setContentType('social_media'); }}>
+                      <Button size="sm" variant="outline" className="w-full mt-2" onClick={() => {
+                        setTopic(trend.trend_keyword);
+                        setContentType('social_media');
+                        setActiveTab('generator');
+                        toast({ title: '📝 Topic Set!', description: `Creating content about "${trend.trend_keyword}"` });
+                      }}>
                         <Zap className="h-3 w-3 mr-1" />Create Content from Trend
                       </Button>
                     </div>

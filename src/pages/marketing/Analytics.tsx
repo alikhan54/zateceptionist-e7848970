@@ -6,7 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMarketingCampaigns } from '@/hooks/useMarketingCampaigns';
 import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { Download, TrendingUp, Users, Mail, MousePointer, Send, Eye, Target } from 'lucide-react';
+import { Download, TrendingUp, Users, Mail, MousePointer, Send, Eye, Target, Plus } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function MarketingAnalytics() {
   const [period, setPeriod] = useState('30d');
@@ -117,7 +118,11 @@ export default function MarketingAnalytics() {
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-muted-foreground">No campaign data yet</div>
+              <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
+                <Target className="h-8 w-8 mb-2 opacity-50" />
+                <p>No campaign data yet</p>
+                <Button asChild variant="link" size="sm"><Link to="/marketing">Create a campaign</Link></Button>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -139,7 +144,10 @@ export default function MarketingAnalytics() {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-muted-foreground">No data yet</div>
+              <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
+                <Send className="h-8 w-8 mb-2 opacity-50" />
+                <p>Send campaigns to see performance data</p>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -161,7 +169,11 @@ export default function MarketingAnalytics() {
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-full flex items-center justify-center text-muted-foreground">Create campaigns to see comparison data</div>
+            <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
+              <Plus className="h-8 w-8 mb-2 opacity-50" />
+              <p>Create and send campaigns to see comparison data</p>
+              <Button asChild variant="link" size="sm"><Link to="/marketing">Go to Marketing Hub</Link></Button>
+            </div>
           )}
         </CardContent>
       </Card>

@@ -1,0 +1,92 @@
+/* ========================================
+   GLOBAL LIGHT MODE FIXES
+   ======================================== */
+
+/* Ensure cards have visible borders in light mode */
+:root [data-slot="card"],
+:root .card {
+  border: 1px solid hsl(var(--border));
+}
+
+/* Fix button visibility in light mode */
+:root button,
+:root [role="button"] {
+  opacity: 1;
+}
+
+/* Fix tabs visibility in light mode */
+:root [role="tablist"] {
+  background-color: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
+}
+
+:root [role="tab"] {
+  color: hsl(var(--muted-foreground));
+  opacity: 1;
+}
+
+:root [role="tab"][data-state="active"] {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+/* Fix input visibility */
+:root input,
+:root textarea,
+:root select {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+/* Fix dropdown/select content */
+:root [role="listbox"],
+:root [data-radix-popper-content-wrapper] > div {
+  background-color: hsl(var(--popover));
+  border: 1px solid hsl(var(--border));
+}
+
+/* Fix dialog/modal */
+:root [role="dialog"] {
+  background-color: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+}
+
+/* Marketing specific gradients */
+.marketing-gradient {
+  background: linear-gradient(135deg, hsl(271 91% 65%) 0%, hsl(199 89% 48%) 100%);
+}
+
+.marketing-gradient-text {
+  background: linear-gradient(135deg, hsl(271 91% 65%) 0%, hsl(199 89% 48%) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Stat card styling */
+.stat-card {
+  transition: all 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
+}
+
+/* Empty state styling */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  text-align: center;
+}
+
+.empty-state-icon {
+  width: 4rem;
+  height: 4rem;
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 1rem;
+}
