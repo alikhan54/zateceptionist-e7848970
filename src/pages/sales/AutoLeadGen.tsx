@@ -51,6 +51,7 @@ import {
   Mail,
   Phone,
   Globe,
+  Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -251,49 +252,7 @@ export default function LeadDiscovery() {
     sequenceId: "",
   });
 
-  // ============================================================
-  // FIX: Load existing auto lead gen settings (useEffect AFTER state)
-  // ============================================================
-  useEffect(() => {
-    const loadAutoSettings = async () => {
-      if (!tenantUuid) return;
-
-      try {
-        const { data, error } = await supabase
-          .from("auto_lead_gen_settings")
-          .select("*")
-          .eq("tenant_id", tenantUuid)
-          .maybeSingle();
-
-        if (error) {
-          console.error("Error loading auto settings:", error);
-          return;
-        }
-
-        if (data) {
-          console.log("Loaded auto settings:", data);
-          setAutoSettings({
-            enabled: data.is_active || false,
-            source: data.generation_type || "quick_search",
-            industry: data.industry || "",
-            location: data.location || data.city || "",
-            keywords: data.keywords || "",
-            maxLeadsPerRun: data.max_leads_per_run || data.leads_per_run || 10,
-            frequency: data.schedule_type || "daily",
-            time: data.schedule_time ? data.schedule_time.substring(0, 5) : "09:00", // Extract HH:mm from HH:mm:ss
-            autoEnrich: data.auto_enrich ?? true,
-            autoScore: data.auto_score ?? true,
-            autoSequence: data.auto_sequence ?? false,
-            sequenceId: data.sequence_id || "",
-          });
-        }
-      } catch (err) {
-        console.error("Failed to load auto settings:", err);
-      }
-    };
-
-    loadAutoSettings();
-  }, [tenantUuid]);
+  // Form starts fresh — users load a specific config by clicking "Edit" on saved configs
 
   // CSV Upload
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -405,7 +364,7 @@ export default function LeadDiscovery() {
   // FIXED: Fetch saved auto-gen configs from auto_lead_gen_settings
   // This is what Part 35 workflow reads from!
   // ============================================================
-  const { data: savedConfigs = [], refetch: refetchConfigs } = useQuery({
+  const { data: savedConfigs = [], refetch: refetchConfigs, isLoading: isLoadingConfigs } = useQuery({
     queryKey: ["auto-lead-gen-settings", tenantUuid],
     queryFn: async () => {
       if (!tenantUuid) return [];
@@ -647,17 +606,6 @@ export default function LeadDiscovery() {
     }
 
     try {
-      // Check if a record already exists for this tenant
-      const { data: existing, error: fetchError } = await supabase
-        .from("auto_lead_gen_settings")
-        .select("id")
-        .eq("tenant_id", tenantUuid)
-        .maybeSingle();
-
-      if (fetchError) {
-        console.error("Error checking existing config:", fetchError);
-      }
-
       // Get browser timezone for proper schedule handling
       const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -684,18 +632,9 @@ export default function LeadDiscovery() {
 
       console.log("Saving auto settings:", settingsData);
 
-      let error;
-      if (existing?.id) {
-        // Update existing record
-        console.log("Updating existing record:", existing.id);
-        const result = await supabase.from("auto_lead_gen_settings").update(settingsData).eq("id", existing.id);
-        error = result.error;
-      } else {
-        // Insert new record
-        console.log("Inserting new record");
-        const result = await supabase.from("auto_lead_gen_settings").insert(settingsData);
-        error = result.error;
-      }
+      const { error } = await supabase
+        .from("auto_lead_gen_settings")
+        .insert(settingsData);
 
       if (error) {
         console.error("Save error:", error);
@@ -721,7 +660,8 @@ export default function LeadDiscovery() {
           is_active: !currentStatus,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", configId);
+        .eq("id", configId)
+        .eq("tenant_id", tenantUuid);
 
       if (error) throw error;
 
@@ -2101,6 +2041,11 @@ export default function LeadDiscovery() {
                       value={autoSettings.time}
                       onChange={(e) => setAutoSettings({ ...autoSettings, time: e.target.value })}
                     />
+                    {autoSettings.time === "09:00" && (
+                      <p className="text-xs text-amber-500">
+                        ⚠️ Default time — confirm or change before saving
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -2110,7 +2055,8 @@ export default function LeadDiscovery() {
                 </p>
 
                 <Button onClick={handleSaveAutoConfig} className="w-full" size="lg">
-                  <Bot className="h-4 w-4 mr-2" /> Save Configuration
+                  <Bot className="h-4 w-4 mr-2" />
+                  {savedConfigs.length > 0 ? `Save as New Configuration (#${savedConfigs.length + 1})` : 'Save Configuration'}
                 </Button>
               </CardContent>
             </Card>
@@ -2126,7 +2072,12 @@ export default function LeadDiscovery() {
                 </div>
               </CardHeader>
               <CardContent>
-                {savedConfigs.length === 0 ? (
+                {isLoadingConfigs ? (
+                  <div className="text-center py-8">
+                    <RefreshCw className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground mt-2">Loading configurations...</p>
+                  </div>
+                ) : savedConfigs.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <Bot className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>No saved configurations</p>
@@ -2172,18 +2123,46 @@ export default function LeadDiscovery() {
                               )}
                             </div>
                             <div className="flex gap-1">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => toggleConfigActive(config.id, config.is_active)}
-                                title={config.is_active ? "Pause" : "Activate"}
-                              >
-                                {config.is_active ? (
-                                  <Pause className="h-4 w-4 text-yellow-500" />
-                                ) : (
-                                  <Play className="h-4 w-4 text-green-500" />
-                                )}
-                              </Button>
+                               <Button
+                                 size="sm"
+                                 variant="ghost"
+                                 onClick={() => {
+                                   setAutoSettings({
+                                     enabled: config.is_active || false,
+                                     source: config.generation_type || "quick_search",
+                                     industry: config.industry || "",
+                                     location: config.location || config.city || "",
+                                     keywords: config.keywords || "",
+                                     maxLeadsPerRun: config.max_leads_per_run || config.leads_per_run || 10,
+                                     frequency: config.schedule_type || "daily",
+                                     time: config.schedule_time ? config.schedule_time.substring(0, 5) : "09:00",
+                                     autoEnrich: config.auto_enrich ?? true,
+                                     autoScore: config.auto_score ?? true,
+                                     autoSequence: config.auto_sequence ?? false,
+                                     sequenceId: config.sequence_id || "",
+                                   });
+                                   toast({
+                                     title: "📝 Config loaded for editing",
+                                     description: "Modify and save to create updated version",
+                                   });
+                                   window.scrollTo({ top: 0, behavior: 'smooth' });
+                                 }}
+                                 title="Edit"
+                               >
+                                 <Pencil className="h-4 w-4" />
+                               </Button>
+                               <Button
+                                 size="sm"
+                                 variant="ghost"
+                                 onClick={() => toggleConfigActive(config.id, config.is_active)}
+                                 title={config.is_active ? "Pause" : "Activate"}
+                               >
+                                 {config.is_active ? (
+                                   <Pause className="h-4 w-4 text-yellow-500" />
+                                 ) : (
+                                   <Play className="h-4 w-4 text-green-500" />
+                                 )}
+                               </Button>
                               <Button
                                 size="sm"
                                 variant="ghost"
