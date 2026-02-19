@@ -88,6 +88,7 @@ export default function SocialCommander() {
 
   // Local UI state
   const [isComposerOpen, setIsComposerOpen] = useState(false);
+  const [isConnectOpen, setIsConnectOpen] = useState(false);
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [postContent, setPostContent] = useState('');
   const [postMedia, setPostMedia] = useState<string | null>(null);
@@ -98,6 +99,14 @@ export default function SocialCommander() {
   const [calendarWeekStart, setCalendarWeekStart] = useState(startOfWeek(new Date()));
   const [activeTab, setActiveTab] = useState('overview');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleConnectAccount = (platform: string) => {
+    toast({
+      title: `Connect ${platform.charAt(0).toUpperCase() + platform.slice(1)}`,
+      description: 'Social account connection requires OAuth setup. Configure in Settings → Integrations.',
+    });
+    setIsConnectOpen(false);
+  };
 
   const platformConfig: Record<string, { icon: React.ComponentType<{ className?: string }>; color: string; bgColor: string }> = {
     instagram: { icon: Instagram, color: 'text-pink-500', bgColor: 'bg-pink-500/10' },
@@ -600,7 +609,7 @@ export default function SocialCommander() {
                   </div>
                 )}
               </div>
-              <Button variant="outline" className="w-full mt-4">
+              <Button variant="outline" className="w-full mt-4" onClick={() => setIsConnectOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Connect New Account
               </Button>
@@ -608,6 +617,38 @@ export default function SocialCommander() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Connect Account Dialog */}
+      <Dialog open={isConnectOpen} onOpenChange={setIsConnectOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Connect Social Account</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { id: 'instagram', name: 'Instagram', icon: Instagram, color: 'text-pink-500', bg: 'bg-pink-500/10' },
+              { id: 'facebook', name: 'Facebook', icon: Facebook, color: 'text-blue-600', bg: 'bg-blue-600/10' },
+              { id: 'twitter', name: 'Twitter/X', icon: Twitter, color: 'text-sky-500', bg: 'bg-sky-500/10' },
+              { id: 'linkedin', name: 'LinkedIn', icon: Linkedin, color: 'text-blue-700', bg: 'bg-blue-700/10' },
+            ].map(platform => (
+              <Button
+                key={platform.id}
+                variant="outline"
+                className="h-auto py-4 flex flex-col items-center gap-2"
+                onClick={() => handleConnectAccount(platform.id)}
+              >
+                <div className={`p-3 rounded-full ${platform.bg}`}>
+                  <platform.icon className={`h-6 w-6 ${platform.color}`} />
+                </div>
+                <span className="text-sm font-medium">{platform.name}</span>
+              </Button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground text-center mt-2">
+            OAuth integration required. Configure API keys in Settings → Integrations.
+          </p>
+        </DialogContent>
+      </Dialog>
 
       {/* Post Composer Dialog */}
       <Dialog open={isComposerOpen} onOpenChange={setIsComposerOpen}>

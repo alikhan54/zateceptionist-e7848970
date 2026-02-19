@@ -45,6 +45,7 @@ export default function MarketingEngine() {
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState(1);
   const [generatingContent, setGeneratingContent] = useState(false);
+  const [aiMode, setAiMode] = useState<'manual' | 'assisted' | 'autonomous'>('assisted');
 
   // Campaign wizard state
   const [campaignData, setCampaignData] = useState({
@@ -498,71 +499,86 @@ export default function MarketingEngine() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Marketing Engine</h1>
-          <p className="text-muted-foreground mt-1">
-            Create and manage marketing campaigns
-          </p>
+      {/* Gradient Header */}
+      <div className="marketing-header-gradient rounded-xl p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-white">Marketing Engine</h1>
+            <p className="text-white/80 mt-1">
+              Create and manage marketing campaigns
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="ai-mode-selector">
+              <button className={aiMode === 'manual' ? 'active' : ''} onClick={() => setAiMode('manual')}>
+                🖐️ Manual
+              </button>
+              <button className={aiMode === 'assisted' ? 'active' : ''} onClick={() => setAiMode('assisted')}>
+                🤖 AI Assisted
+              </button>
+              <button className={aiMode === 'autonomous' ? 'active' : ''} onClick={() => setAiMode('autonomous')}>
+                ⚡ Autonomous
+              </button>
+            </div>
+            <Dialog open={isWizardOpen} onOpenChange={(open) => {
+              setIsWizardOpen(open);
+              if (!open) resetWizard();
+            }}>
+              <DialogTrigger asChild>
+                <Button className="bg-white/20 hover:bg-white/30 text-white border-white/20">
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Campaign
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>
+                    Create Campaign - Step {wizardStep} of 4
+                  </DialogTitle>
+                </DialogHeader>
+                
+                <div className="flex gap-1 mb-4">
+                  {[1, 2, 3, 4].map((step) => (
+                    <div
+                      key={step}
+                      className={`h-1 flex-1 rounded-full ${
+                        step <= wizardStep ? 'bg-primary' : 'bg-muted'
+                      }`}
+                    />
+                  ))}
+                </div>
+                
+                {renderWizardStep()}
+                
+                <div className="flex justify-between mt-6">
+                  <Button
+                    variant="outline"
+                    onClick={() => setWizardStep(prev => prev - 1)}
+                    disabled={wizardStep === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    Back
+                  </Button>
+                  
+                  {wizardStep < 4 ? (
+                    <Button
+                      onClick={() => setWizardStep(prev => prev + 1)}
+                      disabled={wizardStep === 1 && !campaignData.name}
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  ) : (
+                    <Button onClick={handleSendCampaign}>
+                      <Send className="h-4 w-4 mr-2" />
+                      {campaignData.scheduleType === 'now' ? 'Send Campaign' : 'Schedule Campaign'}
+                    </Button>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
-        <Dialog open={isWizardOpen} onOpenChange={(open) => {
-          setIsWizardOpen(open);
-          if (!open) resetWizard();
-        }}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              New Campaign
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>
-                Create Campaign - Step {wizardStep} of 4
-              </DialogTitle>
-            </DialogHeader>
-            
-            <div className="flex gap-1 mb-4">
-              {[1, 2, 3, 4].map((step) => (
-                <div
-                  key={step}
-                  className={`h-1 flex-1 rounded-full ${
-                    step <= wizardStep ? 'bg-primary' : 'bg-muted'
-                  }`}
-                />
-              ))}
-            </div>
-            
-            {renderWizardStep()}
-            
-            <div className="flex justify-between mt-6">
-              <Button
-                variant="outline"
-                onClick={() => setWizardStep(prev => prev - 1)}
-                disabled={wizardStep === 1}
-              >
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                Back
-              </Button>
-              
-              {wizardStep < 4 ? (
-                <Button
-                  onClick={() => setWizardStep(prev => prev + 1)}
-                  disabled={wizardStep === 1 && !campaignData.name}
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
-              ) : (
-                <Button onClick={handleSendCampaign}>
-                  <Send className="h-4 w-4 mr-2" />
-                  {campaignData.scheduleType === 'now' ? 'Send Campaign' : 'Schedule Campaign'}
-                </Button>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
       </div>
 
       {/* Stats Row */}
