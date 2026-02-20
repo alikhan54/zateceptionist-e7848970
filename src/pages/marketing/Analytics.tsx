@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMarketingCampaigns } from '@/hooks/useMarketingCampaigns';
 import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { Download, TrendingUp, Users, Mail, MousePointer, Send, Eye, Target, Plus } from 'lucide-react';
+import { Download, TrendingUp, Users, Mail, MousePointer, Send, Eye, Target, Plus, Brain, AlertCircle, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function MarketingAnalytics() {
@@ -103,6 +103,47 @@ export default function MarketingAnalytics() {
           </Card>
         ))}
       </div>
+
+      {/* AI Marketing Insights */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Brain className="h-5 w-5 text-primary" />
+            AI Marketing Insights
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className="p-4 rounded-lg border bg-primary/5 border-primary/20">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="h-4 w-4 text-primary" />
+                <span className="font-medium text-primary">Opportunity</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Your email open rate is <span className="font-bold">15% above</span> industry average. Consider increasing email frequency.
+              </p>
+            </div>
+            <div className="p-4 rounded-lg border bg-accent/50 border-accent">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                <span className="font-medium">Suggestion</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                WhatsApp campaigns have <span className="font-bold">2x higher</span> engagement in your industry. Try adding WhatsApp to your sequences.
+              </p>
+            </div>
+            <div className="p-4 rounded-lg border bg-secondary/50 border-secondary">
+              <div className="flex items-center gap-2 mb-2">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <span className="font-medium">Best Time</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Your audience is most active <span className="font-bold">Tuesday-Thursday</span> between <span className="font-bold">10AM-2PM</span>.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid md:grid-cols-2 gap-6">
         <Card>

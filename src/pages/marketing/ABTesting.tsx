@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { useABTests } from '@/hooks/useABTests';
 import { cn } from '@/lib/utils';
-import { GitBranch, Plus, Play, Square, Trophy, BarChart3 } from 'lucide-react';
+import { GitBranch, Plus, Play, Square, Trophy, BarChart3, Lightbulb, Sparkles } from 'lucide-react';
 
 export default function ABTesting() {
   const { tests, isLoading, stats, createTest, startTest, endTest } = useABTests();
@@ -65,6 +65,62 @@ export default function ABTesting() {
         <Card><CardContent className="p-4"><p className="text-2xl font-bold text-green-500">{stats.running}</p><p className="text-xs text-muted-foreground">Running</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-2xl font-bold text-blue-500">{stats.completed}</p><p className="text-xs text-muted-foreground">Completed</p></CardContent></Card>
       </div>
+
+      {/* How A/B Testing Works */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Lightbulb className="h-5 w-5 text-primary" />
+            How A/B Testing Works
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid md:grid-cols-4 gap-4">
+            {[
+              { step: '1', label: 'Create Variants', desc: 'Two versions of your content', color: 'bg-primary/20 text-primary' },
+              { step: '2', label: 'Split Audience', desc: '50% see A, 50% see B', color: 'bg-secondary text-secondary-foreground' },
+              { step: '3', label: 'Measure Results', desc: 'Track opens, clicks, conversions', color: 'bg-accent text-accent-foreground' },
+              { step: '4', label: 'AI Picks Winner', desc: 'Best version auto-selected', color: 'bg-muted text-muted-foreground' },
+            ].map((item) => (
+              <div key={item.step} className="text-center p-4">
+                <div className={`w-10 h-10 rounded-full ${item.color} flex items-center justify-center mx-auto mb-2`}>
+                  <span className="font-bold">{item.step}</span>
+                </div>
+                <p className="text-sm font-medium">{item.label}</p>
+                <p className="text-xs text-muted-foreground">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* AI Suggested Tests */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary" />
+            AI Suggested Tests
+          </CardTitle>
+          <CardDescription>Based on your industry and audience</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {[
+            { name: 'Subject Line Test', desc: 'Question vs Statement - 23% avg improvement', type: 'subject_line', a: 'Discover our new services', b: 'Ready to transform your business?' },
+            { name: 'CTA Button Test', desc: 'Action vs Benefit - 18% avg improvement', type: 'cta', a: 'Get Started', b: 'Start Saving Today' },
+            { name: 'Send Time Test', desc: 'Morning vs Afternoon - Industry specific', type: 'send_time', a: '9:00 AM', b: '2:00 PM' },
+          ].map((item) => (
+            <div key={item.name} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+              <div>
+                <p className="font-medium">{item.name}</p>
+                <p className="text-sm text-muted-foreground">{item.desc}</p>
+              </div>
+              <Button size="sm" onClick={() => { setTestType(item.type); setVariantA(item.a); setVariantB(item.b); setTestName(item.name); setIsCreateOpen(true); }}>
+                Use This
+              </Button>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
 
       {/* Tests List */}
       {tests.length === 0 ? (

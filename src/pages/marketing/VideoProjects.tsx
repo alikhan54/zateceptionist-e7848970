@@ -40,25 +40,31 @@ export default function VideoProjects() {
 
   const createProject = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('video_projects').insert({
-        tenant_id: tenantConfig?.id,
+      if (!tenantConfig?.id) throw new Error('No tenant configured');
+      const { data, error } = await supabase.from('video_projects').insert({
+        tenant_id: tenantConfig.id,
         title,
-        description,
+        description: description || null,
         video_type: videoType,
         status: 'draft',
-      });
-      if (error) throw error;
+        ai_generated: false,
+      }).select().single();
+      if (error) {
+        console.error('Video project error:', error);
+        throw error;
+      }
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['video_projects'] });
-      toast({ title: '✨ Video Project Created!' });
       setIsCreateOpen(false);
       setTitle('');
       setDescription('');
       setVideoType('short_form');
+      toast({ title: 'Video Project Created!' });
     },
-    onError: () => {
-      toast({ title: 'Error', description: 'Failed to create project', variant: 'destructive' });
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.message || 'Failed to create project', variant: 'destructive' });
     },
   });
 
