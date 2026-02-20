@@ -131,12 +131,61 @@ export default function LandingPages() {
           console.log("AI page gen unavailable, using default template");
         }
       }
+      const fallbackHtml = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${newPageName}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1a1a2e;line-height:1.6}
+.hero{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:80px 20px;text-align:center}
+.hero h1{font-size:clamp(2rem,5vw,3.5rem);margin-bottom:16px;font-weight:800}
+.hero p{font-size:18px;opacity:0.9;max-width:600px;margin:0 auto 32px}
+.cta-btn{display:inline-block;background:white;color:#6366f1;padding:16px 40px;border-radius:50px;text-decoration:none;font-weight:700;font-size:18px;box-shadow:0 4px 15px rgba(0,0,0,0.2);transition:transform 0.2s}
+.cta-btn:hover{transform:translateY(-2px)}
+.features{max-width:1000px;margin:0 auto;padding:60px 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:30px}
+.feature{text-align:center;padding:30px}
+.feature .icon{width:60px;height:60px;background:linear-gradient(135deg,#667eea,#764ba2);border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:24px}
+.feature h3{font-size:20px;margin-bottom:8px}
+.feature p{color:#666;font-size:15px}
+.social-proof{background:#f8f9fa;padding:60px 20px;text-align:center}
+.social-proof h2{font-size:28px;margin-bottom:30px}
+.stats{display:flex;justify-content:center;gap:60px;flex-wrap:wrap}
+.stat{text-align:center}.stat .number{font-size:36px;font-weight:800;color:#6366f1}.stat .label{color:#666;font-size:14px}
+.cta-section{padding:60px 20px;text-align:center;background:linear-gradient(135deg,#1a1a2e,#2d2d44);color:white}
+.cta-section h2{font-size:28px;margin-bottom:16px}
+footer{padding:20px;text-align:center;color:#888;font-size:13px}
+</style></head>
+<body>
+<section class="hero">
+<h1>${newPageName}</h1>
+<p>Transform your business with our cutting-edge solutions. Join thousands of satisfied customers.</p>
+<a href="#" class="cta-btn">Get Started Free →</a>
+</section>
+<section class="features">
+<div class="feature"><div class="icon">⚡</div><h3>Lightning Fast</h3><p>Get up and running in minutes, not days.</p></div>
+<div class="feature"><div class="icon">🤖</div><h3>AI-Powered</h3><p>Smart automation that works 24/7 for you.</p></div>
+<div class="feature"><div class="icon">📊</div><h3>Real Analytics</h3><p>Track every metric that matters to your business.</p></div>
+</section>
+<section class="social-proof">
+<h2>Trusted by Growing Businesses</h2>
+<div class="stats">
+<div class="stat"><div class="number">500+</div><div class="label">Happy Customers</div></div>
+<div class="stat"><div class="number">99.9%</div><div class="label">Uptime</div></div>
+<div class="stat"><div class="number">4.9★</div><div class="label">Average Rating</div></div>
+</div>
+</section>
+<section class="cta-section">
+<h2>Ready to Transform Your Business?</h2>
+<p>Start your free trial today. No credit card required.</p>
+<a href="#" class="cta-btn" style="background:white;color:#6366f1">Start Free Trial →</a>
+</section>
+<footer>© ${new Date().getFullYear()} ${tenantConfig?.company_name || 'Your Company'}. All rights reserved.</footer>
+</body></html>`;
+
       await createPage.mutateAsync({
         name: newPageName,
         template: selectedTemplate?.name,
-        html_content:
-          htmlContent ||
-          `<!DOCTYPE html><html><head><title>${newPageName}</title><style>body{font-family:sans-serif;text-align:center;padding:60px 20px}h1{color:#333}p{color:#666;max-width:500px;margin:20px auto}</style></head><body><h1>${newPageName}</h1><p>This landing page is ready to be customized. Edit the HTML content to build your page.</p></body></html>`,
+        html_content: htmlContent || fallbackHtml,
       });
       setIsCreateOpen(false);
       setNewPageName("");
