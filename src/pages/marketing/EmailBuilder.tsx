@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { callWebhook, WEBHOOKS } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -46,9 +47,10 @@ const personalizationTokens = [
 ];
 
 export default function EmailBuilder() {
-  const { tenantId } = useTenant();
+  const { tenantId, tenantConfig } = useTenant();
   const { toast } = useToast();
   const { templates, isLoading: templatesLoading, createTemplate, stats: templateStats } = useEmailTemplates();
+  const [isGeneratingTemplate, setIsGeneratingTemplate] = useState(false);
 
   const [activeTab, setActiveTab] = useState('templates');
   const [emailBlocks, setEmailBlocks] = useState<EmailBlock[]>([]);
@@ -163,6 +165,42 @@ export default function EmailBuilder() {
     toast({ title: 'Spam Score', description: score <= 2 ? 'Low spam risk.' : 'Moderate risk.', variant: score <= 2 ? 'default' : 'destructive' });
   };
 
+  const handleGenerateTemplate = async (templateType: string) => {
+    if (!tenantConfig?.id) {
+      toast({ title: 'No tenant configured', variant: 'destructive' });
+      return;
+    }
+    setIsGeneratingTemplate(true);
+    try {
+      const result = await callWebhook(
+        WEBHOOKS.EMAIL_TEMPLATE_GENERATE,
+        {
+          template_type: templateType,
+          subject: newTemplateSubject || '',
+          company_name: tenantConfig?.company_name || 'Your Company',
+          primary_color: '#6366f1',
+        },
+        tenantConfig.id,
+      );
+      if (result.success && (result.data as any)?.template) {
+        const tmpl = (result.data as any).template;
+        await createTemplate.mutateAsync({
+          name: `${templateType.charAt(0).toUpperCase() + templateType.slice(1)} Template`,
+          subject: tmpl.subject || newTemplateSubject || '',
+          category: templateType,
+          body_html: tmpl.html_content || '',
+        });
+        toast({ title: '✨ AI Template Generated!', description: 'Template saved to your library.' });
+      } else {
+        toast({ title: 'Generation Unavailable', description: 'Enable n8n email template workflow.', variant: 'destructive' });
+      }
+    } catch (error: any) {
+      toast({ title: 'Error', description: 'Template generation failed', variant: 'destructive' });
+    } finally {
+      setIsGeneratingTemplate(false);
+    }
+  };
+
   const renderBlock = (block: EmailBlock) => {
     switch (block.type) {
       case 'header': return <h2 className="font-bold" style={{ textAlign: block.content.align }}>{block.content.text}</h2>;
@@ -249,7 +287,14 @@ export default function EmailBuilder() {
                 <p className="font-medium text-center">AI Generated</p>
                 <p className="text-sm text-muted-foreground text-center">Custom for your industry</p>
                 <div className="mt-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button size="sm" className="flex-1 marketing-gradient text-white">Generate</Button>
+                  <Button
+                    size="sm"
+                    className="flex-1 marketing-gradient text-white"
+                    disabled={isGeneratingTemplate}
+                    onClick={(e) => { e.stopPropagation(); handleGenerateTemplate('promotional'); }}
+                  >
+                    {isGeneratingTemplate ? 'Generating...' : 'Generate'}
+                  </Button>
                 </div>
               </CardContent>
             </Card>
