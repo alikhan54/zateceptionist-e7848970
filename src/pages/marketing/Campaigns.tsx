@@ -616,7 +616,6 @@ export default function MarketingCampaigns() {
       });
       if (error) throw error;
       toast({ title: "✅ Campaign Created!", description: `"${name}" ready to customize` });
-      queryClient.invalidateQueries({ queryKey: ["campaigns"] });
     } catch (err: any) {
       toast({ title: "Failed", description: err.message, variant: "destructive" });
     }
