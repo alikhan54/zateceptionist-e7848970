@@ -24,6 +24,11 @@ export const WEBHOOKS = {
   SEND_CAMPAIGN: "/marketing/send-campaign",
   POST_SOCIAL: "/marketing/post-social",
   SCHEDULE_POST: "/marketing/schedule-post",
+  LANDING_PAGE_GENERATE: "/marketing/landing-page-generate",
+  AB_TEST_CREATE: "/marketing/ab-test-create",
+  EMAIL_TEMPLATE_GENERATE: "/marketing/email-template-generate",
+  REFRESH_TRENDS: "/marketing/refresh-trends",
+  VIDEO_GENERATE: "/marketing/video-generate",
 
   // HR
   EMPLOYEE_ONBOARDING: "/hr/employee-onboarding",
