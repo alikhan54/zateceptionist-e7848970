@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { callWebhook, WEBHOOKS } from '@/integrations/supabase';
+import { callWebhook, WEBHOOKS } from '@/lib/api/webhooks';
 import {
   Sparkles,
   FileText,
