@@ -1,51 +1,98 @@
-import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Switch } from '@/components/ui/switch';
-import { Skeleton } from '@/components/ui/skeleton';
-import { useToast } from '@/hooks/use-toast';
-import { useLandingPages } from '@/hooks/useLandingPages';
+import { useState } from "react";
+import { useTenant } from "@/contexts/TenantContext";
+import { callWebhook, WEBHOOKS } from "@/lib/api/webhooks";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Globe, Plus, Eye, Edit, Trash2, Copy, MoreVertical, Layout,
-  Smartphone, Monitor, MousePointer, BarChart3, TrendingUp,
-  ExternalLink, Check, X, Settings
-} from 'lucide-react';
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
+import { useLandingPages } from "@/hooks/useLandingPages";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator
-} from '@/components/ui/dropdown-menu';
-import { format } from 'date-fns';
+  Globe,
+  Plus,
+  Eye,
+  Edit,
+  Trash2,
+  Copy,
+  MoreVertical,
+  Layout,
+  Smartphone,
+  Monitor,
+  MousePointer,
+  BarChart3,
+  TrendingUp,
+  ExternalLink,
+  Check,
+  X,
+  Settings,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { format } from "date-fns";
 
 const mockTemplates = [
-  { id: 't1', name: 'Lead Generation', category: 'Lead Gen', description: 'Capture leads with a clean, high-converting form' },
-  { id: 't2', name: 'Product Launch', category: 'Product', description: 'Showcase your new product with impact' },
-  { id: 't3', name: 'Webinar Registration', category: 'Events', description: 'Drive registrations for your online events' },
-  { id: 't4', name: 'E-book Download', category: 'Lead Gen', description: 'Offer valuable content in exchange for contact info' },
-  { id: 't5', name: 'Coming Soon', category: 'Launch', description: 'Build anticipation for your upcoming launch' },
-  { id: 't6', name: 'Thank You Page', category: 'Post-Conversion', description: 'Engage customers after form submission' },
+  {
+    id: "t1",
+    name: "Lead Generation",
+    category: "Lead Gen",
+    description: "Capture leads with a clean, high-converting form",
+  },
+  { id: "t2", name: "Product Launch", category: "Product", description: "Showcase your new product with impact" },
+  {
+    id: "t3",
+    name: "Webinar Registration",
+    category: "Events",
+    description: "Drive registrations for your online events",
+  },
+  {
+    id: "t4",
+    name: "E-book Download",
+    category: "Lead Gen",
+    description: "Offer valuable content in exchange for contact info",
+  },
+  { id: "t5", name: "Coming Soon", category: "Launch", description: "Build anticipation for your upcoming launch" },
+  {
+    id: "t6",
+    name: "Thank You Page",
+    category: "Post-Conversion",
+    description: "Engage customers after form submission",
+  },
 ];
 
 export default function LandingPages() {
   const { toast } = useToast();
   const { pages, isLoading, stats, createPage, publishPage, deletePage } = useLandingPages();
 
-  const [activeTab, setActiveTab] = useState('pages');
+  const [activeTab, setActiveTab] = useState("pages");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<any | null>(null);
-  const [newPageName, setNewPageName] = useState('');
+  const [newPageName, setNewPageName] = useState("");
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingPage, setEditingPage] = useState<any | null>(null);
-  const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
+  const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
 
   const getStatusBadge = (status: string) => {
-    const config: Record<string, { variant: 'default' | 'secondary' | 'destructive'; label: string }> = {
-      published: { variant: 'default', label: 'Published' },
-      draft: { variant: 'secondary', label: 'Draft' },
-      archived: { variant: 'destructive', label: 'Archived' },
+    const config: Record<string, { variant: "default" | "secondary" | "destructive"; label: string }> = {
+      published: { variant: "default", label: "Published" },
+      draft: { variant: "secondary", label: "Draft" },
+      archived: { variant: "destructive", label: "Archived" },
     };
     const { variant, label } = config[status] || config.draft;
     return <Badge variant={variant}>{label}</Badge>;
@@ -53,30 +100,50 @@ export default function LandingPages() {
 
   const handleCreatePage = async () => {
     if (!newPageName.trim()) {
-      toast({ title: 'Error', description: 'Please enter a page name', variant: 'destructive' });
+      toast({ title: "Error", description: "Please enter a page name", variant: "destructive" });
       return;
     }
     try {
       await createPage.mutateAsync({ name: newPageName, template: selectedTemplate?.name });
       setIsCreateOpen(false);
-      setNewPageName('');
+      setNewPageName("");
       setSelectedTemplate(null);
     } catch {}
   };
 
   const handlePublish = async (page: any) => {
-    try { await publishPage.mutateAsync(page.id); } catch {}
+    try {
+      await publishPage.mutateAsync(page.id);
+    } catch {}
   };
 
   const handleDelete = async (pageId: string) => {
-    try { await deletePage.mutateAsync(pageId); } catch {}
+    try {
+      await deletePage.mutateAsync(pageId);
+    } catch {}
   };
 
   if (isLoading) {
-    return <div className="space-y-6"><Skeleton className="h-10 w-64" /><div className="grid grid-cols-2 md:grid-cols-5 gap-4">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-24" />)}</div><Skeleton className="h-96" /></div>;
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-10 w-64" />
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {[...Array(5)].map((_, i) => (
+            <Skeleton key={i} className="h-24" />
+          ))}
+        </div>
+        <Skeleton className="h-96" />
+      </div>
+    );
   }
 
-  const avgCvr = pages.length > 0 ? (pages.reduce((sum: number, p: any) => sum + (p.conversion_rate || 0), 0) / (pages.filter((p: any) => p.status === 'published').length || 1)).toFixed(1) : '0';
+  const avgCvr =
+    pages.length > 0
+      ? (
+          pages.reduce((sum: number, p: any) => sum + (p.conversion_rate || 0), 0) /
+          (pages.filter((p: any) => p.status === "published").length || 1)
+        ).toFixed(1)
+      : "0";
 
   return (
     <div className="space-y-6">
@@ -85,22 +152,30 @@ export default function LandingPages() {
           <h1 className="text-3xl font-bold">Landing Pages</h1>
           <p className="text-muted-foreground mt-1">Create high-converting landing pages</p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)}><Plus className="h-4 w-4 mr-2" />New Page</Button>
+        <Button onClick={() => setIsCreateOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          New Page
+        </Button>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {[
-          { label: 'Total Pages', value: stats.total, icon: Globe },
-          { label: 'Published', value: stats.published, icon: Check },
-          { label: 'Total Views', value: stats.totalViews.toLocaleString(), icon: Eye },
-          { label: 'Conversions', value: stats.totalConversions.toLocaleString(), icon: MousePointer },
-          { label: 'Avg. CVR', value: `${avgCvr}%`, icon: TrendingUp },
+          { label: "Total Pages", value: stats.total, icon: Globe },
+          { label: "Published", value: stats.published, icon: Check },
+          { label: "Total Views", value: stats.totalViews.toLocaleString(), icon: Eye },
+          { label: "Conversions", value: stats.totalConversions.toLocaleString(), icon: MousePointer },
+          { label: "Avg. CVR", value: `${avgCvr}%`, icon: TrendingUp },
         ].map((stat) => (
           <Card key={stat.label}>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-muted"><stat.icon className="h-4 w-4 text-muted-foreground" /></div>
-                <div><p className="text-xl font-bold">{stat.value}</p><p className="text-xs text-muted-foreground">{stat.label}</p></div>
+                <div className="p-2 rounded-lg bg-muted">
+                  <stat.icon className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="text-xl font-bold">{stat.value}</p>
+                  <p className="text-xs text-muted-foreground">{stat.label}</p>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -119,7 +194,10 @@ export default function LandingPages() {
               <Globe className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <p className="text-lg font-medium">No landing pages yet</p>
               <p className="text-muted-foreground mb-4">Create your first landing page</p>
-              <Button onClick={() => setIsCreateOpen(true)}><Plus className="h-4 w-4 mr-2" />Create Page</Button>
+              <Button onClick={() => setIsCreateOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Page
+              </Button>
             </Card>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -134,31 +212,62 @@ export default function LandingPages() {
                       <div>
                         <h3 className="font-medium">{page.name}</h3>
                         {page.published_url && (
-                          <a href={page.published_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1 mt-1">
-                            <ExternalLink className="h-3 w-3" />{page.published_url.replace('https://', '')}
+                          <a
+                            href={page.published_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-primary hover:underline flex items-center gap-1 mt-1"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            {page.published_url.replace("https://", "")}
                           </a>
                         )}
-                        <p className="text-xs text-muted-foreground mt-1">Created {format(new Date(page.created_at), 'MMM d, yyyy')}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Created {format(new Date(page.created_at), "MMM d, yyyy")}
+                        </p>
                       </div>
                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          {page.status === 'draft' && <DropdownMenuItem onClick={() => handlePublish(page)}><Check className="h-4 w-4 mr-2" />Publish</DropdownMenuItem>}
+                          {page.status === "draft" && (
+                            <DropdownMenuItem onClick={() => handlePublish(page)}>
+                              <Check className="h-4 w-4 mr-2" />
+                              Publish
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(page.id)}><Trash2 className="h-4 w-4 mr-2" />Delete</DropdownMenuItem>
+                          <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(page.id)}>
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
-                    {page.status === 'published' && (
+                    {page.status === "published" && (
                       <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t">
-                        <div className="text-center"><p className="text-lg font-bold">{(page.views || 0).toLocaleString()}</p><p className="text-xs text-muted-foreground">Views</p></div>
-                        <div className="text-center"><p className="text-lg font-bold">{(page.conversions || 0).toLocaleString()}</p><p className="text-xs text-muted-foreground">Conversions</p></div>
-                        <div className="text-center"><p className="text-lg font-bold text-green-500">{page.conversion_rate || 0}%</p><p className="text-xs text-muted-foreground">CVR</p></div>
+                        <div className="text-center">
+                          <p className="text-lg font-bold">{(page.views || 0).toLocaleString()}</p>
+                          <p className="text-xs text-muted-foreground">Views</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-lg font-bold">{(page.conversions || 0).toLocaleString()}</p>
+                          <p className="text-xs text-muted-foreground">Conversions</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-lg font-bold text-green-500">{page.conversion_rate || 0}%</p>
+                          <p className="text-xs text-muted-foreground">CVR</p>
+                        </div>
                       </div>
                     )}
-                    {page.status === 'draft' && (
+                    {page.status === "draft" && (
                       <div className="flex gap-2 mt-4 pt-4 border-t">
-                        <Button className="flex-1" onClick={() => handlePublish(page)}>Publish</Button>
+                        <Button className="flex-1" onClick={() => handlePublish(page)}>
+                          Publish
+                        </Button>
                       </div>
                     )}
                   </CardContent>
@@ -171,12 +280,21 @@ export default function LandingPages() {
         <TabsContent value="templates" className="space-y-6">
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {mockTemplates.map((template) => (
-              <Card key={template.id} className="cursor-pointer hover:border-primary transition-colors" onClick={() => { setSelectedTemplate(template); setIsCreateOpen(true); }}>
+              <Card
+                key={template.id}
+                className="cursor-pointer hover:border-primary transition-colors"
+                onClick={() => {
+                  setSelectedTemplate(template);
+                  setIsCreateOpen(true);
+                }}
+              >
                 <div className="h-40 bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
                   <Layout className="h-12 w-12 text-primary/40" />
                 </div>
                 <CardContent className="p-4">
-                  <Badge variant="secondary" className="mb-2">{template.category}</Badge>
+                  <Badge variant="secondary" className="mb-2">
+                    {template.category}
+                  </Badge>
                   <h3 className="font-medium">{template.name}</h3>
                   <p className="text-sm text-muted-foreground">{template.description}</p>
                 </CardContent>
@@ -190,17 +308,36 @@ export default function LandingPages() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create Landing Page</DialogTitle>
-            <DialogDescription>{selectedTemplate ? `Starting with ${selectedTemplate.name} template` : 'Start from scratch or choose a template'}</DialogDescription>
+            <DialogDescription>
+              {selectedTemplate
+                ? `Starting with ${selectedTemplate.name} template`
+                : "Start from scratch or choose a template"}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Page Name</Label>
-              <Input placeholder="My Landing Page" value={newPageName} onChange={(e) => setNewPageName(e.target.value)} />
+              <Input
+                placeholder="My Landing Page"
+                value={newPageName}
+                onChange={(e) => setNewPageName(e.target.value)}
+              />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setIsCreateOpen(false); setSelectedTemplate(null); setNewPageName(''); }}>Cancel</Button>
-            <Button onClick={handleCreatePage} disabled={createPage.isPending}>{createPage.isPending ? 'Creating...' : 'Create Page'}</Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsCreateOpen(false);
+                setSelectedTemplate(null);
+                setNewPageName("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleCreatePage} disabled={createPage.isPending}>
+              {createPage.isPending ? "Creating..." : "Create Page"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
