@@ -134,13 +134,10 @@ export function useMarketingCampaigns(options?: { status?: string; type?: string
   const sendCampaign = useMutation({
     mutationFn: async (campaignId: string) => {
       await updateCampaign.mutateAsync({ id: campaignId, status: 'sending' });
-      const response = await fetch('https://webhooks.zatesystems.com/webhook/21fb2112-7a5f-4164-b426-0c5546b3448d', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenant_id: tenantUuid, campaign_id: campaignId, action: 'send' }),
-      });
-      if (!response.ok) throw new Error('Failed to trigger campaign');
-      return response.json();
+      const { callWebhook, WEBHOOKS } = await import('@/integrations/supabase/client');
+      const result = await callWebhook(WEBHOOKS.SEND_CAMPAIGN, { campaign_id: campaignId, action: 'send' }, tenantUuid!);
+      if (!result.success) throw new Error(result.error || 'Failed to trigger campaign');
+      return result.data;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['marketing_campaigns', tenantUuid] }); toast({ title: 'Campaign Sending' }); },
   });
