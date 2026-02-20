@@ -4,10 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useABTests } from '@/hooks/useABTests';
+import { cn } from '@/lib/utils';
 import { GitBranch, Plus, Play, Square, Trophy, BarChart3 } from 'lucide-react';
 
 export default function ABTesting() {
@@ -15,20 +17,24 @@ export default function ABTesting() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [testName, setTestName] = useState('');
   const [testType, setTestType] = useState('subject_line');
+  const [variantA, setVariantA] = useState('');
+  const [variantB, setVariantB] = useState('');
 
   const handleCreate = async () => {
-    if (!testName.trim()) return;
+    if (!testName.trim() || !variantA.trim() || !variantB.trim()) return;
     try {
       await createTest.mutateAsync({
         name: testName,
         test_type: testType,
         variants: [
-          { id: 'a', name: 'Variant A', config: {}, sent: 0, opened: 0, clicked: 0 },
-          { id: 'b', name: 'Variant B', config: {}, sent: 0, opened: 0, clicked: 0 },
+          { id: 'a', name: 'Variant A', config: { content: variantA }, sent: 0, opened: 0, clicked: 0 },
+          { id: 'b', name: 'Variant B', config: { content: variantB }, sent: 0, opened: 0, clicked: 0 },
         ],
       });
       setIsCreateOpen(false);
       setTestName('');
+      setVariantA('');
+      setVariantB('');
     } catch {}
   };
 
@@ -78,62 +84,78 @@ export default function ABTesting() {
           </div>
         </Card>
       ) : (
-        <div className="space-y-4">
+        <div className="grid md:grid-cols-2 gap-4">
           {tests.map((test: any) => {
             const variants = Array.isArray(test.variants) ? test.variants : [];
+            const rates = variants.map((v: any) => v.sent > 0 ? (v.opened / v.sent) * 100 : 0);
+            const winnerIdx = rates.length >= 2 && rates[0] !== rates[1] ? (rates[0] > rates[1] ? 0 : 1) : -1;
+
             return (
-              <Card key={test.id}>
-                <CardHeader className="pb-2">
+              <Card key={test.id} className="overflow-hidden">
+                <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-base">{test.name}</CardTitle>
-                      <p className="text-sm text-muted-foreground capitalize">{(test.test_type || '').replace('_', ' ')}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge className={statusColors[test.status] || ''}>{test.status}</Badge>
-                      {test.status === 'draft' && (
-                        <Button size="sm" onClick={() => startTest.mutateAsync(test.id)}>
-                          <Play className="h-3 w-3 mr-1" />Start
-                        </Button>
-                      )}
-                      {test.status === 'running' && variants.length > 0 && (
-                        <Button size="sm" variant="outline" onClick={() => endTest.mutateAsync({ testId: test.id, winnerId: variants[0]?.id || 'a' })}>
-                          <Square className="h-3 w-3 mr-1" />End Test
-                        </Button>
-                      )}
-                    </div>
+                    <CardTitle className="text-lg">{test.name}</CardTitle>
+                    <Badge className={statusColors[test.status] || ''}>{test.status}</Badge>
                   </div>
+                  <CardDescription>Type: {(test.test_type || '').replace('_', ' ')}</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                   {variants.length > 0 ? (
-                    <div className="grid grid-cols-2 gap-4">
-                      {variants.map((v: any, i: number) => (
-              <div key={v.id || i} className={`p-3 rounded-lg border-2 transition-all ${test.winner_variant === v.id ? 'border-green-500 bg-green-50 dark:bg-green-950/20' : 'border-muted bg-muted'}`}>
-                          <div className="flex items-center justify-between mb-2">
-                             <p className="text-sm font-semibold">{v.name || `Variant ${String.fromCharCode(65 + i)}`}</p>
-                            {test.winner_variant === v.id && <Trophy className="h-4 w-4 text-green-500" />}
-                          </div>
-                          <div className="grid grid-cols-3 gap-2 text-center">
-                            <div><p className="text-lg font-bold">{v.sent || 0}</p><p className="text-xs text-muted-foreground">Sent</p></div>
-                            <div><p className="text-lg font-bold">{v.opened || 0}</p><p className="text-xs text-muted-foreground">Opened</p></div>
-                            <div><p className="text-lg font-bold">{v.clicked || 0}</p><p className="text-xs text-muted-foreground">Clicked</p></div>
-                          </div>
-                          {v.sent > 0 && (
-                            <div className="mt-2 pt-2 border-t text-center">
-                              <p className={`text-sm font-medium ${test.winner_variant === v.id ? 'text-green-500' : ''}`}>
-                                {((v.opened / v.sent) * 100).toFixed(1)}% open rate
-                              </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      {variants.map((v: any, i: number) => {
+                        const openRate = v.sent > 0 ? ((v.opened / v.sent) * 100).toFixed(1) : '0';
+                        const isWinner = winnerIdx === i;
+                        return (
+                          <div
+                            key={v.id || i}
+                            className={cn(
+                              "p-3 rounded-lg border-2 transition-all",
+                              isWinner || test.winner_variant === v.id
+                                ? "border-green-500 bg-green-50 dark:bg-green-950/20"
+                                : "border-muted bg-muted/50"
+                            )}
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <p className="text-sm font-semibold">{v.name || `Variant ${String.fromCharCode(65 + i)}`}</p>
+                              {(isWinner || test.winner_variant === v.id) && <Trophy className="h-4 w-4 text-green-500" />}
                             </div>
-                          )}
-                        </div>
-                      ))}
+                            {(v.config?.content || v.content) && (
+                              <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{v.config?.content || v.content}</p>
+                            )}
+                            <div className="space-y-1 text-sm">
+                              <div className="flex justify-between"><span className="text-muted-foreground">Sent:</span><span>{v.sent || 0}</span></div>
+                              <div className="flex justify-between"><span className="text-muted-foreground">Opened:</span><span>{v.opened || 0}</span></div>
+                              <div className="flex justify-between"><span className="text-muted-foreground">Clicked:</span><span>{v.clicked || 0}</span></div>
+                              <div className="flex justify-between font-medium">
+                                <span className="text-muted-foreground">Rate:</span>
+                                <span className={isWinner || test.winner_variant === v.id ? 'text-green-500' : ''}>{openRate}%</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">No variants configured</p>
                   )}
                   {test.statistical_significance && (
-                    <p className="text-xs text-muted-foreground mt-2">Statistical significance: {test.statistical_significance}%</p>
+                    <p className="text-xs text-muted-foreground">Statistical significance: {test.statistical_significance}%</p>
                   )}
+                  <div className="flex gap-2 pt-2">
+                    {test.status === 'draft' && (
+                      <Button size="sm" className="flex-1" onClick={() => startTest.mutateAsync(test.id)}>
+                        <Play className="h-3 w-3 mr-1" /> Start Test
+                      </Button>
+                    )}
+                    {test.status === 'running' && variants.length > 0 && (
+                      <Button size="sm" variant="outline" className="flex-1" onClick={() => endTest.mutateAsync({ testId: test.id, winnerId: variants[0]?.id || 'a' })}>
+                        <Square className="h-3 w-3 mr-1" /> End Test
+                      </Button>
+                    )}
+                    <Button size="sm" variant="outline">
+                      <BarChart3 className="h-3 w-3 mr-1" /> Details
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             );
@@ -144,7 +166,10 @@ export default function ABTesting() {
       {/* Create Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Create A/B Test</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Create A/B Test</DialogTitle>
+            <DialogDescription>Test different versions to optimize performance</DialogDescription>
+          </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Test Name</Label>
@@ -159,13 +184,41 @@ export default function ABTesting() {
                   <SelectItem value="content">Content</SelectItem>
                   <SelectItem value="send_time">Send Time</SelectItem>
                   <SelectItem value="cta">Call to Action</SelectItem>
+                  <SelectItem value="from_name">From Name</SelectItem>
+                  <SelectItem value="hero_image">Hero Image</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Variant A (Control)</Label>
+                <Textarea
+                  value={variantA}
+                  onChange={(e) => setVariantA(e.target.value)}
+                  placeholder="Original version..."
+                  rows={4}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Variant B (Test)</Label>
+                <Textarea
+                  value={variantB}
+                  onChange={(e) => setVariantB(e.target.value)}
+                  placeholder="New version to test..."
+                  rows={4}
+                />
+              </div>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
-            <Button onClick={handleCreate} disabled={createTest.isPending}>{createTest.isPending ? 'Creating...' : 'Create Test'}</Button>
+            <Button
+              onClick={handleCreate}
+              disabled={createTest.isPending || !testName.trim() || !variantA.trim() || !variantB.trim()}
+              className="marketing-gradient text-white"
+            >
+              {createTest.isPending ? 'Creating...' : 'Create Test'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
