@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
 import { useMarketingCampaigns } from '@/hooks/useMarketingCampaigns';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -35,7 +35,10 @@ import {
   ChevronRight,
   AlertCircle,
   FileEdit,
-  Megaphone
+  Megaphone,
+  Sparkles,
+  UserPlus,
+  Star
 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, addMonths, subMonths } from 'date-fns';
 
@@ -194,6 +197,45 @@ export default function CampaignCentral() {
           )}
         </CardContent>
       </Card>
+
+      {/* AI Campaign Suggestions */}
+      {campaigns.length === 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              AI-Suggested Campaigns
+            </CardTitle>
+            <CardDescription>One-click to create these proven campaigns</CardDescription>
+          </CardHeader>
+          <CardContent className="grid md:grid-cols-3 gap-4">
+            {[
+              { name: 'Welcome Campaign', desc: 'Automatically welcome new leads with a personalized sequence.', icon: UserPlus, stat: '+40% conversion', emails: '5-email sequence' },
+              { name: 'Re-engagement', desc: 'Win back inactive customers with special offers.', icon: RefreshCw, stat: '+25% reactivation', emails: '3-email sequence' },
+              { name: 'Review Request', desc: 'Automatically request reviews after service completion.', icon: Star, stat: '+60% reviews', emails: '2-email sequence' },
+            ].map((item) => (
+              <Card key={item.name} className="border-dashed hover:border-primary cursor-pointer transition-colors">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <item.icon className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-medium">{item.name}</p>
+                      <p className="text-xs text-muted-foreground">{item.emails}</p>
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-3">{item.desc}</p>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-primary">{item.stat}</span>
+                    <Button size="sm">Create</Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>

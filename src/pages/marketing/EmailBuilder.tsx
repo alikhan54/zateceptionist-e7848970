@@ -217,6 +217,43 @@ export default function EmailBuilder() {
                 <p className="text-sm text-muted-foreground">Start from scratch</p>
               </CardContent>
             </Card>
+
+            {/* Pre-built template cards */}
+            {[
+              { name: 'Welcome Email', desc: 'For new subscribers', icon: Mail, color: 'bg-primary/10 text-primary' },
+              { name: 'Promotional', desc: 'Sales and offers', icon: Send, color: 'bg-destructive/10 text-destructive' },
+              { name: 'Newsletter', desc: 'Regular updates', icon: FileText, color: 'bg-accent text-accent-foreground' },
+              { name: 'Re-engagement', desc: 'Win back customers', icon: Eye, color: 'bg-secondary text-secondary-foreground' },
+            ].map((tmpl) => (
+              <Card key={tmpl.name} className="cursor-pointer hover:border-primary transition-colors group">
+                <CardContent className="pt-6">
+                  <div className={`w-12 h-12 rounded-lg ${tmpl.color} flex items-center justify-center mx-auto mb-3`}>
+                    <tmpl.icon className="h-6 w-6" />
+                  </div>
+                  <p className="font-medium text-center">{tmpl.name}</p>
+                  <p className="text-sm text-muted-foreground text-center">{tmpl.desc}</p>
+                  <div className="mt-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button size="sm" className="flex-1" variant="outline">Preview</Button>
+                    <Button size="sm" className="flex-1" onClick={() => { setEmailBlocks(defaultBlocks); setEmailSubject(tmpl.name); setActiveTab('builder'); }}>Use</Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+
+            {/* AI Generated template */}
+            <Card className="cursor-pointer hover:border-primary transition-colors border-primary/50 bg-primary/5 group">
+              <CardContent className="pt-6">
+                <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center mx-auto mb-3">
+                  <Sparkles className="h-6 w-6 text-primary" />
+                </div>
+                <p className="font-medium text-center">AI Generated</p>
+                <p className="text-sm text-muted-foreground text-center">Custom for your industry</p>
+                <div className="mt-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button size="sm" className="flex-1 marketing-gradient text-white">Generate</Button>
+                </div>
+              </CardContent>
+            </Card>
+
             {templates.map((template: any) => (
               <Card key={template.id} className="cursor-pointer hover:border-primary transition-colors" onClick={() => handleStartFromTemplate(template)}>
                 <CardContent className="p-6 text-center">

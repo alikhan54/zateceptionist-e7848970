@@ -259,9 +259,49 @@ export default function ContentStudio() {
                     </Button>
                   </div>
                 ) : (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <Sparkles className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Your generated content will appear here</p>
+                  <div className="space-y-4">
+                    <Card className="border-dashed">
+                      <CardContent className="pt-6">
+                        <div className="text-center space-y-4">
+                          <Sparkles className="h-12 w-12 mx-auto text-primary/50" />
+                          <div>
+                            <h4 className="font-medium">AI Content Ideas for {tenantConfig?.industry || 'Your Business'}</h4>
+                            <p className="text-sm text-muted-foreground mt-1">Click to generate instantly</p>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 max-w-md mx-auto">
+                            <Button variant="outline" size="sm" onClick={() => { setContentType('social'); setTopic('Tips for ' + (tenantConfig?.industry || 'business')); }}>
+                              <MessageSquare className="h-4 w-4 mr-1" />Industry Tips
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => { setContentType('email'); setTopic('Welcome email for new customers'); }}>
+                              <Mail className="h-4 w-4 mr-1" />Welcome Email
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => { setContentType('blog'); setTopic('How to choose the best ' + (tenantConfig?.industry || 'service')); }}>
+                              <FileText className="h-4 w-4 mr-1" />How-To Guide
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => { setContentType('ad'); setTopic('Promotional ad for ' + (tenantConfig?.company_name || 'our services')); }}>
+                              <Megaphone className="h-4 w-4 mr-1" />Promo Ad
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm flex items-center gap-2">
+                          <TrendingUp className="h-4 w-4 text-primary" />
+                          Trending in {tenantConfig?.industry || 'Your Industry'}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex flex-wrap gap-2">
+                          {['AI automation', 'customer experience', 'digital transformation', 'personalization'].map(t => (
+                            <Badge key={t} variant="secondary" className="cursor-pointer hover:bg-primary hover:text-primary-foreground" onClick={() => setTopic(t)}>
+                              {t}
+                            </Badge>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
                 )}
               </CardContent>

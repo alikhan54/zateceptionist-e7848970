@@ -41,25 +41,31 @@ export default function BlogManager() {
 
   const createPost = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('blog_posts').insert({
-        tenant_id: tenantConfig?.id,
+      if (!tenantConfig?.id) throw new Error('No tenant configured');
+      const { data, error } = await supabase.from('blog_posts').insert({
+        tenant_id: tenantConfig.id,
         title,
         primary_keyword: keyword,
-        excerpt,
+        excerpt: excerpt || null,
         status: 'draft',
-      });
-      if (error) throw error;
+        ai_generated: false,
+      }).select().single();
+      if (error) {
+        console.error('Blog post error:', error);
+        throw error;
+      }
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['blog_posts'] });
-      toast({ title: '✨ Blog Post Created!' });
       setIsCreateOpen(false);
       setTitle('');
       setKeyword('');
       setExcerpt('');
+      toast({ title: 'Blog Post Created!', description: 'Your post is ready for AI generation.' });
     },
-    onError: () => {
-      toast({ title: 'Error', description: 'Failed to create post', variant: 'destructive' });
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.message || 'Failed to create post', variant: 'destructive' });
     },
   });
 

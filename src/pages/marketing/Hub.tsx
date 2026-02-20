@@ -33,7 +33,8 @@ import {
   Pause,
   CheckCircle2,
   AlertCircle,
-  Sparkles
+  Sparkles,
+  Brain
 } from 'lucide-react';
 import { useTenant } from '@/contexts/TenantContext';
 import { format, addDays } from 'date-fns';
@@ -255,6 +256,86 @@ export default function MarketingHub() {
             </CardContent>
           </Card>
         ))}
+      </div>
+
+      {/* AI Recommendations */}
+      <div className="grid lg:grid-cols-3 gap-6">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Brain className="h-5 w-5 text-primary" />
+              AI Recommendations
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="p-4 rounded-lg border bg-primary/5 border-primary/20">
+              <div className="flex items-start gap-3">
+                <Sparkles className="h-5 w-5 text-primary mt-0.5" />
+                <div>
+                  <p className="font-medium">Recommended Campaign</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Based on your {tenantConfig?.industry || 'business'} industry, a
+                    <span className="text-primary font-medium"> welcome sequence </span>
+                    could increase conversions by 40%.
+                  </p>
+                  <Button size="sm" className="mt-2" variant="outline">Create Now</Button>
+                </div>
+              </div>
+            </div>
+            <div className="p-4 rounded-lg border bg-accent/50 border-accent">
+              <div className="flex items-start gap-3">
+                <TrendingUp className="h-5 w-5 text-primary mt-0.5" />
+                <div>
+                  <p className="font-medium">Trending in Your Industry</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    "AI automation" and "customer experience" are trending. Create content now!
+                  </p>
+                  <Button size="sm" className="mt-2" variant="outline">Generate Content</Button>
+                </div>
+              </div>
+            </div>
+            <div className="p-4 rounded-lg border bg-secondary/50 border-secondary">
+              <div className="flex items-start gap-3">
+                <Target className="h-5 w-5 text-primary mt-0.5" />
+                <div>
+                  <p className="font-medium">Audience Insight</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Your audience is most active <span className="text-primary font-medium">Tuesday-Thursday, 10AM-2PM</span>.
+                    Schedule posts accordingly.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* AI Activity Feed */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-primary" />
+              AI Activity Feed
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {[
+                { text: 'AI generated 3 social posts', time: '2 min ago', icon: Sparkles },
+                { text: 'AI scheduled email for optimal time', time: '15 min ago', icon: Clock },
+                { text: 'AI detected trending topic in your industry', time: '1 hour ago', icon: TrendingUp },
+                { text: 'AI optimized campaign targeting', time: '3 hours ago', icon: Target },
+              ].map((item, i) => (
+                <div key={i} className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50">
+                  <item.icon className="h-4 w-4 text-primary mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm">{item.text}</p>
+                    <p className="text-xs text-muted-foreground">{item.time}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Main Grid */}

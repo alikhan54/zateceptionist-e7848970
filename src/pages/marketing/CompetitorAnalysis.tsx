@@ -40,25 +40,31 @@ export default function CompetitorAnalysis() {
 
   const addCompetitor = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('competitor_analysis').insert({
-        tenant_id: tenantConfig?.id,
-        competitor_name: name,
-        instagram_url: instagramUrl || null,
-        website_url: websiteUrl || null,
+      if (!tenantConfig?.id) throw new Error('No tenant configured');
+      if (!name.trim()) throw new Error('Competitor name is required');
+      const { data, error } = await supabase.from('competitor_analysis').insert({
+        tenant_id: tenantConfig.id,
+        competitor_name: name.trim(),
+        instagram_url: instagramUrl?.trim() || null,
+        website_url: websiteUrl?.trim() || null,
         status: 'pending',
-      });
-      if (error) throw error;
+      }).select().single();
+      if (error) {
+        console.error('Competitor error:', error);
+        throw error;
+      }
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['competitor_analysis'] });
-      toast({ title: '✨ Competitor Added!' });
       setIsCreateOpen(false);
       setName('');
       setInstagramUrl('');
       setWebsiteUrl('');
+      toast({ title: 'Competitor Added!', description: 'AI will analyze this competitor shortly.' });
     },
-    onError: () => {
-      toast({ title: 'Error', description: 'Failed to add competitor', variant: 'destructive' });
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.message || 'Failed to add competitor', variant: 'destructive' });
     },
   });
 
