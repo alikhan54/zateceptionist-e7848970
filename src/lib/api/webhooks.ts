@@ -108,7 +108,8 @@ export async function callWebhook<T = unknown>(
   data: object,
   tenantId: string,
 ): Promise<WebhookResponse<T>> {
-  const url = `${N8N_WEBHOOK_BASE}${endpoint}`;
+  const cleanEndpoint = typeof endpoint === 'string' && !endpoint.startsWith('/') ? `/${endpoint}` : endpoint;
+  const url = `${N8N_WEBHOOK_BASE}${cleanEndpoint}`;
 
   try {
     const response = await fetch(url, {
@@ -155,7 +156,8 @@ export async function fetchWebhook<T = unknown>(
   tenantId: string,
   params?: Record<string, string>,
 ): Promise<WebhookResponse<T>> {
-  const url = new URL(`${N8N_WEBHOOK_BASE}${endpoint}`);
+  const cleanEndpoint = typeof endpoint === 'string' && !endpoint.startsWith('/') ? `/${endpoint}` : endpoint;
+  const url = new URL(`${N8N_WEBHOOK_BASE}${cleanEndpoint}`);
   url.searchParams.set("tenant_id", tenantId);
 
   if (params) {

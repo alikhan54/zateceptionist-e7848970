@@ -12,7 +12,8 @@ export async function callWebhook<T = unknown>(
   tenantId: string,
 ): Promise<WebhookResponse<T>> {
   try {
-    const response = await fetch(`${N8N_WEBHOOK_BASE}${endpoint}`, {
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const response = await fetch(`${N8N_WEBHOOK_BASE}${cleanEndpoint}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

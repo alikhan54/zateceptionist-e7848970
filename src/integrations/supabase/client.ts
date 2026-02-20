@@ -72,7 +72,8 @@ export async function callWebhook(
   data: Record<string, unknown>,
   tenantId: string,
 ): Promise<{ success: boolean; data?: unknown; error?: string }> {
-  const url = `${N8N_WEBHOOK_BASE}/${endpoint}`;
+  const cleanEndpoint = typeof endpoint === 'string' && !endpoint.startsWith('/') ? `/${endpoint}` : endpoint;
+  const url = `${N8N_WEBHOOK_BASE}${cleanEndpoint}`;
 
   try {
     const response = await fetch(url, {
