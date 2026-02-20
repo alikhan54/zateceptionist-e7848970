@@ -1,3 +1,8 @@
+// ============================================================
+// FILE: src/pages/marketing/BlogManager.tsx
+// ACTION: REPLACE ENTIRE FILE
+// ============================================================
+
 import { useState } from "react";
 import { useTenant } from "@/contexts/TenantContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -41,6 +46,7 @@ export default function BlogManager() {
     enabled: !!tenantConfig?.id,
   });
 
+  // FIX: Added content_html: '' and meta_description to prevent NOT NULL error
   const createPost = useMutation({
     mutationFn: async () => {
       if (!tenantConfig?.id) throw new Error("No tenant configured");
@@ -83,10 +89,10 @@ export default function BlogManager() {
   const aiGenerated = posts.filter((p: any) => p.ai_generated).length;
 
   const statCards = [
-    { label: "Total Posts", value: totalPosts, icon: FileText, color: "text-purple-500" },
+    { label: "Total Posts", value: totalPosts, icon: FileText, color: "text-blue-500" },
     { label: "Published", value: published, icon: CheckCircle, color: "text-green-500" },
     { label: "Drafts", value: drafts, icon: Clock, color: "text-amber-500" },
-    { label: "AI Generated", value: aiGenerated, icon: Sparkles, color: "text-blue-500" },
+    { label: "AI Generated", value: aiGenerated, icon: Sparkles, color: "text-purple-500" },
   ];
 
   if (isLoading) {
@@ -108,7 +114,7 @@ export default function BlogManager() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Blog Manager</h1>
-          <p className="text-muted-foreground">AI-generated SEO-optimized blog posts</p>
+          <p className="text-muted-foreground">AI-powered blog content generation</p>
         </div>
         <Button onClick={() => setIsCreateOpen(true)} className="marketing-gradient text-white">
           <Plus className="h-4 w-4 mr-2" /> New Blog Post
@@ -137,7 +143,7 @@ export default function BlogManager() {
             <PenTool className="h-12 w-12 text-muted-foreground/50 mb-4" />
             <h3 className="text-lg font-semibold">No Blog Posts Yet</h3>
             <p className="text-muted-foreground mt-1 max-w-md">
-              Create SEO-optimized blog posts powered by AI to drive organic traffic.
+              Create your first blog post and let AI generate SEO-optimized content.
             </p>
             <Button onClick={() => setIsCreateOpen(true)} className="marketing-gradient text-white mt-4">
               <Plus className="h-4 w-4 mr-2" /> Create Your First Post
@@ -161,12 +167,20 @@ export default function BlogManager() {
                   {post.excerpt && <p className="text-sm text-muted-foreground truncate mt-1">{post.excerpt}</p>}
                   <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                     {post.primary_keyword && <span>🔑 {post.primary_keyword}</span>}
+                    {post.seo_score && <span>📊 SEO: {post.seo_score}/100</span>}
                     {post.created_at && (
                       <span>{formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}</span>
                     )}
                   </div>
                 </div>
-                <Badge variant={post.status === "published" ? "default" : "secondary"}>{post.status}</Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant={post.status === "published" ? "default" : "secondary"}>{post.status}</Badge>
+                  {post.views !== undefined && (
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Eye className="h-3 w-3" /> {post.views || 0}
+                    </span>
+                  )}
+                </div>
               </CardContent>
             </Card>
           ))}
@@ -184,7 +198,7 @@ export default function BlogManager() {
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g., 10 Tips for Better Marketing"
+                placeholder="e.g., 10 Tips for Better Customer Service"
               />
             </div>
             <div className="space-y-2">
@@ -192,11 +206,11 @@ export default function BlogManager() {
               <Input
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
-                placeholder="e.g., marketing automation"
+                placeholder="e.g., customer service tips"
               />
             </div>
             <div className="space-y-2">
-              <Label>Excerpt</Label>
+              <Label>Excerpt (optional)</Label>
               <Textarea
                 value={excerpt}
                 onChange={(e) => setExcerpt(e.target.value)}
