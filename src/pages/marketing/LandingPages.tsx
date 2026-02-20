@@ -79,6 +79,7 @@ const mockTemplates = [
 export default function LandingPages() {
   const { toast } = useToast();
   const { pages, isLoading, stats, createPage, publishPage, deletePage } = useLandingPages();
+  const { tenantConfig } = useTenant();
 
   const [activeTab, setActiveTab] = useState("pages");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -87,9 +88,9 @@ export default function LandingPages() {
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingPage, setEditingPage] = useState<any | null>(null);
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
+  // FIX: Added preview modal state
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewPageName, setPreviewPageName] = useState("");
-  const { tenantConfig } = useTenant();
 
   const getStatusBadge = (status: string) => {
     const config: Record<string, { variant: "default" | "secondary" | "destructive"; label: string }> = {
@@ -101,13 +102,42 @@ export default function LandingPages() {
     return <Badge variant={variant}>{label}</Badge>;
   };
 
+  // FIX: Enhanced handleCreatePage with AI generation via webhook
   const handleCreatePage = async () => {
     if (!newPageName.trim()) {
       toast({ title: "Error", description: "Please enter a page name", variant: "destructive" });
       return;
     }
     try {
-      await createPage.mutateAsync({ name: newPageName, template: selectedTemplate?.name });
+      let htmlContent = "";
+      // Try AI generation via webhook
+      if (tenantConfig?.id) {
+        try {
+          const result = await callWebhook(
+            WEBHOOKS.LANDING_PAGE_GENERATE || "/marketing/landing-page-generate",
+            {
+              goal: selectedTemplate?.category?.toLowerCase() || "lead_capture",
+              industry: tenantConfig?.industry || "technology",
+              company_name: tenantConfig?.company_name || "Your Company",
+              brand_color: "#3b82f6",
+              headline: newPageName,
+            },
+            tenantConfig.id,
+          );
+          if (result.success && (result.data as any)?.html_content) {
+            htmlContent = (result.data as any).html_content;
+          }
+        } catch (e) {
+          console.log("AI page gen unavailable, using default template");
+        }
+      }
+      await createPage.mutateAsync({
+        name: newPageName,
+        template: selectedTemplate?.name,
+        html_content:
+          htmlContent ||
+          `<!DOCTYPE html><html><head><title>${newPageName}</title><style>body{font-family:sans-serif;text-align:center;padding:60px 20px}h1{color:#333}p{color:#666;max-width:500px;margin:20px auto}</style></head><body><h1>${newPageName}</h1><p>This landing page is ready to be customized. Edit the HTML content to build your page.</p></body></html>`,
+      });
       setIsCreateOpen(false);
       setNewPageName("");
       setSelectedTemplate(null);
@@ -214,17 +244,6 @@ export default function LandingPages() {
                     <div className="flex items-start justify-between">
                       <div>
                         <h3 className="font-medium">{page.name}</h3>
-                        {page.published_url && (
-                          <a
-                            href={page.published_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-primary hover:underline flex items-center gap-1 mt-1"
-                          >
-                            <ExternalLink className="h-3 w-3" />
-                            {page.published_url.replace("https://", "")}
-                          </a>
-                        )}
                         <p className="text-xs text-muted-foreground mt-1">
                           Created {format(new Date(page.created_at), "MMM d, yyyy")}
                         </p>
@@ -236,6 +255,16 @@ export default function LandingPages() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          {/* FIX: Preview button that opens inline modal instead of broken SSL link */}
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setPreviewHtml(page.html_content || "<p>No content yet</p>");
+                              setPreviewPageName(page.name);
+                            }}
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            Preview
+                          </DropdownMenuItem>
                           {page.status === "draft" && (
                             <DropdownMenuItem onClick={() => handlePublish(page)}>
                               <Check className="h-4 w-4 mr-2" />
@@ -307,6 +336,7 @@ export default function LandingPages() {
         </TabsContent>
       </Tabs>
 
+      {/* Create Page Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent>
           <DialogHeader>
@@ -342,6 +372,57 @@ export default function LandingPages() {
               {createPage.isPending ? "Creating..." : "Create Page"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* FIX: Inline Preview Modal - replaces broken SSL external link */}
+      <Dialog open={!!previewHtml} onOpenChange={() => setPreviewHtml(null)}>
+        <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>Preview: {previewPageName}</span>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant={previewMode === "desktop" ? "default" : "outline"}
+                  onClick={() => setPreviewMode("desktop")}
+                >
+                  <Monitor className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant={previewMode === "mobile" ? "default" : "outline"}
+                  onClick={() => setPreviewMode("mobile")}
+                >
+                  <Smartphone className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    navigator.clipboard.writeText(previewHtml || "");
+                    toast({ title: "HTML Copied to Clipboard!" });
+                  }}
+                >
+                  <Copy className="h-4 w-4 mr-1" /> Copy HTML
+                </Button>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto border rounded-lg bg-white">
+            <iframe
+              srcDoc={previewHtml || ""}
+              className="w-full h-full border-0"
+              style={{
+                maxWidth: previewMode === "mobile" ? "375px" : "100%",
+                margin: "0 auto",
+                display: "block",
+                minHeight: "500px",
+              }}
+              title="Landing Page Preview"
+              sandbox="allow-scripts"
+            />
+          </div>
         </DialogContent>
       </Dialog>
     </div>
