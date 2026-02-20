@@ -1,3 +1,6 @@
+const BlogManager = lazy(() => import("./pages/marketing/BlogManager"));
+const VideoProjects = lazy(() => import("./pages/marketing/VideoProjects"));
+const CompetitorAnalysis = lazy(() => import("./pages/marketing/CompetitorAnalysis"));
 import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -44,8 +47,6 @@ const LandingPages = lazy(() => import("./pages/marketing/LandingPages"));
 const MarketingAnalytics = lazy(() => import("./pages/marketing/Analytics"));
 const ABTesting = lazy(() => import("./pages/marketing/ABTesting"));
 const MarketingSequences = lazy(() => import("./pages/marketing/Sequences"));
-const BlogManager = lazy(() => import("./pages/marketing/BlogManager"));
-const CompetitorAnalysis = lazy(() => import("./pages/marketing/CompetitorAnalysis"));
 
 // HR Module
 const HRDashboardOverview = lazy(() => import("./pages/hr/Dashboard"));
@@ -151,161 +152,626 @@ const App = () => (
             <Sonner richColors closeButton position="top-right" />
             <BrowserRouter>
               <Routes>
-{/* Public routes */}
-<Route path="/login" element={<LoginPage />} />
-<Route path="/auth/callback" element={<LazyPage><AuthCallback /></LazyPage>} />
-<Route path="/onboarding" element={<LazyPage><CompanySetup /></LazyPage>} />
-<Route path="/invite" element={<LazyPage><Invite /></LazyPage>} />
-<Route path="/" element={<Navigate to="/dashboard" replace />} />
-
-              {/* Protected routes with Layout */}
-              <Route
-                element={
-                  <ProtectedRoute>
-                    <Layout />
-                  </ProtectedRoute>
-                }
-              >
-                {/* Dashboard */}
-                <Route path="/dashboard" element={<LazyPage><Dashboard /></LazyPage>} />
-
-                {/* Core CRM */}
-                <Route path="/customers" element={<LazyPage><CustomersPage /></LazyPage>} />
-                <Route path="/inbox" element={<LazyPage><InboxPage /></LazyPage>} />
-                <Route path="/appointments" element={<LazyPage><AppointmentsPage /></LazyPage>} />
-                <Route path="/tasks" element={<LazyPage><TasksPage /></LazyPage>} />
-
-                {/* Sales Module */}
-                <Route path="/sales" element={<Navigate to="/sales/dashboard" replace />} />
-                <Route path="/sales/dashboard" element={<LazyPage><SalesDashboard /></LazyPage>} />
-                <Route path="/sales/pipeline" element={<LazyPage><LeadPipeline /></LazyPage>} />
-                <Route path="/sales/auto-leadgen" element={<LazyPage><AutoLeadGen /></LazyPage>} />
-                <Route path="/sales/deals" element={<LazyPage><DealTracker /></LazyPage>} />
-                <Route path="/sales/sequences" element={<LazyPage><Sequences /></LazyPage>} />
-                <Route path="/sales/sequences/new" element={<LazyPage><CreateSequence /></LazyPage>} />
-                <Route path="/sales/proposals" element={<LazyPage><Proposals /></LazyPage>} />
-                <Route path="/sales/analytics" element={<LazyPage><SalesAnalytics /></LazyPage>} />
-                <Route path="/sales/forecast" element={<LazyPage><Forecasting /></LazyPage>} />
-
-                {/* Marketing Module */}
-                <Route path="/marketing" element={<LazyPage><MarketingHub /></LazyPage>} />
-                <Route path="/marketing/content" element={<LazyPage><ContentStudio /></LazyPage>} />
-                <Route path="/marketing/campaigns" element={<LazyPage><CampaignCentral /></LazyPage>} />
-                <Route path="/marketing/social" element={<LazyPage><SocialCommander /></LazyPage>} />
-                <Route path="/marketing/email" element={<LazyPage><EmailBuilder /></LazyPage>} />
-                <Route path="/marketing/landing" element={<LazyPage><LandingPages /></LazyPage>} />
-                <Route path="/marketing/analytics" element={<LazyPage><MarketingAnalytics /></LazyPage>} />
-                <Route path="/marketing/ab-testing" element={<LazyPage><ABTesting /></LazyPage>} />
-                <Route path="/marketing/sequences" element={<LazyPage><MarketingSequences /></LazyPage>} />
-                <Route path="/marketing/blogs" element={<LazyPage><BlogManager /></LazyPage>} />
-                <Route path="/marketing/competitors" element={<LazyPage><CompetitorAnalysis /></LazyPage>} />
-
-                {/* HR Module */}
-                <Route path="/hr" element={<Navigate to="/hr/dashboard" replace />} />
-                <Route path="/hr/dashboard" element={<LazyPage><HRDashboardOverview /></LazyPage>} />
-                <Route path="/hr/employees" element={<LazyPage><EmployeesPage /></LazyPage>} />
-                <Route path="/hr/attendance" element={<LazyPage><AttendancePage /></LazyPage>} />
-                <Route path="/hr/leave" element={<LazyPage><LeaveManagementPage /></LazyPage>} />
-                <Route path="/hr/payroll" element={<LazyPage><PayrollPage /></LazyPage>} />
-                <Route path="/hr/departments" element={<LazyPage><DepartmentsPage /></LazyPage>} />
-                <Route path="/hr/performance" element={<LazyPage><PerformancePage /></LazyPage>} />
-                <Route path="/hr/training" element={<LazyPage><TrainingPage /></LazyPage>} />
-<Route path="/hr/recruitment" element={<LazyPage><RecruitmentPage /></LazyPage>} />
-                <Route path="/hr/recruitment-dashboard" element={<LazyPage><HRRecruitmentDash /></LazyPage>} />
-                <Route path="/hr/documents" element={<LazyPage><HRDocumentsPage /></LazyPage>} />
-                <Route path="/hr/reports" element={<LazyPage><HRReportsPage /></LazyPage>} />
-                <Route path="/hr/ai-assistant" element={<LazyPage><HRAIAssistantPage /></LazyPage>} />
-
-                {/* Operations Module */}
-                <Route path="/operations" element={<Navigate to="/operations/inventory" replace />} />
-                <Route path="/operations/inventory" element={<LazyPage><Inventory /></LazyPage>} />
-                <Route path="/operations/orders" element={<LazyPage><Orders /></LazyPage>} />
-                <Route path="/operations/vendors" element={<LazyPage><Vendors /></LazyPage>} />
-                <Route path="/operations/expenses" element={<LazyPage><Expenses /></LazyPage>} />
-                <Route path="/operations/invoices" element={<LazyPage><Invoices /></LazyPage>} />
-
-                {/* Communications Module */}
-                <Route path="/communications" element={<Navigate to="/communications/voice" replace />} />
-                <Route path="/communications/voice" element={<LazyPage><VoiceAI /></LazyPage>} />
-                <Route path="/communications/whatsapp" element={<LazyPage><WhatsAppHub /></LazyPage>} />
-                <Route path="/communications/email" element={<LazyPage><EmailHub /></LazyPage>} />
-                <Route path="/communications/sms" element={<LazyPage><SMSHub /></LazyPage>} />
-                <Route path="/communications/call-center" element={<LazyPage><CallCenter /></LazyPage>} />
-                <Route path="/communications/ivr" element={<LazyPage><IVRBuilder /></LazyPage>} />
-
-                {/* Analytics Module */}
-                <Route path="/analytics" element={<LazyPage><AnalyticsHub /></LazyPage>} />
-                <Route path="/analytics/realtime" element={<LazyPage><RealtimeDashboard /></LazyPage>} />
-                <Route path="/analytics/reports" element={<LazyPage><CustomReports /></LazyPage>} />
-                <Route path="/analytics/ai-insights" element={<LazyPage><AIInsights /></LazyPage>} />
-                <Route path="/analytics/predictions" element={<LazyPage><Predictions /></LazyPage>} />
-
-                {/* Intelligence */}
-                <Route path="/intelligence" element={<LazyPage><Intelligence /></LazyPage>} />
-
-                {/* Settings Module */}
-                <Route path="/settings" element={<LazyPage><GeneralSettings /></LazyPage>} />
-                <Route path="/settings/voice-ai" element={<LazyPage><VoiceAISettings /></LazyPage>} />
-                <Route path="/settings/integrations" element={<LazyPage><Integrations /></LazyPage>} />
-                <Route path="/settings/api-keys" element={<LazyPage><APIKeys /></LazyPage>} />
-                <Route path="/settings/team" element={<LazyPage><TeamSettings /></LazyPage>} />
-                <Route path="/settings/billing" element={<LazyPage><BillingSettings /></LazyPage>} />
-                <Route path="/settings/notifications" element={<LazyPage><NotificationSettings /></LazyPage>} />
-                <Route path="/settings/knowledge-base" element={<LazyPage><KnowledgeBaseSettings /></LazyPage>} />
-
-                {/* Admin Module - ONLY for master_admin role */}
+                {/* Public routes */}
+                <Route path="/login" element={<LoginPage />} />
                 <Route
-                  path="/admin"
+                  path="/auth/callback"
                   element={
-                    <ProtectedRoute requiredRole="master_admin">
-                      <LazyPage><AdminPanel /></LazyPage>
-                    </ProtectedRoute>
+                    <LazyPage>
+                      <AuthCallback />
+                    </LazyPage>
                   }
                 />
                 <Route
-                  path="/admin/tenants"
+                  path="/onboarding"
                   element={
-                    <ProtectedRoute requiredRole="master_admin">
-                      <LazyPage><AllTenants /></LazyPage>
-                    </ProtectedRoute>
+                    <LazyPage>
+                      <CompanySetup />
+                    </LazyPage>
                   }
                 />
                 <Route
-                  path="/admin/users"
+                  path="/invite"
                   element={
-                    <ProtectedRoute requiredRole="master_admin">
-                      <LazyPage><AdminUsers /></LazyPage>
-                    </ProtectedRoute>
+                    <LazyPage>
+                      <Invite />
+                    </LazyPage>
                   }
                 />
-                <Route
-                  path="/admin/health"
-                  element={
-                    <ProtectedRoute requiredRole="master_admin">
-                      <LazyPage><SystemHealth /></LazyPage>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/admin/logs"
-                  element={
-                    <ProtectedRoute requiredRole="master_admin">
-                      <LazyPage><AuditLogs /></LazyPage>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/admin/features"
-                  element={
-                    <ProtectedRoute requiredRole="master_admin">
-                      <LazyPage><FeatureFlags /></LazyPage>
-                    </ProtectedRoute>
-                  }
-                />
-              </Route>
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-              {/* Catch-all */}
-                <Route path="*" element={<LazyPage><NotFound /></LazyPage>} />
+                {/* Protected routes with Layout */}
+                <Route
+                  element={
+                    <ProtectedRoute>
+                      <Layout />
+                    </ProtectedRoute>
+                  }
+                >
+                  {/* Dashboard */}
+                  <Route
+                    path="/dashboard"
+                    element={
+                      <LazyPage>
+                        <Dashboard />
+                      </LazyPage>
+                    }
+                  />
+
+                  {/* Core CRM */}
+                  <Route
+                    path="/customers"
+                    element={
+                      <LazyPage>
+                        <CustomersPage />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/inbox"
+                    element={
+                      <LazyPage>
+                        <InboxPage />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/appointments"
+                    element={
+                      <LazyPage>
+                        <AppointmentsPage />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/tasks"
+                    element={
+                      <LazyPage>
+                        <TasksPage />
+                      </LazyPage>
+                    }
+                  />
+
+                  {/* Sales Module */}
+                  <Route path="/sales" element={<Navigate to="/sales/dashboard" replace />} />
+                  <Route
+                    path="/sales/dashboard"
+                    element={
+                      <LazyPage>
+                        <SalesDashboard />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/sales/pipeline"
+                    element={
+                      <LazyPage>
+                        <LeadPipeline />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/sales/auto-leadgen"
+                    element={
+                      <LazyPage>
+                        <AutoLeadGen />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/sales/deals"
+                    element={
+                      <LazyPage>
+                        <DealTracker />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/sales/sequences"
+                    element={
+                      <LazyPage>
+                        <Sequences />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/sales/sequences/new"
+                    element={
+                      <LazyPage>
+                        <CreateSequence />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/sales/proposals"
+                    element={
+                      <LazyPage>
+                        <Proposals />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/sales/analytics"
+                    element={
+                      <LazyPage>
+                        <SalesAnalytics />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/sales/forecast"
+                    element={
+                      <LazyPage>
+                        <Forecasting />
+                      </LazyPage>
+                    }
+                  />
+
+                  {/* Marketing Module */}
+                  <Route
+                    path="/marketing"
+                    element={
+                      <LazyPage>
+                        <MarketingHub />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/marketing/content"
+                    element={
+                      <LazyPage>
+                        <ContentStudio />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/marketing/campaigns"
+                    element={
+                      <LazyPage>
+                        <CampaignCentral />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/marketing/social"
+                    element={
+                      <LazyPage>
+                        <SocialCommander />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/marketing/email"
+                    element={
+                      <LazyPage>
+                        <EmailBuilder />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/marketing/landing"
+                    element={
+                      <LazyPage>
+                        <LandingPages />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/marketing/analytics"
+                    element={
+                      <LazyPage>
+                        <MarketingAnalytics />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/marketing/ab-testing"
+                    element={
+                      <LazyPage>
+                        <ABTesting />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/marketing/sequences"
+                    element={
+                      <LazyPage>
+                        <MarketingSequences />
+                      </LazyPage>
+                    }
+                  />
+
+                  {/* HR Module */}
+                  <Route path="/hr" element={<Navigate to="/hr/dashboard" replace />} />
+                  <Route
+                    path="/hr/dashboard"
+                    element={
+                      <LazyPage>
+                        <HRDashboardOverview />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/hr/employees"
+                    element={
+                      <LazyPage>
+                        <EmployeesPage />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/hr/attendance"
+                    element={
+                      <LazyPage>
+                        <AttendancePage />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/hr/leave"
+                    element={
+                      <LazyPage>
+                        <LeaveManagementPage />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/hr/payroll"
+                    element={
+                      <LazyPage>
+                        <PayrollPage />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/hr/departments"
+                    element={
+                      <LazyPage>
+                        <DepartmentsPage />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/hr/performance"
+                    element={
+                      <LazyPage>
+                        <PerformancePage />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/hr/training"
+                    element={
+                      <LazyPage>
+                        <TrainingPage />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/hr/recruitment"
+                    element={
+                      <LazyPage>
+                        <RecruitmentPage />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/hr/recruitment-dashboard"
+                    element={
+                      <LazyPage>
+                        <HRRecruitmentDash />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/hr/documents"
+                    element={
+                      <LazyPage>
+                        <HRDocumentsPage />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/hr/reports"
+                    element={
+                      <LazyPage>
+                        <HRReportsPage />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/hr/ai-assistant"
+                    element={
+                      <LazyPage>
+                        <HRAIAssistantPage />
+                      </LazyPage>
+                    }
+                  />
+
+                  {/* Operations Module */}
+                  <Route path="/operations" element={<Navigate to="/operations/inventory" replace />} />
+                  <Route
+                    path="/operations/inventory"
+                    element={
+                      <LazyPage>
+                        <Inventory />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/operations/orders"
+                    element={
+                      <LazyPage>
+                        <Orders />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/operations/vendors"
+                    element={
+                      <LazyPage>
+                        <Vendors />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/operations/expenses"
+                    element={
+                      <LazyPage>
+                        <Expenses />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/operations/invoices"
+                    element={
+                      <LazyPage>
+                        <Invoices />
+                      </LazyPage>
+                    }
+                  />
+
+                  {/* Communications Module */}
+                  <Route path="/communications" element={<Navigate to="/communications/voice" replace />} />
+                  <Route
+                    path="/communications/voice"
+                    element={
+                      <LazyPage>
+                        <VoiceAI />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/communications/whatsapp"
+                    element={
+                      <LazyPage>
+                        <WhatsAppHub />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/communications/email"
+                    element={
+                      <LazyPage>
+                        <EmailHub />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/communications/sms"
+                    element={
+                      <LazyPage>
+                        <SMSHub />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/communications/call-center"
+                    element={
+                      <LazyPage>
+                        <CallCenter />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/communications/ivr"
+                    element={
+                      <LazyPage>
+                        <IVRBuilder />
+                      </LazyPage>
+                    }
+                  />
+
+                  {/* Analytics Module */}
+                  <Route
+                    path="/analytics"
+                    element={
+                      <LazyPage>
+                        <AnalyticsHub />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/analytics/realtime"
+                    element={
+                      <LazyPage>
+                        <RealtimeDashboard />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/analytics/reports"
+                    element={
+                      <LazyPage>
+                        <CustomReports />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/analytics/ai-insights"
+                    element={
+                      <LazyPage>
+                        <AIInsights />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/analytics/predictions"
+                    element={
+                      <LazyPage>
+                        <Predictions />
+                      </LazyPage>
+                    }
+                  />
+
+                  {/* Intelligence */}
+                  <Route
+                    path="/intelligence"
+                    element={
+                      <LazyPage>
+                        <Intelligence />
+                      </LazyPage>
+                    }
+                  />
+
+                  {/* Settings Module */}
+                  <Route
+                    path="/settings"
+                    element={
+                      <LazyPage>
+                        <GeneralSettings />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/settings/voice-ai"
+                    element={
+                      <LazyPage>
+                        <VoiceAISettings />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/settings/integrations"
+                    element={
+                      <LazyPage>
+                        <Integrations />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/settings/api-keys"
+                    element={
+                      <LazyPage>
+                        <APIKeys />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/settings/team"
+                    element={
+                      <LazyPage>
+                        <TeamSettings />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/settings/billing"
+                    element={
+                      <LazyPage>
+                        <BillingSettings />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/settings/notifications"
+                    element={
+                      <LazyPage>
+                        <NotificationSettings />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/settings/knowledge-base"
+                    element={
+                      <LazyPage>
+                        <KnowledgeBaseSettings />
+                      </LazyPage>
+                    }
+                  />
+
+                  {/* Admin Module - ONLY for master_admin role */}
+                  <Route
+                    path="/admin"
+                    element={
+                      <ProtectedRoute requiredRole="master_admin">
+                        <LazyPage>
+                          <AdminPanel />
+                        </LazyPage>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/tenants"
+                    element={
+                      <ProtectedRoute requiredRole="master_admin">
+                        <LazyPage>
+                          <AllTenants />
+                        </LazyPage>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/users"
+                    element={
+                      <ProtectedRoute requiredRole="master_admin">
+                        <LazyPage>
+                          <AdminUsers />
+                        </LazyPage>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/health"
+                    element={
+                      <ProtectedRoute requiredRole="master_admin">
+                        <LazyPage>
+                          <SystemHealth />
+                        </LazyPage>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/logs"
+                    element={
+                      <ProtectedRoute requiredRole="master_admin">
+                        <LazyPage>
+                          <AuditLogs />
+                        </LazyPage>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/features"
+                    element={
+                      <ProtectedRoute requiredRole="master_admin">
+                        <LazyPage>
+                          <FeatureFlags />
+                        </LazyPage>
+                      </ProtectedRoute>
+                    }
+                  />
+                </Route>
+
+                {/* Catch-all */}
+                <Route
+                  path="*"
+                  element={
+                    <LazyPage>
+                      <NotFound />
+                    </LazyPage>
+                  }
+                />
               </Routes>
             </BrowserRouter>
           </SubscriptionProvider>
