@@ -87,6 +87,9 @@ export default function LandingPages() {
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingPage, setEditingPage] = useState<any | null>(null);
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [previewPageName, setPreviewPageName] = useState("");
+  const { tenantConfig } = useTenant();
 
   const getStatusBadge = (status: string) => {
     const config: Record<string, { variant: "default" | "secondary" | "destructive"; label: string }> = {
