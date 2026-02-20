@@ -1,3 +1,4 @@
+import { Video, Eye } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -333,23 +334,23 @@ export function NavigationSidebar() {
     ],
   };
 
-  const marketingSection: NavSection = {
-    label: "Marketing AI",
+  const hrSection: NavSection = {
+    label: "HR AI",
     collapsible: true,
-    featureKey: "marketing_module",
+    featureKey: "hr_module",
     items: [
-      { title: "Marketing Hub", url: "/marketing", icon: Megaphone },
-      { title: "Content Studio", url: "/marketing/content", icon: PenTool },
-      { title: "Campaign Central", url: "/marketing/campaigns", icon: Send },
-      { title: "Social Commander", url: "/marketing/social", icon: Share2 },
-      { title: "Marketing Sequences", url: "/marketing/sequences", icon: Layers },
-      { title: "Email Builder", url: "/marketing/email", icon: Mail },
-      { title: "Landing Pages", url: "/marketing/landing", icon: Globe },
-      { title: "Blog Manager", url: "/marketing/blogs", icon: FileText },
-      { title: "Video Projects", url: "/marketing/videos", icon: Video },
-      { title: "Competitor Intel", url: "/marketing/competitors", icon: Eye },
-      { title: "Marketing Analytics", url: "/marketing/analytics", icon: PieChart },
-      { title: "A/B Testing", url: "/marketing/ab-testing", icon: GitBranch },
+      { title: "HR Dashboard", url: "/hr/dashboard", icon: Building2 },
+      { title: translate("staffs"), url: "/hr/employees", icon: Users },
+      { title: "Attendance", url: "/hr/attendance", icon: Clock },
+      { title: "Leave Management", url: "/hr/leave", icon: CalendarDays },
+      { title: "Payroll", url: "/hr/payroll", icon: DollarSign },
+      { title: "Departments", url: "/hr/departments", icon: Network },
+      { title: "Performance", url: "/hr/performance", icon: Award },
+      { title: "Training", url: "/hr/training", icon: GraduationCap },
+      { title: "Recruitment", url: "/hr/recruitment", icon: UserPlus },
+      { title: "Documents", url: "/hr/documents", icon: FileText },
+      { title: "Reports", url: "/hr/reports", icon: BarChart3 },
+      { title: "HR AI Assistant", url: "/hr/ai-assistant", icon: Bot },
     ],
   };
 
