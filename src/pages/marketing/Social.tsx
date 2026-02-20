@@ -752,9 +752,29 @@ export default function SocialCommander() {
                   AI Image
                 </Button>
               </div>
+              {isGenerating && !postMedia && (
+                <div className="flex items-center justify-center p-8 border border-dashed rounded-lg">
+                  <RefreshCw className="h-6 w-6 animate-spin mr-2 text-purple-500" />
+                  <span className="text-sm text-muted-foreground">Generating AI image...</span>
+                </div>
+              )}
               {postMedia ? (
                 <div className="relative">
-                  <img src={postMedia} alt="Post media" className="w-full h-48 object-cover rounded-lg" />
+                  <img
+                    src={postMedia}
+                    alt="Post media"
+                    className="w-full rounded-lg max-h-64 object-cover border"
+                    crossOrigin="anonymous"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      if (!target.dataset.retried) {
+                        target.dataset.retried = 'true';
+                        setTimeout(() => {
+                          target.src = postMedia + (postMedia.includes('?') ? '&' : '?') + 't=' + Date.now();
+                        }, 2000);
+                      }
+                    }}
+                  />
                   <Button
                     variant="destructive"
                     size="icon"
@@ -764,7 +784,7 @@ export default function SocialCommander() {
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
-              ) : (
+              ) : !isGenerating && (
                 <div className="border-2 border-dashed rounded-lg p-8 text-center">
                   <ImageIcon className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
                   <p className="text-sm text-muted-foreground">Drop image here or click to upload</p>
