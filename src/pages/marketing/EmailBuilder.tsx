@@ -233,55 +233,59 @@ export default function EmailBuilder() {
 
         {/* Builder Tab */}
         <TabsContent value="builder" className="space-y-6">
-          {emailBlocks.length === 0 ? (
-            <Card className="p-12 text-center">
-              <Mail className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-lg font-medium">No email content yet</p>
-              <p className="text-muted-foreground mb-4">Choose a template or start from scratch</p>
-              <div className="flex justify-center gap-2">
-                <Button variant="outline" onClick={() => setActiveTab('templates')}>Browse Templates</Button>
-                <Button onClick={handleStartBlank}>Start Blank</Button>
-              </div>
-            </Card>
-          ) : (
-            <div className="grid lg:grid-cols-4 gap-6">
-              <Card className="lg:col-span-1">
-                <CardHeader><CardTitle className="text-sm">Add Blocks</CardTitle></CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {blockTypes.map((block) => (
-                      <Button key={block.type} variant="outline" className="w-full justify-start gap-2" onClick={() => addBlock(block.type)}>
-                        <block.icon className="h-4 w-4" />{block.label}
-                      </Button>
+          <div className="grid lg:grid-cols-4 gap-6">
+            {/* Left: Block Palette - ALWAYS VISIBLE */}
+            <Card className="lg:col-span-1">
+              <CardHeader>
+                <CardTitle className="text-sm">Add Blocks</CardTitle>
+                <CardDescription className="text-xs">Click to add to your email</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 lg:grid-cols-1 gap-2">
+                  {blockTypes.map((block) => (
+                    <Button key={block.type} variant="outline" className="w-full justify-start gap-2" onClick={() => { addBlock(block.type); toast({ title: `${block.label} Added` }); }}>
+                      <block.icon className="h-4 w-4" />{block.label}
+                    </Button>
+                  ))}
+                </div>
+                <Separator className="my-4" />
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Personalization</p>
+                  <div className="flex flex-wrap gap-1">
+                    {personalizationTokens.map((token) => (
+                      <Badge key={token.token} variant="secondary" className="cursor-pointer text-xs" onClick={() => { navigator.clipboard.writeText(token.token); toast({ title: 'Copied!', description: `${token.token} copied` }); }}>{token.label}</Badge>
                     ))}
                   </div>
-                  <Separator className="my-4" />
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium">Personalization</p>
-                    <div className="flex flex-wrap gap-1">
-                      {personalizationTokens.map((token) => (
-                        <Badge key={token.token} variant="secondary" className="cursor-pointer text-xs">{token.label}</Badge>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                </div>
+              </CardContent>
+            </Card>
 
-              <Card className="lg:col-span-2">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm">Preview</CardTitle>
-                    <div className="flex items-center gap-2">
-                      <Button variant={previewMode === 'desktop' ? 'default' : 'outline'} size="sm" onClick={() => setPreviewMode('desktop')}><Monitor className="h-4 w-4" /></Button>
-                      <Button variant={previewMode === 'mobile' ? 'default' : 'outline'} size="sm" onClick={() => setPreviewMode('mobile')}><Smartphone className="h-4 w-4" /></Button>
-                    </div>
+            {/* Center: Preview */}
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm">Email Preview</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Button variant={previewMode === 'desktop' ? 'default' : 'outline'} size="sm" onClick={() => setPreviewMode('desktop')}><Monitor className="h-4 w-4" /></Button>
+                    <Button variant={previewMode === 'mobile' ? 'default' : 'outline'} size="sm" onClick={() => setPreviewMode('mobile')}><Smartphone className="h-4 w-4" /></Button>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="mb-4 p-3 bg-muted rounded-lg">
-                    <p className="text-xs text-muted-foreground">Subject:</p>
-                    <p className="font-medium">{emailSubject || 'No subject'}</p>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="mb-4 p-3 bg-muted rounded-lg">
+                  <p className="text-xs text-muted-foreground">Subject:</p>
+                  <p className="font-medium">{emailSubject || 'No subject yet'}</p>
+                </div>
+                {emailBlocks.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-center border-2 border-dashed rounded-lg">
+                    <Mail className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
+                    <h3 className="font-semibold mb-1">Start Building</h3>
+                    <p className="text-sm text-muted-foreground mb-4">Click a block type on the left to add it</p>
+                    <Button variant="outline" onClick={() => addBlock('header')}>
+                      <Plus className="h-4 w-4 mr-2" /> Add Header Block
+                    </Button>
                   </div>
+                ) : (
                   <div className={`mx-auto border rounded-lg bg-white p-4 ${previewMode === 'mobile' ? 'max-w-[375px]' : 'max-w-[600px]'}`}>
                     <ScrollArea className="h-[500px]">
                       <div className="space-y-4">
@@ -289,8 +293,8 @@ export default function EmailBuilder() {
                           <div key={block.id} className={`group relative p-2 rounded border ${selectedBlock?.id === block.id ? 'border-primary' : 'border-transparent hover:border-muted'}`} onClick={() => setSelectedBlock(block)}>
                             {renderBlock(block)}
                             <div className="absolute -right-2 top-0 hidden group-hover:flex flex-col gap-1">
-                              <Button variant="outline" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); moveBlock(index, 'up'); }}><MoveUp className="h-3 w-3" /></Button>
-                              <Button variant="outline" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); moveBlock(index, 'down'); }}><MoveDown className="h-3 w-3" /></Button>
+                              <Button variant="outline" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); moveBlock(index, 'up'); }} disabled={index === 0}><MoveUp className="h-3 w-3" /></Button>
+                              <Button variant="outline" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); moveBlock(index, 'down'); }} disabled={index === emailBlocks.length - 1}><MoveDown className="h-3 w-3" /></Button>
                               <Button variant="outline" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); duplicateBlock(block); }}><Copy className="h-3 w-3" /></Button>
                               <Button variant="destructive" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); deleteBlock(block.id); }}><Trash2 className="h-3 w-3" /></Button>
                             </div>
@@ -299,37 +303,54 @@ export default function EmailBuilder() {
                       </div>
                     </ScrollArea>
                   </div>
-                </CardContent>
-              </Card>
+                )}
+              </CardContent>
+            </Card>
 
-              <Card className="lg:col-span-1">
-                <CardHeader><CardTitle className="text-sm">Properties</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
+            {/* Right: Properties */}
+            <Card className="lg:col-span-1">
+              <CardHeader><CardTitle className="text-sm">Properties</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Subject Line</Label>
+                  <Input value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} placeholder="Enter subject..." />
+                </div>
+                <div className="space-y-2">
+                  <Label>Preview Text</Label>
+                  <Input value={previewText} onChange={(e) => setPreviewText(e.target.value)} placeholder="Preview text..." />
+                </div>
+                <Separator />
+                {selectedBlock && (
                   <div className="space-y-2">
-                    <Label>Subject Line</Label>
-                    <Input value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} placeholder="Enter subject..." />
+                    <Label>Selected Block</Label>
+                    <Badge variant="secondary">{selectedBlock.type}</Badge>
+                    <p className="text-xs text-muted-foreground">Click blocks in preview to select</p>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Preview Text</Label>
-                    <Input value={previewText} onChange={(e) => setPreviewText(e.target.value)} placeholder="Preview text..." />
+                )}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Spam Score</Label>
+                    <Button variant="outline" size="sm" onClick={handleCheckSpamScore}>Check</Button>
                   </div>
-                  <Separator />
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label>Spam Score</Label>
-                      <Button variant="outline" size="sm" onClick={handleCheckSpamScore}>Check</Button>
+                  {spamScore !== null && (
+                    <div className={`flex items-center gap-2 p-2 rounded ${spamScore <= 2 ? 'bg-green-500/10' : 'bg-orange-500/10'}`}>
+                      {spamScore <= 2 ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <AlertTriangle className="h-4 w-4 text-orange-500" />}
+                      <span className="text-sm">{spamScore}/10 - {spamScore <= 2 ? 'Low risk' : 'Moderate risk'}</span>
                     </div>
-                    {spamScore !== null && (
-                      <div className={`flex items-center gap-2 p-2 rounded ${spamScore <= 2 ? 'bg-green-500/10' : 'bg-orange-500/10'}`}>
-                        {spamScore <= 2 ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <AlertTriangle className="h-4 w-4 text-orange-500" />}
-                        <span className="text-sm">{spamScore}/10 - {spamScore <= 2 ? 'Low risk' : 'Moderate risk'}</span>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
+                  )}
+                </div>
+                <Separator />
+                <div className="space-y-2">
+                  <Button className="w-full marketing-gradient text-white" onClick={handleSave} disabled={isSaving}>
+                    <Save className="h-4 w-4 mr-2" />{isSaving ? 'Saving...' : 'Save Template'}
+                  </Button>
+                  <Button variant="outline" className="w-full">
+                    <Eye className="h-4 w-4 mr-2" /> Preview
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         {/* Settings Tab */}

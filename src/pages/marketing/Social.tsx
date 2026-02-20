@@ -236,10 +236,16 @@ export default function SocialCommander() {
             Manage all your social media in one place
           </p>
         </div>
-        <Button onClick={() => setIsComposerOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Post
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setIsConnectOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Connect Account
+          </Button>
+          <Button onClick={() => setIsComposerOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Create Post
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
