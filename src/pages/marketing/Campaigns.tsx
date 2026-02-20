@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { callWebhook, WEBHOOKS } from "@/lib/api/webhooks";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useMarketingCampaigns } from "@/hooks/useMarketingCampaigns";
@@ -228,17 +229,38 @@ export default function MarketingCampaigns() {
 
   const handleGenerateContent = async () => {
     setIsGenerating(true);
-    // Simulate AI generation
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setCampaignForm((prev) => ({
-      ...prev,
-      content: `🎉 ${prev.name}\n\nDear valued customer,\n\nWe're excited to share this exclusive offer with you!\n\n[AI-generated content based on your campaign settings]\n\nBest regards,\nYour Team`,
-    }));
-    setIsGenerating(false);
-    toast({
-      title: "Content Generated",
-      description: "AI has created content for your campaign.",
-    });
+    try {
+      const result = await callWebhook(
+        WEBHOOKS.GENERATE_CONTENT,
+        {
+          content_type: campaignForm.type === 'email' ? 'email' : campaignForm.type === 'whatsapp' ? 'whatsapp' : 'sms',
+          topic: campaignForm.name || 'marketing campaign',
+          tone: 'professional',
+          industry: tenantConfig?.industry || 'general',
+          company_name: tenantConfig?.company_name || '',
+        },
+        tenantConfig?.id || ''
+      );
+      if (result.success && (result.data as any)?.content) {
+        setCampaignForm((prev) => ({ ...prev, content: (result.data as any).content }));
+        toast({ title: "✨ AI Content Generated!" });
+      } else {
+        const templates: Record<string, string> = {
+          email: `Hi {{first_name}},\n\nWe have something exciting to share with you from ${tenantConfig?.company_name || 'our team'}.\n\n[Your personalized content here]\n\nWarm regards,\n${tenantConfig?.company_name || 'The Team'}`,
+          whatsapp: `Hi {{first_name}}! 👋\n\n${tenantConfig?.company_name || 'We'} has an exclusive offer for you.\n\nReply YES to learn more! 🎉`,
+          sms: `${tenantConfig?.company_name || 'Hi'}: Special offer for you! Reply STOP to opt out.`,
+        };
+        setCampaignForm((prev) => ({ ...prev, content: templates[prev.type] || templates.email }));
+        toast({ title: "Content Generated", description: "Enable n8n workflow for full AI." });
+      }
+    } catch {
+      setCampaignForm((prev) => ({
+        ...prev,
+        content: `Hi {{first_name}},\n\nWe wanted to share something special with you.\n\nBest regards,\n${tenantConfig?.company_name || 'Our Team'}`
+      }));
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleCreateCampaign = async () => {
