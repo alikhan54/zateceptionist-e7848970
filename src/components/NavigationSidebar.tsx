@@ -1,4 +1,3 @@
-import { Video, Eye } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -75,6 +74,7 @@ import {
   Truck,
   Mail,
   Eye,
+  Video,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -331,6 +331,10 @@ export function NavigationSidebar() {
       { title: "Landing Pages", url: "/marketing/landing", icon: Globe },
       { title: "Marketing Analytics", url: "/marketing/analytics", icon: PieChart },
       { title: "A/B Testing", url: "/marketing/ab-testing", icon: GitBranch },
+      { title: "Marketing Sequences", url: "/marketing/sequences", icon: Layers },
+      { title: "Blog Manager", url: "/marketing/blogs", icon: FileText },
+      { title: "Video Projects", url: "/marketing/videos", icon: Video },
+      { title: "Competitor Intel", url: "/marketing/competitors", icon: Eye },
     ],
   };
 

@@ -1,6 +1,3 @@
-const BlogManager = lazy(() => import("./pages/marketing/BlogManager"));
-const VideoProjects = lazy(() => import("./pages/marketing/VideoProjects"));
-const CompetitorAnalysis = lazy(() => import("./pages/marketing/CompetitorAnalysis"));
 import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -47,6 +44,9 @@ const LandingPages = lazy(() => import("./pages/marketing/LandingPages"));
 const MarketingAnalytics = lazy(() => import("./pages/marketing/Analytics"));
 const ABTesting = lazy(() => import("./pages/marketing/ABTesting"));
 const MarketingSequences = lazy(() => import("./pages/marketing/Sequences"));
+const BlogManager = lazy(() => import("./pages/marketing/BlogManager"));
+const VideoProjects = lazy(() => import("./pages/marketing/VideoProjects"));
+const CompetitorAnalysis = lazy(() => import("./pages/marketing/CompetitorAnalysis"));
 
 // HR Module
 const HRDashboardOverview = lazy(() => import("./pages/hr/Dashboard"));
@@ -377,6 +377,30 @@ const App = () => (
                     element={
                       <LazyPage>
                         <MarketingSequences />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/marketing/blogs"
+                    element={
+                      <LazyPage>
+                        <BlogManager />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/marketing/videos"
+                    element={
+                      <LazyPage>
+                        <VideoProjects />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/marketing/competitors"
+                    element={
+                      <LazyPage>
+                        <CompetitorAnalysis />
                       </LazyPage>
                     }
                   />
