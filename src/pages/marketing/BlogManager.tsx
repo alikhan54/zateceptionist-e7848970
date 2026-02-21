@@ -6,7 +6,7 @@
 import { useState } from "react";
 import { useTenant } from "@/contexts/TenantContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, callWebhook, WEBHOOKS } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -82,6 +82,36 @@ export default function BlogManager() {
       toast({ title: "Error", description: error.message || "Failed to create post", variant: "destructive" });
     },
   });
+
+  const generateContent = async (postId: string, postTitle: string, primaryKeyword: string) => {
+    setGeneratingId(postId);
+    try {
+      const result = await callWebhook(WEBHOOKS.GENERATE_CONTENT, {
+        post_id: postId,
+        title: postTitle,
+        keyword: primaryKeyword,
+        type: 'blog',
+      }, tenantConfig?.id || '');
+
+      if (result.success) {
+        const content = (result.data as any)?.content || (result.data as any)?.html || '';
+        if (content) {
+          await supabase.from("blog_posts").update({
+            content_html: content,
+            ai_generated: true,
+          }).eq("id", postId);
+        }
+        queryClient.invalidateQueries({ queryKey: ["blog_posts"] });
+        toast({ title: "Content Generated!", description: "AI content has been added to your post." });
+      } else {
+        toast({ title: "Generation Failed", description: result.error || "Could not generate content", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Content generation failed", variant: "destructive" });
+    } finally {
+      setGeneratingId(null);
+    }
+  };
 
   const totalPosts = posts.length;
   const published = posts.filter((p: any) => p.status === "published").length;
