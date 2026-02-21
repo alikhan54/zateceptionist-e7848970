@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, callWebhook } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +23,7 @@ export default function VideoProjects() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [videoType, setVideoType] = useState('short_form');
+  const [generatingScriptId, setGeneratingScriptId] = useState<string | null>(null);
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ['video_projects', tenantConfig?.id],
@@ -67,6 +68,37 @@ export default function VideoProjects() {
       toast({ title: 'Error', description: error.message || 'Failed to create project', variant: 'destructive' });
     },
   });
+
+  const generateScript = async (project: any) => {
+    if (!tenantConfig?.id) return;
+    setGeneratingScriptId(project.id);
+    try {
+      toast({ title: '🎬 Generating Script...', description: 'AI is writing your video script' });
+      const result = await callWebhook('marketing/video-generate', {
+        project_id: project.id, title: project.title,
+        description: project.description || '', video_type: project.video_type || 'short_form',
+        company_name: tenantConfig?.company_name || 'Your Company',
+        industry: (tenantConfig as any)?.industry || 'technology',
+      }, tenantConfig.id);
+      if (result.success && result.data) {
+        const script = (result.data as any)?.script || (result.data as any)?.content || '';
+        if (script) {
+          await supabase.from('video_projects').update({
+            script_content: script, ai_generated: true, status: 'script_ready',
+            updated_at: new Date().toISOString(),
+          }).eq('id', project.id);
+          queryClient.invalidateQueries({ queryKey: ['video_projects'] });
+          toast({ title: '✅ Script Generated!' });
+        }
+      } else {
+        toast({ title: 'Script generation unavailable', variant: 'destructive' });
+      }
+    } catch (err: any) {
+      toast({ title: 'Failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setGeneratingScriptId(null);
+    }
+  };
 
   const totalProjects = projects.length;
   const completed = projects.filter((p: any) => p.status === 'completed').length;
@@ -157,9 +189,18 @@ export default function VideoProjects() {
                     )}
                   </div>
                 </div>
-                <Badge variant={project.status === 'completed' ? 'default' : 'secondary'}>
-                  {project.status}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant={project.status === 'completed' ? 'default' : 'secondary'}>
+                    {project.status}
+                  </Badge>
+                  <Button size="sm" variant="outline" className="ml-2"
+                    disabled={generatingScriptId === project.id}
+                    onClick={() => generateScript(project)}>
+                    {generatingScriptId === project.id
+                      ? <><Clock className="h-3 w-3 mr-1 animate-spin" /> Generating...</>
+                      : <><Sparkles className="h-3 w-3 mr-1" /> AI Script</>}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}
