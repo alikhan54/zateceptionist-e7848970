@@ -12,7 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { callWebhook, WEBHOOKS } from '@/lib/api/webhooks';
+import { callWebhook } from '@/lib/api/webhooks';
+import { WEBHOOKS } from '@/integrations/supabase/client';
 import {
   Sparkles,
   FileText,
@@ -33,7 +34,8 @@ import {
   Wand2,
   TrendingUp,
   Eye,
-  Zap
+  Zap,
+  RotateCw
 } from 'lucide-react';
 
 type ContentType = 'social_media' | 'email' | 'blog' | 'whatsapp' | 'ad_copy' | 'social' | 'video' | 'sms' | 'ad';
@@ -86,6 +88,35 @@ export default function ContentStudio() {
   const [libraryFilter, setLibraryFilter] = useState<string>('all');
   const [editItem, setEditItem] = useState<any | null>(null);
   const [editContent, setEditContent] = useState('');
+  const [repurposingId, setRepurposingId] = useState<string | null>(null);
+
+  const handleRepurpose = async (item: any) => {
+    if (!tenantConfig?.id) return;
+    setRepurposingId(item.id);
+    toast({ title: "🔄 Repurposing...", description: "AI is creating social posts from this content" });
+    try {
+      const result = await callWebhook(
+        '/ai-tool/repurpose-content',
+        {
+          content_id: item.id,
+          platforms: 'instagram,facebook,linkedin'
+        },
+        tenantConfig.id
+      );
+      if (result.success && (result.data as any)?.success) {
+        toast({
+          title: "✅ Content Repurposed!",
+          description: `Created ${(result.data as any).repurposed_count || 'multiple'} social posts from "${item.title}"`
+        });
+      } else {
+        toast({ title: "Error", description: (result.data as any)?.error || "Repurposing failed", variant: "destructive" });
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setRepurposingId(null);
+    }
+  };
 
   const generateMockContent = (type: ContentType, topicText: string, toneText: string) => {
     const templates: Record<string, string> = {
@@ -357,6 +388,10 @@ export default function ContentStudio() {
                     </CardContent>
                     <div className="p-4 pt-0 flex gap-2">
                       <Button variant="outline" size="sm" onClick={() => handleCopyContent(item.body || '')}><Copy className="h-4 w-4" /></Button>
+                      <Button variant="outline" size="sm" onClick={() => handleRepurpose(item)} disabled={repurposingId === item.id}>
+                        {repurposingId === item.id ? <RefreshCw className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />}
+                        <span className="ml-1 text-xs">Repurpose</span>
+                      </Button>
                       <Button variant="outline" size="sm" onClick={() => handleDeleteContent(item.id)}><Trash2 className="h-4 w-4" /></Button>
                     </div>
                   </Card>

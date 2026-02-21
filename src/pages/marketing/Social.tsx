@@ -495,17 +495,24 @@ export default function SocialCommander() {
                               {post.scheduled_at ? format(new Date(post.scheduled_at), "MMM d, h:mm a") : "No date"}
                             </span>
                           </div>
-                          {post.status === "published" && (
-                            <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                              <span className="flex items-center gap-1">
-                                <Heart className="h-3 w-3" /> {post.likes_count}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <MessageSquare className="h-3 w-3" /> {post.comments_count}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <Share2 className="h-3 w-3" /> {post.shares_count}
-                              </span>
+                    {post.status === "published" && (
+                            <div className="space-y-1 mt-2">
+                              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                <span className="flex items-center gap-1">❤️ {post.likes_count || 0}</span>
+                                <span className="flex items-center gap-1">💬 {post.comments_count || 0}</span>
+                                <span className="flex items-center gap-1">🔄 {post.shares_count || 0}</span>
+                                {post.impressions > 0 && <span className="flex items-center gap-1">👁 {(post.impressions || 0).toLocaleString()}</span>}
+                              </div>
+                              {(post.likes_count || post.comments_count || post.shares_count || post.impressions) ? (
+                                <div className="flex items-center gap-1 text-xs">
+                                  <span>{post.engagement_rate > 5 ? '🟢' : post.engagement_rate >= 2 ? '🟡' : '🔴'}</span>
+                                  <span className={post.engagement_rate > 5 ? 'text-green-500' : post.engagement_rate >= 2 ? 'text-amber-500' : 'text-red-500'}>
+                                    {post.engagement_rate || 0}% engagement
+                                  </span>
+                                </div>
+                              ) : (
+                                <p className="text-[10px] text-muted-foreground">📊 Engagement tracking active — metrics update every 4 hours</p>
+                              )}
                             </div>
                           )}
                         </div>
@@ -591,6 +598,23 @@ export default function SocialCommander() {
                           {post.scheduled_at ? format(new Date(post.scheduled_at), "MMM d, h:mm a") : ""}
                         </span>
                       </div>
+                      {post.status === "published" && (
+                        <div className="mt-2">
+                          {(post.likes_count || post.comments_count || post.shares_count || post.impressions) ? (
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                              <span>❤️ {post.likes_count || 0}</span>
+                              <span>💬 {post.comments_count || 0}</span>
+                              <span>🔄 {post.shares_count || 0}</span>
+                              {post.impressions > 0 && <span>👁 {(post.impressions || 0).toLocaleString()}</span>}
+                              <span className={post.engagement_rate > 5 ? 'text-green-500' : post.engagement_rate >= 2 ? 'text-amber-500' : 'text-red-500'}>
+                                {post.engagement_rate > 5 ? '🟢' : post.engagement_rate >= 2 ? '🟡' : '🔴'} {post.engagement_rate || 0}%
+                              </span>
+                            </div>
+                          ) : (
+                            <p className="text-[10px] text-muted-foreground">📊 Metrics update every 4 hours</p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
