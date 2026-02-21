@@ -46,6 +46,17 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+
+function injectFormAction(html: string, tenantId: string, pageId: string): string {
+  if (!html) return html;
+  const webhookUrl = `https://webhooks.zatesystems.com/webhook/marketing/landing-page-submit`;
+  return html.replace(
+    /<form([^>]*)>/gi,
+    `<form$1 action="${webhookUrl}" method="POST"><input type="hidden" name="tenant_id" value="${tenantId}"><input type="hidden" name="page_id" value="${pageId}">`
+  );
+}
 
 const mockTemplates = [
   {
@@ -307,7 +318,8 @@ footer{padding:20px;text-align:center;color:#888;font-size:13px}
                           {/* FIX: Preview button that opens inline modal instead of broken SSL link */}
                           <DropdownMenuItem
                             onClick={() => {
-                              setPreviewHtml(page.html_content || "<p>No content yet</p>");
+                              const injected = injectFormAction(page.html_content || "<p>No content yet</p>", tenantConfig?.id || '', page.id);
+                              setPreviewHtml(injected);
                               setPreviewPageName(page.name);
                             }}
                           >
@@ -320,6 +332,15 @@ footer{padding:20px;text-align:center;color:#888;font-size:13px}
                               Publish
                             </DropdownMenuItem>
                           )}
+                          <DropdownMenuItem
+                            onClick={() => {
+                              navigator.clipboard.writeText("https://webhooks.zatesystems.com/webhook/marketing/landing-page-submit");
+                              toast({ title: "Form Webhook URL Copied!", description: "Form submissions from this page will automatically create leads in your CRM" });
+                            }}
+                          >
+                            <Copy className="h-4 w-4 mr-2" />
+                            Copy Form Webhook URL
+                          </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(page.id)}>
                             <Trash2 className="h-4 w-4 mr-2" />

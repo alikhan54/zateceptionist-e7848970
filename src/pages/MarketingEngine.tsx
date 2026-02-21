@@ -85,21 +85,61 @@ export default function MarketingEngine() {
     scheduledTime: "09:00",
   });
 
-  // Fetch AI activity (graceful if table doesn't exist)
+  // Fetch real AI activity from system_events
   const { data: aiActivity = [] } = useQuery({
-    queryKey: ["marketing_ai_activity", tenantConfig?.id],
+    queryKey: ["ai-activity", tenantConfig?.id],
     queryFn: async () => {
       if (!tenantConfig?.id) return [];
       const { data, error } = await supabase
-        .from("marketing_ai_activity" as any)
+        .from("system_events" as any)
         .select("*")
         .eq("tenant_id", tenantConfig.id)
+        .eq("event_source", "marketing")
         .order("created_at", { ascending: false })
-        .limit(8);
+        .limit(20);
+      if (error) {
+        console.warn("system_events query:", error.message);
+        return [];
+      }
+      return data || [];
+    },
+    enabled: !!tenantConfig?.id,
+    refetchInterval: 60000,
+  });
+
+  // Fetch AI decisions
+  const { data: aiDecisions = [] } = useQuery({
+    queryKey: ["ai-decisions", tenantConfig?.id],
+    queryFn: async () => {
+      if (!tenantConfig?.id) return [];
+      const { data, error } = await supabase
+        .from("ai_decisions" as any)
+        .select("*")
+        .eq("tenant_id", tenantConfig.id)
+        .eq("module", "marketing")
+        .order("created_at", { ascending: false })
+        .limit(10);
       if (error) return [];
       return data || [];
     },
     enabled: !!tenantConfig?.id,
+  });
+
+  // Merge AI activity + decisions sorted by created_at
+  const mergedAiActivity = [...aiActivity.map((a: any) => ({ ...a, _source: 'event' })), ...aiDecisions.map((d: any) => ({ ...d, _source: 'decision', created_at: d.created_at }))]
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+  // DNC/Consent compliance stats
+  const { data: complianceStats } = useQuery({
+    queryKey: ['compliance-stats', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return null;
+      const { count: total } = await supabase.from('customers').select('*', { count: 'exact', head: true }).eq('tenant_id', tenantId);
+      const { count: dnc } = await supabase.from('customers').select('*', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('do_not_contact', true);
+      const { count: noConsent } = await supabase.from('customers').select('*', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('consent_marketing', false);
+      return { total: total || 0, dnc: dnc || 0, noConsent: noConsent || 0, compliant: (total || 0) - (dnc || 0) - (noConsent || 0) };
+    },
+    enabled: !!tenantId,
   });
 
   // Fetch recent sequence enrollments
@@ -235,7 +275,7 @@ export default function MarketingEngine() {
             </div>
             <div className="flex items-center gap-4">
               <div className="text-right hidden sm:block">
-                <p className="text-2xl font-bold text-purple-500">{aiActivity.length}</p>
+                <p className="text-2xl font-bold text-purple-500">{mergedAiActivity.length}</p>
                 <p className="text-xs text-muted-foreground">AI Actions</p>
               </div>
               <Switch checked={true} onCheckedChange={() => { setAiMode("assisted"); toast({ title: "Switched to Assisted Mode" }); }} />
@@ -265,6 +305,33 @@ export default function MarketingEngine() {
           </Link>
         ))}
       </div>
+
+      {/* Compliance Card */}
+      {complianceStats && complianceStats.total > 0 && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3 mb-3">
+              <span className="text-lg">🛡️</span>
+              <div>
+                <p className="font-medium text-sm">Compliance Status</p>
+                <p className="text-xs text-muted-foreground">DNC and consent are auto-checked on all campaign sends and email sequences</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4 text-xs">
+              <span className="text-green-600 font-medium">✅ {complianceStats.compliant} contactable</span>
+              <span className="text-red-500 font-medium">🚫 {complianceStats.dnc} blocked (DNC)</span>
+              <span className="text-amber-500 font-medium">⚠️ {complianceStats.noConsent} no consent</span>
+            </div>
+            {complianceStats.total > 0 && (
+              <div className="flex h-2 rounded-full overflow-hidden mt-2 bg-muted">
+                <div className="bg-green-500 transition-all" style={{ width: `${(complianceStats.compliant / complianceStats.total) * 100}%` }} />
+                <div className="bg-red-500 transition-all" style={{ width: `${(complianceStats.dnc / complianceStats.total) * 100}%` }} />
+                <div className="bg-amber-500 transition-all" style={{ width: `${(complianceStats.noConsent / complianceStats.total) * 100}%` }} />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Quick Actions Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -421,11 +488,11 @@ export default function MarketingEngine() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {aiActivity.length === 0 && recentEnrollments.length === 0 ? (
+              {mergedAiActivity.length === 0 && recentEnrollments.length === 0 ? (
                 <div className="text-center py-6">
                   <Brain className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">No AI activity yet</p>
-                  <p className="text-xs text-muted-foreground mt-1">Enable Autonomous mode to see AI actions</p>
+                  <p className="text-sm text-muted-foreground">AI Brain hasn't run yet</p>
+                  <p className="text-xs text-muted-foreground mt-1">It executes every 2 hours and will log decisions here.</p>
                 </div>
               ) : (
                 <ScrollArea className="h-[250px]">
@@ -456,16 +523,49 @@ export default function MarketingEngine() {
                         </div>
                       </div>
                     ))}
-                    {aiActivity.map((activity: any, idx: number) => (
+                    {mergedAiActivity.map((activity: any, idx: number) => (
                       <div key={activity.id || idx} className="flex items-start gap-2">
-                        <div className="p-1 rounded-full bg-purple-500/10 mt-0.5">
-                          <Sparkles className="h-3 w-3 text-purple-500" />
+                        <div className={`p-1 rounded-full mt-0.5 ${
+                          activity._source === 'decision' ? 'bg-amber-500/10' :
+                          activity.event_severity === 'error' ? 'bg-red-500/10' :
+                          activity.event_severity === 'warning' ? 'bg-amber-500/10' : 'bg-blue-500/10'
+                        }`}>
+                          {activity.triggered_by === 'ai_agent' ? (
+                            <Brain className="h-3 w-3 text-purple-500" />
+                          ) : activity.event_type?.includes('sequence') ? (
+                            <Mail className="h-3 w-3 text-blue-500" />
+                          ) : (
+                            <Sparkles className={`h-3 w-3 ${
+                              activity._source === 'decision' ? 'text-amber-500' :
+                              activity.event_severity === 'error' ? 'text-red-500' :
+                              activity.event_severity === 'warning' ? 'text-amber-500' : 'text-blue-500'
+                            }`} />
+                          )}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-sm">{activity.action_taken || activity.action || "AI action"}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
-                          </p>
+                          <div className="flex items-center gap-1">
+                            {activity.triggered_by === 'ai_agent' && <span className="text-xs">🧠</span>}
+                            {activity.event_type?.includes('sequence') && <span className="text-xs">📊</span>}
+                            <p className="text-sm">
+                              {activity._source === 'decision'
+                                ? `${activity.decision_type}: ${(() => { try { const ctx = JSON.parse(activity.context || '{}'); return ctx.reasoning || activity.decision_type; } catch { return activity.decision_type; } })()}`
+                                : activity.event_summary || activity.action_taken || activity.action || "AI action"}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {activity._source === 'event' && activity.event_type && (
+                              <Badge variant="outline" className={`text-[10px] px-1 py-0 ${
+                                activity.event_severity === 'error' ? 'text-red-500' :
+                                activity.event_severity === 'warning' ? 'text-amber-500' : 'text-blue-500'
+                              }`}>{activity.event_type}</Badge>
+                            )}
+                            {activity._source === 'decision' && activity.confidence_score && (
+                              <Badge variant="outline" className="text-[10px] px-1 py-0 text-amber-500">{Math.round(activity.confidence_score * 100)}% confidence</Badge>
+                            )}
+                            <p className="text-xs text-muted-foreground">
+                              {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     ))}

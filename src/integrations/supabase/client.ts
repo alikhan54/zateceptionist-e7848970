@@ -49,6 +49,10 @@ export const WEBHOOKS = {
   SEQUENCE_STATUS: "ai-tool/sequence-status",
   SEQUENCE_EXECUTE: "ai-tool/execute-sequence-step",
   SEQUENCE_ENGAGEMENT: "ai-tool/check-engagement",
+
+  // Landing Page & Content Repurpose
+  LANDING_PAGE_SUBMIT: "marketing/landing-page-submit",
+  REPURPOSE_CONTENT: "ai-tool/repurpose-content",
 } as const;
 
 export type WebhookEndpoint = (typeof WEBHOOKS)[keyof typeof WEBHOOKS];

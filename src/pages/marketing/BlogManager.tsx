@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, FileText, Eye, Sparkles, Clock, CheckCircle, PenTool, Layers } from "lucide-react";
+import { Plus, FileText, Eye, Sparkles, Clock, CheckCircle, PenTool, Layers, RotateCw, RefreshCw } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 export default function BlogManager() {
@@ -28,6 +28,28 @@ export default function BlogManager() {
   const [keyword, setKeyword] = useState("");
   const [excerpt, setExcerpt] = useState("");
   const [generatingId, setGeneratingId] = useState<string | null>(null);
+  const [repurposingId, setRepurposingId] = useState<string | null>(null);
+
+  const handleRepurpose = async (post: any) => {
+    if (!tenantConfig?.id) return;
+    setRepurposingId(post.id);
+    toast({ title: "🔄 Repurposing...", description: "AI is creating social posts from this blog" });
+    try {
+      const result = await callWebhook(WEBHOOKS.REPURPOSE_CONTENT, {
+        content_id: post.id,
+        platforms: 'instagram,facebook,linkedin'
+      }, tenantConfig.id);
+      if (result.success && (result.data as any)?.success) {
+        toast({ title: "✅ Content Repurposed!", description: `Created ${(result.data as any).repurposed_count || 'multiple'} social posts from "${post.title}"` });
+      } else {
+        toast({ title: "Error", description: (result.data as any)?.error || "Repurposing failed", variant: "destructive" });
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setRepurposingId(null);
+    }
+  };
   const {
     data: posts = [],
     isLoading,
@@ -213,15 +235,25 @@ export default function BlogManager() {
                     onClick={() => generateContent(post.id, post.title, post.primary_keyword)}
                   >
                     {generatingId === post.id ? (
-                      <>
-                        <Clock className="h-3 w-3 mr-1 animate-spin" /> Generating...
-                      </>
+                      <><Clock className="h-3 w-3 mr-1 animate-spin" /> Generating...</>
                     ) : (
-                      <>
-                        <Sparkles className="h-3 w-3 mr-1" /> AI Generate
-                      </>
+                      <><Sparkles className="h-3 w-3 mr-1" /> AI Generate</>
                     )}
                   </Button>
+                  {(post.status === 'published' || post.content_html) && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={repurposingId === post.id}
+                      onClick={() => handleRepurpose(post)}
+                    >
+                      {repurposingId === post.id ? (
+                        <><RefreshCw className="h-3 w-3 mr-1 animate-spin" /> Repurposing...</>
+                      ) : (
+                        <><RotateCw className="h-3 w-3 mr-1" /> Repurpose</>
+                      )}
+                    </Button>
+                  )}
                   {post.views !== undefined && (
                     <span className="text-xs text-muted-foreground flex items-center gap-1">
                       <Eye className="h-3 w-3" /> {post.views || 0}
