@@ -400,20 +400,27 @@ export default function MarketingSequences() {
                   )}
                 </CardHeader>
                 <CardContent className="pt-0">
-                  <div className="flex items-center gap-1 mb-4 overflow-hidden">
+                  {/* Visual step flow with branching indicators */}
+                  <div className="flex items-center gap-1 mb-4 overflow-hidden flex-wrap">
                     {steps.slice(0, 6).map((step: any, idx: number) => {
                       const cfg = stepTypeConfig[step.type] || stepTypeConfig.email;
                       const StepIcon = cfg.icon;
+                      const hasBranching = step.conditions && Object.keys(step.conditions).length > 0;
                       return (
                         <div key={idx} className="flex items-center">
-                          <div
-                            className={`p-1.5 rounded-md bg-muted ${cfg.color}`}
-                            title={`Step ${idx + 1}: ${cfg.label}`}
-                          >
-                            <StepIcon className="h-3.5 w-3.5" />
+                          <div className="relative">
+                            <div
+                              className={`p-1.5 rounded-md bg-muted ${cfg.color} ${hasBranching ? 'ring-2 ring-amber-500/50' : ''}`}
+                              title={`Step ${idx + 1}: ${cfg.label}${hasBranching ? ' (has branching)' : ''}`}
+                            >
+                              <StepIcon className="h-3.5 w-3.5" />
+                            </div>
+                            {hasBranching && (
+                              <div className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-500 border border-background" title="Branching rules" />
+                            )}
                           </div>
                           {idx < steps.length - 1 && idx < 5 && (
-                            <ArrowRight className="h-3 w-3 text-muted-foreground/40 mx-0.5 shrink-0" />
+                            <ArrowRight className={`h-3 w-3 mx-0.5 shrink-0 ${hasBranching ? 'text-amber-500/60' : 'text-muted-foreground/40'}`} />
                           )}
                         </div>
                       );
@@ -425,6 +432,32 @@ export default function MarketingSequences() {
                       <span className="text-xs text-muted-foreground italic">No steps configured</span>
                     )}
                   </div>
+                  {/* Branching indicators for steps with conditions */}
+                  {steps.some((s: any) => s.conditions && Object.keys(s.conditions).length > 0) && (
+                    <div className="mb-3 space-y-1">
+                      {steps.map((step: any, idx: number) => {
+                        if (!step.conditions || Object.keys(step.conditions).length === 0) return null;
+                        const c = step.conditions;
+                        return (
+                          <div key={idx} className="text-[10px] space-y-0.5">
+                            {c.if_opened && (
+                              <p className="text-green-600 flex items-center gap-1">↗️ Step {idx + 1}: If opened → Jump to Step {c.if_opened}</p>
+                            )}
+                            {c.if_replied && (
+                              <p className="text-blue-600 flex items-center gap-1">↗️ Step {idx + 1}: If replied → {c.if_replied === 'complete' ? 'Mark complete' : `Jump to Step ${c.if_replied}`}</p>
+                            )}
+                            {c.no_engagement_after && (
+                              <p className="text-orange-600 flex items-center gap-1">↗️ Step {idx + 1}: No engagement after {c.no_engagement_sends || 3} sends → {c.switch_channel ? `Switch to ${c.switch_channel}` : `Jump to Step ${c.no_engagement_after}`}</p>
+                            )}
+                            {c.if_read_no_reply && (
+                              <p className="text-amber-600 flex items-center gap-1">↗️ Step {idx + 1}: Read but no reply → Jump to Step {c.if_read_no_reply}</p>
+                            )}
+                          </div>
+                        );
+                      })}
+                      <p className="text-[10px] text-muted-foreground mt-1 italic">💡 Behavioral branching lets the AI Brain route leads through different paths based on engagement.</p>
+                    </div>
+                  )}
                   <div className="grid grid-cols-3 gap-3 text-center mb-3">
                     <div>
                       <p className="text-lg font-bold">{steps.length}</p>

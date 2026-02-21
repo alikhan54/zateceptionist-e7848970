@@ -9,16 +9,45 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useABTests } from '@/hooks/useABTests';
+import { useTenant } from '@/contexts/TenantContext';
+import { useQuery } from '@tanstack/react-query';
+import { supabase, callWebhook } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { GitBranch, Plus, Play, Square, Trophy, BarChart3, Lightbulb, Sparkles } from 'lucide-react';
+import { GitBranch, Plus, Play, Square, Trophy, BarChart3, Lightbulb, Sparkles, Brain, RefreshCw } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 
 export default function ABTesting() {
   const { tests, isLoading, stats, createTest, startTest, endTest } = useABTests();
+  const { tenantConfig } = useTenant();
+  const { toast } = useToast();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [testName, setTestName] = useState('');
   const [testType, setTestType] = useState('subject_line');
   const [variantA, setVariantA] = useState('');
   const [variantB, setVariantB] = useState('');
+  const [winnerCriteria, setWinnerCriteria] = useState('open_rate');
+
+  // Prompt 13: A/B test events from system_events
+  const { data: abTestEvents = [] } = useQuery({
+    queryKey: ['ab-test-events', tenantConfig?.id],
+    queryFn: async () => {
+      if (!tenantConfig?.id) return [];
+      const { data } = await supabase
+        .from('system_events' as any)
+        .select('*')
+        .eq('tenant_id', tenantConfig.id)
+        .eq('event_type', 'ab_test_created')
+        .order('created_at', { ascending: false })
+        .limit(10);
+      return (data || []).map((d: any) => {
+        let parsed: any = {};
+        try { parsed = JSON.parse(d.event_data || '{}'); } catch {}
+        return { ...d, test_data: parsed };
+      });
+    },
+    enabled: !!tenantConfig?.id,
+  });
 
   const handleCreate = async () => {
     if (!testName.trim() || !variantA.trim() || !variantB.trim()) return;
@@ -38,11 +67,29 @@ export default function ABTesting() {
     } catch {}
   };
 
+  const handleCheckWinner = async (testId: string) => {
+    if (!tenantConfig?.id) return;
+    toast({ title: '🔬 Checking winner...' });
+    const result = await callWebhook('/ai-tool/ab-test-manage', { action: 'check_winner', test_id: testId }, tenantConfig.id);
+    if (result.success) {
+      toast({ title: '✅ Winner check complete', description: (result.data as any)?.message || 'Results updated.' });
+    } else {
+      toast({ title: 'Error', description: result.error, variant: 'destructive' });
+    }
+  };
+
   const statusColors: Record<string, string> = {
     draft: 'bg-muted text-muted-foreground',
     running: 'bg-green-500/10 text-green-500',
     paused: 'bg-yellow-500/10 text-yellow-500',
     completed: 'bg-blue-500/10 text-blue-500',
+  };
+
+  const statusIcons: Record<string, string> = {
+    draft: '📋',
+    running: '🔬',
+    completed: '✅',
+    paused: '⏸️',
   };
 
   if (isLoading) {
@@ -57,6 +104,12 @@ export default function ABTesting() {
           <p className="text-muted-foreground mt-1">Optimize with data-driven experiments</p>
         </div>
         <Button onClick={() => setIsCreateOpen(true)}><Plus className="h-4 w-4 mr-2" />New Test</Button>
+      </div>
+
+      {/* AI Brain Note */}
+      <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20 text-sm flex items-center gap-2">
+        <Brain className="h-4 w-4 text-purple-500 shrink-0" />
+        <span className="text-muted-foreground">The AI Brain automatically creates A/B tests for underperforming campaigns and checks winners after 48 hours.</span>
       </div>
 
       {/* Stats */}
@@ -122,8 +175,46 @@ export default function ABTesting() {
         </CardContent>
       </Card>
 
+      {/* Prompt 13: AI-Created A/B Test Events */}
+      {abTestEvents.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Brain className="h-4 w-4 text-purple-500" /> AI-Created Tests
+            </CardTitle>
+            <CardDescription>Tests automatically created by the AI Brain</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {abTestEvents.map((evt: any) => {
+              const td = evt.test_data || {};
+              return (
+                <div key={evt.id} className="p-3 rounded-lg border bg-muted/30 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span>🧠</span>
+                      <span className="font-medium text-sm">{td.test_name || td.name || evt.event_summary || 'AI Test'}</span>
+                      <Badge variant="outline" className="text-xs">{td.test_type || 'unknown'}</Badge>
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {evt.created_at ? formatDistanceToNow(new Date(evt.created_at), { addSuffix: true }) : ''}
+                    </span>
+                  </div>
+                  {td.variant_a && td.variant_b && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="p-2 rounded bg-muted/50 text-xs"><span className="font-medium">A:</span> {td.variant_a}</div>
+                      <div className="p-2 rounded bg-muted/50 text-xs"><span className="font-medium">B:</span> {td.variant_b}</div>
+                    </div>
+                  )}
+                  {td.winner_criteria && <p className="text-xs text-muted-foreground">Winner criteria: {td.winner_criteria}</p>}
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Tests List */}
-      {tests.length === 0 ? (
+      {tests.length === 0 && abTestEvents.length === 0 ? (
         <Card className="p-12">
           <div className="flex flex-col items-center justify-center text-center">
             <div className="p-4 rounded-full bg-purple-100 dark:bg-purple-900/20 mb-4">
@@ -139,7 +230,7 @@ export default function ABTesting() {
             </Button>
           </div>
         </Card>
-      ) : (
+      ) : tests.length > 0 && (
         <div className="grid md:grid-cols-2 gap-4">
           {tests.map((test: any) => {
             const variants = Array.isArray(test.variants) ? test.variants : [];
@@ -151,11 +242,20 @@ export default function ABTesting() {
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg">{test.name}</CardTitle>
-                    <Badge className={statusColors[test.status] || ''}>{test.status}</Badge>
+                    <Badge className={statusColors[test.status] || ''}>
+                      {statusIcons[test.status] || ''} {test.status}
+                    </Badge>
                   </div>
                   <CardDescription>Type: {(test.test_type || '').replace('_', ' ')}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* Split ratio visualization */}
+                  <div className="flex h-2 rounded-full overflow-hidden bg-muted">
+                    <div className="bg-blue-500 w-1/2" />
+                    <div className="bg-orange-500 w-1/2" />
+                  </div>
+                  <p className="text-xs text-center text-muted-foreground">50/50 split</p>
+
                   {variants.length > 0 ? (
                     <div className="grid grid-cols-2 gap-3">
                       {variants.map((v: any, i: number) => {
@@ -203,10 +303,17 @@ export default function ABTesting() {
                         <Play className="h-3 w-3 mr-1" /> Start Test
                       </Button>
                     )}
-                    {test.status === 'running' && variants.length > 0 && (
-                      <Button size="sm" variant="outline" className="flex-1" onClick={() => endTest.mutateAsync({ testId: test.id, winnerId: variants[0]?.id || 'a' })}>
-                        <Square className="h-3 w-3 mr-1" /> End Test
-                      </Button>
+                    {test.status === 'running' && (
+                      <>
+                        <Button size="sm" variant="outline" className="flex-1" onClick={() => handleCheckWinner(test.id)}>
+                          <RefreshCw className="h-3 w-3 mr-1" /> Check Winner
+                        </Button>
+                        {variants.length > 0 && (
+                          <Button size="sm" variant="outline" className="flex-1" onClick={() => endTest.mutateAsync({ testId: test.id, winnerId: variants[0]?.id || 'a' })}>
+                            <Square className="h-3 w-3 mr-1" /> End Test
+                          </Button>
+                        )}
+                      </>
                     )}
                     <Button size="sm" variant="outline">
                       <BarChart3 className="h-3 w-3 mr-1" /> Details
@@ -242,6 +349,17 @@ export default function ABTesting() {
                   <SelectItem value="cta">Call to Action</SelectItem>
                   <SelectItem value="from_name">From Name</SelectItem>
                   <SelectItem value="hero_image">Hero Image</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Winner Criteria</Label>
+              <Select value={winnerCriteria} onValueChange={setWinnerCriteria}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="open_rate">Open Rate</SelectItem>
+                  <SelectItem value="click_rate">Click Rate</SelectItem>
+                  <SelectItem value="conversion">Conversion</SelectItem>
                 </SelectContent>
               </Select>
             </div>

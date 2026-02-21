@@ -53,6 +53,10 @@ export const WEBHOOKS = {
   // Landing Page & Content Repurpose
   LANDING_PAGE_SUBMIT: "marketing/landing-page-submit",
   REPURPOSE_CONTENT: "ai-tool/repurpose-content",
+
+  // Revenue & A/B Testing AI Tools
+  REVENUE_ATTRIBUTION: "ai-tool/revenue-attribution",
+  AB_TEST_MANAGE: "ai-tool/ab-test-manage",
 } as const;
 
 export type WebhookEndpoint = (typeof WEBHOOKS)[keyof typeof WEBHOOKS];
