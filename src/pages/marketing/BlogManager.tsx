@@ -175,6 +175,23 @@ export default function BlogManager() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant={post.status === "published" ? "default" : "secondary"}>{post.status}</Badge>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="ml-1"
+                    disabled={generatingId === post.id}
+                    onClick={() => generateContent(post.id, post.title, post.primary_keyword)}
+                  >
+                    {generatingId === post.id ? (
+                      <>
+                        <Clock className="h-3 w-3 mr-1 animate-spin" /> Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-3 w-3 mr-1" /> AI Generate
+                      </>
+                    )}
+                  </Button>
                   {post.views !== undefined && (
                     <span className="text-xs text-muted-foreground flex items-center gap-1">
                       <Eye className="h-3 w-3" /> {post.views || 0}
