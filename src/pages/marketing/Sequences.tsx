@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useTenant } from "@/contexts/TenantContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { callWebhook } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -74,6 +76,39 @@ export default function MarketingSequences() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [statsSequence, setStatsSequence] = useState<any>(null);
   const [formData, setFormData] = useState({ name: "", description: "", trigger_type: "manual" });
+  const [enrollDialogOpen, setEnrollDialogOpen] = useState(false);
+  const [selectedSequenceForEnroll, setSelectedSequenceForEnroll] = useState<any>(null);
+
+  // Customers query for enrollment
+  const { data: customers = [] } = useQuery({
+    queryKey: ['customers-for-enroll', tenantConfig?.id],
+    queryFn: async () => {
+      if (!tenantConfig) return [];
+      const { data } = await supabase
+        .from('customers')
+        .select('id, name, phone_number, email')
+        .eq('tenant_id', tenantConfig.id || (tenantConfig as any).tenant_id)
+        .limit(100);
+      return data || [];
+    },
+    enabled: !!tenantConfig && enrollDialogOpen,
+  });
+
+  // Enrollments query
+  const { data: enrollments = [], refetch: refetchEnrollments } = useQuery({
+    queryKey: ['sequence-enrollments', tenantConfig?.id],
+    queryFn: async () => {
+      if (!tenantConfig?.id) return [];
+      const { data } = await supabase
+        .from('sequence_enrollments' as any)
+        .select('*')
+        .eq('tenant_id', tenantConfig.id)
+        .order('enrolled_at', { ascending: false })
+        .limit(50);
+      return data || [];
+    },
+    enabled: !!tenantConfig?.id,
+  });
 
   const { data: sequences = [], isLoading } = useQuery({
     queryKey: ["marketing_sequences", tenantConfig?.id],
@@ -177,6 +212,32 @@ export default function MarketingSequences() {
   });
 
   const activeCount = sequences.filter((s: any) => s.is_active).length;
+
+  const handleEnrollCustomer = async (customerId: string) => {
+    if (!tenantConfig?.id || !selectedSequenceForEnroll) return;
+    try {
+      const result = await callWebhook(
+        '/ai-tool/enroll-sequence',
+        {
+          sequence_id: selectedSequenceForEnroll.id,
+          lead_id: customerId,
+          sequence_name: selectedSequenceForEnroll.name,
+          reason: 'manual_enrollment_from_ui',
+        },
+        tenantConfig.id,
+      );
+      if (result.success) {
+        toast({ title: "✅ Customer enrolled in sequence!" });
+        refetchEnrollments();
+        setEnrollDialogOpen(false);
+      } else {
+        toast({ title: "Enrollment failed", description: result.error, variant: "destructive" });
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
   const totalEnrolled = sequences.reduce((sum: number, s: any) => sum + (s.enrolled_count || 0), 0);
   const avgConversion =
     sequences.length > 0
@@ -385,6 +446,14 @@ export default function MarketingSequences() {
                     </Button>
                     <Button
                       size="sm"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => { setSelectedSequenceForEnroll(sequence); setEnrollDialogOpen(true); }}
+                    >
+                      <Users className="h-3 w-3 mr-1" /> Enroll Customer
+                    </Button>
+                    <Button
+                      size="sm"
                       className={`flex-1 ${sequence.is_active ? "" : "bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700"}`}
                       variant={sequence.is_active ? "outline" : "default"}
                       onClick={() => toggleSequence.mutate({ id: sequence.id, is_active: sequence.is_active })}
@@ -548,6 +617,87 @@ export default function MarketingSequences() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Active Enrollments Table */}
+      {enrollments.length > 0 && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Users className="h-4 w-4 text-blue-500" /> Active Enrollments
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Lead ID</TableHead>
+                  <TableHead>Sequence Name</TableHead>
+                  <TableHead>Step</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Enrolled By</TableHead>
+                  <TableHead>Enrolled At</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {enrollments.map((e: any) => (
+                  <TableRow key={e.id}>
+                    <TableCell className="font-mono text-xs">{e.lead_id?.slice(0, 8)}</TableCell>
+                    <TableCell>{e.sequence_name || '—'}</TableCell>
+                    <TableCell>{e.current_step || 0}/{e.total_steps || '?'}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={
+                        e.status === 'active' ? 'bg-blue-500/15 text-blue-600 border-blue-500/30' :
+                        e.status === 'completed' ? 'bg-emerald-500/15 text-emerald-600 border-emerald-500/30' :
+                        e.status === 'paused' ? 'bg-amber-500/15 text-amber-600 border-amber-500/30' :
+                        'bg-muted text-muted-foreground'
+                      }>{e.status}</Badge>
+                    </TableCell>
+                    <TableCell className="text-xs">{e.enrolled_by || '—'}</TableCell>
+                    <TableCell className="text-xs">{e.enrolled_at ? formatDistanceToNow(new Date(e.enrolled_at), { addSuffix: true }) : '—'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Enroll Customer Dialog */}
+      <Dialog open={enrollDialogOpen} onOpenChange={setEnrollDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-blue-500" /> Enroll Customer
+            </DialogTitle>
+            <DialogDescription>
+              Select a customer to enroll in "{selectedSequenceForEnroll?.name}"
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[400px]">
+            <div className="space-y-2 py-2">
+              {customers.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">No customers found</p>
+              ) : (
+                customers.map((c: any) => (
+                  <div
+                    key={c.id}
+                    className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
+                    onClick={() => handleEnrollCustomer(c.id)}
+                  >
+                    <div>
+                      <p className="font-medium text-sm">{c.name || 'Unknown'}</p>
+                      <p className="text-xs text-muted-foreground">{c.phone_number || c.email || 'No contact'}</p>
+                    </div>
+                    <Button size="sm" variant="outline">
+                      <Users className="h-3 w-3 mr-1" /> Enroll
+                    </Button>
+                  </div>
+                ))
+              )}
+            </div>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
     </div>

@@ -102,6 +102,23 @@ export default function MarketingEngine() {
     enabled: !!tenantConfig?.id,
   });
 
+  // Fetch recent sequence enrollments
+  const { data: recentEnrollments = [] } = useQuery({
+    queryKey: ['recent-enrollments', tenantConfig?.id],
+    queryFn: async () => {
+      if (!tenantConfig?.id) return [];
+      const { data } = await supabase
+        .from('sequence_enrollments' as any)
+        .select('*')
+        .eq('tenant_id', tenantConfig.id)
+        .order('enrolled_at', { ascending: false })
+        .limit(5);
+      return data || [];
+    },
+    enabled: !!tenantConfig?.id,
+    refetchInterval: 30000,
+  });
+
   // Stats row
   const statCards = [
     { label: "Campaigns", value: stats?.total || 0, icon: Send, color: "text-purple-500", bg: "bg-purple-500/10", href: "/marketing/campaigns", trend: stats?.total ? "+12%" : null },
@@ -404,7 +421,7 @@ export default function MarketingEngine() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {aiActivity.length === 0 ? (
+              {aiActivity.length === 0 && recentEnrollments.length === 0 ? (
                 <div className="text-center py-6">
                   <Brain className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground">No AI activity yet</p>
@@ -413,6 +430,32 @@ export default function MarketingEngine() {
               ) : (
                 <ScrollArea className="h-[250px]">
                   <div className="space-y-3">
+                    {recentEnrollments.map((enrollment: any, idx: number) => (
+                      <div key={`enroll-${enrollment.id || idx}`} className="flex items-start gap-2">
+                        <div className={`p-1 rounded-full mt-0.5 ${
+                          enrollment.status === 'completed' ? 'bg-emerald-500/10' :
+                          enrollment.status === 'active' ? 'bg-blue-500/10' :
+                          enrollment.status === 'paused' ? 'bg-amber-500/10' : 'bg-muted'
+                        }`}>
+                          <Mail className={`h-3 w-3 ${
+                            enrollment.status === 'completed' ? 'text-emerald-500' :
+                            enrollment.status === 'active' ? 'text-blue-500' :
+                            enrollment.status === 'paused' ? 'text-amber-500' : 'text-muted-foreground'
+                          }`} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm">
+                            {enrollment.status === 'completed'
+                              ? `✅ Sequence "${enrollment.sequence_name}" completed (by: ${enrollment.enrolled_by || 'system'})`
+                              : `📧 Lead enrolled in "${enrollment.sequence_name}" — Step ${enrollment.current_step || 0} of ${enrollment.total_steps || '?'}`}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {enrollment.enrolled_at ? formatDistanceToNow(new Date(enrollment.enrolled_at), { addSuffix: true }) : ''}
+                            {enrollment.enrollment_reason ? ` • ${enrollment.enrollment_reason}` : ''}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
                     {aiActivity.map((activity: any, idx: number) => (
                       <div key={activity.id || idx} className="flex items-start gap-2">
                         <div className="p-1 rounded-full bg-purple-500/10 mt-0.5">
