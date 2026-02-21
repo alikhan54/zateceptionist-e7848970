@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useTenant } from "@/contexts/TenantContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -20,7 +20,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -36,14 +35,8 @@ import {
   Target,
   Layers,
   BarChart3,
-  ChevronRight,
-  Zap,
-  Edit,
   ArrowRight,
   Phone,
-  Send,
-  CheckCircle,
-  AlertCircle,
   Copy,
   MoreVertical,
 } from "lucide-react";
@@ -98,11 +91,6 @@ export default function MarketingSequences() {
       return (data || []).map((s: any) => ({
         ...s,
         steps: typeof s.steps === "string" ? JSON.parse(s.steps) : s.steps || [],
-        total_steps: Array.isArray(s.steps)
-          ? s.steps.length
-          : typeof s.steps === "string"
-            ? JSON.parse(s.steps).length
-            : 0,
       }));
     },
     enabled: !!tenantConfig?.id,
@@ -165,7 +153,7 @@ export default function MarketingSequences() {
 
   const duplicateSequence = useMutation({
     mutationFn: async (seq: any) => {
-      const { data: result, error } = await supabase
+      const { error } = await supabase
         .from("marketing_sequences" as any)
         .insert({
           tenant_id: tenantConfig?.id,
@@ -181,7 +169,6 @@ export default function MarketingSequences() {
         .select()
         .single();
       if (error) throw error;
-      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["marketing_sequences"] });
@@ -197,7 +184,6 @@ export default function MarketingSequences() {
           (sequences.reduce((sum: number, s: any) => sum + (s.conversion_rate || 0), 0) / sequences.length) * 10,
         ) / 10
       : 0;
-  const totalCompleted = sequences.reduce((sum: number, s: any) => sum + (s.completed_count || 0), 0);
 
   const statItems = [
     {
@@ -233,18 +219,12 @@ export default function MarketingSequences() {
             <Skeleton key={i} className="h-24" />
           ))}
         </div>
-        <div className="grid md:grid-cols-2 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-48" />
-          ))}
-        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6 p-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -261,7 +241,6 @@ export default function MarketingSequences() {
         </Button>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {statItems.map((stat, i) => (
           <Card key={i}>
@@ -278,17 +257,16 @@ export default function MarketingSequences() {
         ))}
       </div>
 
-      {/* Sequences Grid */}
       {sequences.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center py-16 text-center">
             <Layers className="h-12 w-12 text-muted-foreground/50 mb-4" />
             <h3 className="text-lg font-semibold">No Sequences Yet</h3>
             <p className="text-muted-foreground mt-1 max-w-md">
-              Create automated sequences to nurture leads, welcome new contacts, and re-engage inactive customers.
+              Create automated sequences to nurture leads and re-engage customers.
             </p>
             <Button className="mt-4" onClick={() => setIsCreateOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" /> Create Your First Sequence
+              <Plus className="h-4 w-4 mr-2" /> Create First Sequence
             </Button>
           </CardContent>
         </Card>
@@ -347,9 +325,8 @@ export default function MarketingSequences() {
                         <DropdownMenuItem
                           className="text-destructive"
                           onClick={() => {
-                            if (confirm("Delete this sequence? This cannot be undone.")) {
+                            if (confirm("Delete this sequence? This cannot be undone."))
                               deleteSequence.mutate(sequence.id);
-                            }
                           }}
                         >
                           <Trash2 className="h-4 w-4 mr-2" /> Delete
@@ -362,7 +339,6 @@ export default function MarketingSequences() {
                   )}
                 </CardHeader>
                 <CardContent className="pt-0">
-                  {/* Step visualization */}
                   <div className="flex items-center gap-1 mb-4 overflow-hidden">
                     {steps.slice(0, 6).map((step: any, idx: number) => {
                       const cfg = stepTypeConfig[step.type] || stepTypeConfig.email;
@@ -371,7 +347,7 @@ export default function MarketingSequences() {
                         <div key={idx} className="flex items-center">
                           <div
                             className={`p-1.5 rounded-md bg-muted ${cfg.color}`}
-                            title={`Step ${idx + 1}: ${cfg.label} - ${step.subject || step.content?.slice(0, 30) || ""}`}
+                            title={`Step ${idx + 1}: ${cfg.label}`}
                           >
                             <StepIcon className="h-3.5 w-3.5" />
                           </div>
@@ -388,8 +364,6 @@ export default function MarketingSequences() {
                       <span className="text-xs text-muted-foreground italic">No steps configured</span>
                     )}
                   </div>
-
-                  {/* Metrics */}
                   <div className="grid grid-cols-3 gap-3 text-center mb-3">
                     <div>
                       <p className="text-lg font-bold">{steps.length}</p>
@@ -405,16 +379,14 @@ export default function MarketingSequences() {
                     </div>
                   </div>
                   <Progress value={sequence.conversion_rate || 0} className="h-1.5 mb-3" />
-
-                  {/* Action buttons */}
                   <div className="flex gap-2">
                     <Button size="sm" variant="outline" className="flex-1" onClick={() => setStatsSequence(sequence)}>
                       <BarChart3 className="h-3 w-3 mr-1" /> Stats
                     </Button>
                     <Button
                       size="sm"
+                      className={`flex-1 ${sequence.is_active ? "" : "bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700"}`}
                       variant={sequence.is_active ? "outline" : "default"}
-                      className={`flex-1 ${!sequence.is_active ? "bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700" : ""}`}
                       onClick={() => toggleSequence.mutate({ id: sequence.id, is_active: sequence.is_active })}
                     >
                       {sequence.is_active ? (
@@ -456,7 +428,7 @@ export default function MarketingSequences() {
             <div className="space-y-2">
               <Label>Description</Label>
               <Textarea
-                placeholder="What does this sequence do? When should contacts enter it?"
+                placeholder="What does this sequence do?"
                 value={formData.description}
                 onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
               />
@@ -471,9 +443,9 @@ export default function MarketingSequences() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(triggerLabels).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>
-                      {label}
+                  {Object.entries(triggerLabels).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>
+                      {v}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -495,7 +467,7 @@ export default function MarketingSequences() {
         </DialogContent>
       </Dialog>
 
-      {/* Stats Dialog */}
+      {/* Stats Dialog - shows sequence performance and step breakdown */}
       <Dialog open={!!statsSequence} onOpenChange={() => setStatsSequence(null)}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
@@ -506,7 +478,6 @@ export default function MarketingSequences() {
           </DialogHeader>
           {statsSequence && (
             <div className="space-y-6 py-4">
-              {/* Overview metrics */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 rounded-xl bg-muted/50 text-center">
                   <p className="text-3xl font-bold text-blue-600">
@@ -529,8 +500,6 @@ export default function MarketingSequences() {
                   <p className="text-xs text-muted-foreground mt-1">Total Steps</p>
                 </div>
               </div>
-
-              {/* Step-by-step breakdown */}
               <div>
                 <h4 className="font-semibold text-sm mb-3">Sequence Steps</h4>
                 <ScrollArea className="max-h-64">
@@ -568,7 +537,6 @@ export default function MarketingSequences() {
                   </div>
                 </ScrollArea>
               </div>
-
               <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
                 <span>Trigger: {triggerLabels[statsSequence.trigger_type] || statsSequence.trigger_type}</span>
                 <span>
