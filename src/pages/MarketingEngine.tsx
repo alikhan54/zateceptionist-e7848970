@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useTenant } from "@/contexts/TenantContext";
 import { useMarketingCampaigns } from "@/hooks/useMarketingCampaigns";
 import { useMarketingContent, useTrendInsights } from "@/hooks/useMarketingContent";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, callWebhook } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,7 @@ import {
   CheckCircle, Eye, Sparkles, BarChart3, Megaphone, Calendar as CalendarIcon,
   ArrowRight, Zap, Target, Clock, RefreshCw, Brain, Bot, Hand,
   Activity, Globe, Share2, FileText, Palette, GitBranch,
-  ChevronRight, Play, AlertCircle, Layers
+  ChevronRight, Play, AlertCircle, Layers, DollarSign
 } from "lucide-react";
 
 type AIMode = "manual" | "assisted" | "autonomous";
@@ -140,6 +140,18 @@ export default function MarketingEngine() {
       return { total: total || 0, dnc: dnc || 0, noConsent: noConsent || 0, compliant: (total || 0) - (dnc || 0) - (noConsent || 0) };
     },
     enabled: !!tenantId,
+  });
+
+  // Revenue Attribution
+  const { data: attribution, isLoading: attrLoading, refetch: refetchAttribution } = useQuery({
+    queryKey: ['revenue-attribution', tenantConfig?.id],
+    queryFn: async () => {
+      if (!tenantConfig?.id) return null;
+      const result = await callWebhook('/ai-tool/revenue-attribution', {}, tenantConfig.id);
+      return (result?.data as any) || null;
+    },
+    enabled: !!tenantConfig?.id,
+    staleTime: 300000,
   });
 
   // Fetch recent sequence enrollments
@@ -332,6 +344,85 @@ export default function MarketingEngine() {
           </CardContent>
         </Card>
       )}
+
+      {/* Revenue Attribution Card */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-3">
+          <div>
+            <CardTitle className="text-base flex items-center gap-2">
+              <DollarSign className="h-4 w-4 text-green-500" /> Revenue Attribution
+            </CardTitle>
+            <CardDescription>AI-tracked revenue sources & channels</CardDescription>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => refetchAttribution()}>
+            <RefreshCw className="h-3 w-3 mr-1" /> Refresh
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {attrLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-8 w-48" />
+              <p className="text-sm text-muted-foreground">Analyzing revenue sources...</p>
+              <Skeleton className="h-24 w-full" />
+            </div>
+          ) : !attribution ? (
+            <div className="text-center py-6">
+              <DollarSign className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">Analyzing revenue sources...</p>
+              <p className="text-xs text-muted-foreground mt-1">Revenue attribution data will appear after the AI Brain runs.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-2xl font-bold text-green-600">
+                ${((attribution as any).total_revenue || 0).toLocaleString()} <span className="text-sm font-normal text-muted-foreground">total tracked revenue</span>
+              </p>
+              {(attribution as any).top_sources?.length > 0 && (
+                <div className="space-y-2">
+                  {((attribution as any).top_sources as any[]).slice(0, 5).map((src: any, idx: number) => {
+                    const colors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500', 'bg-pink-500'];
+                    const maxRev = Math.max(...((attribution as any).top_sources as any[]).map((s: any) => s.revenue || 0), 1);
+                    return (
+                      <div key={idx} className="space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <span>{src.source || src.name}</span>
+                          <span className="font-medium">${(src.revenue || 0).toLocaleString()} • {src.customer_count || 0} customers</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-muted overflow-hidden">
+                          <div className={`h-full rounded-full ${colors[idx % 5]} transition-all`} style={{ width: `${((src.revenue || 0) / maxRev) * 100}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {(attribution as any).top_channels?.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {((attribution as any).top_channels as any[]).map((ch: any, idx: number) => (
+                    <Badge key={idx} variant="secondary">{ch.channel || ch.name}: ${(ch.revenue || 0).toLocaleString()}</Badge>
+                  ))}
+                </div>
+              )}
+              {(attribution as any).landing_page_leads > 0 && (
+                <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                  <p className="text-sm font-medium text-green-600">🎯 Landing pages: {(attribution as any).landing_page_leads} leads worth ${((attribution as any).landing_page_revenue || 0).toLocaleString()}</p>
+                </div>
+              )}
+              {(attribution as any).ai_insights?.length > 0 && (
+                <div className="p-3 rounded-lg bg-muted/50 border">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">AI Insights</p>
+                  <ul className="space-y-1">
+                    {((attribution as any).ai_insights as string[]).map((insight: string, idx: number) => (
+                      <li key={idx} className="text-xs text-muted-foreground flex items-start gap-1">
+                        <span>•</span> {insight}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Quick Actions Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
