@@ -57,6 +57,7 @@ interface Appointment {
   duration_minutes: number;
   status: "pending" | "confirmed" | "completed" | "cancelled" | "no-show";
   notes: string | null;
+  booking_id: string | null;
 }
 
 interface Service {
@@ -134,60 +135,79 @@ export default function AppointmentsPage() {
       const monthStart = format(startOfMonth(selectedDate), "yyyy-MM-dd");
       const monthEnd = format(endOfMonth(selectedDate), "yyyy-MM-dd");
 
+      // Query direct fields — NO embedded JOINs that break with null foreign keys
       let query = supabase
         .from("appointments")
-        .select(
-          `
+        .select(`
           id,
           customer_id,
+          customer_name,
           service_id,
+          service_name,
           provider_id,
+          provider,
           scheduled_at,
+          appointment_date,
+          appointment_time,
+          start_time,
           duration_minutes,
           status,
           notes,
-          customers(name),
-          services(name),
-          providers(name)
-        `,
-        )
+          booking_id
+        `)
         .eq("tenant_id", tenantId)
-        .gte("scheduled_at", monthStart)
-        .lte("scheduled_at", monthEnd)
         .order("scheduled_at", { ascending: true });
+
+      // Filter by date range — use scheduled_at OR appointment_date
+      query = query.or(
+        `scheduled_at.gte.${monthStart},appointment_date.gte.${monthStart}`
+      );
 
       if (statusFilter !== "all") {
         query = query.eq("status", statusFilter);
       }
-      if (providerFilter !== "all") {
-        query = query.eq("provider_id", providerFilter);
-      }
 
       const { data, error } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error("Appointments query error:", error);
+        throw error;
+      }
+
+      console.log("[Appointments] Fetched:", data?.length, "rows");
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const formattedAppointments: Appointment[] = (data || []).map((a: any) => ({
-        id: a.id,
-        customer_id: a.customer_id,
-        customer_name: a.customers?.name || "Unknown",
-        service_id: a.service_id,
-        service_name: a.services?.name,
-        provider_id: a.provider_id,
-        provider_name: a.providers?.name,
-        scheduled_at: a.scheduled_at,
-        duration_minutes: a.duration_minutes || 60,
-        status: a.status,
-        notes: a.notes,
-      }));
+      const formattedAppointments: Appointment[] = (data || [])
+        .filter((a: any) => {
+          // Filter to current month
+          const aptDate = a.scheduled_at || a.appointment_date;
+          if (!aptDate) return false;
+          const dateStr = aptDate.split("T")[0];
+          return dateStr >= monthStart && dateStr <= monthEnd;
+        })
+        .map((a: any) => ({
+          id: a.id,
+          customer_id: a.customer_id,
+          customer_name: a.customer_name || "Unknown",
+          service_id: a.service_id,
+          service_name: a.service_name || null,
+          provider_id: a.provider_id,
+          provider_name: a.provider || null,
+          scheduled_at: a.scheduled_at || (a.appointment_date ? a.appointment_date + "T" + (a.start_time || a.appointment_time || "00:00:00") : null),
+          duration_minutes: a.duration_minutes || 60,
+          status: a.status,
+          notes: a.notes,
+          booking_id: a.booking_id,
+        }));
 
       setAppointments(formattedAppointments);
 
       // Calculate stats
       const today = new Date();
       const todayStr = format(today, "yyyy-MM-dd");
-      const todayAppointments = formattedAppointments.filter((a) => a.scheduled_at.startsWith(todayStr));
+      const todayAppointments = formattedAppointments.filter(
+        (a) => a.scheduled_at && a.scheduled_at.startsWith(todayStr)
+      );
 
       const completed = formattedAppointments.filter((a) => a.status === "completed").length;
       const noShows = formattedAppointments.filter((a) => a.status === "no-show").length;
@@ -204,7 +224,7 @@ export default function AppointmentsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [tenantId, selectedDate, statusFilter, providerFilter]);
+  }, [tenantId, selectedDate, statusFilter]);
 
   const fetchDropdownData = useCallback(async () => {
     if (!tenantId) return;
