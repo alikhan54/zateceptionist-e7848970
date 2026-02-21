@@ -46,6 +46,7 @@ import {
   Users,
   BarChart3,
   Inbox,
+  Loader2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -250,10 +251,10 @@ export default function SocialCommander() {
       resetComposer();
 
       toast({
-        title: scheduleDate ? "Post Scheduled" : "Post Published",
+        title: scheduleDate ? "Post Scheduled" : "📤 Post Queued",
         description: scheduleDate
           ? `Scheduled for ${format(scheduleDate, "PPP")} at ${scheduleTime}`
-          : "Your post has been published to selected platforms.",
+          : "Post queued for publishing! It will be posted within 5 minutes.",
       });
     } catch (error) {
       toast({ title: "Failed", description: "Could not create post. Please try again.", variant: "destructive" });
@@ -517,8 +518,16 @@ export default function SocialCommander() {
                                   ? "outline"
                                   : "secondary"
                             }
+                            className={post.status === "scheduled" && post.scheduled_at && (Date.now() - new Date(post.scheduled_at).getTime() < 10 * 60 * 1000) ? "animate-pulse" : ""}
                           >
-                            {post.status}
+                            {post.status === "scheduled" && post.scheduled_at && (Date.now() - new Date(post.scheduled_at).getTime() < 10 * 60 * 1000) ? (
+                              <span className="flex items-center gap-1">
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                Publishing...
+                              </span>
+                            ) : (
+                              post.status
+                            )}
                           </Badge>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -573,7 +582,11 @@ export default function SocialCommander() {
                       <p className="text-sm">{post.post_text}</p>
                       <div className="flex items-center gap-2 mt-2">
                         <PlatformIcon className={`h-4 w-4 ${config.color}`} />
-                        <Badge variant={post.status === "published" ? "default" : "secondary"}>{post.status}</Badge>
+                        <Badge variant={post.status === "published" ? "default" : "secondary"} className={post.status === "scheduled" && post.scheduled_at && (Date.now() - new Date(post.scheduled_at).getTime() < 10 * 60 * 1000) ? "animate-pulse" : ""}>
+                          {post.status === "scheduled" && post.scheduled_at && (Date.now() - new Date(post.scheduled_at).getTime() < 10 * 60 * 1000) ? (
+                            <span className="flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> Publishing...</span>
+                          ) : post.status}
+                        </Badge>
                         <span className="text-xs text-muted-foreground">
                           {post.scheduled_at ? format(new Date(post.scheduled_at), "MMM d, h:mm a") : ""}
                         </span>

@@ -135,7 +135,16 @@ export function useMarketingCampaigns(options?: { status?: string; type?: string
     mutationFn: async (campaignId: string) => {
       await updateCampaign.mutateAsync({ id: campaignId, status: 'sending' });
       const { callWebhook, WEBHOOKS } = await import('@/integrations/supabase/client');
-      const result = await callWebhook(WEBHOOKS.SEND_CAMPAIGN, { campaign_id: campaignId, action: 'send' }, tenantUuid!);
+      const campaign = campaigns.find(c => c.id === campaignId);
+      const result = await callWebhook(WEBHOOKS.SEND_CAMPAIGN, {
+        campaign_id: campaignId,
+        campaign_name: campaign?.name || '',
+        channel: campaign?.type || '',
+        audience: campaign?.audience_type || '',
+        customMessage: campaign?.message_template || '',
+        mediaUrl: campaign?.media_url || '',
+        action: 'send',
+      }, tenantUuid!);
       if (!result.success) throw new Error(result.error || 'Failed to trigger campaign');
       return result.data;
     },

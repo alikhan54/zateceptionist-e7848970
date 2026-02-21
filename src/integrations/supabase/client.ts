@@ -43,6 +43,12 @@ export const WEBHOOKS = {
   LANDING_PAGE_GENERATE: "marketing/landing-page-generate",
   AB_TEST_CREATE: "marketing/ab-test-create",
   EMAIL_TEMPLATE_GENERATE: "marketing/email-template-generate",
+
+  // Marketing AI Tools
+  SEQUENCE_ENROLL: "ai-tool/enroll-sequence",
+  SEQUENCE_STATUS: "ai-tool/sequence-status",
+  SEQUENCE_EXECUTE: "ai-tool/execute-sequence-step",
+  SEQUENCE_ENGAGEMENT: "ai-tool/check-engagement",
 } as const;
 
 export type WebhookEndpoint = (typeof WEBHOOKS)[keyof typeof WEBHOOKS];
