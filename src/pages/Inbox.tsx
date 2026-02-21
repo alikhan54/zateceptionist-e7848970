@@ -406,8 +406,10 @@ export default function Inbox() {
           .select("*")
           .eq("tenant_id", tenantUuid)
           .order("last_message_at", { ascending: false });
+        console.log("[Inbox] Conversations loaded (fallback):", fallback?.length, "first:", fallback?.[0]?.id?.slice(0,8));
         return (fallback || []) as Conversation[];
       }
+      console.log("[Inbox] Conversations loaded:", data?.length, "first:", data?.[0]?.id?.slice(0,8));
       return (data || []) as Conversation[];
     },
     enabled: !!tenantUuid,
@@ -455,14 +457,17 @@ export default function Inbox() {
     queryKey: ["conversation-messages", selectedConversationId],
     queryFn: async () => {
       if (!selectedConversationId) return [];
-      const { data } = await supabase
+      console.log("[Inbox] Fetching messages for conversation:", selectedConversationId);
+      const { data, error } = await supabase
         .from("messages")
         .select("*")
         .eq("conversation_id", selectedConversationId)
         .order("created_at", { ascending: true });
+      console.log("[Inbox] Messages result:", { count: data?.length, error: error?.message, firstMsg: data?.[0]?.content?.slice(0,30) });
       return (data || []) as Message[];
     },
     enabled: !!selectedConversationId,
+    staleTime: 0,
   });
 
   // Staff members query - uses UUID for users table
@@ -1052,6 +1057,7 @@ export default function Inbox() {
   // ============================================
   const handleSelectConversation = useCallback(
     (id: string) => {
+      console.log("[Inbox] Selected conversation:", id);
       setSelectedConversationId(id);
       const conv = conversations.find((c) => c.id === id);
       if (conv?.unread_count > 0) markAsReadMutation.mutate(id);
