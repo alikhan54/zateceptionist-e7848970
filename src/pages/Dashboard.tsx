@@ -102,20 +102,20 @@ export default function Dashboard() {
 
   // REAL STATS - Query actual database counts
   const { data: statsData, isLoading: statsLoading } = useQuery({
-    queryKey: ['dashboard-main-stats', tenantConfig?.id],
+    queryKey: ['dashboard-main-stats', tenantId],
     queryFn: async () => {
-      if (!tenantConfig?.id) return null;
+      if (!tenantId) return null;
       
       const [customersRes, conversationsRes, appointmentsRes, leadsRes] = await Promise.all([
         supabase.from('customers').select('*', { count: 'exact', head: true })
-          .eq('tenant_id', tenantConfig.id),
+          .eq('tenant_id', tenantConfig!.id),
         supabase.from('conversations').select('*', { count: 'exact', head: true })
-          .eq('tenant_id', tenantConfig.id),
+          .eq('tenant_id', tenantConfig!.id),
         supabase.from('appointments').select('*', { count: 'exact', head: true })
-          .eq('tenant_id', tenantConfig.id)
-          .eq('appointment_status', 'scheduled'),
+          .eq('tenant_id', tenantId)
+          .in('status', ['scheduled', 'confirmed', 'pending']),
         supabase.from('sales_leads').select('*', { count: 'exact', head: true })
-          .eq('tenant_id', tenantConfig.id)
+          .eq('tenant_id', tenantConfig!.id)
       ]);
       
       return {
@@ -125,7 +125,7 @@ export default function Dashboard() {
         leads: leadsRes.count || 0
       };
     },
-    enabled: !!tenantConfig?.id,
+    enabled: !!tenantId,
     staleTime: 30000,
   });
 
@@ -266,21 +266,22 @@ export default function Dashboard() {
 
   // UPCOMING APPOINTMENTS - Query real data  
   const { data: upcomingAppointments } = useQuery({
-    queryKey: ['dashboard-upcoming-appointments', tenantConfig?.id],
+    queryKey: ['dashboard-upcoming-appointments', tenantId],
     queryFn: async () => {
-      if (!tenantConfig?.id) return [];
+      if (!tenantId) return [];
       
       const { data } = await supabase
         .from('appointments')
         .select(`
           id,
           service_name,
+          customer_name,
           scheduled_at,
           start_time,
           customer_id
         `)
-        .eq('tenant_id', tenantConfig.id)
-        .eq('appointment_status', 'scheduled')
+        .eq('tenant_id', tenantId)
+        .in('status', ['scheduled', 'confirmed', 'pending'])
         .gte('scheduled_at', new Date().toISOString())
         .order('scheduled_at', { ascending: true })
         .limit(5);
@@ -301,7 +302,7 @@ export default function Dashboard() {
         customer: customerMap.get(apt.customer_id) || null
       }));
     },
-    enabled: !!tenantConfig?.id,
+    enabled: !!tenantId,
   });
 
   return (
@@ -473,7 +474,7 @@ export default function Dashboard() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">
-                      {apt.service_name || `Meeting with ${apt.customer?.name || 'Client'}`}
+                      {apt.service_name || `Meeting with ${apt.customer?.name || apt.customer_name || 'Client'}`}
                     </p>
                     <p className="text-sm text-muted-foreground">
                       {apt.scheduled_at 
