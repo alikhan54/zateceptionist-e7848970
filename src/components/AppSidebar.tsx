@@ -105,11 +105,14 @@ const marketingNavItems = [
   { title: "Content Studio", url: "/marketing/content", icon: PenTool },
   { title: "Campaign Central", url: "/marketing/campaigns", icon: Send },
   { title: "Social Commander", url: "/marketing/social", icon: Share2 },
-  { title: "Email Sequences", url: "/marketing/sequences", icon: Layers },
   { title: "Email Builder", url: "/marketing/email", icon: Mail },
   { title: "Landing Pages", url: "/marketing/landing", icon: Globe },
-  { title: "Analytics", url: "/marketing/analytics", icon: PieChart },
+  { title: "Marketing Analytics", url: "/marketing/analytics", icon: PieChart },
   { title: "A/B Testing", url: "/marketing/ab-testing", icon: GitBranch },
+  { title: "Marketing Sequences", url: "/marketing/sequences", icon: Layers },
+  { title: "Blog Manager", url: "/marketing/blogs", icon: FileText },
+  { title: "Video Projects", url: "/marketing/videos", icon: Zap },
+  { title: "Competitor Intel", url: "/marketing/competitors", icon: Eye },
 ];
 
 // ========================================
