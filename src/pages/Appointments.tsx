@@ -1,20 +1,13 @@
-import { useEffect, useState, useCallback } from 'react';
-import { useTenant } from '@/contexts/TenantContext';
-import { supabase, callWebhook, WEBHOOKS } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Calendar } from '@/components/ui/calendar';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { useEffect, useState, useCallback } from "react";
+import { useTenant } from "@/contexts/TenantContext";
+import { supabase, callWebhook, WEBHOOKS } from "@/integrations/supabase/client";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Calendar } from "@/components/ui/calendar";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -23,24 +16,18 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+} from "@/components/ui/dropdown-menu";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Calendar as CalendarIcon,
   Plus,
@@ -53,10 +40,10 @@ import {
   XCircle,
   AlertCircle,
   Bell,
-} from 'lucide-react';
-import { format, startOfMonth, endOfMonth, isSameDay, parseISO } from 'date-fns';
-import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
+} from "lucide-react";
+import { format, startOfMonth, endOfMonth, isSameDay, parseISO } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 interface Appointment {
   id: string;
@@ -68,7 +55,7 @@ interface Appointment {
   provider_name: string | null;
   scheduled_at: string;
   duration_minutes: number;
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'no-show';
+  status: "pending" | "confirmed" | "completed" | "cancelled" | "no-show";
   notes: string | null;
 }
 
@@ -90,11 +77,11 @@ interface Customer {
 }
 
 const statusColors: Record<string, string> = {
-  pending: 'bg-warning text-warning-foreground',
-  confirmed: 'bg-info text-info-foreground',
-  completed: 'bg-success text-success-foreground',
-  cancelled: 'bg-muted text-muted-foreground',
-  'no-show': 'bg-destructive text-destructive-foreground',
+  pending: "bg-warning text-warning-foreground",
+  confirmed: "bg-info text-info-foreground",
+  completed: "bg-success text-success-foreground",
+  cancelled: "bg-muted text-muted-foreground",
+  "no-show": "bg-destructive text-destructive-foreground",
 };
 
 const statusIcons: Record<string, React.ReactNode> = {
@@ -102,7 +89,7 @@ const statusIcons: Record<string, React.ReactNode> = {
   confirmed: <CheckCircle2 className="h-4 w-4" />,
   completed: <CheckCircle2 className="h-4 w-4" />,
   cancelled: <XCircle className="h-4 w-4" />,
-  'no-show': <AlertCircle className="h-4 w-4" />,
+  "no-show": <AlertCircle className="h-4 w-4" />,
 };
 
 export default function AppointmentsPage() {
@@ -111,10 +98,10 @@ export default function AppointmentsPage() {
 
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
+  const [viewMode, setViewMode] = useState<"calendar" | "list">("calendar");
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [providerFilter, setProviderFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [providerFilter, setProviderFilter] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
   // For add dialog
@@ -122,13 +109,13 @@ export default function AppointmentsPage() {
   const [services, setServices] = useState<Service[]>([]);
   const [providers, setProviders] = useState<Provider[]>([]);
   const [newAppointment, setNewAppointment] = useState({
-    customer_id: '',
-    service_id: '',
-    provider_id: '',
+    customer_id: "",
+    service_id: "",
+    provider_id: "",
     date: new Date(),
-    time: '09:00',
+    time: "09:00",
     duration: 60,
-    notes: '',
+    notes: "",
   });
 
   // Stats
@@ -144,12 +131,13 @@ export default function AppointmentsPage() {
 
     setIsLoading(true);
     try {
-      const monthStart = format(startOfMonth(selectedDate), 'yyyy-MM-dd');
-      const monthEnd = format(endOfMonth(selectedDate), 'yyyy-MM-dd');
+      const monthStart = format(startOfMonth(selectedDate), "yyyy-MM-dd");
+      const monthEnd = format(endOfMonth(selectedDate), "yyyy-MM-dd");
 
       let query = supabase
-        .from('appointments')
-        .select(`
+        .from("appointments")
+        .select(
+          `
           id,
           customer_id,
           service_id,
@@ -158,20 +146,21 @@ export default function AppointmentsPage() {
           duration_minutes,
           status,
           notes,
-          customers!inner(name),
+          customers(name),
           services(name),
           providers(name)
-        `)
-        .eq('tenant_id', tenantId)
-        .gte('scheduled_at', monthStart)
-        .lte('scheduled_at', monthEnd)
-        .order('scheduled_at', { ascending: true });
+        `,
+        )
+        .eq("tenant_id", tenantId)
+        .gte("scheduled_at", monthStart)
+        .lte("scheduled_at", monthEnd)
+        .order("scheduled_at", { ascending: true });
 
-      if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter);
+      if (statusFilter !== "all") {
+        query = query.eq("status", statusFilter);
       }
-      if (providerFilter !== 'all') {
-        query = query.eq('provider_id', providerFilter);
+      if (providerFilter !== "all") {
+        query = query.eq("provider_id", providerFilter);
       }
 
       const { data, error } = await query;
@@ -182,7 +171,7 @@ export default function AppointmentsPage() {
       const formattedAppointments: Appointment[] = (data || []).map((a: any) => ({
         id: a.id,
         customer_id: a.customer_id,
-        customer_name: a.customers?.name || 'Unknown',
+        customer_name: a.customers?.name || "Unknown",
         service_id: a.service_id,
         service_name: a.services?.name,
         provider_id: a.provider_id,
@@ -197,13 +186,11 @@ export default function AppointmentsPage() {
 
       // Calculate stats
       const today = new Date();
-      const todayStr = format(today, 'yyyy-MM-dd');
-      const todayAppointments = formattedAppointments.filter((a) =>
-        a.scheduled_at.startsWith(todayStr)
-      );
+      const todayStr = format(today, "yyyy-MM-dd");
+      const todayAppointments = formattedAppointments.filter((a) => a.scheduled_at.startsWith(todayStr));
 
-      const completed = formattedAppointments.filter((a) => a.status === 'completed').length;
-      const noShows = formattedAppointments.filter((a) => a.status === 'no-show').length;
+      const completed = formattedAppointments.filter((a) => a.status === "completed").length;
+      const noShows = formattedAppointments.filter((a) => a.status === "no-show").length;
       const total = formattedAppointments.length;
 
       setStats({
@@ -213,7 +200,7 @@ export default function AppointmentsPage() {
         noShowRate: total > 0 ? Math.round((noShows / total) * 100) : 0,
       });
     } catch (error) {
-      console.error('Error fetching appointments:', error);
+      console.error("Error fetching appointments:", error);
     } finally {
       setIsLoading(false);
     }
@@ -224,16 +211,16 @@ export default function AppointmentsPage() {
 
     try {
       const [customersRes, servicesRes, providersRes] = await Promise.all([
-        supabase.from('customers').select('id, name').eq('tenant_id', tenantId).limit(100),
-        supabase.from('services').select('id, name, duration_minutes, price').eq('tenant_id', tenantId),
-        supabase.from('providers').select('id, name').eq('tenant_id', tenantId),
+        supabase.from("customers").select("id, name").eq("tenant_id", tenantId).limit(100),
+        supabase.from("services").select("id, name, duration_minutes, price").eq("tenant_id", tenantId),
+        supabase.from("providers").select("id, name").eq("tenant_id", tenantId),
       ]);
 
       setCustomers(customersRes.data || []);
       setServices(servicesRes.data || []);
       setProviders(providersRes.data || []);
     } catch (error) {
-      console.error('Error fetching dropdown data:', error);
+      console.error("Error fetching dropdown data:", error);
     }
   }, [tenantId]);
 
@@ -250,70 +237,64 @@ export default function AppointmentsPage() {
 
     try {
       const scheduledAt = new Date(newAppointment.date);
-      const [hours, minutes] = newAppointment.time.split(':');
+      const [hours, minutes] = newAppointment.time.split(":");
       scheduledAt.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
-      const { error } = await supabase.from('appointments').insert({
+      const { error } = await supabase.from("appointments").insert({
         tenant_id: tenantId,
         customer_id: newAppointment.customer_id,
         service_id: newAppointment.service_id || null,
         provider_id: newAppointment.provider_id || null,
         scheduled_at: scheduledAt.toISOString(),
         duration_minutes: newAppointment.duration,
-        status: 'pending',
+        status: "pending",
         notes: newAppointment.notes || null,
       });
 
       if (error) throw error;
 
       toast({
-        title: 'Success',
-        description: `${translate('appointment')} scheduled successfully`,
+        title: "Success",
+        description: `${translate("appointment")} scheduled successfully`,
       });
 
       setIsAddDialogOpen(false);
       setNewAppointment({
-        customer_id: '',
-        service_id: '',
-        provider_id: '',
+        customer_id: "",
+        service_id: "",
+        provider_id: "",
         date: new Date(),
-        time: '09:00',
+        time: "09:00",
         duration: 60,
-        notes: '',
+        notes: "",
       });
       fetchAppointments();
     } catch (error) {
-      console.error('Error adding appointment:', error);
+      console.error("Error adding appointment:", error);
       toast({
-        title: 'Error',
-        description: `Failed to schedule ${translate('appointment').toLowerCase()}`,
-        variant: 'destructive',
+        title: "Error",
+        description: `Failed to schedule ${translate("appointment").toLowerCase()}`,
+        variant: "destructive",
       });
     }
   };
 
-  const handleUpdateStatus = async (id: string, status: Appointment['status']) => {
+  const handleUpdateStatus = async (id: string, status: Appointment["status"]) => {
     if (!tenantId) return;
 
     try {
-      const { error } = await supabase
-        .from('appointments')
-        .update({ status })
-        .eq('id', id)
-        .eq('tenant_id', tenantId);
+      const { error } = await supabase.from("appointments").update({ status }).eq("id", id).eq("tenant_id", tenantId);
 
       if (error) throw error;
 
-      setAppointments((prev) =>
-        prev.map((a) => (a.id === id ? { ...a, status } : a))
-      );
+      setAppointments((prev) => prev.map((a) => (a.id === id ? { ...a, status } : a)));
 
       toast({
-        title: 'Status Updated',
-        description: `${translate('appointment')} marked as ${status}`,
+        title: "Status Updated",
+        description: `${translate("appointment")} marked as ${status}`,
       });
     } catch (error) {
-      console.error('Error updating status:', error);
+      console.error("Error updating status:", error);
     }
   };
 
@@ -324,19 +305,19 @@ export default function AppointmentsPage() {
       await callWebhook(
         WEBHOOKS.BOOK_APPOINTMENT,
         {
-          action: 'reminder',
+          action: "reminder",
           appointment_id: appointment.id,
           customer_id: appointment.customer_id,
         },
-        tenantId
+        tenantId,
       );
 
       toast({
-        title: 'Reminder Sent',
+        title: "Reminder Sent",
         description: `Reminder sent to ${appointment.customer_name}`,
       });
     } catch (error) {
-      console.error('Error sending reminder:', error);
+      console.error("Error sending reminder:", error);
     }
   };
 
@@ -358,13 +339,11 @@ export default function AppointmentsPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">{translate('appointments')}</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage your {translate('appointments').toLowerCase()}
-          </p>
+          <h1 className="text-3xl font-bold">{translate("appointments")}</h1>
+          <p className="text-muted-foreground mt-1">Manage your {translate("appointments").toLowerCase()}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'calendar' | 'list')}>
+          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "calendar" | "list")}>
             <TabsList>
               <TabsTrigger value="calendar">
                 <Grid3X3 className="h-4 w-4 mr-2" />
@@ -380,25 +359,23 @@ export default function AppointmentsPage() {
             <DialogTrigger asChild>
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
-                New {translate('appointment')}
+                New {translate("appointment")}
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-lg">
               <DialogHeader>
-                <DialogTitle>Schedule {translate('appointment')}</DialogTitle>
-                <DialogDescription>
-                  Create a new {translate('appointment').toLowerCase()}
-                </DialogDescription>
+                <DialogTitle>Schedule {translate("appointment")}</DialogTitle>
+                <DialogDescription>Create a new {translate("appointment").toLowerCase()}</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
-                  <Label>{translate('customer')} *</Label>
+                  <Label>{translate("customer")} *</Label>
                   <Select
                     value={newAppointment.customer_id}
                     onValueChange={(value) => setNewAppointment({ ...newAppointment, customer_id: value })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder={`Select ${translate('customer').toLowerCase()}`} />
+                      <SelectValue placeholder={`Select ${translate("customer").toLowerCase()}`} />
                     </SelectTrigger>
                     <SelectContent>
                       {customers.map((c) => (
@@ -410,7 +387,7 @@ export default function AppointmentsPage() {
                   </Select>
                 </div>
                 <div className="grid gap-2">
-                  <Label>{translate('service')}</Label>
+                  <Label>{translate("service")}</Label>
                   <Select
                     value={newAppointment.service_id}
                     onValueChange={(value) => {
@@ -423,7 +400,7 @@ export default function AppointmentsPage() {
                     }}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder={`Select ${translate('service').toLowerCase()}`} />
+                      <SelectValue placeholder={`Select ${translate("service").toLowerCase()}`} />
                     </SelectTrigger>
                     <SelectContent>
                       {services.map((s) => (
@@ -435,13 +412,13 @@ export default function AppointmentsPage() {
                   </Select>
                 </div>
                 <div className="grid gap-2">
-                  <Label>{translate('staff')}</Label>
+                  <Label>{translate("staff")}</Label>
                   <Select
                     value={newAppointment.provider_id}
                     onValueChange={(value) => setNewAppointment({ ...newAppointment, provider_id: value })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder={`Select ${translate('staff').toLowerCase()}`} />
+                      <SelectValue placeholder={`Select ${translate("staff").toLowerCase()}`} />
                     </SelectTrigger>
                     <SelectContent>
                       {providers.map((p) => (
@@ -457,7 +434,7 @@ export default function AppointmentsPage() {
                     <Label>Date</Label>
                     <Input
                       type="date"
-                      value={format(newAppointment.date, 'yyyy-MM-dd')}
+                      value={format(newAppointment.date, "yyyy-MM-dd")}
                       onChange={(e) => setNewAppointment({ ...newAppointment, date: new Date(e.target.value) })}
                     />
                   </div>
@@ -522,7 +499,7 @@ export default function AppointmentsPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{stats.today}</p>
-                <p className="text-xs text-muted-foreground">Today's {translate('appointments').toLowerCase()}</p>
+                <p className="text-xs text-muted-foreground">Today's {translate("appointments").toLowerCase()}</p>
               </div>
             </div>
           </CardContent>
@@ -569,7 +546,7 @@ export default function AppointmentsPage() {
       </div>
 
       {/* Main Content */}
-      {viewMode === 'calendar' ? (
+      {viewMode === "calendar" ? (
         <div className="grid gap-6 lg:grid-cols-[350px_1fr]">
           {/* Calendar */}
           <Card>
@@ -584,9 +561,9 @@ export default function AppointmentsPage() {
                 }}
                 modifiersStyles={{
                   hasAppointments: {
-                    fontWeight: 'bold',
-                    textDecoration: 'underline',
-                    color: 'hsl(var(--primary))',
+                    fontWeight: "bold",
+                    textDecoration: "underline",
+                    color: "hsl(var(--primary))",
                   },
                 }}
               />
@@ -597,8 +574,10 @@ export default function AppointmentsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
-                <span>{format(selectedDate, 'EEEE, MMMM d, yyyy')}</span>
-                <Badge variant="outline">{getAppointmentsForDate(selectedDate).length} {translate('appointments').toLowerCase()}</Badge>
+                <span>{format(selectedDate, "EEEE, MMMM d, yyyy")}</span>
+                <Badge variant="outline">
+                  {getAppointmentsForDate(selectedDate).length} {translate("appointments").toLowerCase()}
+                </Badge>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -611,23 +590,18 @@ export default function AppointmentsPage() {
               ) : getAppointmentsForDate(selectedDate).length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
                   <CalendarIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No {translate('appointments').toLowerCase()} for this day</p>
+                  <p>No {translate("appointments").toLowerCase()} for this day</p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {getAppointmentsForDate(selectedDate).map((appointment) => (
-                    <div
-                      key={appointment.id}
-                      className="p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                    >
+                    <div key={appointment.id} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
                       <div className="flex items-start justify-between">
                         <div className="flex items-start gap-3">
                           <div className="text-center">
-                            <p className="text-lg font-bold">
-                              {format(parseISO(appointment.scheduled_at), 'h:mm')}
-                            </p>
+                            <p className="text-lg font-bold">{format(parseISO(appointment.scheduled_at), "h:mm")}</p>
                             <p className="text-xs text-muted-foreground">
-                              {format(parseISO(appointment.scheduled_at), 'a')}
+                              {format(parseISO(appointment.scheduled_at), "a")}
                             </p>
                           </div>
                           <div>
@@ -655,11 +629,11 @@ export default function AppointmentsPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleUpdateStatus(appointment.id, 'confirmed')}>
+                              <DropdownMenuItem onClick={() => handleUpdateStatus(appointment.id, "confirmed")}>
                                 <CheckCircle2 className="h-4 w-4 mr-2" />
                                 Confirm
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleUpdateStatus(appointment.id, 'completed')}>
+                              <DropdownMenuItem onClick={() => handleUpdateStatus(appointment.id, "completed")}>
                                 <CheckCircle2 className="h-4 w-4 mr-2" />
                                 Complete
                               </DropdownMenuItem>
@@ -668,11 +642,11 @@ export default function AppointmentsPage() {
                                 Send Reminder
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => handleUpdateStatus(appointment.id, 'cancelled')}>
+                              <DropdownMenuItem onClick={() => handleUpdateStatus(appointment.id, "cancelled")}>
                                 <XCircle className="h-4 w-4 mr-2" />
                                 Cancel
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleUpdateStatus(appointment.id, 'no-show')}>
+                              <DropdownMenuItem onClick={() => handleUpdateStatus(appointment.id, "no-show")}>
                                 <AlertCircle className="h-4 w-4 mr-2" />
                                 No-Show
                               </DropdownMenuItem>
@@ -707,10 +681,10 @@ export default function AppointmentsPage() {
               </Select>
               <Select value={providerFilter} onValueChange={setProviderFilter}>
                 <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder={translate('staff')} />
+                  <SelectValue placeholder={translate("staff")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All {translate('staff')}</SelectItem>
+                  <SelectItem value="all">All {translate("staff")}</SelectItem>
                   {providers.map((p) => (
                     <SelectItem key={p.id} value={p.id}>
                       {p.name}
@@ -730,7 +704,7 @@ export default function AppointmentsPage() {
             ) : appointments.length === 0 ? (
               <div className="text-center py-16 text-muted-foreground">
                 <CalendarIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No {translate('appointments').toLowerCase()} found</p>
+                <p>No {translate("appointments").toLowerCase()} found</p>
               </div>
             ) : (
               <Table>
@@ -738,9 +712,9 @@ export default function AppointmentsPage() {
                   <TableRow>
                     <TableHead>Date</TableHead>
                     <TableHead>Time</TableHead>
-                    <TableHead>{translate('customer')}</TableHead>
-                    <TableHead>{translate('service')}</TableHead>
-                    <TableHead>{translate('staff')}</TableHead>
+                    <TableHead>{translate("customer")}</TableHead>
+                    <TableHead>{translate("service")}</TableHead>
+                    <TableHead>{translate("staff")}</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -748,11 +722,11 @@ export default function AppointmentsPage() {
                 <TableBody>
                   {appointments.map((appointment) => (
                     <TableRow key={appointment.id}>
-                      <TableCell>{format(parseISO(appointment.scheduled_at), 'MMM dd, yyyy')}</TableCell>
-                      <TableCell>{format(parseISO(appointment.scheduled_at), 'h:mm a')}</TableCell>
+                      <TableCell>{format(parseISO(appointment.scheduled_at), "MMM dd, yyyy")}</TableCell>
+                      <TableCell>{format(parseISO(appointment.scheduled_at), "h:mm a")}</TableCell>
                       <TableCell className="font-medium">{appointment.customer_name}</TableCell>
-                      <TableCell>{appointment.service_name || '-'}</TableCell>
-                      <TableCell>{appointment.provider_name || '-'}</TableCell>
+                      <TableCell>{appointment.service_name || "-"}</TableCell>
+                      <TableCell>{appointment.provider_name || "-"}</TableCell>
                       <TableCell>
                         <Badge className={statusColors[appointment.status]}>
                           {statusIcons[appointment.status]}
@@ -767,20 +741,20 @@ export default function AppointmentsPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleUpdateStatus(appointment.id, 'confirmed')}>
+                            <DropdownMenuItem onClick={() => handleUpdateStatus(appointment.id, "confirmed")}>
                               Confirm
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleUpdateStatus(appointment.id, 'completed')}>
+                            <DropdownMenuItem onClick={() => handleUpdateStatus(appointment.id, "completed")}>
                               Complete
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleSendReminder(appointment)}>
                               Send Reminder
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleUpdateStatus(appointment.id, 'cancelled')}>
+                            <DropdownMenuItem onClick={() => handleUpdateStatus(appointment.id, "cancelled")}>
                               Cancel
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleUpdateStatus(appointment.id, 'no-show')}>
+                            <DropdownMenuItem onClick={() => handleUpdateStatus(appointment.id, "no-show")}>
                               No-Show
                             </DropdownMenuItem>
                           </DropdownMenuContent>
