@@ -2,7 +2,7 @@
 // FILE: src/pages/marketing/BlogManager.tsx
 // ACTION: REPLACE ENTIRE FILE
 // ============================================================
-import { callWebhook, WEBHOOKS } from "@/lib/api/webhooks";
+
 import { useState } from "react";
 import { useTenant } from "@/contexts/TenantContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -27,7 +27,7 @@ export default function BlogManager() {
   const [title, setTitle] = useState("");
   const [keyword, setKeyword] = useState("");
   const [excerpt, setExcerpt] = useState("");
-
+  const [generatingId, setGeneratingId] = useState<string | null>(null);
   const {
     data: posts = [],
     isLoading,
