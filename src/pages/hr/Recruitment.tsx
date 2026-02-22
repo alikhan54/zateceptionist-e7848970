@@ -54,7 +54,10 @@ import {
   Target,
   TrendingUp,
   RefreshCw,
+  Globe,
+  FormInput,
 } from "lucide-react";
+import { useDepartments } from "@/hooks/useHR";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -63,6 +66,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
+import { toast } from "sonner";
 import {
   useJobRequisitions,
   useJobApplications,
@@ -165,12 +169,17 @@ function TableLoading({ rows = 5 }: { rows?: number }) {
 }
 
 export default function RecruitmentPage() {
-  const { tenantId } = useTenant();
+  const { tenantId, tenantConfig } = useTenant();
   const [activeTab, setActiveTab] = useState("jobs");
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddJobOpen, setIsAddJobOpen] = useState(false);
+  const [inputMode, setInputMode] = useState<'manual' | 'url' | 'text'>('manual');
+  const [careersUrl, setCareersUrl] = useState("");
+  const [rawText, setRawText] = useState("");
+  const [departmentId, setDepartmentId] = useState("");
+  const [priority, setPriority] = useState("medium");
 
-  // Form state for new job
+  // Form state for new job (manual mode)
   const [jobForm, setJobForm] = useState({
     job_title: "",
     job_description: "",
@@ -193,6 +202,7 @@ export default function RecruitmentPage() {
   const { data: aiInterviews = [], isLoading: aiInterviewsLoading } = useAIInterviews();
   const { data: sourcingRuns = [], isLoading: sourcingLoading } = useSourcingRuns();
   const { data: interviewSchedules = [], isLoading: schedulesLoading } = useInterviewSchedules();
+  const { data: departments = [] } = useDepartments();
 
   const createJob = useCreateJob();
   const updateStage = useUpdateApplicationStage();
@@ -227,43 +237,108 @@ export default function RecruitmentPage() {
   };
 
   const handlePostJob = async () => {
-    const skills = jobForm.required_skills
-      ? jobForm.required_skills
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean)
-      : undefined;
+    const WEBHOOK_BASE = 'https://webhooks.zatesystems.com/webhook';
+    const tenantUuid = tenantConfig?.id || tenantId;
 
-    await createJob.mutateAsync({
-      job_title: jobForm.job_title,
-      job_description: jobForm.job_description || undefined,
-      location_city: jobForm.location_city || undefined,
-      location_country: jobForm.location_country,
-      work_location: jobForm.work_location,
-      employment_type: jobForm.employment_type,
-      required_skills: skills,
-      required_experience_years: jobForm.required_experience_years
-        ? Number(jobForm.required_experience_years)
-        : undefined,
-      salary_min: jobForm.salary_min ? Number(jobForm.salary_min) : undefined,
-      salary_max: jobForm.salary_max ? Number(jobForm.salary_max) : undefined,
-      auto_source_enabled: jobForm.auto_source_enabled,
-    });
+    const payload: any = {
+      tenant_id: tenantUuid,
+      input_type: inputMode,
+    };
 
+    if (inputMode === 'url') {
+      payload.careers_url = careersUrl;
+      payload.department_id = departmentId || null;
+      payload.priority = priority;
+    } else if (inputMode === 'text') {
+      payload.raw_text = rawText;
+      payload.department_id = departmentId || null;
+      payload.priority = priority;
+    } else {
+      const skills = jobForm.required_skills
+        ? jobForm.required_skills.split(",").map((s) => s.trim()).filter(Boolean)
+        : [];
+      payload.title = jobForm.job_title;
+      payload.job_type = jobForm.employment_type;
+      payload.experience_level = jobForm.required_experience_years || 'mid';
+      payload.location = jobForm.location_city;
+      payload.country = jobForm.location_country;
+      payload.is_remote = jobForm.work_location === 'remote';
+      payload.salary_min = jobForm.salary_min ? parseFloat(jobForm.salary_min) : null;
+      payload.salary_max = jobForm.salary_max ? parseFloat(jobForm.salary_max) : null;
+      payload.salary_currency = 'AED';
+      payload.description = jobForm.job_description;
+      payload.skills_required = skills.join(', ');
+      payload.department_id = departmentId || null;
+      payload.positions_count = 1;
+      payload.priority = priority;
+      payload.auto_source = jobForm.auto_source_enabled;
+      payload.work_location = jobForm.work_location;
+    }
+
+    try {
+      const response = await fetch(`${WEBHOOK_BASE}/hr/job/ai-create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create job posting');
+      }
+
+      const data = await response.json();
+      const jobTitle = data?.job_title || jobForm.job_title || 'New position';
+      const reqNumber = data?.requisition_number || '';
+
+      if (data?.ai_enriched) {
+        toast.success(`${jobTitle} created with AI enrichment${reqNumber ? ` (${reqNumber})` : ''}`);
+      } else {
+        toast.success(`${jobTitle} posted successfully${reqNumber ? ` (${reqNumber})` : ''}`);
+      }
+
+      // Invalidate queries to refresh job list
+      createJob.reset();
+      // Force refetch
+      await Promise.resolve();
+    } catch (error: any) {
+      // Fallback: if webhook fails for manual mode, insert directly
+      if (inputMode === 'manual') {
+        const skills = jobForm.required_skills
+          ? jobForm.required_skills.split(",").map((s) => s.trim()).filter(Boolean)
+          : undefined;
+        await createJob.mutateAsync({
+          job_title: jobForm.job_title,
+          job_description: jobForm.job_description || undefined,
+          location_city: jobForm.location_city || undefined,
+          location_country: jobForm.location_country,
+          work_location: jobForm.work_location,
+          employment_type: jobForm.employment_type,
+          required_skills: skills,
+          required_experience_years: jobForm.required_experience_years ? Number(jobForm.required_experience_years) : undefined,
+          salary_min: jobForm.salary_min ? Number(jobForm.salary_min) : undefined,
+          salary_max: jobForm.salary_max ? Number(jobForm.salary_max) : undefined,
+          auto_source_enabled: jobForm.auto_source_enabled,
+        });
+      } else {
+        toast.error(error.message || 'Failed to create job posting');
+      }
+    }
+
+    resetJobForm();
     setIsAddJobOpen(false);
+  };
+
+  const resetJobForm = () => {
     setJobForm({
-      job_title: "",
-      job_description: "",
-      location_city: "",
-      location_country: "UAE",
-      work_location: "office",
-      employment_type: "full_time",
-      required_skills: "",
-      required_experience_years: "",
-      salary_min: "",
-      salary_max: "",
-      auto_source_enabled: true,
+      job_title: "", job_description: "", location_city: "", location_country: "UAE",
+      work_location: "office", employment_type: "full_time", required_skills: "",
+      required_experience_years: "", salary_min: "", salary_max: "", auto_source_enabled: true,
     });
+    setInputMode('manual');
+    setCareersUrl("");
+    setRawText("");
+    setDepartmentId("");
+    setPriority("medium");
   };
 
   const getRecommendationColor = (rec: string | null) => {
@@ -297,144 +372,216 @@ export default function RecruitmentPage() {
               <DialogDescription>Fill in the details to post a new job opening</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Job Title *</Label>
-                <Input
-                  placeholder="e.g., Senior Software Engineer"
-                  value={jobForm.job_title}
-                  onChange={(e) => setJobForm((f) => ({ ...f, job_title: e.target.value }))}
-                />
+              {/* Input Mode Selector */}
+              <div className="flex gap-2 mb-2">
+                <Button variant={inputMode === 'manual' ? 'default' : 'outline'} size="sm" onClick={() => setInputMode('manual')}>
+                  <FormInput className="w-4 h-4 mr-1" /> Manual
+                </Button>
+                <Button variant={inputMode === 'url' ? 'default' : 'outline'} size="sm" onClick={() => setInputMode('url')}>
+                  <Globe className="w-4 h-4 mr-1" /> From URL
+                </Button>
+                <Button variant={inputMode === 'text' ? 'default' : 'outline'} size="sm" onClick={() => setInputMode('text')}>
+                  <FileText className="w-4 h-4 mr-1" /> Paste Description
+                </Button>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>City</Label>
-                  <Input
-                    placeholder="e.g., Dubai"
-                    value={jobForm.location_city}
-                    onChange={(e) => setJobForm((f) => ({ ...f, location_city: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Country</Label>
-                  <Select
-                    value={jobForm.location_country}
-                    onValueChange={(v) => setJobForm((f) => ({ ...f, location_country: v }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="UAE">UAE</SelectItem>
-                      <SelectItem value="SA">Saudi Arabia</SelectItem>
-                      <SelectItem value="US">United States</SelectItem>
-                      <SelectItem value="UK">United Kingdom</SelectItem>
-                      <SelectItem value="IN">India</SelectItem>
-                      <SelectItem value="OTHER">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Work Location</Label>
-                  <Select
-                    value={jobForm.work_location}
-                    onValueChange={(v) => setJobForm((f) => ({ ...f, work_location: v }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="office">Office</SelectItem>
-                      <SelectItem value="hybrid">Hybrid</SelectItem>
-                      <SelectItem value="remote">Remote</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Employment Type</Label>
-                  <Select
-                    value={jobForm.employment_type}
-                    onValueChange={(v) => setJobForm((f) => ({ ...f, employment_type: v }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="full_time">Full-time</SelectItem>
-                      <SelectItem value="part_time">Part-time</SelectItem>
-                      <SelectItem value="contract">Contract</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Salary Min</Label>
-                  <Input
-                    type="number"
-                    placeholder="e.g., 15000"
-                    value={jobForm.salary_min}
-                    onChange={(e) => setJobForm((f) => ({ ...f, salary_min: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Salary Max</Label>
-                  <Input
-                    type="number"
-                    placeholder="e.g., 25000"
-                    value={jobForm.salary_max}
-                    onChange={(e) => setJobForm((f) => ({ ...f, salary_max: e.target.value }))}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Required Skills</Label>
-                <Input
-                  placeholder="e.g., React, TypeScript, Node.js (comma-separated)"
-                  value={jobForm.required_skills}
-                  onChange={(e) => setJobForm((f) => ({ ...f, required_skills: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Required Experience (years)</Label>
-                <Input
-                  type="number"
-                  placeholder="e.g., 3"
-                  value={jobForm.required_experience_years}
-                  onChange={(e) => setJobForm((f) => ({ ...f, required_experience_years: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Job Description</Label>
-                <Textarea
-                  placeholder="Describe the role, responsibilities, and requirements..."
-                  rows={5}
-                  value={jobForm.job_description}
-                  onChange={(e) => setJobForm((f) => ({ ...f, job_description: e.target.value }))}
-                />
-              </div>
-              <div className="flex items-center justify-between p-3 bg-primary/5 rounded-lg border border-primary/20">
-                <div className="flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-primary" />
-                  <div>
-                    <p className="text-sm font-medium">Auto-source candidates</p>
-                    <p className="text-xs text-muted-foreground">AI will find matching candidates automatically</p>
+
+              {inputMode === 'url' && (
+                <div className="space-y-4">
+                  <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 flex items-start gap-2">
+                    <Sparkles className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                    <p className="text-sm text-muted-foreground">Paste any job posting URL — AI will extract title, skills, requirements, and salary automatically</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Job Posting URL or Careers Page URL</Label>
+                    <Input placeholder="https://company.com/careers/role-name" value={careersUrl} onChange={(e) => setCareersUrl(e.target.value)} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Department (optional)</Label>
+                      <Select value={departmentId} onValueChange={setDepartmentId}>
+                        <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
+                        <SelectContent>
+                          {departments.map((d) => (<SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Priority</Label>
+                      <Select value={priority} onValueChange={setPriority}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="low">Low</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="high">High</SelectItem>
+                          <SelectItem value="urgent">Urgent</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
-                <Switch
-                  checked={jobForm.auto_source_enabled}
-                  onCheckedChange={(v) => setJobForm((f) => ({ ...f, auto_source_enabled: v }))}
-                />
-              </div>
+              )}
+
+              {inputMode === 'text' && (
+                <div className="space-y-4">
+                  <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 flex items-start gap-2">
+                    <Sparkles className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                    <p className="text-sm text-muted-foreground">AI will extract: job title, required skills, experience level, employment type, salary range, and more</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Paste Job Description</Label>
+                    <Textarea placeholder="Paste the full job description here. AI will extract all details automatically..." value={rawText} onChange={(e) => setRawText(e.target.value)} rows={10} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Department (optional)</Label>
+                      <Select value={departmentId} onValueChange={setDepartmentId}>
+                        <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
+                        <SelectContent>
+                          {departments.map((d) => (<SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Priority</Label>
+                      <Select value={priority} onValueChange={setPriority}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="low">Low</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="high">High</SelectItem>
+                          <SelectItem value="urgent">Urgent</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {inputMode === 'manual' && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Job Title *</Label>
+                    <Input placeholder="e.g., Senior Software Engineer" value={jobForm.job_title} onChange={(e) => setJobForm((f) => ({ ...f, job_title: e.target.value }))} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>City</Label>
+                      <Input placeholder="e.g., Dubai" value={jobForm.location_city} onChange={(e) => setJobForm((f) => ({ ...f, location_city: e.target.value }))} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Country</Label>
+                      <Select value={jobForm.location_country} onValueChange={(v) => setJobForm((f) => ({ ...f, location_country: v }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="UAE">UAE</SelectItem>
+                          <SelectItem value="SA">Saudi Arabia</SelectItem>
+                          <SelectItem value="US">United States</SelectItem>
+                          <SelectItem value="UK">United Kingdom</SelectItem>
+                          <SelectItem value="IN">India</SelectItem>
+                          <SelectItem value="OTHER">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Work Location</Label>
+                      <Select value={jobForm.work_location} onValueChange={(v) => setJobForm((f) => ({ ...f, work_location: v }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="office">Office</SelectItem>
+                          <SelectItem value="hybrid">Hybrid</SelectItem>
+                          <SelectItem value="remote">Remote</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Employment Type</Label>
+                      <Select value={jobForm.employment_type} onValueChange={(v) => setJobForm((f) => ({ ...f, employment_type: v }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="full_time">Full-time</SelectItem>
+                          <SelectItem value="part_time">Part-time</SelectItem>
+                          <SelectItem value="contract">Contract</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Salary Min</Label>
+                      <Input type="number" placeholder="e.g., 15000" value={jobForm.salary_min} onChange={(e) => setJobForm((f) => ({ ...f, salary_min: e.target.value }))} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Salary Max</Label>
+                      <Input type="number" placeholder="e.g., 25000" value={jobForm.salary_max} onChange={(e) => setJobForm((f) => ({ ...f, salary_max: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Required Skills</Label>
+                    <Input placeholder="e.g., React, TypeScript, Node.js (comma-separated)" value={jobForm.required_skills} onChange={(e) => setJobForm((f) => ({ ...f, required_skills: e.target.value }))} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Required Experience (years)</Label>
+                    <Input type="number" placeholder="e.g., 3" value={jobForm.required_experience_years} onChange={(e) => setJobForm((f) => ({ ...f, required_experience_years: e.target.value }))} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Department (optional)</Label>
+                      <Select value={departmentId} onValueChange={setDepartmentId}>
+                        <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
+                        <SelectContent>
+                          {departments.map((d) => (<SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Priority</Label>
+                      <Select value={priority} onValueChange={setPriority}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="low">Low</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="high">High</SelectItem>
+                          <SelectItem value="urgent">Urgent</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Job Description</Label>
+                    <Textarea placeholder="Describe the role, responsibilities, and requirements..." rows={5} value={jobForm.job_description} onChange={(e) => setJobForm((f) => ({ ...f, job_description: e.target.value }))} />
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-primary/5 rounded-lg border border-primary/20">
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-5 w-5 text-primary" />
+                      <div>
+                        <p className="text-sm font-medium">Auto-source candidates</p>
+                        <p className="text-xs text-muted-foreground">AI will find matching candidates automatically</p>
+                      </div>
+                    </div>
+                    <Switch checked={jobForm.auto_source_enabled} onCheckedChange={(v) => setJobForm((f) => ({ ...f, auto_source_enabled: v }))} />
+                  </div>
+                </div>
+              )}
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddJobOpen(false)}>
+              <Button variant="outline" onClick={() => { setIsAddJobOpen(false); resetJobForm(); }}>
                 Cancel
               </Button>
-              <Button onClick={handlePostJob} disabled={!jobForm.job_title || createJob.isPending}>
+              <Button
+                onClick={handlePostJob}
+                disabled={
+                  (inputMode === 'manual' && !jobForm.job_title) ||
+                  (inputMode === 'url' && !careersUrl) ||
+                  (inputMode === 'text' && !rawText) ||
+                  createJob.isPending
+                }
+              >
                 {createJob.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Post Job
+                {inputMode === 'manual' ? 'Post Job' : (
+                  <><Sparkles className="h-4 w-4 mr-1" /> Create with AI</>
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -557,7 +704,14 @@ export default function RecruitmentPage() {
                           <Briefcase className="h-6 w-6 text-primary" />
                         </div>
                         <div>
-                          <h4 className="font-semibold">{job.job_title}</h4>
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-semibold">{job.job_title}</h4>
+                            {(job as any).ai_enriched && (
+                              <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/20">
+                                <Sparkles className="w-3 h-3 mr-1" /> AI Enhanced
+                              </Badge>
+                            )}
+                          </div>
                           <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1 flex-wrap">
                             {job.location_city && (
                               <span className="flex items-center gap-1">
