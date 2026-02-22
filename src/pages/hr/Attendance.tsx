@@ -10,17 +10,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { AnimatedNumber } from '@/components/hr/AnimatedNumber';
+import { LiveClock } from '@/components/hr/LiveClock';
 import { 
-  Clock, 
-  MapPin, 
-  Users, 
-  UserCheck, 
-  UserX, 
-  AlertTriangle,
-  CalendarDays,
-  Download,
-  Timer,
-  TrendingUp
+  Clock, MapPin, Users, UserCheck, UserX, AlertTriangle,
+  CalendarDays, Download, Timer, TrendingUp
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -41,9 +36,7 @@ export default function AttendancePage() {
               location: { lat: position.coords.latitude, lng: position.coords.longitude }
             });
           },
-          () => {
-            checkIn.mutate({ employee_id: 'current' });
-          }
+          () => checkIn.mutate({ employee_id: 'current' })
         );
       } else {
         checkIn.mutate({ employee_id: 'current' });
@@ -58,34 +51,10 @@ export default function AttendancePage() {
   };
 
   const stats = [
-    { 
-      label: 'Present', 
-      value: data?.summary?.present || 0, 
-      icon: UserCheck, 
-      color: 'text-chart-2',
-      bgColor: 'bg-chart-2/10'
-    },
-    { 
-      label: 'Absent', 
-      value: data?.summary?.absent || 0, 
-      icon: UserX, 
-      color: 'text-destructive',
-      bgColor: 'bg-destructive/10'
-    },
-    { 
-      label: 'Late', 
-      value: data?.summary?.late || 0, 
-      icon: AlertTriangle, 
-      color: 'text-chart-4',
-      bgColor: 'bg-chart-4/10'
-    },
-    { 
-      label: 'On Leave', 
-      value: data?.summary?.on_leave || 0, 
-      icon: CalendarDays, 
-      color: 'text-chart-3',
-      bgColor: 'bg-chart-3/10'
-    },
+    { label: 'Present', value: data?.summary?.present || 0, icon: UserCheck, color: 'text-chart-2', bgColor: 'bg-chart-2/10' },
+    { label: 'Absent', value: data?.summary?.absent || 0, icon: UserX, color: 'text-destructive', bgColor: 'bg-destructive/10' },
+    { label: 'Late', value: data?.summary?.late || 0, icon: AlertTriangle, color: 'text-chart-4', bgColor: 'bg-chart-4/10' },
+    { label: 'On Leave', value: data?.summary?.on_leave || 0, icon: CalendarDays, color: 'text-chart-3', bgColor: 'bg-chart-3/10' },
   ];
 
   const getStatusBadge = (status: string) => {
@@ -104,7 +73,7 @@ export default function AttendancePage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -113,40 +82,37 @@ export default function AttendancePage() {
             Track and manage {t('staff').toLowerCase()} attendance
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-        </div>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Download className="h-4 w-4 mr-2" />
+                Export
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Download attendance report</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
 
-      {/* Clock In/Out Card */}
-      <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
-        <CardContent className="p-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-4">
-              <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-                <Clock className="h-8 w-8 text-primary" />
+      {/* Large Clock + Check In/Out */}
+      <Card className="border-primary/20 bg-gradient-to-r from-primary/5 via-primary/3 to-transparent overflow-hidden">
+        <CardContent className="p-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="flex items-center gap-6">
+              <div className="h-20 w-20 rounded-2xl bg-primary/10 flex items-center justify-center">
+                <Clock className="h-10 w-10 text-primary" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Current Time</p>
-                <p className="text-3xl font-bold tabular-nums">
-                  {format(new Date(), 'HH:mm:ss')}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {format(new Date(), 'EEEE, MMMM d, yyyy')}
-                </p>
-              </div>
+              <LiveClock />
             </div>
             <div className="flex items-center gap-3">
               <Button 
                 size="lg" 
                 onClick={handleCheckIn}
                 disabled={checkIn.isPending}
-                className="gap-2"
+                className="gap-2 h-14 px-8 text-base shadow-lg hover:shadow-xl transition-all"
               >
-                <MapPin className="h-4 w-4" />
+                <MapPin className="h-5 w-5" />
                 {checkIn.isPending ? 'Checking in...' : 'Check In'}
               </Button>
               <Button 
@@ -154,9 +120,9 @@ export default function AttendancePage() {
                 variant="outline"
                 onClick={handleCheckOut}
                 disabled={checkOut.isPending}
-                className="gap-2"
+                className="gap-2 h-14 px-8 text-base"
               >
-                <Timer className="h-4 w-4" />
+                <Timer className="h-5 w-5" />
                 {checkOut.isPending ? 'Checking out...' : 'Check Out'}
               </Button>
             </div>
@@ -167,14 +133,14 @@ export default function AttendancePage() {
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {stats.map((stat) => (
-          <Card key={stat.label}>
+          <Card key={stat.label} className="hover:shadow-md transition-shadow">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className={`h-10 w-10 rounded-lg ${stat.bgColor} flex items-center justify-center`}>
                   <stat.icon className={`h-5 w-5 ${stat.color}`} />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{stat.value}</p>
+                  <p className="text-2xl font-bold"><AnimatedNumber value={stat.value} /></p>
                   <p className="text-sm text-muted-foreground">{stat.label}</p>
                 </div>
               </div>
@@ -186,18 +152,9 @@ export default function AttendancePage() {
       {/* Main Content */}
       <Tabs defaultValue="list" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="list" className="gap-2">
-            <Users className="h-4 w-4" />
-            Attendance List
-          </TabsTrigger>
-          <TabsTrigger value="calendar" className="gap-2">
-            <CalendarDays className="h-4 w-4" />
-            Calendar View
-          </TabsTrigger>
-          <TabsTrigger value="analytics" className="gap-2">
-            <TrendingUp className="h-4 w-4" />
-            Analytics
-          </TabsTrigger>
+          <TabsTrigger value="list" className="gap-2"><Users className="h-4 w-4" />Attendance List</TabsTrigger>
+          <TabsTrigger value="calendar" className="gap-2"><CalendarDays className="h-4 w-4" />Calendar View</TabsTrigger>
+          <TabsTrigger value="analytics" className="gap-2"><TrendingUp className="h-4 w-4" />Analytics</TabsTrigger>
         </TabsList>
 
         <TabsContent value="list" className="space-y-4">
@@ -213,9 +170,7 @@ export default function AttendancePage() {
                     className="w-auto"
                   />
                   <Select value={filterDepartment} onValueChange={setFilterDepartment}>
-                    <SelectTrigger className="w-[150px]">
-                      <SelectValue placeholder="Department" />
-                    </SelectTrigger>
+                    <SelectTrigger className="w-[150px]"><SelectValue placeholder="Department" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Departments</SelectItem>
                       <SelectItem value="engineering">Engineering</SelectItem>
@@ -229,9 +184,7 @@ export default function AttendancePage() {
             <CardContent>
               {isLoading ? (
                 <div className="space-y-3">
-                  {[...Array(5)].map((_, i) => (
-                    <Skeleton key={i} className="h-12 w-full" />
-                  ))}
+                  {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
                 </div>
               ) : data?.records && data.records.length > 0 ? (
                 <Table>
@@ -247,14 +200,14 @@ export default function AttendancePage() {
                   </TableHeader>
                   <TableBody>
                     {data.records.map((record) => (
-                      <TableRow key={record.id}>
+                      <TableRow key={record.id} className="hover:bg-muted/50 transition-colors">
                         <TableCell className="font-medium">{record.employee_name}</TableCell>
                         <TableCell>{record.check_in_time || '-'}</TableCell>
                         <TableCell>{record.check_out_time || '-'}</TableCell>
                         <TableCell>{record.work_hours ? `${record.work_hours}h` : (record.total_hours ? `${record.total_hours}h` : '-')}</TableCell>
                         <TableCell>
                           {record.overtime_hours ? (
-                            <span className="text-chart-4">{record.overtime_hours}h OT</span>
+                            <Badge variant="outline" className="bg-chart-4/10 text-chart-4">{record.overtime_hours}h OT</Badge>
                           ) : '-'}
                         </TableCell>
                         <TableCell>{getStatusBadge(record.status)}</TableCell>
@@ -265,8 +218,8 @@ export default function AttendancePage() {
               ) : (
                 <div className="text-center py-12">
                   <Clock className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                  <p className="text-muted-foreground">No attendance records for this date</p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="font-medium text-muted-foreground">No attendance records for this date</p>
+                  <p className="text-sm text-muted-foreground mt-1">
                     {t('staffs')} will appear here when they check in
                   </p>
                 </div>
@@ -294,22 +247,28 @@ export default function AttendancePage() {
 
         <TabsContent value="analytics">
           <div className="grid md:grid-cols-2 gap-4">
-            <Card>
+            <Card className="hover:shadow-md transition-shadow">
               <CardHeader>
                 <CardTitle>Attendance Trends</CardTitle>
                 <CardDescription>Weekly attendance rate</CardDescription>
               </CardHeader>
               <CardContent className="h-64 flex items-center justify-center">
-                <p className="text-muted-foreground">No trend data available yet</p>
+                <div className="text-center">
+                  <TrendingUp className="h-10 w-10 mx-auto text-muted-foreground/30 mb-3" />
+                  <p className="text-muted-foreground">Trend data will populate with more attendance records</p>
+                </div>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="hover:shadow-md transition-shadow">
               <CardHeader>
                 <CardTitle>Late Arrivals</CardTitle>
                 <CardDescription>Top late arrivals this month</CardDescription>
               </CardHeader>
               <CardContent className="h-64 flex items-center justify-center">
-                <p className="text-muted-foreground">No data available</p>
+                <div className="text-center">
+                  <AlertTriangle className="h-10 w-10 mx-auto text-muted-foreground/30 mb-3" />
+                  <p className="text-muted-foreground">No late arrival data available yet</p>
+                </div>
               </CardContent>
             </Card>
           </div>
