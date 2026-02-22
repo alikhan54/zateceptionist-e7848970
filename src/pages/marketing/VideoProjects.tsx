@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase, callWebhook } from '@/integrations/supabase/client';
+import { supabase, callWebhook, WEBHOOKS } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -57,7 +57,7 @@ export default function VideoProjects() {
       return data || [];
     },
     enabled: !!tenantConfig?.id,
-    refetchInterval: 30000,
+    refetchInterval: 15000,
   });
 
   const createProject = useMutation({
@@ -112,7 +112,7 @@ export default function VideoProjects() {
       await supabase.from('video_projects').update({ status: 'generating' }).eq('id', project.id);
       queryClient.invalidateQueries({ queryKey: ['video_projects'] });
 
-      const result = await callWebhook('marketing/video-generate', {
+      const result = await callWebhook(WEBHOOKS.VIDEO_GENERATE, {
         project_id: project.id,
         title: project.title,
         description: project.description || '',
@@ -139,12 +139,12 @@ export default function VideoProjects() {
       } else {
         await supabase.from('video_projects').update({ status: 'draft' }).eq('id', project.id);
         queryClient.invalidateQueries({ queryKey: ['video_projects'] });
-        toast({ title: 'Script generation unavailable', variant: 'destructive' });
+        toast({ title: '⚠️ AI generation service unavailable', description: 'Check that the marketing workflow is active in n8n. Status reset to draft — you can retry.', variant: 'destructive' });
       }
     } catch (err: any) {
       await supabase.from('video_projects').update({ status: 'draft' }).eq('id', project.id);
       queryClient.invalidateQueries({ queryKey: ['video_projects'] });
-      toast({ title: 'Failed', description: err.message, variant: 'destructive' });
+      toast({ title: '⚠️ AI generation service unavailable', description: 'Check that the marketing workflow is active in n8n. You can retry.', variant: 'destructive' });
     } finally {
       setGeneratingScriptId(null);
     }
