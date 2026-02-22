@@ -15,53 +15,41 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 import {
-  Search,
-  Plus,
-  Mail,
-  MessageSquare,
-  Phone,
-  Calendar as CalendarIcon,
-  Copy,
-  Eye,
-  Send,
-  CheckCircle,
-  XCircle,
-  Clock,
-  RefreshCw,
-  Users,
-  ChevronLeft,
-  ChevronRight,
-  AlertCircle,
-  FileEdit,
-  Megaphone,
-  Sparkles,
-  UserPlus,
-  Star
+  Search, Plus, Mail, MessageSquare, Phone, Calendar as CalendarIcon, Copy, Eye, Send,
+  CheckCircle, XCircle, Clock, RefreshCw, Users, ChevronLeft, ChevronRight,
+  AlertCircle, FileEdit, Megaphone, Sparkles, UserPlus, Star, ShieldCheck, Loader2,
 } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, addMonths, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths } from 'date-fns';
 
-const channelIcons: Record<string, React.ReactNode> = {
-  whatsapp: <MessageSquare className="h-4 w-4 text-green-500" />,
-  email: <Mail className="h-4 w-4 text-blue-500" />,
-  sms: <Phone className="h-4 w-4 text-purple-500" />,
+// M2: Channel icons with emoji
+const channelDisplay: Record<string, { icon: React.ReactNode; emoji: string }> = {
+  whatsapp: { icon: <MessageSquare className="h-4 w-4 text-green-500" />, emoji: '💬' },
+  email: { icon: <Mail className="h-4 w-4 text-blue-500" />, emoji: '📧' },
+  sms: { icon: <Phone className="h-4 w-4 text-purple-500" />, emoji: '📱' },
+  instagram: { icon: <Sparkles className="h-4 w-4 text-pink-500" />, emoji: '📸' },
+  facebook: { icon: <Users className="h-4 w-4 text-blue-600" />, emoji: '📘' },
 };
 
-const statusConfig: Record<string, { color: string; icon: React.ReactNode }> = {
-  draft: { color: 'bg-muted text-muted-foreground', icon: <FileEdit className="h-3 w-3" /> },
-  scheduled: { color: 'bg-blue-500/10 text-blue-500', icon: <Clock className="h-3 w-3" /> },
-  sending: { color: 'bg-yellow-500/10 text-yellow-500', icon: <RefreshCw className="h-3 w-3 animate-spin" /> },
-  sent: { color: 'bg-green-500/10 text-green-500', icon: <CheckCircle className="h-3 w-3" /> },
-  active: { color: 'bg-green-500/10 text-green-500', icon: <CheckCircle className="h-3 w-3" /> },
-  completed: { color: 'bg-green-500/10 text-green-500', icon: <CheckCircle className="h-3 w-3" /> },
-  cancelled: { color: 'bg-muted text-muted-foreground', icon: <XCircle className="h-3 w-3" /> },
-  failed: { color: 'bg-destructive/10 text-destructive', icon: <AlertCircle className="h-3 w-3" /> },
+const statusConfig: Record<string, { color: string; icon: React.ReactNode; label: string }> = {
+  draft: { color: 'bg-muted text-muted-foreground', icon: <FileEdit className="h-3 w-3" />, label: 'Draft' },
+  scheduled: { color: 'bg-blue-500/10 text-blue-500', icon: <Clock className="h-3 w-3" />, label: 'Scheduled' },
+  sending: { color: 'bg-yellow-500/10 text-yellow-500', icon: <Loader2 className="h-3 w-3 animate-spin" />, label: 'Sending...' },
+  sent: { color: 'bg-green-500/10 text-green-500', icon: <CheckCircle className="h-3 w-3" />, label: 'Completed ✓' },
+  active: { color: 'bg-green-500/10 text-green-500', icon: <CheckCircle className="h-3 w-3" />, label: 'Active' },
+  completed: { color: 'bg-green-500/10 text-green-500', icon: <CheckCircle className="h-3 w-3" />, label: 'Completed ✓' },
+  cancelled: { color: 'bg-muted text-muted-foreground', icon: <XCircle className="h-3 w-3" />, label: 'Cancelled' },
+  failed: { color: 'bg-destructive/10 text-destructive', icon: <AlertCircle className="h-3 w-3" />, label: 'Failed' },
 };
 
 export default function CampaignCentral() {
-  const { isLoading: tenantLoading } = useTenant();
+  const { tenantConfig, isLoading: tenantLoading } = useTenant();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { campaigns, isLoading, stats, sendCampaign, deleteCampaign, refetch } = useMarketingCampaigns();
 
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
@@ -73,6 +61,8 @@ export default function CampaignCentral() {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [activeTab, setActiveTab] = useState('all');
+  // M2: Confirmation dialog
+  const [confirmSendCampaign, setConfirmSendCampaign] = useState<any | null>(null);
 
   const filterCampaigns = (statusFilter?: string[]) => {
     return campaigns.filter((campaign: any) => {
@@ -101,41 +91,47 @@ export default function CampaignCentral() {
 
   const scheduledCampaigns = campaigns.filter((c: any) => c.status === 'scheduled' && c.scheduled_at);
 
-  const handleSelectAll = (checked: boolean) => {
-    setSelectedCampaigns(checked ? filteredCampaigns.map((c: any) => c.id) : []);
-  };
-
-  const handleSelectCampaign = (id: string, checked: boolean) => {
-    setSelectedCampaigns(prev => checked ? [...prev, id] : prev.filter(cid => cid !== id));
-  };
-
-  const handleBulkDelete = async () => {
-    for (const id of selectedCampaigns) {
-      await deleteCampaign.mutateAsync(id);
-    }
-    setSelectedCampaigns([]);
-  };
-
-  const handleViewDetails = (campaign: any) => {
-    setSelectedCampaign(campaign);
-    setIsDetailOpen(true);
-  };
-
+  const handleSelectAll = (checked: boolean) => setSelectedCampaigns(checked ? filteredCampaigns.map((c: any) => c.id) : []);
+  const handleSelectCampaign = (id: string, checked: boolean) => setSelectedCampaigns(prev => checked ? [...prev, id] : prev.filter(cid => cid !== id));
+  const handleBulkDelete = async () => { for (const id of selectedCampaigns) await deleteCampaign.mutateAsync(id); setSelectedCampaigns([]); };
+  const handleViewDetails = (campaign: any) => { setSelectedCampaign(campaign); setIsDetailOpen(true); };
   const getCalendarDays = () => eachDayOfInterval({ start: startOfMonth(calendarMonth), end: endOfMonth(calendarMonth) });
-
   const getCampaignsForDay = (day: Date) => scheduledCampaigns.filter((c: any) => c.scheduled_at && isSameDay(new Date(c.scheduled_at), day));
-
   const getDeliveryRate = (c: any) => c.sent_count > 0 ? Math.round((c.delivered_count / c.sent_count) * 100) : 0;
   const getReadRate = (c: any) => c.delivered_count > 0 ? Math.round((c.opened_count / c.delivered_count) * 100) : 0;
+  const getClickRate = (c: any) => c.opened_count > 0 ? Math.round((c.clicked_count / c.opened_count) * 100) : 0;
+
+  // M2: Confirm and send
+  const handleConfirmSend = async () => {
+    if (!confirmSendCampaign) return;
+    try {
+      await sendCampaign.mutateAsync(confirmSendCampaign.id);
+      toast({ title: "Campaign Sent! 🚀", description: `"${confirmSendCampaign.name}" is being delivered.` });
+    } catch { toast({ title: "Send Failed", variant: "destructive" }); }
+    setConfirmSendCampaign(null);
+  };
+
+  // M2: Duplicate campaign
+  const handleDuplicate = async (campaign: any) => {
+    if (!tenantConfig?.id) return;
+    try {
+      const { error } = await supabase.from('marketing_campaigns').insert({
+        tenant_id: tenantConfig.id,
+        name: `${campaign.name} (Copy)`,
+        type: campaign.type,
+        status: 'draft',
+        content: campaign.content,
+        subject: campaign.subject,
+        sent_count: 0, delivered_count: 0, opened_count: 0, clicked_count: 0, converted_count: 0,
+      });
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['marketing_campaigns'] });
+      toast({ title: "Campaign Duplicated" });
+    } catch { toast({ title: "Duplication Failed", variant: "destructive" }); }
+  };
 
   if (tenantLoading || isLoading) {
-    return (
-      <div className="space-y-6">
-        <Skeleton className="h-10 w-64" />
-        <div className="flex gap-4"><Skeleton className="h-10 flex-1" /><Skeleton className="h-10 w-32" /><Skeleton className="h-10 w-32" /></div>
-        <Skeleton className="h-96" />
-      </div>
-    );
+    return (<div className="space-y-6"><Skeleton className="h-10 w-64" /><div className="flex gap-4"><Skeleton className="h-10 flex-1" /><Skeleton className="h-10 w-32" /><Skeleton className="h-10 w-32" /></div><Skeleton className="h-96" /></div>);
   }
 
   return (
@@ -149,51 +145,28 @@ export default function CampaignCentral() {
         <Button><Plus className="h-4 w-4 mr-2" />New Campaign</Button>
       </div>
 
+      {/* M2: DNC Banner */}
+      <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-400 text-sm">
+        <ShieldCheck className="h-4 w-4 shrink-0" />
+        <span>Campaigns with DNC/consent filtering active. Blocked contacts are automatically excluded from sends.</span>
+      </div>
+
       {/* Filters */}
       <Card>
         <CardContent className="pt-4">
           <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search campaigns..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
-            </div>
+            <div className="relative flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search campaigns..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10" /></div>
             <Select value={channelFilter} onValueChange={setChannelFilter}>
               <SelectTrigger className="w-[140px]"><SelectValue placeholder="Channel" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Channels</SelectItem>
-                <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                <SelectItem value="email">Email</SelectItem>
-                <SelectItem value="sms">SMS</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-[140px]"><SelectValue placeholder="Type" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="marketing">Marketing</SelectItem>
-                <SelectItem value="promotional">Promotional</SelectItem>
-                <SelectItem value="reminder">Reminder</SelectItem>
-                <SelectItem value="follow_up">Follow Up</SelectItem>
-              </SelectContent>
+              <SelectContent><SelectItem value="all">All Channels</SelectItem><SelectItem value="whatsapp">💬 WhatsApp</SelectItem><SelectItem value="email">📧 Email</SelectItem><SelectItem value="sms">📱 SMS</SelectItem><SelectItem value="instagram">📸 Instagram</SelectItem><SelectItem value="facebook">📘 Facebook</SelectItem></SelectContent>
             </Select>
             <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="gap-2">
-                  <CalendarIcon className="h-4 w-4" />
-                  {dateRange.from ? (dateRange.to ? <>{format(dateRange.from, 'MMM d')} - {format(dateRange.to, 'MMM d')}</> : format(dateRange.from, 'MMM d, yyyy')) : 'Date Range'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar mode="range" selected={{ from: dateRange.from, to: dateRange.to }} onSelect={(range) => setDateRange({ from: range?.from, to: range?.to })} numberOfMonths={2} />
-              </PopoverContent>
+              <PopoverTrigger asChild><Button variant="outline" className="gap-2"><CalendarIcon className="h-4 w-4" />{dateRange.from ? (dateRange.to ? <>{format(dateRange.from, 'MMM d')} - {format(dateRange.to, 'MMM d')}</> : format(dateRange.from, 'MMM d, yyyy')) : 'Date Range'}</Button></PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end"><Calendar mode="range" selected={{ from: dateRange.from, to: dateRange.to }} onSelect={range => setDateRange({ from: range?.from, to: range?.to })} numberOfMonths={2} /></PopoverContent>
             </Popover>
           </div>
-
           {selectedCampaigns.length > 0 && (
-            <div className="flex items-center gap-4 mt-4 pt-4 border-t">
-              <span className="text-sm text-muted-foreground">{selectedCampaigns.length} selected</span>
-              <Button variant="outline" size="sm" onClick={handleBulkDelete}><Copy className="h-4 w-4 mr-1" />Delete</Button>
-            </div>
+            <div className="flex items-center gap-4 mt-4 pt-4 border-t"><span className="text-sm text-muted-foreground">{selectedCampaigns.length} selected</span><Button variant="outline" size="sm" onClick={handleBulkDelete}><Copy className="h-4 w-4 mr-1" />Delete</Button></div>
           )}
         </CardContent>
       </Card>
@@ -202,10 +175,7 @@ export default function CampaignCentral() {
       {campaigns.length === 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              AI-Suggested Campaigns
-            </CardTitle>
+            <CardTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-primary" />AI-Suggested Campaigns</CardTitle>
             <CardDescription>One-click to create these proven campaigns</CardDescription>
           </CardHeader>
           <CardContent className="grid md:grid-cols-3 gap-4">
@@ -213,23 +183,12 @@ export default function CampaignCentral() {
               { name: 'Welcome Campaign', desc: 'Automatically welcome new leads with a personalized sequence.', icon: UserPlus, stat: '+40% conversion', emails: '5-email sequence' },
               { name: 'Re-engagement', desc: 'Win back inactive customers with special offers.', icon: RefreshCw, stat: '+25% reactivation', emails: '3-email sequence' },
               { name: 'Review Request', desc: 'Automatically request reviews after service completion.', icon: Star, stat: '+60% reviews', emails: '2-email sequence' },
-            ].map((item) => (
+            ].map(item => (
               <Card key={item.name} className="border-dashed hover:border-primary cursor-pointer transition-colors">
                 <CardContent className="pt-6">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2 rounded-lg bg-primary/10">
-                      <item.icon className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium">{item.name}</p>
-                      <p className="text-xs text-muted-foreground">{item.emails}</p>
-                    </div>
-                  </div>
+                  <div className="flex items-center gap-3 mb-3"><div className="p-2 rounded-lg bg-primary/10"><item.icon className="h-5 w-5 text-primary" /></div><div><p className="font-medium">{item.name}</p><p className="text-xs text-muted-foreground">{item.emails}</p></div></div>
                   <p className="text-sm text-muted-foreground mb-3">{item.desc}</p>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-primary">{item.stat}</span>
-                    <Button size="sm">Create</Button>
-                  </div>
+                  <div className="flex items-center justify-between text-xs"><span className="text-primary">{item.stat}</span><Button size="sm">Create</Button></div>
                 </CardContent>
               </Card>
             ))}
@@ -246,22 +205,19 @@ export default function CampaignCentral() {
           <TabsTrigger value="calendar" className="gap-2"><CalendarIcon className="h-4 w-4" />Calendar</TabsTrigger>
         </TabsList>
 
-        {['all', 'scheduled', 'drafts', 'completed'].map((tab) => (
+        {['all', 'scheduled', 'drafts', 'completed'].map(tab => (
           <TabsContent key={tab} value={tab}>
             <Card>
               <CardContent className="pt-4">
                 {filteredCampaigns.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Megaphone className="h-12 w-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
-                    <p className="text-muted-foreground">No campaigns found</p>
-                  </div>
+                  <div className="text-center py-12"><Megaphone className="h-12 w-12 mx-auto mb-4 opacity-50 text-muted-foreground" /><p className="text-muted-foreground">No campaigns found</p></div>
                 ) : (
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-12"><Checkbox checked={selectedCampaigns.length === filteredCampaigns.length && filteredCampaigns.length > 0} onCheckedChange={handleSelectAll} /></TableHead>
                         <TableHead>Campaign</TableHead>
-                        <TableHead>Type</TableHead>
+                        <TableHead>Channel</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Sent</TableHead>
                         <TableHead>Performance</TableHead>
@@ -269,59 +225,43 @@ export default function CampaignCentral() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredCampaigns.map((campaign: any) => (
-                        <TableRow key={campaign.id}>
-                          <TableCell><Checkbox checked={selectedCampaigns.includes(campaign.id)} onCheckedChange={(checked) => handleSelectCampaign(campaign.id, !!checked)} /></TableCell>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">{campaign.name}</p>
-                              <p className="text-sm text-muted-foreground">{campaign.scheduled_at ? format(new Date(campaign.scheduled_at), 'MMM d, h:mm a') : format(new Date(campaign.created_at), 'MMM d')}</p>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              {channelIcons[campaign.type] || <Mail className="h-4 w-4" />}
-                              <span className="capitalize">{campaign.type}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={`gap-1 ${(statusConfig[campaign.status] || statusConfig.draft).color}`}>
-                              {(statusConfig[campaign.status] || statusConfig.draft).icon}
-                              {campaign.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              <Users className="h-4 w-4 text-muted-foreground" />
-                              {campaign.sent_count} / {campaign.delivered_count}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {campaign.sent_count > 0 ? (
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-2 text-xs">
-                                  <span className="w-16">Delivered:</span>
-                                  <Progress value={getDeliveryRate(campaign)} className="h-1.5 flex-1" />
-                                  <span className="w-8 text-right">{getDeliveryRate(campaign)}%</span>
+                      {filteredCampaigns.map((campaign: any) => {
+                        const sc = statusConfig[campaign.status] || statusConfig.draft;
+                        const ch = channelDisplay[campaign.type];
+                        return (
+                          <TableRow key={campaign.id} className="hover:bg-muted/50 transition-colors cursor-pointer">
+                            <TableCell><Checkbox checked={selectedCampaigns.includes(campaign.id)} onCheckedChange={checked => handleSelectCampaign(campaign.id, !!checked)} /></TableCell>
+                            <TableCell>
+                              <div><p className="font-medium">{campaign.name}</p><p className="text-sm text-muted-foreground">{campaign.scheduled_at ? format(new Date(campaign.scheduled_at), 'MMM d, h:mm a') : format(new Date(campaign.created_at), 'MMM d')}</p></div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">{ch?.emoji || '📧'} <span className="capitalize">{campaign.type}</span></div>
+                            </TableCell>
+                            <TableCell><Badge className={`gap-1 ${sc.color}`}>{sc.icon}{sc.label}</Badge></TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1"><Users className="h-4 w-4 text-muted-foreground" />{campaign.sent_count || 0}</div>
+                            </TableCell>
+                            <TableCell>
+                              {campaign.sent_count > 0 ? (
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2 text-xs"><span className="w-16">Delivered:</span><Progress value={getDeliveryRate(campaign)} className="h-1.5 flex-1" /><span className="w-8 text-right">{getDeliveryRate(campaign)}%</span></div>
+                                  <div className="flex items-center gap-2 text-xs"><span className="w-16">Opened:</span><Progress value={getReadRate(campaign)} className="h-1.5 flex-1" /><span className="w-8 text-right">{getReadRate(campaign)}%</span></div>
+                                  <div className="flex items-center gap-2 text-xs"><span className="w-16">Clicked:</span><Progress value={getClickRate(campaign)} className="h-1.5 flex-1" /><span className="w-8 text-right">{getClickRate(campaign)}%</span></div>
                                 </div>
-                                <div className="flex items-center gap-2 text-xs">
-                                  <span className="w-16">Opened:</span>
-                                  <Progress value={getReadRate(campaign)} className="h-1.5 flex-1" />
-                                  <span className="w-8 text-right">{getReadRate(campaign)}%</span>
-                                </div>
+                              ) : <span className="text-sm text-muted-foreground">—</span>}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-1">
+                                <Button variant="ghost" size="icon" onClick={() => handleViewDetails(campaign)}><Eye className="h-4 w-4" /></Button>
+                                {campaign.status === 'draft' && (
+                                  <Button variant="ghost" size="icon" onClick={() => setConfirmSendCampaign(campaign)}><Send className="h-4 w-4" /></Button>
+                                )}
+                                <Button variant="ghost" size="icon" onClick={() => handleDuplicate(campaign)}><Copy className="h-4 w-4" /></Button>
                               </div>
-                            ) : <span className="text-sm text-muted-foreground">—</span>}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-1">
-                              <Button variant="ghost" size="icon" onClick={() => handleViewDetails(campaign)}><Eye className="h-4 w-4" /></Button>
-                              {campaign.status === 'draft' && (
-                                <Button variant="ghost" size="icon" onClick={() => sendCampaign.mutateAsync(campaign.id)}><Send className="h-4 w-4" /></Button>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 )}
@@ -330,7 +270,6 @@ export default function CampaignCentral() {
           </TabsContent>
         ))}
 
-        {/* Calendar Tab */}
         <TabsContent value="calendar">
           <Card>
             <CardHeader>
@@ -345,26 +284,16 @@ export default function CampaignCentral() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-7 gap-px bg-border rounded-lg overflow-hidden">
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                  <div key={day} className="bg-muted p-2 text-center text-sm font-medium">{day}</div>
-                ))}
-                {getCalendarDays().map((day, idx) => {
+                {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(day => <div key={day} className="bg-muted p-2 text-center text-sm font-medium">{day}</div>)}
+                {getCalendarDays().map(day => {
                   const dayCampaigns = getCampaignsForDay(day);
                   const isToday = isSameDay(day, new Date());
-                  const startPadding = idx === 0 ? new Array(day.getDay()).fill(null) : [];
                   return (
-                    <div key={day.toISOString()}>
-                      {startPadding.map((_, i) => <div key={`pad-${i}`} className="bg-background min-h-24 p-2" />)}
-                      <div className={`bg-background min-h-24 p-2 ${isToday ? 'ring-2 ring-primary ring-inset' : ''}`}>
-                        <span className={`text-sm ${isToday ? 'font-bold text-primary' : ''}`}>{format(day, 'd')}</span>
-                        <div className="mt-1 space-y-1">
-                          {dayCampaigns.slice(0, 2).map((c: any) => (
-                            <div key={c.id} className="text-xs p-1 rounded bg-primary/10 text-primary truncate cursor-pointer hover:bg-primary/20" onClick={() => handleViewDetails(c)}>
-                              {c.name}
-                            </div>
-                          ))}
-                          {dayCampaigns.length > 2 && <p className="text-xs text-muted-foreground">+{dayCampaigns.length - 2} more</p>}
-                        </div>
+                    <div key={day.toISOString()} className={`bg-background min-h-24 p-2 ${isToday ? 'ring-2 ring-primary ring-inset' : ''}`}>
+                      <span className={`text-sm ${isToday ? 'font-bold text-primary' : ''}`}>{format(day, 'd')}</span>
+                      <div className="mt-1 space-y-1">
+                        {dayCampaigns.slice(0, 2).map((c: any) => <div key={c.id} className="text-xs p-1 rounded bg-primary/10 text-primary truncate cursor-pointer hover:bg-primary/20" onClick={() => handleViewDetails(c)}>{c.name}</div>)}
+                        {dayCampaigns.length > 2 && <p className="text-xs text-muted-foreground">+{dayCampaigns.length - 2} more</p>}
                       </div>
                     </div>
                   );
@@ -375,21 +304,38 @@ export default function CampaignCentral() {
         </TabsContent>
       </Tabs>
 
+      {/* M2: Send Confirmation Dialog */}
+      <Dialog open={!!confirmSendCampaign} onOpenChange={() => setConfirmSendCampaign(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Send Campaign</DialogTitle>
+            <DialogDescription>Ready to send "{confirmSendCampaign?.name}" to all eligible customers? DNC and consent are auto-checked.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmSendCampaign(null)}>Cancel</Button>
+            <Button onClick={handleConfirmSend} disabled={sendCampaign.isPending}>
+              {sendCampaign.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Sending...</> : <><Send className="h-4 w-4 mr-2" /> Confirm Send</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Campaign Detail Sheet */}
       <Sheet open={isDetailOpen} onOpenChange={setIsDetailOpen}>
         <SheetContent className="sm:max-w-xl overflow-y-auto">
           {selectedCampaign && (
             <>
-              <SheetHeader>
-                <SheetTitle className="flex items-center gap-2">{selectedCampaign.name}</SheetTitle>
-              </SheetHeader>
+              <SheetHeader><SheetTitle className="flex items-center gap-2">{selectedCampaign.name}</SheetTitle></SheetHeader>
               <div className="space-y-6 mt-6">
-                <Badge className={`gap-1 ${(statusConfig[selectedCampaign.status] || statusConfig.draft).color}`}>
-                  {(statusConfig[selectedCampaign.status] || statusConfig.draft).icon}
-                  {selectedCampaign.status}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge className={`gap-1 ${(statusConfig[selectedCampaign.status] || statusConfig.draft).color}`}>
+                    {(statusConfig[selectedCampaign.status] || statusConfig.draft).icon}
+                    {(statusConfig[selectedCampaign.status] || statusConfig.draft).label}
+                  </Badge>
+                  {selectedCampaign.scheduled_at && <span className="text-xs text-muted-foreground">{format(new Date(selectedCampaign.scheduled_at), 'PPP p')}</span>}
+                </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <Card><CardContent className="pt-4"><div className="text-center"><p className="text-2xl font-bold">{selectedCampaign.sent_count}</p><p className="text-sm text-muted-foreground">Messages Sent</p></div></CardContent></Card>
+                  <Card><CardContent className="pt-4"><div className="text-center"><p className="text-2xl font-bold">{selectedCampaign.sent_count}</p><p className="text-sm text-muted-foreground">Sent</p></div></CardContent></Card>
                   <Card><CardContent className="pt-4"><div className="text-center"><p className="text-2xl font-bold">{selectedCampaign.delivered_count}</p><p className="text-sm text-muted-foreground">Delivered</p></div></CardContent></Card>
                   <Card><CardContent className="pt-4"><div className="text-center"><p className="text-2xl font-bold text-green-500">{getDeliveryRate(selectedCampaign)}%</p><p className="text-sm text-muted-foreground">Delivery Rate</p></div></CardContent></Card>
                   <Card><CardContent className="pt-4"><div className="text-center"><p className="text-2xl font-bold text-primary">{getReadRate(selectedCampaign)}%</p><p className="text-sm text-muted-foreground">Open Rate</p></div></CardContent></Card>
