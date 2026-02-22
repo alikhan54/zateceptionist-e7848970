@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { useTenant } from "@/contexts/TenantContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { callWebhook } from "@/integrations/supabase/client";
+import { supabase, callWebhook } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,11 +18,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { formatDistanceToNow, format } from "date-fns";
+import { formatDistanceToNow, format, startOfMonth } from "date-fns";
 import {
   Plus, Mail, MessageSquare, Clock, Users, Play, Pause, Trash2, Sparkles,
-  Target, Layers, BarChart3, ArrowRight, Phone, Copy, MoreVertical, Info,
-  Activity, Zap, CheckCircle2,
+  Target, Layers, BarChart3, ArrowRight, Phone, Copy, MoreVertical,
+  Activity, Zap, CheckCircle2, TrendingUp,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
@@ -58,6 +57,7 @@ export default function MarketingSequences() {
   const [formData, setFormData] = useState({ name: "", description: "", trigger_type: "manual" });
   const [enrollDialogOpen, setEnrollDialogOpen] = useState(false);
   const [selectedSequenceForEnroll, setSelectedSequenceForEnroll] = useState<any>(null);
+  const [enrollmentDetail, setEnrollmentDetail] = useState<any>(null);
 
   // ─── Queries ───
   const { data: customers = [] } = useQuery({
@@ -83,10 +83,11 @@ export default function MarketingSequences() {
         .select('*')
         .eq('tenant_id', tenantConfig.id)
         .order('enrolled_at', { ascending: false })
-        .limit(100);
+        .limit(200);
       return data || [];
     },
     enabled: !!tenantConfig?.id,
+    refetchInterval: 30000,
   });
 
   const { data: sequences = [], isLoading } = useQuery({
@@ -107,7 +108,27 @@ export default function MarketingSequences() {
     enabled: !!tenantConfig?.id,
   });
 
-  // Execution log from system_events
+  // Global AI Brain activity feed
+  const { data: aiBrainActivity = [] } = useQuery({
+    queryKey: ['sequence-ai-activity', tenantConfig?.id],
+    queryFn: async () => {
+      if (!tenantConfig?.id) return [];
+      const { data } = await supabase
+        .from('system_events' as any)
+        .select('*')
+        .eq('tenant_id', tenantConfig.id)
+        .in('event_type', ['sequence_step_executed', 'sequence_enrollment'])
+        .order('created_at', { ascending: false })
+        .limit(20);
+      return (data || []).map((e: any) => ({
+        ...e,
+        parsed_data: typeof e.event_data === 'string' ? JSON.parse(e.event_data) : e.event_data || {},
+      }));
+    },
+    enabled: !!tenantConfig?.id,
+  });
+
+  // Execution log for detail sequence
   const { data: executionLogs = [] } = useQuery({
     queryKey: ['sequence-execution-log', tenantConfig?.id, detailSequence?.id],
     queryFn: async () => {
@@ -119,13 +140,32 @@ export default function MarketingSequences() {
         .in('event_type', ['sequence_step_executed', 'sequence_enrollment'])
         .order('created_at', { ascending: false })
         .limit(30);
-      // Filter by sequence_id in event_data
       return (data || []).filter((e: any) => {
         const ed = typeof e.event_data === 'string' ? JSON.parse(e.event_data) : e.event_data;
         return ed?.sequence_id === detailSequence.id || JSON.stringify(ed).includes(detailSequence.id);
       });
     },
     enabled: !!tenantConfig?.id && !!detailSequence?.id,
+  });
+
+  // Enrollment detail events
+  const { data: enrollmentEvents = [] } = useQuery({
+    queryKey: ['enrollment-detail-events', tenantConfig?.id, enrollmentDetail?.id],
+    queryFn: async () => {
+      if (!tenantConfig?.id || !enrollmentDetail?.lead_id) return [];
+      const { data } = await supabase
+        .from('system_events' as any)
+        .select('*')
+        .eq('tenant_id', tenantConfig.id)
+        .eq('event_type', 'sequence_step_executed')
+        .order('created_at', { ascending: false })
+        .limit(50);
+      return (data || []).filter((e: any) => {
+        const ed = typeof e.event_data === 'string' ? JSON.parse(e.event_data) : e.event_data;
+        return ed?.lead_id === enrollmentDetail.lead_id;
+      });
+    },
+    enabled: !!tenantConfig?.id && !!enrollmentDetail?.lead_id,
   });
 
   // ─── Mutations ───
@@ -176,7 +216,7 @@ export default function MarketingSequences() {
         reason: 'manual_enrollment_from_ui',
       }, tenantConfig.id);
       if (result.success) {
-        toast({ title: "✅ Lead enrolled in sequence!", description: "AI Brain will execute the first step within 2 hours." });
+        toast({ title: "✅ Lead enrolled!", description: "AI Brain will execute the first step within 2 hours." });
         refetchEnrollments();
         setEnrollDialogOpen(false);
       } else {
@@ -187,22 +227,32 @@ export default function MarketingSequences() {
     }
   };
 
-  // ─── Computed ───
+  // ─── Global Dashboard Computed ───
+  const activeEnrollmentsGlobal = enrollments.filter((e: any) => e.status === 'active').length;
+  const monthStart = startOfMonth(new Date()).toISOString();
+  const completedThisMonth = enrollments.filter((e: any) => e.status === 'completed' && e.completed_at && e.completed_at >= monthStart).length;
+  const completedEnrollments = enrollments.filter((e: any) => e.status === 'completed');
+  const avgSteps = completedEnrollments.length > 0
+    ? Math.round(completedEnrollments.reduce((s: number, e: any) => s + (e.current_step || e.steps_completed || 0), 0) / completedEnrollments.length * 10) / 10
+    : 0;
+  
+  // Channel mix
+  const channelMix = enrollments.reduce((acc: Record<string, number>, e: any) => {
+    if (e.emails_sent > 0) acc.email = (acc.email || 0) + e.emails_sent;
+    if (e.whatsapp_sent > 0) acc.whatsapp = (acc.whatsapp || 0) + e.whatsapp_sent;
+    if (e.calls_made > 0) acc.calls = (acc.calls || 0) + e.calls_made;
+    return acc;
+  }, {} as Record<string, number>);
+
   const activeCount = sequences.filter((s: any) => s.is_active).length;
   const totalEnrolled = sequences.reduce((sum: number, s: any) => sum + (s.enrolled_count || 0), 0);
-  const totalCompleted = sequences.reduce((sum: number, s: any) => sum + (s.completed_count || 0), 0);
   const avgConversion = sequences.length > 0 ? Math.round(sequences.reduce((sum: number, s: any) => sum + (s.conversion_rate || 0), 0) / sequences.length * 10) / 10 : 0;
-
-  // Enrollments for detail sequence
   const detailEnrollments = detailSequence ? enrollments.filter((e: any) => e.sequence_id === detailSequence.id || e.sequence_name === detailSequence.name) : [];
 
   if (isLoading) {
     return <div className="space-y-6 p-6"><Skeleton className="h-8 w-64" /><div className="grid grid-cols-4 gap-4">{[1,2,3,4].map(i => <Skeleton key={i} className="h-24" />)}</div></div>;
   }
 
-  // ═══════════════════════════════════════════
-  // RENDER
-  // ═══════════════════════════════════════════
   return (
     <div className="space-y-6 p-6 animate-fade-in">
       {/* Info banner */}
@@ -223,23 +273,68 @@ export default function MarketingSequences() {
         </Button>
       </div>
 
-      {/* Global dashboard stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      {/* ═══ GLOBAL SEQUENCE DASHBOARD ═══ */}
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
         {[
           { label: "Total Sequences", value: sequences.length, icon: Layers, color: "text-purple-500", bg: "bg-purple-500/10" },
           { label: "Active", value: activeCount, icon: Play, color: "text-green-500", bg: "bg-green-500/10" },
-          { label: "Total Enrolled", value: totalEnrolled.toLocaleString(), icon: Users, color: "text-blue-500", bg: "bg-blue-500/10" },
-          { label: "Completed", value: totalCompleted.toLocaleString(), icon: CheckCircle2, color: "text-emerald-500", bg: "bg-emerald-500/10" },
-          { label: "Avg Conversion", value: `${avgConversion}%`, icon: Target, color: "text-amber-500", bg: "bg-amber-500/10" },
+          { label: "Active Enrollments", value: activeEnrollmentsGlobal, icon: Users, color: "text-blue-500", bg: "bg-blue-500/10" },
+          { label: "Completed (Month)", value: completedThisMonth, icon: CheckCircle2, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+          { label: "Avg Steps", value: avgSteps, icon: TrendingUp, color: "text-amber-500", bg: "bg-amber-500/10" },
+          { label: "Avg Conversion", value: `${avgConversion}%`, icon: Target, color: "text-pink-500", bg: "bg-pink-500/10" },
         ].map((stat, i) => (
-          <Card key={i} className="hover:shadow-md transition-shadow">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className={`p-2.5 rounded-xl ${stat.bg}`}><stat.icon className={`h-5 w-5 ${stat.color}`} /></div>
-              <div><p className="text-2xl font-bold">{stat.value}</p><p className="text-xs text-muted-foreground">{stat.label}</p></div>
+          <Card key={i}>
+            <CardContent className="p-3 flex items-center gap-2">
+              <div className={`p-2 rounded-xl ${stat.bg}`}><stat.icon className={`h-4 w-4 ${stat.color}`} /></div>
+              <div><p className="text-xl font-bold">{stat.value}</p><p className="text-[10px] text-muted-foreground">{stat.label}</p></div>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      {/* Channel mix */}
+      {Object.keys(channelMix).length > 0 && (
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <span className="font-medium">Channel Mix:</span>
+          {channelMix.email && <Badge variant="outline" className="text-xs">📧 Email: {channelMix.email}</Badge>}
+          {channelMix.whatsapp && <Badge variant="outline" className="text-xs">💬 WhatsApp: {channelMix.whatsapp}</Badge>}
+          {channelMix.calls && <Badge variant="outline" className="text-xs">📞 Calls: {channelMix.calls}</Badge>}
+        </div>
+      )}
+
+      {/* ═══ AI BRAIN ACTIVITY FEED ═══ */}
+      {aiBrainActivity.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2"><Activity className="h-4 w-4 text-purple-500" /> AI Brain Activity</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="max-h-[200px]">
+              <div className="space-y-2">
+                {aiBrainActivity.map((event: any) => {
+                  const ed = event.parsed_data;
+                  const isExec = event.event_type === 'sequence_step_executed';
+                  return (
+                    <div key={event.id} className="flex items-start gap-2 p-2 rounded-lg bg-muted/20 text-xs">
+                      <span>{isExec ? '🤖' : '📧'}</span>
+                      <div className="flex-1">
+                        <p>
+                          {isExec
+                            ? `AI executed Step ${ed.step_number || '?'} for lead ${(ed.lead_id || '').slice(0, 8)}... via ${ed.channel || 'email'}${ed.reason ? ` — reason: ${ed.reason}` : ''}`
+                            : `Lead ${(ed.lead_id || '').slice(0, 8)}... enrolled in ${ed.sequence_name || 'sequence'}${ed.reason ? ` (reason: ${ed.reason})` : ''}`
+                          }
+                        </p>
+                        {ed.ai_decision && <p className="text-muted-foreground mt-0.5">AI decision: {ed.ai_decision}</p>}
+                        <p className="text-muted-foreground">{event.created_at ? format(new Date(event.created_at), "MMM d, h:mm a") : ''}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Sequence cards */}
       {sequences.length === 0 ? (
@@ -257,7 +352,6 @@ export default function MarketingSequences() {
             const steps = Array.isArray(sequence.steps) ? sequence.steps : [];
             const seqEnrollments = enrollments.filter((e: any) => e.sequence_id === sequence.id || e.sequence_name === sequence.name);
             const activeEnrollments = seqEnrollments.filter((e: any) => e.status === 'active').length;
-            const completedEnrollments = seqEnrollments.filter((e: any) => e.status === 'completed').length;
 
             return (
               <Card key={sequence.id} className={`relative overflow-hidden transition-all hover:shadow-md cursor-pointer ${sequence.is_active ? "border-green-500/30" : ""}`} onClick={() => { setDetailSequence(sequence); setDetailTab("steps"); }}>
@@ -286,7 +380,6 @@ export default function MarketingSequences() {
                   {sequence.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{sequence.description}</p>}
                 </CardHeader>
                 <CardContent className="pt-0">
-                  {/* Step flow */}
                   <div className="flex items-center gap-1 mb-3 overflow-hidden flex-wrap">
                     {steps.slice(0, 6).map((step: any, idx: number) => {
                       const cfg = stepTypeConfig[step.type] || stepTypeConfig.email;
@@ -307,7 +400,6 @@ export default function MarketingSequences() {
                     {steps.length > 6 && <span className="text-xs text-muted-foreground ml-1">+{steps.length - 6}</span>}
                     {steps.length === 0 && <span className="text-xs text-muted-foreground italic">No steps configured</span>}
                   </div>
-
                   <div className="grid grid-cols-4 gap-2 text-center mb-3">
                     <div><p className="text-lg font-bold">{steps.length}</p><p className="text-[10px] text-muted-foreground">Steps</p></div>
                     <div><p className="text-lg font-bold">{(sequence.enrolled_count || 0).toLocaleString()}</p><p className="text-[10px] text-muted-foreground">Enrolled</p></div>
@@ -345,7 +437,6 @@ export default function MarketingSequences() {
 
           {detailSequence && (
             <>
-              {/* Summary stats */}
               <div className="grid grid-cols-4 gap-3">
                 <div className="p-3 rounded-xl bg-muted/50 text-center">
                   <p className="text-2xl font-bold text-blue-600">{(detailSequence.enrolled_count || 0).toLocaleString()}</p>
@@ -372,7 +463,6 @@ export default function MarketingSequences() {
                   <TabsTrigger value="log">Execution Log</TabsTrigger>
                 </TabsList>
 
-                {/* Steps Pipeline */}
                 <TabsContent value="steps" className="flex-1 overflow-auto">
                   <ScrollArea className="max-h-[400px]">
                     <div className="space-y-2 p-1">
@@ -381,7 +471,6 @@ export default function MarketingSequences() {
                         const StepIcon = cfg.icon;
                         const delayText = step.delay_hours === 0 ? "Immediately" : step.delay_hours < 24 ? `After ${step.delay_hours}h` : `After ${Math.round(step.delay_hours / 24)}d`;
                         const hasBranching = step.conditions && Object.keys(step.conditions).length > 0;
-
                         return (
                           <div key={idx}>
                             <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 border">
@@ -396,7 +485,6 @@ export default function MarketingSequences() {
                                   {hasBranching && <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/30">Branching</Badge>}
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-0.5 truncate">{step.subject || step.content?.slice(0, 80) || "No content"}</p>
-                                {/* Branching details */}
                                 {hasBranching && (
                                   <div className="mt-1.5 space-y-0.5">
                                     {step.conditions.if_opened && <p className="text-[10px] text-green-600">↗️ If opened → Jump to Step {step.conditions.if_opened}</p>}
@@ -413,14 +501,12 @@ export default function MarketingSequences() {
                         <div className="text-center py-8 text-muted-foreground">
                           <Layers className="h-8 w-8 mx-auto mb-2 opacity-40" />
                           <p className="text-sm">No steps configured yet</p>
-                          <p className="text-xs">Steps are added via the AI Brain or n8n workflows</p>
                         </div>
                       )}
                     </div>
                   </ScrollArea>
                 </TabsContent>
 
-                {/* Enrollments */}
                 <TabsContent value="enrollments" className="flex-1 overflow-auto">
                   {detailEnrollments.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
@@ -440,11 +526,12 @@ export default function MarketingSequences() {
                             <TableHead>Step</TableHead>
                             <TableHead>Enrolled At</TableHead>
                             <TableHead>Enrolled By</TableHead>
+                            <TableHead></TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {detailEnrollments.map((e: any) => (
-                            <TableRow key={e.id}>
+                            <TableRow key={e.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setEnrollmentDetail(e)}>
                               <TableCell className="font-mono text-xs">{e.lead_id?.slice(0, 8)}...</TableCell>
                               <TableCell>
                                 <Badge variant="outline" className={
@@ -457,6 +544,7 @@ export default function MarketingSequences() {
                               <TableCell className="text-sm">{e.current_step || 0}/{e.total_steps || '?'}</TableCell>
                               <TableCell className="text-xs">{e.enrolled_at ? formatDistanceToNow(new Date(e.enrolled_at), { addSuffix: true }) : '—'}</TableCell>
                               <TableCell className="text-xs">{e.enrolled_by || 'AI Brain'}</TableCell>
+                              <TableCell><Button size="sm" variant="ghost" className="text-xs">Details</Button></TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -465,7 +553,6 @@ export default function MarketingSequences() {
                   )}
                 </TabsContent>
 
-                {/* Execution Log */}
                 <TabsContent value="log" className="flex-1 overflow-auto">
                   {executionLogs.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
@@ -487,8 +574,8 @@ export default function MarketingSequences() {
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs font-medium">
                                   {isExecution
-                                    ? `🤖 Step ${ed.step_number || '?'} executed for lead ${(ed.lead_id || '').slice(0, 8)}... via ${ed.channel || 'email'}`
-                                    : `📧 Lead ${(ed.lead_id || '').slice(0, 8)}... enrolled ${ed.reason ? `(reason: ${ed.reason})` : ''}`
+                                    ? `🤖 Step ${ed.step_number || '?'} executed for lead ${(ed.lead_id || '').slice(0, 8)}... via ${ed.channel || 'email'}${ed.reason ? ` — reason: ${ed.reason}` : ''}`
+                                    : `📧 Lead ${(ed.lead_id || '').slice(0, 8)}... enrolled${ed.reason ? ` (reason: ${ed.reason})` : ''}`
                                   }
                                 </p>
                                 {ed.ai_decision && <p className="text-[10px] text-muted-foreground mt-0.5">AI decision: {ed.ai_decision}</p>}
@@ -512,6 +599,89 @@ export default function MarketingSequences() {
                 </Button>
               </div>
             </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── ENROLLMENT DETAIL DIALOG ─── */}
+      <Dialog open={!!enrollmentDetail} onOpenChange={() => setEnrollmentDetail(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-blue-500" /> Enrollment Detail
+            </DialogTitle>
+            <DialogDescription>Lead {enrollmentDetail?.lead_id?.slice(0, 12)}...</DialogDescription>
+          </DialogHeader>
+          {enrollmentDetail && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 rounded-lg bg-muted/50 text-center">
+                  <Badge variant="outline" className={
+                    enrollmentDetail.status === 'active' ? 'bg-blue-500/15 text-blue-600' :
+                    enrollmentDetail.status === 'completed' ? 'bg-green-500/15 text-green-600' :
+                    'bg-muted'
+                  }>{enrollmentDetail.status}</Badge>
+                  <p className="text-xs text-muted-foreground mt-1">Status</p>
+                </div>
+                <div className="p-3 rounded-lg bg-muted/50 text-center">
+                  <p className="text-xl font-bold">{enrollmentDetail.current_step || 0}/{enrollmentDetail.total_steps || '?'}</p>
+                  <p className="text-xs text-muted-foreground">Progress</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium">Engagement Stats</h4>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  {[
+                    { label: 'Emails Sent', value: enrollmentDetail.emails_sent || 0 },
+                    { label: 'Emails Opened', value: enrollmentDetail.emails_opened || 0 },
+                    { label: 'Emails Clicked', value: enrollmentDetail.emails_clicked || 0 },
+                    { label: 'WA Sent', value: enrollmentDetail.whatsapp_sent || 0 },
+                    { label: 'WA Delivered', value: enrollmentDetail.whatsapp_delivered || 0 },
+                    { label: 'WA Read', value: enrollmentDetail.whatsapp_read || 0 },
+                    { label: 'Calls Made', value: enrollmentDetail.calls_made || 0 },
+                    { label: 'Calls Answered', value: enrollmentDetail.calls_answered || 0 },
+                    { label: 'Replies', value: enrollmentDetail.replies_received || 0 },
+                  ].map((s, i) => (
+                    <div key={i} className="p-2 rounded bg-muted/30">
+                      <p className="text-lg font-bold">{s.value}</p>
+                      <p className="text-[10px] text-muted-foreground">{s.label}</p>
+                    </div>
+                  ))}
+                </div>
+                {(() => {
+                  const sent = (enrollmentDetail.emails_sent || 0) + (enrollmentDetail.whatsapp_sent || 0);
+                  const engaged = (enrollmentDetail.emails_opened || 0) + (enrollmentDetail.whatsapp_read || 0) + (enrollmentDetail.replies_received || 0);
+                  const rate = sent > 0 ? Math.round(engaged / sent * 100) : 0;
+                  return (
+                    <p className="text-xs text-muted-foreground text-center mt-1">
+                      Engagement Rate: <strong className={rate > 50 ? 'text-green-600' : rate > 20 ? 'text-amber-600' : 'text-red-600'}>{rate}%</strong>
+                    </p>
+                  );
+                })()}
+              </div>
+
+              {/* Step timeline */}
+              {enrollmentEvents.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium">Step Timeline</h4>
+                  <ScrollArea className="max-h-[200px]">
+                    <div className="space-y-1.5">
+                      {enrollmentEvents.map((ev: any) => {
+                        const ed = typeof ev.event_data === 'string' ? JSON.parse(ev.event_data) : ev.event_data || {};
+                        return (
+                          <div key={ev.id} className="flex items-center gap-2 text-xs p-2 rounded bg-muted/20">
+                            <Zap className="h-3 w-3 text-blue-500 shrink-0" />
+                            <span>Step {ed.step_number || '?'} via {ed.channel || 'email'}</span>
+                            <span className="text-muted-foreground ml-auto">{ev.created_at ? format(new Date(ev.created_at), "MMM d, h:mm a") : ''}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
+                </div>
+              )}
+            </div>
           )}
         </DialogContent>
       </Dialog>
