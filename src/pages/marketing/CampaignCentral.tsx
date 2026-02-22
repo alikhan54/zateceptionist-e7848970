@@ -15,16 +15,17 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Search, Plus, Mail, MessageSquare, Phone, Calendar as CalendarIcon, Copy, Eye, Send,
   CheckCircle, XCircle, Clock, RefreshCw, Users, ChevronLeft, ChevronRight,
-  AlertCircle, FileEdit, Megaphone, Sparkles, UserPlus, Star, ShieldCheck, Loader2,
+  AlertCircle, FileEdit, Megaphone, Sparkles, UserPlus, Star, ShieldCheck, Loader2, Activity,
 } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths } from 'date-fns';
+import { format, formatDistanceToNow, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths } from 'date-fns';
 
 // M2: Channel icons with emoji
 const channelDisplay: Record<string, { icon: React.ReactNode; emoji: string }> = {
@@ -52,6 +53,8 @@ export default function CampaignCentral() {
   const queryClient = useQueryClient();
   const { campaigns, isLoading, stats, sendCampaign, deleteCampaign, refetch } = useMarketingCampaigns();
 
+  const tenantUuid = tenantConfig?.id || null;
+
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [channelFilter, setChannelFilter] = useState<string>('all');
@@ -61,8 +64,39 @@ export default function CampaignCentral() {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [activeTab, setActiveTab] = useState('all');
-  // M2: Confirmation dialog
   const [confirmSendCampaign, setConfirmSendCampaign] = useState<any | null>(null);
+
+  // Campaign activity log
+  const { data: campaignLog = [] } = useQuery({
+    queryKey: ['campaign_activity_log', tenantUuid],
+    queryFn: async () => {
+      if (!tenantUuid) return [];
+      const { data, error } = await supabase
+        .from('system_events')
+        .select('*')
+        .eq('tenant_id', tenantUuid)
+        .ilike('event_type', '%campaign%')
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (error) { console.warn('Campaign log query failed:', error); return []; }
+      return data || [];
+    },
+    enabled: !!tenantUuid,
+    refetchInterval: 15000,
+  });
+
+  // Connected channels from tenantConfig
+  const connectedChannels = useMemo(() => {
+    const channels: string[] = [];
+    const tc = tenantConfig as any;
+    if (tc?.smtp_host || tc?.resend_api_key) channels.push('📧 Email');
+    if (tc?.whatsapp_phone_id) channels.push('💬 WhatsApp');
+    if (tc?.meta_page_token) channels.push('📘 Facebook');
+    if (tc?.instagram_page_id) channels.push('📸 Instagram');
+    if (tc?.linkedin_access_token) channels.push('🔗 LinkedIn');
+    return channels;
+  }, [tenantConfig]);
+
 
   const filterCampaigns = (statusFilter?: string[]) => {
     return campaigns.filter((campaign: any) => {
@@ -101,13 +135,15 @@ export default function CampaignCentral() {
   const getReadRate = (c: any) => c.delivered_count > 0 ? Math.round((c.opened_count / c.delivered_count) * 100) : 0;
   const getClickRate = (c: any) => c.opened_count > 0 ? Math.round((c.clicked_count / c.opened_count) * 100) : 0;
 
-  // M2: Confirm and send
+  // Confirm and send with detailed toast
   const handleConfirmSend = async () => {
     if (!confirmSendCampaign) return;
     try {
       await sendCampaign.mutateAsync(confirmSendCampaign.id);
-      toast({ title: "Campaign Sent! 🚀", description: `"${confirmSendCampaign.name}" is being delivered.` });
-    } catch { toast({ title: "Send Failed", variant: "destructive" }); }
+      toast({ title: "🚀 Campaign Sending!", description: `Sending "${confirmSendCampaign.name}" — check back in a few minutes for delivery stats.` });
+    } catch (err: any) {
+      toast({ title: "Send Failed", description: err?.message || "Check n8n logs for details", variant: "destructive" });
+    }
     setConfirmSendCampaign(null);
   };
 
@@ -145,10 +181,17 @@ export default function CampaignCentral() {
         <Button><Plus className="h-4 w-4 mr-2" />New Campaign</Button>
       </div>
 
-      {/* M2: DNC Banner */}
-      <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-400 text-sm">
-        <ShieldCheck className="h-4 w-4 shrink-0" />
-        <span>Campaigns with DNC/consent filtering active. Blocked contacts are automatically excluded from sends.</span>
+      {/* DNC Banner with connected channels */}
+      <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-400 text-sm">
+        <ShieldCheck className="h-4 w-4 shrink-0 mt-0.5" />
+        <div>
+          <p>📋 Campaigns auto-check DNC lists and consent records before sending.</p>
+          <p className="mt-1">
+            Connected channels: {connectedChannels.length > 0
+              ? connectedChannels.join(' • ')
+              : <span className="text-muted-foreground">None configured — <a href="/settings/integrations" className="underline text-primary">Set up in Settings → Integrations</a></span>}
+          </p>
+        </div>
       </div>
 
       {/* Filters */}
@@ -253,8 +296,10 @@ export default function CampaignCentral() {
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-1">
                                 <Button variant="ghost" size="icon" onClick={() => handleViewDetails(campaign)}><Eye className="h-4 w-4" /></Button>
-                                {campaign.status === 'draft' && (
-                                  <Button variant="ghost" size="icon" onClick={() => setConfirmSendCampaign(campaign)}><Send className="h-4 w-4" /></Button>
+                                {(campaign.status === 'draft' || campaign.status === 'scheduled') && (
+                                  <TooltipProvider><Tooltip><TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" onClick={() => setConfirmSendCampaign(campaign)}><Send className="h-4 w-4" /></Button>
+                                  </TooltipTrigger><TooltipContent>Send now</TooltipContent></Tooltip></TooltipProvider>
                                 )}
                                 <Button variant="ghost" size="icon" onClick={() => handleDuplicate(campaign)}><Copy className="h-4 w-4" /></Button>
                               </div>
@@ -304,12 +349,20 @@ export default function CampaignCentral() {
         </TabsContent>
       </Tabs>
 
-      {/* M2: Send Confirmation Dialog */}
+      {/* Send Confirmation Dialog */}
       <Dialog open={!!confirmSendCampaign} onOpenChange={() => setConfirmSendCampaign(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Send Campaign</DialogTitle>
-            <DialogDescription>Ready to send "{confirmSendCampaign?.name}" to all eligible customers? DNC and consent are auto-checked.</DialogDescription>
+            <DialogDescription className="space-y-2">
+              <p>Ready to send "<span className="font-medium">{confirmSendCampaign?.name}</span>" to all eligible contacts?</p>
+              <ul className="list-none space-y-1 mt-2 text-sm">
+                <li>• DNC list will be auto-checked</li>
+                <li>• Consent verification is automatic</li>
+                <li>• Channel: <span className="font-medium capitalize">{confirmSendCampaign?.type || 'email'}</span></li>
+              </ul>
+              <p className="text-destructive text-xs mt-2">This cannot be undone.</p>
+            </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirmSendCampaign(null)}>Cancel</Button>
@@ -355,6 +408,48 @@ export default function CampaignCentral() {
           )}
         </SheetContent>
       </Sheet>
+
+      {/* Campaign Activity Log */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center gap-2"><Activity className="h-4 w-4" /> Campaign Activity Log</CardTitle>
+          <CardDescription>Recent campaign events from the automation system</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {campaignLog.length === 0 ? (
+            <div className="text-center py-6">
+              <Activity className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
+              <p className="text-sm text-muted-foreground">No campaign events yet. Send a campaign to see activity here.</p>
+            </div>
+          ) : (
+            <ScrollArea className="h-[300px]">
+              <div className="space-y-3">
+                {campaignLog.map((event: any) => {
+                  const eventData = typeof event.event_data === 'string' ? JSON.parse(event.event_data || '{}') : (event.event_data || {});
+                  const isSuccess = event.event_type?.includes('sent') || event.event_type?.includes('completed') || event.event_type?.includes('delivered');
+                  const isFail = event.event_type?.includes('failed') || event.event_type?.includes('error');
+                  const icon = isSuccess ? '🟢' : isFail ? '🔴' : '🔵';
+                  const detail = eventData.message || eventData.campaign_name || event.event_type?.replace(/_/g, ' ') || 'Event';
+                  return (
+                    <div key={event.id} className="flex items-start gap-3 p-3 rounded-lg border">
+                      <span className="text-lg">{icon}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium capitalize">{detail}</p>
+                        {eventData.channel && <p className="text-xs text-muted-foreground capitalize">Channel: {eventData.channel}</p>}
+                        {eventData.sent_count && <p className="text-xs text-muted-foreground">📧 Sent: {eventData.sent_count} {eventData.delivered_count ? `| 📬 Delivered: ${eventData.delivered_count}` : ''}</p>}
+                        {eventData.error && <p className="text-xs text-destructive mt-1">{eventData.error}</p>}
+                      </div>
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        {formatDistanceToNow(new Date(event.created_at), { addSuffix: true })}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

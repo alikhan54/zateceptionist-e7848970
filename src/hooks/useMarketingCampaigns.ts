@@ -73,6 +73,7 @@ export function useMarketingCampaigns(options?: { status?: string; type?: string
     },
     enabled: !!tenantUuid,
     staleTime: 30000,
+    refetchInterval: 15000,
   });
 
   const stats: CampaignStats = {
