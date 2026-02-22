@@ -13,17 +13,20 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { useTenant } from "@/contexts/TenantContext";
 import { useSocialPosts, useSocialAccounts } from "@/hooks/useSocialPosts";
+import { supabase } from "@/integrations/supabase/client";
 import { callWebhook, WEBHOOKS } from "@/lib/api/webhooks";
-import { format, addDays, startOfWeek, addWeeks, eachDayOfInterval, startOfMonth } from "date-fns";
+import { useQuery } from "@tanstack/react-query";
+import { format, formatDistanceToNow, addDays, startOfWeek, addWeeks, eachDayOfInterval, startOfMonth } from "date-fns";
 import {
   Instagram, Facebook, Twitter, Linkedin, Youtube, Plus, Send, Calendar as CalendarIcon,
   Clock, Image as ImageIcon, Hash, Link2, Sparkles, MessageSquare, Heart, Share2,
   Eye, MoreVertical, Edit, Trash2, Copy, RefreshCw, CheckCircle2, Settings, Users,
-  BarChart3, Inbox, Loader2, ExternalLink, AlertTriangle,
+  BarChart3, Inbox, Loader2, ExternalLink, AlertTriangle, Activity, Info,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
@@ -52,10 +55,13 @@ function combineDateAndTime(date: Date, time: string): Date {
   return combined;
 }
 
-// M1: Post status badge with lifecycle tracking
+// M1: Post status badge with lifecycle tracking + delay detection
 function PostStatusBadge({ post }: { post: any }) {
-  const isPastScheduled = post.status === "scheduled" && post.scheduled_at && new Date(post.scheduled_at).getTime() < Date.now();
-  
+  const now = Date.now();
+  const scheduledTime = post.scheduled_at ? new Date(post.scheduled_at).getTime() : 0;
+  const isPastScheduled = post.status === "scheduled" && scheduledTime < now;
+  const minutesPast = isPastScheduled ? (now - scheduledTime) / 60000 : 0;
+
   if (post.status === "published") {
     return (
       <Badge className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30 gap-1">
@@ -75,10 +81,26 @@ function PostStatusBadge({ post }: { post: any }) {
       </TooltipProvider>
     );
   }
+  if (isPastScheduled && minutesPast > 10) {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger>
+            <Badge className="bg-orange-500/15 text-orange-600 border-orange-500/30 gap-1">
+              <AlertTriangle className="h-3 w-3" /> Delayed
+            </Badge>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-xs">
+            <p>Post is queued. If Meta tokens are configured correctly in Settings &gt; Integrations, it will post on the next cron cycle (every 5 min).</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
   if (isPastScheduled) {
     return (
       <Badge className="bg-amber-500/15 text-amber-600 border-amber-500/30 gap-1 animate-pulse">
-        <Loader2 className="h-3 w-3 animate-spin" /> Processing
+        <Loader2 className="h-3 w-3 animate-spin" /> ⏳ Posting...
       </Badge>
     );
   }
@@ -129,6 +151,27 @@ export default function SocialCommander() {
   const [activeTab, setActiveTab] = useState("overview");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [publishCooldown, setPublishCooldown] = useState(false);
+
+  // Activity log query
+  const tenantUuid = tenantConfig?.id || null;
+  const { data: activityLog = [] } = useQuery({
+    queryKey: ['social_activity_log', tenantUuid],
+    queryFn: async () => {
+      if (!tenantUuid) return [];
+      const { data, error } = await supabase
+        .from('system_events')
+        .select('*')
+        .eq('tenant_id', tenantUuid)
+        .eq('event_source', 'marketing')
+        .ilike('event_type', '%social%')
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (error) { console.warn('Activity log query failed:', error); return []; }
+      return data || [];
+    },
+    enabled: !!tenantUuid,
+    refetchInterval: 15000,
+  });
 
   // M1: Platform connection status
   const platformAvailability: Record<string, { connected: boolean; reason?: string }> = {
@@ -234,11 +277,10 @@ export default function SocialCommander() {
       }
       setIsComposerOpen(false);
       resetComposer();
-      // M1: Cooldown + toast
       if (!scheduleDate) {
         setPublishCooldown(true);
         setTimeout(() => setPublishCooldown(false), 5000);
-        toast({ title: "📤 Post Queued!", description: `Publishing to ${selectedPlatforms.join(", ")} within 5 minutes...` });
+        toast({ title: "📤 Post Queued!", description: `Posting to ${selectedPlatforms.join(", ")} now. Status will update to "Published" with a direct link within 1-2 minutes.` });
       } else {
         toast({ title: "Post Scheduled", description: `Scheduled for ${format(scheduleDate, "PPP")} at ${scheduleTime}` });
       }
@@ -278,7 +320,7 @@ export default function SocialCommander() {
         <Card><CardContent className="p-4"><div className="flex items-center gap-3"><div className="p-2 rounded-lg bg-green-500/10"><Send className="h-5 w-5 text-green-500" /></div><div><p className="text-2xl font-bold">{publishedThisMonth}</p><p className="text-xs text-muted-foreground">Published This Month</p></div></div></CardContent></Card>
         <Card><CardContent className="p-4"><div className="flex items-center gap-3"><div className="p-2 rounded-lg bg-blue-500/10"><Clock className="h-5 w-5 text-blue-500" /></div><div><p className="text-2xl font-bold">{scheduledCount}</p><p className="text-xs text-muted-foreground">Scheduled</p></div></div></CardContent></Card>
         <Card><CardContent className="p-4"><div className="flex items-center gap-3"><div className="p-2 rounded-lg bg-purple-500/10"><BarChart3 className="h-5 w-5 text-purple-500" /></div><div><p className="text-2xl font-bold">{avgEngagement}%</p><p className="text-xs text-muted-foreground">Avg Engagement</p></div></div></CardContent></Card>
-        <Card><CardContent className="p-4"><div className="flex items-center gap-3"><div className="p-2 rounded-lg bg-amber-500/10"><Users className="h-5 w-5 text-amber-500" /></div><div><p className="text-2xl font-bold">{connectedAccounts.length}</p><p className="text-xs text-muted-foreground">Connected Accounts</p></div></div></CardContent></Card>
+        <Card><CardContent className="p-4"><div className="flex items-center gap-3"><div className="p-2 rounded-lg bg-amber-500/10"><Users className="h-5 w-5 text-amber-500" /></div><div><p className="text-2xl font-bold">{totalFollowers > 0 ? totalFollowers.toLocaleString() : connectedAccounts.length > 0 ? connectedAccounts.length : '—'}</p><p className="text-xs text-muted-foreground flex items-center gap-1">{totalFollowers > 0 ? 'Total Followers' : connectedAccounts.length > 0 ? 'Connected Accounts' : <span>Connect in <a href="/settings/integrations" className="underline text-primary">Settings</a></span>}<TooltipProvider><Tooltip><TooltipTrigger><Info className="h-3 w-3 text-muted-foreground" /></TooltipTrigger><TooltipContent><p>Follower counts sync from connected platforms</p></TooltipContent></Tooltip></TooltipProvider></p></div></div></CardContent></Card>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -287,6 +329,7 @@ export default function SocialCommander() {
           <TabsTrigger value="posts">Posts ({posts.length})</TabsTrigger>
           <TabsTrigger value="calendar">Calendar</TabsTrigger>
           <TabsTrigger value="insights">Insights</TabsTrigger>
+          <TabsTrigger value="activity">Activity Log</TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
@@ -447,6 +490,50 @@ export default function SocialCommander() {
 
         <TabsContent value="insights" className="space-y-4">
           <Card><CardContent className="p-8 text-center"><BarChart3 className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" /><h3 className="font-semibold">Insights Coming Soon</h3><p className="text-sm text-muted-foreground mt-1">Analytics will appear as you publish more posts</p></CardContent></Card>
+        </TabsContent>
+
+        {/* Activity Log Tab */}
+        <TabsContent value="activity" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm flex items-center gap-2"><Activity className="h-4 w-4" /> Social Activity Log</CardTitle>
+              <CardDescription>Real-time feed of social media actions by the AI Brain and system</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {activityLog.length === 0 ? (
+                <div className="text-center py-8">
+                  <Activity className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                  <p className="text-muted-foreground">No activity yet. Post to social media to see events here.</p>
+                </div>
+              ) : (
+                <ScrollArea className="h-[500px]">
+                  <div className="space-y-3">
+                    {activityLog.map((event: any) => {
+                      const eventData = typeof event.event_data === 'string' ? JSON.parse(event.event_data || '{}') : (event.event_data || {});
+                      const isSuccess = event.event_type?.includes('published') || event.event_type?.includes('success');
+                      const isFail = event.event_type?.includes('failed') || event.event_type?.includes('error');
+                      const icon = isSuccess ? '🟢' : isFail ? '🔴' : '🔵';
+                      const platform = eventData.platform || '';
+                      const detail = eventData.message || eventData.description || event.event_type?.replace(/_/g, ' ') || 'Event';
+                      return (
+                        <div key={event.id} className="flex items-start gap-3 p-3 rounded-lg border">
+                          <span className="text-lg">{icon}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium capitalize">{detail}</p>
+                            {platform && <p className="text-xs text-muted-foreground capitalize">{platform}</p>}
+                            {eventData.error && <p className="text-xs text-destructive mt-1">{eventData.error}</p>}
+                          </div>
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            {formatDistanceToNow(new Date(event.created_at), { addSuffix: true })}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 

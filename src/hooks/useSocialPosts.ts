@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, callWebhook, WEBHOOKS } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/contexts/TenantContext';
 
@@ -62,6 +62,7 @@ export function useSocialPosts(options?: { status?: PostStatus; platform?: Socia
     },
     enabled: !!tenantUuid,
     staleTime: 30000,
+    refetchInterval: 15000,
   });
 
   const stats = {
@@ -94,9 +95,24 @@ export function useSocialPosts(options?: { status?: PostStatus; platform?: Socia
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: async (data, input) => {
       queryClient.invalidateQueries({ queryKey: ['social_posts', tenantUuid] });
-      toast({ title: 'Success', description: data.status === 'scheduled' ? 'Post scheduled!' : 'Post saved as draft.' });
+      // Trigger immediate publish via webhook if publish_now
+      if (input.publish_now && data?.id && tenantUuid) {
+        try {
+          await callWebhook(WEBHOOKS.POST_SOCIAL, {
+            post_id: data.id,
+            platform: input.platform,
+            post_text: input.post_text,
+            hashtags: input.hashtags || [],
+            media_urls: input.media_urls || [],
+            tenant_id: tenantUuid,
+          }, tenantUuid);
+        } catch (webhookErr) {
+          console.warn('Immediate publish webhook failed, will retry via cron:', webhookErr);
+        }
+      }
+      toast({ title: 'Success', description: data.status === 'scheduled' ? 'Post queued for publishing!' : 'Post saved as draft.' });
     },
     onError: (err: Error) => { toast({ title: 'Failed', description: err.message, variant: 'destructive' }); },
   });
