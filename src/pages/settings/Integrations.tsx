@@ -45,8 +45,8 @@ function MarketingConnections() {
   // State for all fields — initialized from tenantConfig
   const tc = tenantConfig as any;
   const [meta, setMeta] = useState({
-    facebook_page_id: tc?.facebook_page_id || '',
-    facebook_access_token: tc?.facebook_access_token || '',
+    facebook_page_id: tc?.facebook_page_id || tc?.meta_page_id || '',
+    meta_page_token: tc?.meta_page_token || tc?.facebook_access_token || '',
     instagram_page_id: tc?.instagram_page_id || '',
   });
   const [emailProvider, setEmailProvider] = useState(tc?.email_provider || 'smtp');
@@ -94,10 +94,10 @@ function MarketingConnections() {
   };
 
   const testMeta = async () => {
-    if (!meta.facebook_access_token) { toast({ title: 'Enter token first', variant: 'destructive' }); return; }
+    if (!meta.meta_page_token) { toast({ title: 'Enter token first', variant: 'destructive' }); return; }
     setTesting('meta');
     try {
-      const res = await fetch(`https://graph.facebook.com/v18.0/me?access_token=${meta.facebook_access_token}`);
+      const res = await fetch(`https://graph.facebook.com/v18.0/me?access_token=${meta.meta_page_token}`);
       if (res.ok) {
         const data = await res.json();
         toast({ title: '🟢 Connected!', description: `Account: ${data.name || data.id}` });
@@ -151,7 +151,7 @@ function MarketingConnections() {
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center justify-between">
                 Facebook + Instagram
-                <StatusDot connected={!!meta.facebook_access_token} />
+                <StatusDot connected={!!meta.meta_page_token} />
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -166,10 +166,10 @@ function MarketingConnections() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">Facebook Access Token</Label>
+                <Label className="text-xs">Meta Page Token</Label>
                 <div className="flex gap-2">
-                  <Input type={showTokens.fb ? 'text' : 'password'} value={meta.facebook_access_token}
-                    onChange={e => setMeta(p => ({ ...p, facebook_access_token: e.target.value }))} placeholder="EAA..." className="flex-1" />
+                  <Input type={showTokens.fb ? 'text' : 'password'} value={meta.meta_page_token}
+                    onChange={e => setMeta(p => ({ ...p, meta_page_token: e.target.value }))} placeholder="EAA..." className="flex-1" />
                   <Button size="icon" variant="ghost" onClick={() => toggle('fb')}>
                     {showTokens.fb ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
