@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+// useLocation is used for prefill support
 import { useTenant } from '@/contexts/TenantContext';
 import { useHRAI } from '@/hooks/useHR';
 // @ts-ignore - useLocation for prefill support
@@ -123,8 +124,26 @@ export default function AIAssistantPage() {
     // Voice input would be implemented here
   };
 
+  // Support prefilled messages from navigation state
+  const location = useLocation();
+  useEffect(() => {
+    const prefill = (location.state as any)?.prefillMessage;
+    if (prefill && typeof prefill === 'string') {
+      setInputValue(prefill);
+      inputRef.current?.focus();
+    }
+  }, [location.state]);
+
+  const agents = [
+    { name: 'ZARA', role: 'Router', color: 'bg-primary' },
+    { name: 'ARIA', role: 'HR Ops', color: 'bg-chart-2' },
+    { name: 'RECRUIT', role: 'Hiring', color: 'bg-chart-3' },
+    { name: 'SENTINEL', role: 'Compliance', color: 'bg-chart-4' },
+    { name: 'ORACLE', role: 'Analytics', color: 'bg-chart-5' },
+  ];
+
   return (
-    <div className="h-[calc(100vh-8rem)] flex flex-col">
+    <div className="h-[calc(100vh-8rem)] flex flex-col animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
@@ -132,9 +151,21 @@ export default function AIAssistantPage() {
             <Sparkles className="h-7 w-7 text-primary" />
             HR AI Assistant
           </h1>
-          <p className="text-muted-foreground mt-1">
-            Your intelligent HR helper
-          </p>
+          <div className="flex items-center gap-3 mt-2">
+            <p className="text-muted-foreground text-sm">Powered by</p>
+            <div className="flex items-center gap-1">
+              {agents.map((agent) => (
+                <div key={agent.name} className="group relative">
+                  <div className={`h-7 w-7 rounded-full ${agent.color} flex items-center justify-center text-white text-[9px] font-bold cursor-pointer hover:scale-110 transition-transform`}>
+                    {agent.name[0]}
+                  </div>
+                  <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-popover border rounded px-2 py-0.5 text-[10px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                    {agent.name} — {agent.role}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -191,7 +222,11 @@ export default function AIAssistantPage() {
                   </Avatar>
                   <div className="bg-muted rounded-2xl px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <div className="flex gap-1">
+                        <div className="h-2 w-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <div className="h-2 w-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <div className="h-2 w-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </div>
                       <span className="text-sm text-muted-foreground">Thinking...</span>
                     </div>
                   </div>
