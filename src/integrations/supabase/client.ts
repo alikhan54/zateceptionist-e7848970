@@ -44,6 +44,9 @@ export const WEBHOOKS = {
   AB_TEST_CREATE: "marketing/ab-test-create",
   EMAIL_TEMPLATE_GENERATE: "marketing/email-template-generate",
 
+  // Video
+  VIDEO_GENERATE: "marketing/video-generate",
+
   // Marketing AI Tools
   SEQUENCE_ENROLL: "ai-tool/enroll-sequence",
   SEQUENCE_STATUS: "ai-tool/sequence-status",

@@ -72,6 +72,11 @@ function MarketingConnections() {
     medium_token: tc?.medium_token || '',
     landing_page_base_url: tc?.landing_page_base_url || '',
   });
+  const [gcal, setGcal] = useState({
+    google_client_id: tc?.google_client_id || '',
+    google_client_secret: tc?.google_client_secret || '',
+    google_refresh_token: tc?.google_refresh_token || '',
+  });
 
   const saveSection = async (section: string, data: Record<string, any>) => {
     if (!tenantConfig?.id) return;
@@ -137,6 +142,7 @@ function MarketingConnections() {
           <TabsTrigger value="linkedin">💼 LinkedIn</TabsTrigger>
           <TabsTrigger value="apify">🔍 Apify</TabsTrigger>
           <TabsTrigger value="blog">🌐 Blog/Website</TabsTrigger>
+          <TabsTrigger value="gcal">📅 Google Calendar</TabsTrigger>
         </TabsList>
 
         {/* META */}
@@ -322,6 +328,32 @@ function MarketingConnections() {
             </CardContent>
           </Card>
         </TabsContent>
+        {/* GOOGLE CALENDAR */}
+        <TabsContent value="gcal">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center justify-between">
+                Google Calendar (Appointments)
+                <StatusDot connected={!!gcal.google_refresh_token} />
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid md:grid-cols-2 gap-3">
+                <div className="space-y-1.5"><Label className="text-xs">Client ID</Label><Input value={gcal.google_client_id} onChange={e => setGcal(p => ({ ...p, google_client_id: e.target.value }))} placeholder="xxxx.apps.googleusercontent.com" /></div>
+                <div className="space-y-1.5"><Label className="text-xs">Client Secret</Label><Input type="password" value={gcal.google_client_secret} onChange={e => setGcal(p => ({ ...p, google_client_secret: e.target.value }))} /></div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Refresh Token</Label>
+                <Input type="password" value={gcal.google_refresh_token} onChange={e => setGcal(p => ({ ...p, google_refresh_token: e.target.value }))} placeholder="1//0..." />
+              </div>
+              <p className="text-xs text-muted-foreground">Required for syncing appointments. Get credentials from the Google Cloud Console &gt; OAuth 2.0.</p>
+              <div className="flex justify-end">
+                <SaveButton section="gcal" data={gcal} />
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
       </Tabs>
     </div>
   );
