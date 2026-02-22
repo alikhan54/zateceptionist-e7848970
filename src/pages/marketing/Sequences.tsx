@@ -106,6 +106,7 @@ export default function MarketingSequences() {
       }));
     },
     enabled: !!tenantConfig?.id,
+    refetchInterval: 30000,
   });
 
   // Global AI Brain activity feed
