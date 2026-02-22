@@ -352,6 +352,7 @@ export function NavigationSidebar() {
       { title: "Performance", url: "/hr/performance", icon: Award },
       { title: "Training", url: "/hr/training", icon: GraduationCap },
       { title: "Recruitment", url: "/hr/recruitment", icon: UserPlus },
+      { title: "Compliance", url: "/hr/compliance", icon: Shield },
       { title: "Documents", url: "/hr/documents", icon: FileText },
       { title: "Reports", url: "/hr/reports", icon: BarChart3 },
       { title: "HR AI Assistant", url: "/hr/ai-assistant", icon: Bot },

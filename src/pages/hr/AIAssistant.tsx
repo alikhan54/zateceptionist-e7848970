@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
 import { useHRAI } from '@/hooks/useHR';
+// @ts-ignore - useLocation for prefill support
+import { useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

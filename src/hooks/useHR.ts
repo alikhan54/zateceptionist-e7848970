@@ -763,3 +763,34 @@ export function useComplianceData() {
     enabled: !!tenantId,
   });
 }
+
+// ═══════════════════════════════════════════════════════════
+// HR AI ASSISTANT — Calls webhook for AI chat
+// ═══════════════════════════════════════════════════════════
+
+export function useHRAI() {
+  const { tenantId } = useTenant();
+
+  const sendMessage = async (message: string, context?: { channel?: string; employee_id?: string }) => {
+    if (!tenantId) return { success: false, error: "No tenant" };
+    return callWebhook(WEBHOOKS.HR_AI_ASSISTANT, { query: message, ...context }, tenantId);
+  };
+
+  return { sendMessage };
+}
+
+// ═══════════════════════════════════════════════════════════
+// HR REPORTS — Provides fetchReport for Reports page
+// ═══════════════════════════════════════════════════════════
+
+export function useHRReports() {
+  const { tenantId } = useTenant();
+
+  const fetchReport = async (reportType: string, filters?: Record<string, any>) => {
+    if (!tenantId) return null;
+    const result = await callWebhook(WEBHOOKS.HR_REPORTS, { type: reportType, ...filters }, tenantId);
+    return result?.data || null;
+  };
+
+  return { fetchReport };
+}

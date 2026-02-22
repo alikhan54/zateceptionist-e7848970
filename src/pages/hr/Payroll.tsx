@@ -53,14 +53,14 @@ export default function PayrollPage() {
     },
     {
       label: 'Headcount',
-      value: data?.summary?.headcount || 0,
+      value: data?.summary?.total_employees || 0,
       icon: Users,
       color: 'text-chart-3',
       bgColor: 'bg-chart-3/10',
     },
     {
       label: 'Pay Period',
-      value: data?.summary?.period || selectedPeriod,
+      value: selectedPeriod,
       icon: Calendar,
       color: 'text-chart-4',
       bgColor: 'bg-chart-4/10',
@@ -208,35 +208,25 @@ export default function PayrollPage() {
                     <Skeleton key={i} className="h-12 w-full" />
                   ))}
                 </div>
-              ) : data?.records && data.records.length > 0 ? (
+              ) : data?.employees && data.employees.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>{t('staff')}</TableHead>
-                      <TableHead className="text-right">Basic</TableHead>
-                      <TableHead className="text-right">Allowances</TableHead>
-                      <TableHead className="text-right">Deductions</TableHead>
-                      <TableHead className="text-right">Tax</TableHead>
-                      <TableHead className="text-right">Net Pay</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead></TableHead>
+                      <TableHead>Position</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead className="text-right">Salary</TableHead>
+                      <TableHead>Currency</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {data.records.map((record) => (
-                      <TableRow key={record.id}>
-                        <TableCell className="font-medium">{record.employee_name}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(record.basic_salary)}</TableCell>
-                        <TableCell className="text-right text-chart-2">+{formatCurrency(record.allowances)}</TableCell>
-                        <TableCell className="text-right text-destructive">-{formatCurrency(record.deductions)}</TableCell>
-                        <TableCell className="text-right text-muted-foreground">-{formatCurrency(record.tax)}</TableCell>
-                        <TableCell className="text-right font-semibold">{formatCurrency(record.net_pay)}</TableCell>
-                        <TableCell>{getStatusBadge(record.status)}</TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="sm">
-                            <FileText className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
+                    {data.employees.map((emp: any) => (
+                      <TableRow key={emp.id}>
+                        <TableCell className="font-medium">{emp.full_name || `${emp.first_name} ${emp.last_name}`}</TableCell>
+                        <TableCell>{emp.position || '-'}</TableCell>
+                        <TableCell><Badge variant="secondary">{emp.employment_type || 'Full-time'}</Badge></TableCell>
+                        <TableCell className="text-right font-semibold">{formatCurrency(emp.salary || 0)}</TableCell>
+                        <TableCell>{emp.salary_currency || 'USD'}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

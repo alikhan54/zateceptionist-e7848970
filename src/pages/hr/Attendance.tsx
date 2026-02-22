@@ -253,8 +253,8 @@ export default function AttendancePage() {
                         <TableCell>{record.check_out_time || '-'}</TableCell>
                         <TableCell>{record.work_hours ? `${record.work_hours}h` : (record.total_hours ? `${record.total_hours}h` : '-')}</TableCell>
                         <TableCell>
-                          {record.overtime_minutes ? (
-                            <span className="text-chart-4">{Math.round(record.overtime_minutes / 60)}h OT</span>
+                          {record.overtime_hours ? (
+                            <span className="text-chart-4">{record.overtime_hours}h OT</span>
                           ) : '-'}
                         </TableCell>
                         <TableCell>{getStatusBadge(record.status)}</TableCell>
