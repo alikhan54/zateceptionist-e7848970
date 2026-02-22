@@ -86,11 +86,13 @@ export default function BlogManager() {
     setGeneratingId(post.id);
     toast({ title: "🤖 AI is writing your blog post...", description: `Generating content for "${post.title}"` });
     try {
-      const result = await callWebhook('marketing/generate-blog', {
+      const result = await callWebhook(WEBHOOKS.GENERATE_CONTENT, {
         blog_id: post.id,
         topic: post.title,
         keyword: post.primary_keyword || '',
         type: 'blog',
+        tone: 'professional',
+        length: 'long',
       }, tenantConfig?.id || '');
 
       if (result.success) {
@@ -154,11 +156,28 @@ export default function BlogManager() {
   const publishToSocial = async (platform: string, content: string) => {
     toast({ title: `📤 Publishing to ${platform}...` });
     try {
-      await callWebhook(WEBHOOKS.POST_SOCIAL, {
+      // Insert directly into social_posts for cron pickup
+      await supabase.from('social_posts').insert({
+        tenant_id: tenantConfig?.id,
         platform,
-        content,
-        source: 'blog_repurpose',
-      }, tenantConfig?.id || '');
+        post_text: content,
+        hashtags: [],
+        mentions: [],
+        media_urls: [],
+        status: 'scheduled',
+        scheduled_at: new Date().toISOString(),
+        ai_optimized: true,
+        likes_count: 0, comments_count: 0, shares_count: 0,
+        impressions: 0, reach: 0, clicks: 0, engagement_rate: 0,
+      });
+      // Also trigger webhook for immediate publish
+      try {
+        await callWebhook(WEBHOOKS.POST_SOCIAL, {
+          platform,
+          content,
+          source: 'blog_repurpose',
+        }, tenantConfig?.id || '');
+      } catch { /* cron will pick it up */ }
       toast({ title: `✅ Published to ${platform}!` });
     } catch {
       toast({ title: "Failed", variant: "destructive" });

@@ -15,6 +15,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useLandingPages } from "@/hooks/useLandingPages";
+import { useNavigate } from "react-router-dom";
 import {
   Globe, Plus, Eye, Trash2, Copy, MoreVertical, Layout, Smartphone, Monitor,
   MousePointer, TrendingUp, Check, Download, Edit, ExternalLink, Info,
@@ -117,6 +118,7 @@ export default function LandingPages() {
   const { pages, isLoading, stats, createPage, publishPage, deletePage } = useLandingPages();
   const { tenantConfig } = useTenant();
 
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("pages");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<typeof pageTemplates[0] | null>(null);
@@ -306,7 +308,7 @@ export default function LandingPages() {
       <Card className="bg-primary/5 border-primary/20">
         <CardContent className="p-3 flex items-center gap-3 text-sm">
           <Info className="h-4 w-4 text-primary shrink-0" />
-          <span>Landing page forms automatically create leads in your CRM. Configure email notifications in <strong>Settings → Integrations</strong>.</span>
+          <span>Landing page forms automatically create leads in your CRM with source='landing_page'. Form submissions go to webhook and enter the automated sequence pipeline.</span>
         </CardContent>
       </Card>
 
@@ -494,6 +496,12 @@ export default function LandingPages() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Settings link */}
+      <p className="text-xs text-muted-foreground mt-6">
+        💡 To host landing pages on your domain, configure your website URL in{' '}
+        <button className="text-primary underline hover:no-underline" onClick={() => navigate('/settings/integrations')}>Settings → Integrations</button>
+      </p>
     </div>
   );
 }

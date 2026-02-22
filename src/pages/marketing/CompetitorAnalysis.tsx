@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, callWebhook } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +25,7 @@ export default function CompetitorAnalysis() {
   const queryClient = useQueryClient();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [analyzingId, setAnalyzingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [instagramUrl, setInstagramUrl] = useState('');
   const [websiteUrl, setWebsiteUrl] = useState('');
@@ -68,7 +69,7 @@ export default function CompetitorAnalysis() {
       const { data } = await supabase
         .from('competitor_content' as any)
         .select('*')
-        .eq('tenant_uuid', tenantConfig.id)
+        .eq('tenant_id', tenantConfig.id)
         .order('captured_at', { ascending: false })
         .limit(30);
       return (data || []).map((d: any) => {
@@ -183,12 +184,30 @@ export default function CompetitorAnalysis() {
         </Button>
       </div>
 
+      {/* Automation Status */}
+      <div className={`p-3 rounded-lg border text-sm flex items-center gap-2 ${
+        tracked.length === 0
+          ? 'bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-400'
+          : analysisResults.length === 0
+            ? 'bg-blue-500/10 border-blue-500/20 text-blue-700 dark:text-blue-400'
+            : 'bg-green-500/10 border-green-500/20 text-green-700 dark:text-green-400'
+      }`}>
+        <span>{tracked.length === 0 ? '⚠️' : analysisResults.length === 0 ? '⏳' : '🟢'}</span>
+        <span>
+          {tracked.length === 0
+            ? 'No competitors tracked. Add competitors below to start AI monitoring.'
+            : analysisResults.length === 0
+              ? `${tracked.length} competitor(s) added. AI analysis runs daily at 6 AM — first results tomorrow.`
+              : `AI monitoring active — Last scan: ${lastScrape ? formatDistanceToNow(new Date(lastScrape), { addSuffix: true }) : 'recently'}`}
+        </span>
+      </div>
+
       {/* Apify Status */}
       <div className={`p-3 rounded-lg border text-sm flex items-center gap-2 ${hasApify ? 'bg-green-500/10 border-green-500/20 text-green-700 dark:text-green-400' : 'bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-400'}`}>
         <span>{hasApify ? '🟢' : '🟡'}</span>
         <span>
           {hasApify
-            ? 'Live scraping active via Apify — Real Instagram data collected daily at 6 AM'
+            ? 'Live scraping active via Apify'
             : 'Using sample analysis data. Add Apify API token in Settings > Integrations for real competitor monitoring.'}
         </span>
       </div>
@@ -255,8 +274,31 @@ export default function CompetitorAnalysis() {
                         <span className="text-xs text-muted-foreground">{comp.is_active ? 'Active' : 'Paused'}</span>
                         <Switch checked={comp.is_active} onCheckedChange={() => toggleActive(comp.id, comp.is_active)} />
                       </div>
-                      <Button size="sm" variant="outline" className="text-xs" disabled>
-                        <RefreshCw className="h-3 w-3 mr-1" /> Analyze
+                      <Button size="sm" variant="outline" className="text-xs" disabled={analyzingId === comp.id}
+                        onClick={async () => {
+                          setAnalyzingId(comp.id);
+                          toast({ title: '🔍 Analyzing competitor...', description: 'AI is scraping and analyzing their profile' });
+                          try {
+                            const result = await callWebhook('marketing/analyze-competitor', {
+                              competitor_id: comp.id,
+                              competitor_name: comp.name,
+                              instagram_url: comp.instagram_url,
+                              website_url: comp.website_url,
+                            }, tenantConfig?.id || '');
+                            if (result.success) {
+                              queryClient.invalidateQueries({ queryKey: ['competitor_tracking'] });
+                              queryClient.invalidateQueries({ queryKey: ['competitor_content'] });
+                              toast({ title: '✅ Analysis Complete!' });
+                            } else {
+                              toast({ title: '⏳ Analysis Queued', description: 'Will be processed at next 6 AM cycle' });
+                            }
+                          } catch {
+                            toast({ title: '⏳ Analysis Queued', description: 'Will be processed at next 6 AM cycle' });
+                          } finally {
+                            setAnalyzingId(null);
+                          }
+                        }}>
+                        {analyzingId === comp.id ? <><RefreshCw className="h-3 w-3 mr-1 animate-spin" /> Analyzing...</> : <><RefreshCw className="h-3 w-3 mr-1" /> Analyze Now</>}
                       </Button>
                       <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive"
                         onClick={() => setDeleteConfirm(comp.id)}>
