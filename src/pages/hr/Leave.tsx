@@ -69,7 +69,6 @@ export default function LeavePage() {
       end_date: dateRange.to ? format(dateRange.to, 'yyyy-MM-dd') : format(dateRange.from, 'yyyy-MM-dd'),
       is_half_day: isHalfDay,
       reason,
-      requested_days: dateRange.to ? differenceInDays(dateRange.to, dateRange.from) + 1 : 1,
     });
     
     toast({ title: 'Leave request submitted successfully' });
@@ -86,12 +85,12 @@ export default function LeavePage() {
   };
 
   const handleApprove = (id: string) => {
-    approveLeave.mutate({ request_id: id, approved: true });
+    approveLeave.mutate({ leave_id: id, action: 'approve' });
     toast({ title: 'Leave request approved' });
   };
 
   const handleReject = (id: string) => {
-    approveLeave.mutate({ request_id: id, approved: false });
+    approveLeave.mutate({ leave_id: id, action: 'reject' });
     toast({ title: 'Leave request rejected', variant: 'destructive' });
   };
 
@@ -128,9 +127,9 @@ export default function LeavePage() {
     { value: 'unpaid', label: 'Unpaid Leave' },
   ];
 
-  const totalDays = displayBalances.reduce((acc, b) => acc + b.total_days, 0);
-  const usedDays = displayBalances.reduce((acc, b) => acc + b.used_days, 0);
-  const pendingDays = displayBalances.reduce((acc, b) => acc + b.pending_days, 0);
+  const totalDays = displayBalances.reduce((acc, b) => acc + (b.total_entitled || 0), 0);
+  const usedDays = displayBalances.reduce((acc, b) => acc + (b.used || 0), 0);
+  const pendingDays = displayBalances.reduce((acc, b) => acc + (b.pending || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -301,30 +300,30 @@ export default function LeavePage() {
               'hsl(var(--chart-4))',
             ];
             return (
-              <Card key={balance.leave_type} className="overflow-hidden">
+              <Card key={balance.leave_type_id || index} className="overflow-hidden">
                 <div 
                   className="h-1" 
                   style={{ backgroundColor: colors[index % colors.length] }} 
                 />
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium">{balance.leave_type}</span>
-                    {balance.pending_days > 0 && (
+                    <span className="text-sm font-medium">{balance.leave_type_name || balance.leave_type_id}</span>
+                    {(balance.pending || 0) > 0 && (
                       <Badge variant="outline" className="bg-chart-4/10 text-chart-4 text-xs">
-                        {balance.pending_days} pending
+                        {balance.pending} pending
                       </Badge>
                     )}
                   </div>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold">{balance.remaining_days}</span>
-                    <span className="text-muted-foreground text-sm">/ {balance.total_days}</span>
+                    <span className="text-3xl font-bold">{balance.remaining}</span>
+                    <span className="text-muted-foreground text-sm">/ {balance.total_entitled}</span>
                   </div>
                   <Progress 
-                    value={balance.total_days > 0 ? (balance.remaining_days / balance.total_days) * 100 : 0} 
+                    value={balance.total_entitled > 0 ? (balance.remaining / balance.total_entitled) * 100 : 0} 
                     className="h-2 mt-3"
                   />
                   <p className="text-xs text-muted-foreground mt-2">
-                    {balance.used_days} days used this year
+                    {balance.used} days used this year
                   </p>
                 </CardContent>
               </Card>

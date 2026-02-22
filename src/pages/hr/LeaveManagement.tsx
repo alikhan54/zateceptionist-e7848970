@@ -51,7 +51,6 @@ export default function LeaveManagementPage() {
       end_date: dateRange.to ? format(dateRange.to, 'yyyy-MM-dd') : format(dateRange.from, 'yyyy-MM-dd'),
       is_half_day: isHalfDay,
       reason,
-      requested_days: dateRange.to ? differenceInDays(dateRange.to, dateRange.from) + 1 : 1,
     });
     
     setIsDialogOpen(false);
@@ -235,28 +234,28 @@ export default function LeaveManagementPage() {
             </Card>
           ))
         ) : balances?.map((balance) => (
-          <Card key={balance.leave_type}>
+          <Card key={balance.leave_type_id || balance.id}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">{balance.leave_type}</span>
-                {balance.pending_days > 0 && (
+                <span className="text-sm font-medium">{balance.leave_type_name || balance.leave_type_id}</span>
+                {(balance.pending || 0) > 0 && (
                   <Badge variant="outline" className="bg-chart-4/10 text-chart-4 text-xs">
-                    {balance.pending_days} pending
+                    {balance.pending} pending
                   </Badge>
                 )}
               </div>
               <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-bold">{balance.remaining_days}</span>
-                <span className="text-muted-foreground text-sm">/ {balance.total_days}</span>
+                <span className="text-3xl font-bold">{balance.remaining}</span>
+                <span className="text-muted-foreground text-sm">/ {balance.total_entitled}</span>
               </div>
               <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-primary rounded-full transition-all"
-                  style={{ width: `${(balance.remaining_days / balance.total_days) * 100}%` }}
+                  style={{ width: `${balance.total_entitled > 0 ? (balance.remaining / balance.total_entitled) * 100 : 0}%` }}
                 />
               </div>
               <p className="text-xs text-muted-foreground mt-2">
-                {balance.used_days} days used
+                {balance.used} days used
               </p>
             </CardContent>
           </Card>

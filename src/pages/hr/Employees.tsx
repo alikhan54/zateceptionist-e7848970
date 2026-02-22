@@ -555,7 +555,7 @@ export default function EmployeesPage() {
                       onClick={(e) => e.stopPropagation()}
                     />
                     <Avatar className="h-12 w-12">
-                      <AvatarImage src={employee.avatar_url || undefined} />
+                      <AvatarImage src={employee.profile_picture_url || undefined} />
                       <AvatarFallback className="bg-primary/10 text-primary">
                         {employee.first_name?.[0]}{employee.last_name?.[0]}
                       </AvatarFallback>

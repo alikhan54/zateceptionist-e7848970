@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
-import { useDepartments } from '@/hooks/useHR';
+import { useDepartments, useEmployees } from '@/hooks/useHR';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,6 +32,7 @@ import {
 export default function DepartmentsPage() {
   const { t } = useTenant();
   const { data: departments, isLoading, createDepartment } = useDepartments();
+  const { data: employees } = useEmployees();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newDept, setNewDept] = useState({ name: '', code: '', manager_id: '' });
 
@@ -104,9 +105,13 @@ export default function DepartmentsPage() {
                     <SelectValue placeholder="Select manager" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">John Smith</SelectItem>
-                    <SelectItem value="2">Sarah Johnson</SelectItem>
-                    <SelectItem value="3">Mike Brown</SelectItem>
+                    {(employees || [])
+                      .filter(e => e.employment_status === 'active')
+                      .map(e => (
+                        <SelectItem key={e.id} value={e.id}>
+                          {e.full_name || `${e.first_name} ${e.last_name}`}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>

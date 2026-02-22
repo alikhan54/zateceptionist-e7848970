@@ -21,7 +21,7 @@ export type {
 // Module-specific webhook hooks
 export { useSalesWebhooks } from './useSalesWebhooks';
 export { useMarketingWebhooks } from './useMarketingWebhooks';
-export { useHRWebhooks } from './useHRWebhooks';
+// useHRWebhooks removed — replaced by useHR.ts direct Supabase hooks
 export { useCommunicationsWebhooks } from './useCommunicationsWebhooks';
 export { useAnalyticsWebhooks } from './useAnalyticsWebhooks';
 
@@ -49,13 +49,10 @@ export type {
 
 export type {
   Employee,
-  OnboardingRequest,
   AttendanceRecord,
   LeaveRequest,
-  LeaveApproval,
-  HRDashboardData,
-  AIAssistantRequest,
-} from './useHRWebhooks';
+  LeaveBalance,
+} from './useHR';
 
 export type {
   SendMessageRequest,

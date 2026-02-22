@@ -53,6 +53,7 @@ import {
   GraduationCap,
   UserPlus,
   Bot,
+  ShieldCheck,
   // Operations icons
   Package,
   ShoppingCart,
@@ -128,6 +129,9 @@ const hrNavItems = [
   { title: "Performance", url: "/hr/performance", icon: Award },
   { title: "Training", url: "/hr/training", icon: GraduationCap },
   { title: "Recruitment", url: "/hr/recruitment", icon: UserPlus },
+  { title: "Compliance", url: "/hr/compliance", icon: ShieldCheck },
+  { title: "Documents", url: "/hr/documents", icon: FileText },
+  { title: "Reports", url: "/hr/reports", icon: BarChart3 },
   { title: "AI Assistant", url: "/hr/ai-assistant", icon: Bot },
 ];
 
