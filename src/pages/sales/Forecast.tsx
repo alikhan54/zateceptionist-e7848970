@@ -125,23 +125,27 @@ export default function Forecasting() {
 
   // Calculate metrics
   const metrics = useMemo(() => {
-    if (analytics.length === 0) {
+    if (analytics.length === 0 && deals.length === 0) {
       return {
         ytdRevenue: 0,
-        targetRevenue: 920000,
+        targetRevenue: 0,
         forecastRevenue: 0,
         pipelineCoverage: 0,
-        avgWinRate: 32,
+        avgWinRate: 0,
         avgDealValue: 0,
         avgSalesCycle: 0,
+        pipelineValue: 0,
+        weightedPipeline: 0,
       };
     }
 
     const ytdRevenue = analytics.reduce((sum, a) => sum + (a.won_value || 0), 0);
     const forecastRevenue = analytics.reduce((sum, a) => sum + (a.forecast_value || 0), 0);
-    const targetRevenue = 920000; // This should come from tenant settings
     const pipelineValue = deals.reduce((sum, d) => sum + (d.value || 0), 0);
     const weightedPipeline = deals.reduce((sum, d) => sum + (d.weighted_value || 0), 0);
+    // Target revenue: derive from YTD pace projected to 12 months, or fallback to pipeline-based estimate
+    const monthsElapsed = new Date().getMonth() + 1;
+    const targetRevenue = ytdRevenue > 0 ? Math.round((ytdRevenue / monthsElapsed) * 12 * 1.1) : pipelineValue || 0;
     const avgConversion =
       analytics.length > 0 ? analytics.reduce((sum, a) => sum + (a.conversion_rate || 0), 0) / analytics.length : 0;
     const avgDealValue =
@@ -152,9 +156,9 @@ export default function Forecasting() {
       targetRevenue,
       forecastRevenue: forecastRevenue || ytdRevenue * 4.5, // Projection
       pipelineCoverage: targetRevenue > 0 ? ((pipelineValue / targetRevenue) * 100).toFixed(1) : 0,
-      avgWinRate: avgConversion || 32,
+      avgWinRate: avgConversion || 0,
       avgDealValue,
-      avgSalesCycle: 45,
+      avgSalesCycle: 0,
       pipelineValue,
       weightedPipeline,
     };
@@ -236,14 +240,16 @@ export default function Forecasting() {
       monthlyData[monthKey].forecast += a.forecast_value || a.won_value * 1.1 || 0;
     });
 
-    // Fill in missing months with projection
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
-    return months.map((month, idx) => ({
-      month,
-      actual: monthlyData[month]?.actual || (idx < 3 ? 200000 + Math.random() * 100000 : 0),
-      forecast: monthlyData[month]?.forecast || 200000 + Math.random() * 150000,
-      target: 150000 + idx * 10000,
-    }));
+    // Return only months that have real data — no synthetic/random values
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return months
+      .filter((month) => monthlyData[month])
+      .map((month) => ({
+        month,
+        actual: monthlyData[month]?.actual || 0,
+        forecast: monthlyData[month]?.forecast || 0,
+        target: monthlyData[month]?.actual ? monthlyData[month].actual * 1.1 : 0, // 10% growth target
+      }));
   }, [analytics]);
 
   const formatCurrency = (value: number) => {
@@ -531,21 +537,48 @@ export default function Forecasting() {
               <p className="text-sm text-muted-foreground">How accurate were our previous forecasts</p>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {["Q4 2024", "Q3 2024", "Q2 2024", "Q1 2024"].map((quarter, idx) => {
-                  const accuracy = 92 - idx * 3 + Math.random() * 5;
-                  return (
-                    <div key={quarter} className="flex items-center gap-4">
-                      <span className="w-20 text-sm">{quarter}</span>
-                      <Progress value={accuracy} className="flex-1" />
-                      <span className="w-16 text-sm font-medium text-right">{accuracy.toFixed(1)}%</span>
-                    </div>
-                  );
-                })}
-              </div>
-              <p className="text-sm text-muted-foreground mt-4">
-                Average forecast accuracy: <strong>89.3%</strong>
-              </p>
+              {analytics.length > 0 ? (
+                <div className="space-y-4">
+                  {(() => {
+                    // Calculate accuracy from actual analytics data: compare forecast_value to won_value
+                    const quarterMap: Record<string, { forecast: number; actual: number }> = {};
+                    analytics.forEach((a) => {
+                      const d = new Date(a.date);
+                      const q = `Q${Math.ceil((d.getMonth() + 1) / 3)} ${d.getFullYear()}`;
+                      if (!quarterMap[q]) quarterMap[q] = { forecast: 0, actual: 0 };
+                      quarterMap[q].forecast += a.forecast_value || 0;
+                      quarterMap[q].actual += a.won_value || 0;
+                    });
+                    const quarters = Object.entries(quarterMap)
+                      .filter(([, v]) => v.forecast > 0 && v.actual > 0)
+                      .slice(-4)
+                      .reverse();
+                    if (quarters.length === 0) {
+                      return (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <p>Not enough historical data to calculate forecast accuracy.</p>
+                          <p className="text-sm mt-1">Accuracy tracking will begin once forecast and actual values accumulate.</p>
+                        </div>
+                      );
+                    }
+                    return quarters.map(([quarter, vals]) => {
+                      const accuracy = Math.min(100, Math.max(0, (1 - Math.abs(vals.forecast - vals.actual) / vals.forecast) * 100));
+                      return (
+                        <div key={quarter} className="flex items-center gap-4">
+                          <span className="w-20 text-sm">{quarter}</span>
+                          <Progress value={accuracy} className="flex-1" />
+                          <span className="w-16 text-sm font-medium text-right">{accuracy.toFixed(1)}%</span>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>No analytics data available yet.</p>
+                  <p className="text-sm mt-1">Historical accuracy will be calculated once daily analytics accumulate.</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
