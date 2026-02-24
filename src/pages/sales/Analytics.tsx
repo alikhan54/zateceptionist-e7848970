@@ -1,83 +1,305 @@
-import { useState } from 'react';
+// ============================================================================
+// SALES ANALYTICS — Real data from Supabase
+// Replaces all hardcoded mock data with live queries
+// ============================================================================
+
+import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useTenant } from '@/contexts/TenantContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { 
-  BarChart3, Download, TrendingUp, TrendingDown, DollarSign, Target,
-  Users, Calendar, ArrowUpRight, ArrowDownRight, Trophy, Clock,
-  CheckCircle2, XCircle, Filter, Briefcase
+import { useState } from 'react';
+import {
+  BarChart3, Download, TrendingUp, DollarSign, Target,
+  Trophy, Clock, CheckCircle2, XCircle, Briefcase,
+  ArrowUpRight, ArrowDownRight, Loader2, Inbox
 } from 'lucide-react';
 import {
-  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
+  BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
-  AreaChart, Area, FunnelChart, Funnel, LabelList
+  AreaChart, Area
 } from 'recharts';
 
+// ============================================================================
+// PIPELINE STAGES (matches Dashboard.tsx)
+// ============================================================================
+
+const PIPELINE_STAGES = [
+  { id: 'PROS', name: 'Prospect', color: '#94a3b8' },
+  { id: 'RES', name: 'Research', color: '#3b82f6' },
+  { id: 'CONT', name: 'Contact', color: '#06b6d4' },
+  { id: 'PITCH', name: 'Pitch', color: '#8b5cf6' },
+  { id: 'OBJ', name: 'Objection', color: '#f97316' },
+  { id: 'CLOSE', name: 'Closing', color: '#f59e0b' },
+  { id: 'RET', name: 'Retained', color: '#10b981' },
+];
+
+const SOURCE_COLORS: Record<string, string> = {
+  google_places: '#3b82f6',
+  b2b: '#8b5cf6',
+  b2c_intent: '#10b981',
+  website: '#f59e0b',
+  referral: '#ef4444',
+  manual: '#6366f1',
+  import: '#14b8a6',
+  unknown: '#94a3b8',
+};
+
+// ============================================================================
+// EMPTY STATE COMPONENT
+// ============================================================================
+
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+      <Inbox className="h-12 w-12 mb-3 opacity-40" />
+      <p className="text-sm">{message}</p>
+    </div>
+  );
+}
+
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
+
 export default function SalesAnalytics() {
-  const [dateRange, setDateRange] = useState('30d');
+  const { tenantId, tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
   const [activeTab, setActiveTab] = useState('revenue');
 
-  // Mock data
-  const revenueData = [
-    { month: 'Jan', revenue: 45000, target: 50000 },
-    { month: 'Feb', revenue: 52000, target: 50000 },
-    { month: 'Mar', revenue: 48000, target: 55000 },
-    { month: 'Apr', revenue: 61000, target: 55000 },
-    { month: 'May', revenue: 55000, target: 60000 },
-    { month: 'Jun', revenue: 67000, target: 60000 },
-  ];
+  // =====================================================
+  // DATA QUERIES — ALL REAL
+  // =====================================================
 
-  const sourceData = [
-    { name: 'Website', value: 35, color: '#3b82f6' },
-    { name: 'Referral', value: 25, color: '#10b981' },
-    { name: 'Outbound', value: 20, color: '#8b5cf6' },
-    { name: 'Events', value: 12, color: '#f59e0b' },
-    { name: 'Partners', value: 8, color: '#ef4444' },
-  ];
+  // Fetch all leads — sales_leads uses SLUG
+  const { data: leads = [], isLoading: leadsLoading } = useQuery({
+    queryKey: ['analytics', 'sales_leads', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return [];
+      const { data, error } = await supabase
+        .from('sales_leads')
+        .select('id, lead_status, pipeline_stage, source, lead_temperature, temperature, sequence_status, created_at')
+        .eq('tenant_id', tenantId);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!tenantId,
+  });
 
-  const funnelData = [
-    { stage: 'Leads', value: 1000, fill: '#3b82f6' },
-    { stage: 'Qualified', value: 450, fill: '#6366f1' },
-    { stage: 'Proposal', value: 180, fill: '#8b5cf6' },
-    { stage: 'Negotiation', value: 80, fill: '#a855f7' },
-    { stage: 'Won', value: 35, fill: '#10b981' },
-  ];
+  // Fetch all deals — deals uses SLUG
+  const { data: deals = [], isLoading: dealsLoading } = useQuery({
+    queryKey: ['analytics', 'deals', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return [];
+      const { data, error } = await supabase
+        .from('deals')
+        .select('id, value, stage, probability, won_reason, lost_reason, products, created_at, actual_close_date')
+        .eq('tenant_id', tenantId);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!tenantId,
+  });
 
-  const repPerformance = [
-    { name: 'Sarah Johnson', deals: 24, revenue: 285000, quota: 250000, avatar: '' },
-    { name: 'Mike Chen', deals: 18, revenue: 198000, quota: 200000, avatar: '' },
-    { name: 'Emily Davis', deals: 15, revenue: 165000, quota: 180000, avatar: '' },
-    { name: 'Alex Thompson', deals: 12, revenue: 142000, quota: 150000, avatar: '' },
-    { name: 'Jordan Lee', deals: 10, revenue: 118000, quota: 150000, avatar: '' },
-  ];
+  // Fetch sequences — sequences uses UUID
+  const { data: sequences = [] } = useQuery({
+    queryKey: ['analytics', 'sequences', tenantUuid],
+    queryFn: async () => {
+      if (!tenantUuid) return [];
+      const { data, error } = await supabase
+        .from('sequences')
+        .select('id, name, status, enrolled_count, steps')
+        .eq('tenant_id', tenantUuid)
+        .order('enrolled_count', { ascending: false });
+      if (error) { console.log('sequences query error', error); return []; }
+      return data || [];
+    },
+    enabled: !!tenantUuid,
+  });
 
-  const winLossData = [
-    { reason: 'Price too high', count: 15, type: 'loss' },
-    { reason: 'Competitor chosen', count: 12, type: 'loss' },
-    { reason: 'Budget constraints', count: 8, type: 'loss' },
-    { reason: 'Product fit', count: 25, type: 'win' },
-    { reason: 'Relationship', count: 18, type: 'win' },
-    { reason: 'Pricing', count: 12, type: 'win' },
-  ];
+  // Fetch analytics_daily for historical trends
+  const { data: dailyAnalytics = [] } = useQuery({
+    queryKey: ['analytics', 'analytics_daily', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return [];
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+      const { data, error } = await supabase
+        .from('analytics_daily')
+        .select('date, won_value, pipeline_value, deals_won, deals_lost, emails_sent, calls_made, conversion_rate')
+        .eq('tenant_id', tenantId)
+        .gte('date', sixMonthsAgo.toISOString().split('T')[0])
+        .order('date', { ascending: true });
+      if (error) { console.log('analytics_daily error', error); return []; }
+      return data || [];
+    },
+    enabled: !!tenantId,
+  });
 
-  const cycleData = [
-    { stage: 'Lead', avgDays: 3 },
-    { stage: 'Qualified', avgDays: 7 },
-    { stage: 'Proposal', avgDays: 12 },
-    { stage: 'Negotiation', avgDays: 8 },
-    { stage: 'Closed', avgDays: 5 },
-  ];
+  const isLoading = leadsLoading || dealsLoading;
 
-  const productMix = [
-    { product: 'Enterprise', revenue: 185000, deals: 12 },
-    { product: 'Professional', revenue: 124000, deals: 28 },
-    { product: 'Starter', revenue: 45000, deals: 45 },
-    { product: 'Add-ons', revenue: 32000, deals: 85 },
-  ];
+  // =====================================================
+  // COMPUTED METRICS
+  // =====================================================
+
+  const kpis = useMemo(() => {
+    const wonDeals = deals.filter(d => d.stage?.toLowerCase() === 'won');
+    const lostDeals = deals.filter(d => d.stage?.toLowerCase() === 'lost');
+    const totalRevenue = wonDeals.reduce((sum, d) => sum + (Number(d.value) || 0), 0);
+    const dealsWon = wonDeals.length;
+    const totalClosed = dealsWon + lostDeals.length;
+    const winRate = totalClosed > 0 ? Math.round((dealsWon / totalClosed) * 100) : 0;
+    const avgDealSize = dealsWon > 0 ? Math.round(totalRevenue / dealsWon) : 0;
+
+    // Calculate average sales cycle from deals with actual_close_date
+    const cycledDeals = wonDeals.filter(d => d.actual_close_date && d.created_at);
+    let avgCycleDays = 0;
+    if (cycledDeals.length > 0) {
+      const totalDays = cycledDeals.reduce((sum, d) => {
+        const created = new Date(d.created_at);
+        const closed = new Date(d.actual_close_date!);
+        return sum + Math.max(0, Math.round((closed.getTime() - created.getTime()) / (1000 * 60 * 60 * 24)));
+      }, 0);
+      avgCycleDays = Math.round(totalDays / cycledDeals.length);
+    }
+
+    return { totalRevenue, dealsWon, winRate, avgDealSize, avgCycleDays };
+  }, [deals]);
+
+  // Revenue by month from deals
+  const revenueData = useMemo(() => {
+    const wonDeals = deals.filter(d => d.stage?.toLowerCase() === 'won');
+    const monthMap: Record<string, { revenue: number; count: number }> = {};
+
+    wonDeals.forEach(d => {
+      const date = new Date(d.actual_close_date || d.created_at);
+      const key = date.toLocaleString('default', { month: 'short', year: '2-digit' });
+      if (!monthMap[key]) monthMap[key] = { revenue: 0, count: 0 };
+      monthMap[key].revenue += Number(d.value) || 0;
+      monthMap[key].count += 1;
+    });
+
+    // Also use analytics_daily for months with no closed deals
+    dailyAnalytics.forEach(a => {
+      const date = new Date(a.date);
+      const key = date.toLocaleString('default', { month: 'short', year: '2-digit' });
+      if (!monthMap[key]) monthMap[key] = { revenue: 0, count: 0 };
+      // Only add if we don't already have deal data for this month
+      if (monthMap[key].revenue === 0) {
+        monthMap[key].revenue += Number(a.won_value) || 0;
+      }
+    });
+
+    return Object.entries(monthMap)
+      .map(([month, data]) => ({ month, revenue: data.revenue }))
+      .sort((a, b) => {
+        // Sort chronologically
+        const parseDate = (s: string) => new Date(Date.parse('1 ' + s));
+        return parseDate(a.month).getTime() - parseDate(b.month).getTime();
+      })
+      .slice(-6); // last 6 months
+  }, [deals, dailyAnalytics]);
+
+  // Lead sources breakdown
+  const sourceData = useMemo(() => {
+    const sourceMap: Record<string, number> = {};
+    leads.forEach(l => {
+      const src = l.source || 'unknown';
+      sourceMap[src] = (sourceMap[src] || 0) + 1;
+    });
+
+    return Object.entries(sourceMap)
+      .map(([name, value]) => ({
+        name: name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+        value,
+        color: SOURCE_COLORS[name] || '#94a3b8',
+      }))
+      .sort((a, b) => b.value - a.value);
+  }, [leads]);
+
+  // Pipeline funnel from sales_leads
+  const funnelData = useMemo(() => {
+    const stageMap: Record<string, number> = {};
+    leads.forEach(l => {
+      const stage = l.pipeline_stage || 'PROS';
+      stageMap[stage] = (stageMap[stage] || 0) + 1;
+    });
+
+    return PIPELINE_STAGES.map(stage => ({
+      stage: stage.name,
+      value: stageMap[stage.id] || 0,
+      fill: stage.color,
+    }));
+  }, [leads]);
+
+  // Win/Loss reasons from deals
+  const winLossData = useMemo(() => {
+    const reasons: { reason: string; count: number; type: 'win' | 'loss' }[] = [];
+
+    const wonReasons: Record<string, number> = {};
+    const lostReasons: Record<string, number> = {};
+
+    deals.forEach(d => {
+      if (d.stage?.toLowerCase() === 'won' && d.won_reason) {
+        wonReasons[d.won_reason] = (wonReasons[d.won_reason] || 0) + 1;
+      }
+      if (d.stage?.toLowerCase() === 'lost' && d.lost_reason) {
+        lostReasons[d.lost_reason] = (lostReasons[d.lost_reason] || 0) + 1;
+      }
+    });
+
+    Object.entries(wonReasons)
+      .sort((a, b) => b[1] - a[1])
+      .forEach(([reason, count]) => reasons.push({ reason, count, type: 'win' }));
+
+    Object.entries(lostReasons)
+      .sort((a, b) => b[1] - a[1])
+      .forEach(([reason, count]) => reasons.push({ reason, count, type: 'loss' }));
+
+    return reasons;
+  }, [deals]);
+
+  // Sequence performance (replaces fake "Rep Performance")
+  const sequencePerformance = useMemo(() => {
+    const activeSeqs = sequences.filter((s: any) => s.status === 'active');
+    return activeSeqs.map((seq: any) => ({
+      name: seq.name,
+      enrolled: seq.enrolled_count || 0,
+      steps: Array.isArray(seq.steps) ? seq.steps.length : 0,
+      status: seq.status,
+    }));
+  }, [sequences]);
+
+  // =====================================================
+  // FORMAT HELPERS
+  // =====================================================
+
+  const formatCurrency = (value: number) => {
+    if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
+    if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
+    return `$${value.toFixed(0)}`;
+  };
+
+  // =====================================================
+  // LOADING STATE
+  // =====================================================
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <span className="ml-3 text-muted-foreground">Loading analytics...</span>
+      </div>
+    );
+  }
+
+  // =====================================================
+  // RENDER
+  // =====================================================
 
   return (
     <div className="space-y-6">
@@ -88,17 +310,6 @@ export default function SalesAnalytics() {
           <p className="text-muted-foreground mt-1">Deep insights into your sales performance</p>
         </div>
         <div className="flex items-center gap-2">
-          <Select value={dateRange} onValueChange={setDateRange}>
-            <SelectTrigger className="w-36">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7d">Last 7 days</SelectItem>
-              <SelectItem value="30d">Last 30 days</SelectItem>
-              <SelectItem value="90d">Last 90 days</SelectItem>
-              <SelectItem value="12m">Last 12 months</SelectItem>
-            </SelectContent>
-          </Select>
           <Button variant="outline">
             <Download className="h-4 w-4 mr-2" />
             Export
@@ -109,20 +320,19 @@ export default function SalesAnalytics() {
       {/* KPI Summary */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {[
-          { title: 'Total Revenue', value: '$386,000', change: '+12.5%', trend: 'up', icon: DollarSign },
-          { title: 'Deals Won', value: '55', change: '+8', trend: 'up', icon: Trophy },
-          { title: 'Win Rate', value: '32%', change: '-2.1%', trend: 'down', icon: Target },
-          { title: 'Avg Deal Size', value: '$7,018', change: '+5.2%', trend: 'up', icon: Briefcase },
-          { title: 'Sales Cycle', value: '35 days', change: '-3 days', trend: 'up', icon: Clock },
+          { title: 'Total Revenue', value: formatCurrency(kpis.totalRevenue), icon: DollarSign, hasData: kpis.totalRevenue > 0 },
+          { title: 'Deals Won', value: String(kpis.dealsWon), icon: Trophy, hasData: kpis.dealsWon > 0 },
+          { title: 'Win Rate', value: kpis.winRate > 0 ? `${kpis.winRate}%` : '—', icon: Target, hasData: kpis.winRate > 0 },
+          { title: 'Avg Deal Size', value: kpis.avgDealSize > 0 ? formatCurrency(kpis.avgDealSize) : '—', icon: Briefcase, hasData: kpis.avgDealSize > 0 },
+          { title: 'Sales Cycle', value: kpis.avgCycleDays > 0 ? `${kpis.avgCycleDays} days` : '—', icon: Clock, hasData: kpis.avgCycleDays > 0 },
         ].map((kpi) => (
           <Card key={kpi.title}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
                 <kpi.icon className="h-5 w-5 text-muted-foreground" />
-                <Badge variant={kpi.trend === 'up' ? 'default' : 'destructive'} className="text-xs">
-                  {kpi.trend === 'up' ? <ArrowUpRight className="h-3 w-3 mr-1" /> : <ArrowDownRight className="h-3 w-3 mr-1" />}
-                  {kpi.change}
-                </Badge>
+                {!kpi.hasData && (
+                  <Badge variant="secondary" className="text-xs">No data</Badge>
+                )}
               </div>
               <p className="text-2xl font-bold">{kpi.value}</p>
               <p className="text-sm text-muted-foreground">{kpi.title}</p>
@@ -135,191 +345,156 @@ export default function SalesAnalytics() {
         <TabsList>
           <TabsTrigger value="revenue">Revenue</TabsTrigger>
           <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
-          <TabsTrigger value="performance">Rep Performance</TabsTrigger>
+          <TabsTrigger value="sequences">Sequences</TabsTrigger>
           <TabsTrigger value="winloss">Win/Loss</TabsTrigger>
-          <TabsTrigger value="products">Products</TabsTrigger>
+          <TabsTrigger value="sources">Lead Sources</TabsTrigger>
         </TabsList>
 
+        {/* ============= REVENUE TAB ============= */}
         <TabsContent value="revenue" className="mt-6 space-y-6">
           <div className="grid lg:grid-cols-2 gap-6">
-            {/* Revenue vs Target */}
             <Card>
               <CardHeader>
-                <CardTitle>Revenue vs Target</CardTitle>
-                <CardDescription>Monthly comparison</CardDescription>
+                <CardTitle>Revenue by Month</CardTitle>
+                <CardDescription>Won deal value over time</CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={revenueData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="revenue" name="Revenue" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="target" name="Target" fill="#e5e7eb" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                {revenueData.length === 0 ? (
+                  <EmptyState message="No won deals yet. Revenue will appear here as deals close." />
+                ) : (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={revenueData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis tickFormatter={(v) => formatCurrency(v)} />
+                      <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                      <Bar dataKey="revenue" name="Revenue" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
               </CardContent>
             </Card>
 
-            {/* Revenue by Source */}
             <Card>
               <CardHeader>
-                <CardTitle>Revenue by Source</CardTitle>
-                <CardDescription>Lead source contribution</CardDescription>
+                <CardTitle>Revenue Trend</CardTitle>
+                <CardDescription>Cumulative revenue over time</CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={sourceData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      dataKey="value"
-                      label={({ name, value }) => `${name}: ${value}%`}
-                    >
-                      {sourceData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
+                {revenueData.length === 0 ? (
+                  <EmptyState message="Revenue trend will appear after deals are closed." />
+                ) : (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <AreaChart data={revenueData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis tickFormatter={(v) => formatCurrency(v)} />
+                      <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                      <Area
+                        type="monotone"
+                        dataKey="revenue"
+                        stroke="#3b82f6"
+                        fill="#3b82f6"
+                        fillOpacity={0.2}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                )}
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
 
-          {/* Revenue Trend */}
+        {/* ============= PIPELINE TAB ============= */}
+        <TabsContent value="pipeline" className="mt-6 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Revenue Trend</CardTitle>
-              <CardDescription>Cumulative revenue over time</CardDescription>
+              <CardTitle>Conversion Funnel</CardTitle>
+              <CardDescription>Lead distribution across pipeline stages ({leads.length} total leads)</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={revenueData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
-                  <Area 
-                    type="monotone" 
-                    dataKey="revenue" 
-                    stroke="#3b82f6" 
-                    fill="#3b82f6" 
-                    fillOpacity={0.2} 
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+              {leads.length === 0 ? (
+                <EmptyState message="No leads yet. Generate leads to see your pipeline funnel." />
+              ) : (
+                <div className="space-y-4">
+                  {funnelData.map((stage, i) => {
+                    const maxVal = Math.max(...funnelData.map(s => s.value), 1);
+                    return (
+                      <div key={stage.stage}>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span>{stage.stage}</span>
+                          <span className="font-medium">{stage.value}</span>
+                        </div>
+                        <div className="relative">
+                          <Progress
+                            value={(stage.value / maxVal) * 100}
+                            className="h-8"
+                          />
+                          {stage.value > 0 && leads.length > 0 && (
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                              {Math.round((stage.value / leads.length) * 100)}%
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="pipeline" className="mt-6 space-y-6">
-          <div className="grid lg:grid-cols-2 gap-6">
-            {/* Conversion Funnel */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Conversion Funnel</CardTitle>
-                <CardDescription>Lead to customer journey</CardDescription>
-              </CardHeader>
-              <CardContent>
+        {/* ============= SEQUENCES TAB (replaces fake Rep Performance) ============= */}
+        <TabsContent value="sequences" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Sequence Performance</CardTitle>
+              <CardDescription>Active automation sequences and enrollment</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {sequencePerformance.length === 0 ? (
+                <EmptyState message="No active sequences. Create sequences to automate lead nurturing." />
+              ) : (
                 <div className="space-y-4">
-                  {funnelData.map((stage, i) => (
-                    <div key={stage.stage}>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span>{stage.stage}</span>
-                        <span className="font-medium">{stage.value}</span>
+                  {sequencePerformance.map((seq, i) => (
+                    <div key={seq.name} className="p-4 border rounded-lg">
+                      <div className="flex items-center gap-4 mb-3">
+                        <span className={`text-lg font-bold w-6 ${
+                          i === 0 ? 'text-yellow-500' : i === 1 ? 'text-gray-400' : i === 2 ? 'text-amber-600' : 'text-muted-foreground'
+                        }`}>
+                          #{i + 1}
+                        </span>
+                        <div className="flex-1">
+                          <p className="font-medium">{seq.name}</p>
+                          <p className="text-sm text-muted-foreground">{seq.steps} steps configured</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xl font-bold text-blue-600">{seq.enrolled}</p>
+                          <p className="text-sm text-muted-foreground">enrolled</p>
+                        </div>
                       </div>
-                      <div className="relative">
-                        <Progress 
-                          value={(stage.value / funnelData[0].value) * 100} 
-                          className="h-8"
+                      <div>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span>Enrollment</span>
+                          <Badge variant={seq.status === 'active' ? 'default' : 'secondary'}>
+                            {seq.status}
+                          </Badge>
+                        </div>
+                        <Progress
+                          value={Math.min((seq.enrolled / Math.max(...sequencePerformance.map(s => s.enrolled), 1)) * 100, 100)}
+                          className="h-2"
                         />
-                        {i < funnelData.length - 1 && (
-                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                            {Math.round((funnelData[i + 1].value / stage.value) * 100)}%
-                          </span>
-                        )}
                       </div>
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Sales Cycle */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Average Sales Cycle</CardTitle>
-                <CardDescription>Days spent in each stage</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={cycleData} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" />
-                    <YAxis dataKey="stage" type="category" />
-                    <Tooltip />
-                    <Bar dataKey="avgDays" name="Avg Days" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="performance" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Sales Rep Performance</CardTitle>
-              <CardDescription>Individual performance against quota</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {repPerformance.map((rep, i) => (
-                  <div key={rep.name} className="p-4 border rounded-lg">
-                    <div className="flex items-center gap-4 mb-3">
-                      <span className={`text-lg font-bold w-6 ${
-                        i === 0 ? 'text-yellow-500' : i === 1 ? 'text-gray-400' : i === 2 ? 'text-amber-600' : 'text-muted-foreground'
-                      }`}>
-                        #{i + 1}
-                      </span>
-                      <Avatar>
-                        <AvatarImage src={rep.avatar} />
-                        <AvatarFallback>{rep.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <p className="font-medium">{rep.name}</p>
-                        <p className="text-sm text-muted-foreground">{rep.deals} deals closed</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xl font-bold text-green-600">${(rep.revenue / 1000).toFixed(0)}K</p>
-                        <p className="text-sm text-muted-foreground">of ${(rep.quota / 1000).toFixed(0)}K quota</p>
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span>Quota Attainment</span>
-                        <span className={`font-medium ${rep.revenue >= rep.quota ? 'text-green-600' : 'text-orange-500'}`}>
-                          {Math.round((rep.revenue / rep.quota) * 100)}%
-                        </span>
-                      </div>
-                      <Progress 
-                        value={Math.min((rep.revenue / rep.quota) * 100, 100)} 
-                        className="h-2"
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* ============= WIN/LOSS TAB ============= */}
         <TabsContent value="winloss" className="mt-6">
           <div className="grid lg:grid-cols-2 gap-6">
             <Card>
@@ -330,17 +505,24 @@ export default function SalesAnalytics() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {winLossData.filter(d => d.type === 'win').map(item => (
-                    <div key={item.reason} className="flex items-center gap-3">
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">{item.reason}</p>
-                        <Progress value={(item.count / 25) * 100} className="h-2 mt-1" />
-                      </div>
-                      <span className="text-sm font-bold">{item.count}</span>
-                    </div>
-                  ))}
-                </div>
+                {winLossData.filter(d => d.type === 'win').length === 0 ? (
+                  <EmptyState message="No won deals with reasons recorded yet." />
+                ) : (
+                  <div className="space-y-3">
+                    {winLossData.filter(d => d.type === 'win').map(item => {
+                      const maxWin = Math.max(...winLossData.filter(d => d.type === 'win').map(d => d.count), 1);
+                      return (
+                        <div key={item.reason} className="flex items-center gap-3">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">{item.reason}</p>
+                            <Progress value={(item.count / maxWin) * 100} className="h-2 mt-1" />
+                          </div>
+                          <span className="text-sm font-bold">{item.count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -352,43 +534,85 @@ export default function SalesAnalytics() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {winLossData.filter(d => d.type === 'loss').map(item => (
-                    <div key={item.reason} className="flex items-center gap-3">
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">{item.reason}</p>
-                        <Progress value={(item.count / 15) * 100} className="h-2 mt-1 [&>div]:bg-red-500" />
-                      </div>
-                      <span className="text-sm font-bold">{item.count}</span>
-                    </div>
-                  ))}
-                </div>
+                {winLossData.filter(d => d.type === 'loss').length === 0 ? (
+                  <EmptyState message="No lost deals with reasons recorded yet." />
+                ) : (
+                  <div className="space-y-3">
+                    {winLossData.filter(d => d.type === 'loss').map(item => {
+                      const maxLoss = Math.max(...winLossData.filter(d => d.type === 'loss').map(d => d.count), 1);
+                      return (
+                        <div key={item.reason} className="flex items-center gap-3">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">{item.reason}</p>
+                            <Progress value={(item.count / maxLoss) * 100} className="h-2 mt-1 [&>div]:bg-red-500" />
+                          </div>
+                          <span className="text-sm font-bold">{item.count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
         </TabsContent>
 
-        <TabsContent value="products" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Product Mix Analysis</CardTitle>
-              <CardDescription>Revenue and deals by product</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={productMix}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="product" />
-                  <YAxis yAxisId="left" orientation="left" stroke="#3b82f6" />
-                  <YAxis yAxisId="right" orientation="right" stroke="#10b981" />
-                  <Tooltip />
-                  <Legend />
-                  <Bar yAxisId="left" dataKey="revenue" name="Revenue ($)" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                  <Bar yAxisId="right" dataKey="deals" name="Deals" fill="#10b981" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+        {/* ============= LEAD SOURCES TAB (replaces fake Products) ============= */}
+        <TabsContent value="sources" className="mt-6">
+          <div className="grid lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Lead Sources</CardTitle>
+                <CardDescription>Where your leads come from</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {sourceData.length === 0 ? (
+                  <EmptyState message="No leads yet. Source distribution will appear here." />
+                ) : (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={sourceData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={100}
+                        dataKey="value"
+                        label={({ name, value }) => `${name}: ${value}`}
+                      >
+                        {sourceData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Source Breakdown</CardTitle>
+                <CardDescription>Lead count by source</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {sourceData.length === 0 ? (
+                  <EmptyState message="No data available." />
+                ) : (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={sourceData} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" />
+                      <YAxis dataKey="name" type="category" width={120} />
+                      <Tooltip />
+                      <Bar dataKey="value" name="Leads" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
