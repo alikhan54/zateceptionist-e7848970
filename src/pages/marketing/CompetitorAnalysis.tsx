@@ -154,8 +154,9 @@ export default function CompetitorAnalysis() {
     queryClient.invalidateQueries({ queryKey: ['competitor_tracking'] });
     queryClient.invalidateQueries({ queryKey: ['competitor_analysis'] });
     queryClient.invalidateQueries({ queryKey: ['competitor_content'] });
-  }, 45000);
-},
+    }, 45000);
+  },
+  });
 
   const toggleActive = async (id: string, currentActive: boolean) => {
     await supabase.from('competitor_tracking' as any).update({ is_active: !currentActive }).eq('id', id);
