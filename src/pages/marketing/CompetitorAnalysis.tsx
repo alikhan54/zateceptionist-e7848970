@@ -125,20 +125,37 @@ export default function CompetitorAnalysis() {
       });
       if (analysisErr) console.warn('competitor_analysis insert:', analysisErr.message);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['competitor_tracking'] });
-      queryClient.invalidateQueries({ queryKey: ['competitor_analysis'] });
-      setIsCreateOpen(false);
-      setName(''); setInstagramUrl(''); setWebsiteUrl(''); setNotes('');
-      toast({
-        title: '✅ Competitor added!',
-        description: 'AI will analyze their profile at next 6 AM cycle. Manually trigger analysis in n8n if needed.',
-      });
-    },
-    onError: (err: any) => {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
-    },
+    onSuccess: (_, variables) => {
+  queryClient.invalidateQueries({ queryKey: ['competitor_tracking'] });
+  queryClient.invalidateQueries({ queryKey: ['competitor_analysis'] });
+  setIsCreateOpen(false);
+  setName(''); setInstagramUrl(''); setWebsiteUrl(''); setNotes('');
+  
+  // AUTO-TRIGGER instant analysis via webhook
+  const webhookBaseUrl = 'https://webhooks.zatesystems.com/webhook';
+  fetch(`${webhookBaseUrl}/marketing/analyze-competitor`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      tenant_id: tenantConfig?.id,
+      competitor_id: tracked?.[0]?.id || '', // Latest added
+      competitor_name: name.trim(),
+      instagram_url: instagramUrl.trim() || ''
+    })
+  }).catch(err => console.error('Analysis trigger:', err));
+  
+  toast({
+    title: '✅ Competitor added!',
+    description: 'AI is analyzing now — results will appear in 30-60 seconds.',
   });
+  
+  // Auto-refetch after analysis completes
+  setTimeout(() => {
+    queryClient.invalidateQueries({ queryKey: ['competitor_tracking'] });
+    queryClient.invalidateQueries({ queryKey: ['competitor_analysis'] });
+    queryClient.invalidateQueries({ queryKey: ['competitor_content'] });
+  }, 45000);
+},
 
   const toggleActive = async (id: string, currentActive: boolean) => {
     await supabase.from('competitor_tracking' as any).update({ is_active: !currentActive }).eq('id', id);
