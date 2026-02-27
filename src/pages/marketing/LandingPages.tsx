@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useTenant } from "@/contexts/TenantContext";
 import { callWebhook, WEBHOOKS } from "@/lib/api/webhooks";
+import { logSystemEvent } from "@/lib/api/systemEvents";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -137,6 +138,8 @@ export default function LandingPages() {
   const [editorCtaColor, setEditorCtaColor] = useState("#6366f1");
   const [editorFormFields, setEditorFormFields] = useState<string[]>(["name", "email"]);
   const [editorThankYou, setEditorThankYou] = useState("Thank you! We'll be in touch soon.");
+  const [editorMetaTitle, setEditorMetaTitle] = useState("");
+  const [editorMetaDescription, setEditorMetaDescription] = useState("");
 
   // Live preview HTML
   const editorPreviewHtml = useMemo(() => generatePageHtml({
@@ -178,9 +181,12 @@ export default function LandingPages() {
         name: editorTitle,
         template: selectedTemplate?.name,
         html_content: editorPreviewHtml,
+        meta_title: editorMetaTitle || editorTitle,
+        meta_description: editorMetaDescription || editorSubtitle,
       });
       setIsEditorOpen(false);
       toast({ title: "✅ Page Created!", description: "Your landing page has been saved as draft." });
+      logSystemEvent({ tenantId: tenantConfig?.id || '', eventType: 'landing_page_created', sourceModule: 'marketing', eventData: { page_name: editorTitle } });
     } catch {}
   };
 
@@ -271,6 +277,21 @@ export default function LandingPages() {
             </Card>
 
             <p className="text-xs text-muted-foreground px-1">Form submissions are automatically saved as leads in your CRM with source='landing_page'</p>
+
+            {/* SEO & Meta */}
+            <Card>
+              <CardHeader className="py-3 px-4"><CardTitle className="text-sm">SEO & Meta</CardTitle></CardHeader>
+              <CardContent className="px-4 pb-4 space-y-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Meta Title</Label>
+                  <Input value={editorMetaTitle} onChange={e => setEditorMetaTitle(e.target.value)} placeholder={editorTitle || "Page title for search engines"} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Meta Description</Label>
+                  <Textarea value={editorMetaDescription} onChange={e => setEditorMetaDescription(e.target.value)} placeholder="Brief description for search results (150-160 chars)" rows={2} />
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Right: Live Preview */}
@@ -381,6 +402,9 @@ export default function LandingPages() {
                           {page.status === "draft" && (
                             <DropdownMenuItem onClick={() => publishPage.mutateAsync(page.id)}><Check className="h-4 w-4 mr-2" />Publish</DropdownMenuItem>
                           )}
+                          {page.status === "published" && (
+                            <DropdownMenuItem onClick={() => window.open(`/lp/${page.slug || page.id}`, '_blank')}><ExternalLink className="h-4 w-4 mr-2" />View Public Page</DropdownMenuItem>
+                          )}
                           <DropdownMenuItem onClick={() => handleCopyHtml(page.html_content || "")}><Copy className="h-4 w-4 mr-2" />Copy HTML</DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleDownloadHtml(page.html_content || "", page.name)}><Download className="h-4 w-4 mr-2" />Download HTML</DropdownMenuItem>
                           <DropdownMenuItem onClick={() => { navigator.clipboard.writeText(webhookUrl); toast({ title: "Form Webhook URL Copied!" }); }}><ExternalLink className="h-4 w-4 mr-2" />Copy Form URL</DropdownMenuItem>
@@ -406,8 +430,18 @@ export default function LandingPages() {
                       </div>
                     </div>
 
+                    {page.status === 'published' && (
+                      <a
+                        href={`/lp/${page.slug || page.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block mt-2 text-xs text-primary hover:underline text-center truncate"
+                      >
+                        {window.location.origin}/lp/{page.slug || page.id}
+                      </a>
+                    )}
                     {(page.views || 0) === 0 && page.status === 'published' && (
-                      <p className="text-xs text-muted-foreground mt-2 text-center italic">No visits yet. Share the form URL or embed the HTML to start collecting leads.</p>
+                      <p className="text-xs text-muted-foreground mt-1 text-center italic">No visits yet. Share the link above to start collecting leads.</p>
                     )}
 
                     {page.status === "draft" && (

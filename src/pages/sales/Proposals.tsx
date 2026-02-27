@@ -61,6 +61,9 @@ interface Proposal {
   declined_at: string | null;
   valid_until: string | null;
   items: ProposalItem[];
+  lead_id: string | null;
+  ai_notes: string | null;
+  ai_created: boolean;
   created_at: string;
 }
 
@@ -516,7 +519,14 @@ export default function Proposals() {
                           <div className="flex items-center gap-2">
                             <FileText className="h-4 w-4 text-muted-foreground" />
                             <div>
-                              <p className="font-medium">{proposal.title}</p>
+                              <div className="flex items-center gap-1.5">
+                                <p className="font-medium">{proposal.title}</p>
+                                {proposal.ai_created && (
+                                  <Badge variant="outline" className="text-[10px] px-1 py-0 text-purple-600 border-purple-300">
+                                    AI
+                                  </Badge>
+                                )}
+                              </div>
                               <p className="text-xs text-muted-foreground">{proposal.contact_name}</p>
                             </div>
                           </div>

@@ -37,6 +37,7 @@ import {
   AlertCircle,
   Activity,
 } from "lucide-react";
+import DashboardBriefing from "@/components/sales/DashboardBriefing";
 
 // ============================================================================
 // TYPES
@@ -155,34 +156,34 @@ export default function SalesDashboard() {
     enabled: !!tenantUuid,
   });
 
-  // Fetch email/call stats from activities (if table exists) - activities stores UUID
+  // Fetch email/call stats from sales_leads aggregate counts + outbound_messages
   const { data: activityStats } = useQuery({
-    queryKey: ["dashboard", "activities", tenantUuid],
+    queryKey: ["dashboard", "activities", tenantId],
     queryFn: async () => {
-      if (!tenantUuid) return { emailsSent: 0, callsMade: 0 };
+      if (!tenantId) return { emailsSent: 0, callsMade: 0, whatsappSent: 0 };
       try {
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        // Sum from lead-level counters (updated by n8n node 23.9)
+        const { data: leads } = await supabase
+          .from("sales_leads")
+          .select("emails_sent, calls_made, whatsapp_sent")
+          .eq("tenant_id", tenantId);
 
-        const { data, error } = await supabase
-          .from("activities")
-          .select("type")
-          .eq("tenant_id", tenantUuid) // UUID - activities stores UUID in tenant_id
-          .gte("created_at", thirtyDaysAgo.toISOString())
-          .in("type", ["email_sent", "call_outbound", "call_inbound"]);
+        const emailsSent = leads?.reduce((sum, l) => sum + (l.emails_sent || 0), 0) || 0;
+        const callsMade = leads?.reduce((sum, l) => sum + (l.calls_made || 0), 0) || 0;
+        const whatsappSent = leads?.reduce((sum, l) => sum + (l.whatsapp_sent || 0), 0) || 0;
 
-        if (error) throw error;
+        // Also check outbound_messages for additional counts
+        const { count: outboundCount } = await supabase
+          .from("outbound_messages")
+          .select("*", { count: "exact", head: true })
+          .eq("tenant_id", tenantId);
 
-        const emailsSent = data?.filter((a) => a.type === "email_sent").length || 0;
-        const callsMade = data?.filter((a) => a.type === "call_outbound" || a.type === "call_inbound").length || 0;
-
-        return { emailsSent, callsMade };
+        return { emailsSent, callsMade, whatsappSent, outboundTotal: outboundCount || 0 };
       } catch (e) {
-        // Table might not exist yet
-        return { emailsSent: 0, callsMade: 0 };
+        return { emailsSent: 0, callsMade: 0, whatsappSent: 0, outboundTotal: 0 };
       }
     },
-    enabled: !!tenantUuid,
+    enabled: !!tenantId,
   });
 
   // =====================================================
@@ -350,6 +351,9 @@ export default function SalesDashboard() {
           </Button>
         </div>
       </div>
+
+      {/* AI Briefing */}
+      <DashboardBriefing />
 
       {/* AI Assistant Status Banner */}
       <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">

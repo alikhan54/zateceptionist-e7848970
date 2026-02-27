@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
 import { useMarketingCampaigns } from '@/hooks/useMarketingCampaigns';
+import { logSystemEvent } from '@/lib/api/systemEvents';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +19,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -65,6 +68,8 @@ export default function CampaignCentral() {
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [activeTab, setActiveTab] = useState('all');
   const [confirmSendCampaign, setConfirmSendCampaign] = useState<any | null>(null);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [newCampaign, setNewCampaign] = useState({ name: '', type: 'email', subject: '', content: '' });
 
   // Campaign activity log
   const { data: campaignLog = [] } = useQuery({
@@ -83,6 +88,22 @@ export default function CampaignCentral() {
     },
     enabled: !!tenantUuid,
     refetchInterval: 15000,
+  });
+
+  // Customer count for send confirmation
+  const { data: customerCount = 0 } = useQuery({
+    queryKey: ['campaign-customer-count', tenantUuid],
+    queryFn: async () => {
+      if (!tenantUuid) return 0;
+      const tc = tenantConfig as any;
+      const slug = tc?.tenant_id || tenantUuid;
+      const { count } = await supabase
+        .from('customers')
+        .select('*', { count: 'exact', head: true })
+        .eq('tenant_id', slug);
+      return count || 0;
+    },
+    enabled: !!tenantUuid,
   });
 
   // Connected channels from tenantConfig
@@ -135,6 +156,30 @@ export default function CampaignCentral() {
   const getReadRate = (c: any) => c.delivered_count > 0 ? Math.round((c.opened_count / c.delivered_count) * 100) : 0;
   const getClickRate = (c: any) => c.opened_count > 0 ? Math.round((c.clicked_count / c.opened_count) * 100) : 0;
 
+  // Create new campaign
+  const handleCreateCampaign = async () => {
+    if (!tenantConfig?.id || !newCampaign.name.trim()) return;
+    try {
+      const { error } = await supabase.from('marketing_campaigns').insert({
+        tenant_id: tenantConfig.id,
+        name: newCampaign.name.trim(),
+        type: newCampaign.type,
+        subject: newCampaign.subject.trim() || null,
+        content: newCampaign.content.trim() || null,
+        status: 'draft',
+        sent_count: 0, delivered_count: 0, opened_count: 0, clicked_count: 0, converted_count: 0,
+      });
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['marketing_campaigns'] });
+      setIsCreateOpen(false);
+      setNewCampaign({ name: '', type: 'email', subject: '', content: '' });
+      toast({ title: '✅ Campaign Created', description: `"${newCampaign.name}" saved as draft. You can send it when ready.` });
+      logSystemEvent({ tenantId: tenantConfig.id, eventType: 'campaign_created', sourceModule: 'marketing', eventData: { campaign_name: newCampaign.name, channel: newCampaign.type } });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err?.message || 'Failed to create campaign', variant: 'destructive' });
+    }
+  };
+
   // Confirm and send with detailed toast
   const handleConfirmSend = async () => {
     if (!confirmSendCampaign) return;
@@ -142,7 +187,7 @@ export default function CampaignCentral() {
       await sendCampaign.mutateAsync(confirmSendCampaign.id);
       toast({ title: "🚀 Campaign Sending!", description: `Sending "${confirmSendCampaign.name}" — check back in a few minutes for delivery stats.` });
     } catch (err: any) {
-      toast({ title: "Send Failed", description: err?.message || "Check n8n logs for details", variant: "destructive" });
+      toast({ title: "Send Failed", description: err?.message || "Campaign delivery failed. Please try again.", variant: "destructive" });
     }
     setConfirmSendCampaign(null);
   };
@@ -178,7 +223,7 @@ export default function CampaignCentral() {
           <h1 className="text-3xl font-bold">Campaign Central</h1>
           <p className="text-muted-foreground mt-1">Manage and monitor all your marketing campaigns</p>
         </div>
-        <Button><Plus className="h-4 w-4 mr-2" />New Campaign</Button>
+        <Button onClick={() => setIsCreateOpen(true)}><Plus className="h-4 w-4 mr-2" />New Campaign</Button>
       </div>
 
       {/* DNC Banner with connected channels */}
@@ -231,7 +276,7 @@ export default function CampaignCentral() {
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-3 mb-3"><div className="p-2 rounded-lg bg-primary/10"><item.icon className="h-5 w-5 text-primary" /></div><div><p className="font-medium">{item.name}</p><p className="text-xs text-muted-foreground">{item.emails}</p></div></div>
                   <p className="text-sm text-muted-foreground mb-3">{item.desc}</p>
-                  <div className="flex items-center justify-between text-xs"><span className="text-primary">{item.stat}</span><Button size="sm">Create</Button></div>
+                  <div className="flex items-center justify-between text-xs"><span className="text-primary">{item.stat}</span><Button size="sm" onClick={() => { setNewCampaign({ name: item.name, type: 'email', subject: item.name, content: item.desc }); setIsCreateOpen(true); }}>Create</Button></div>
                 </CardContent>
               </Card>
             ))}
@@ -291,6 +336,10 @@ export default function CampaignCentral() {
                                   <div className="flex items-center gap-2 text-xs"><span className="w-16">Opened:</span><Progress value={getReadRate(campaign)} className="h-1.5 flex-1" /><span className="w-8 text-right">{getReadRate(campaign)}%</span></div>
                                   <div className="flex items-center gap-2 text-xs"><span className="w-16">Clicked:</span><Progress value={getClickRate(campaign)} className="h-1.5 flex-1" /><span className="w-8 text-right">{getClickRate(campaign)}%</span></div>
                                 </div>
+                              ) : (campaign.sent_count === 0 && ['completed', 'active', 'sent'].includes(campaign.status)) ? (
+                                <span className="text-xs text-amber-500 flex items-center gap-1">
+                                  <AlertCircle className="h-3 w-3" /> No sends recorded
+                                </span>
                               ) : <span className="text-sm text-muted-foreground">—</span>}
                             </TableCell>
                             <TableCell className="text-right">
@@ -355,19 +404,69 @@ export default function CampaignCentral() {
           <DialogHeader>
             <DialogTitle>Send Campaign</DialogTitle>
             <DialogDescription className="space-y-2">
-              <p>Ready to send "<span className="font-medium">{confirmSendCampaign?.name}</span>" to all eligible contacts?</p>
+              <p>Ready to send "<span className="font-medium">{confirmSendCampaign?.name}</span>"?</p>
               <ul className="list-none space-y-1 mt-2 text-sm">
+                <li>• Eligible contacts: <span className="font-semibold">{customerCount.toLocaleString()}</span></li>
                 <li>• DNC list will be auto-checked</li>
                 <li>• Consent verification is automatic</li>
                 <li>• Channel: <span className="font-medium capitalize">{confirmSendCampaign?.type || 'email'}</span></li>
               </ul>
+              {customerCount === 0 && (
+                <div className="flex items-start gap-2 p-2 mt-2 rounded bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs">
+                  <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                  <span>No eligible contacts found. Add contacts before sending.</span>
+                </div>
+              )}
               <p className="text-destructive text-xs mt-2">This cannot be undone.</p>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirmSendCampaign(null)}>Cancel</Button>
-            <Button onClick={handleConfirmSend} disabled={sendCampaign.isPending}>
+            <Button onClick={handleConfirmSend} disabled={sendCampaign.isPending || customerCount === 0}>
               {sendCampaign.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Sending...</> : <><Send className="h-4 w-4 mr-2" /> Confirm Send</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Campaign Dialog */}
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Campaign</DialogTitle>
+            <DialogDescription>Set up your campaign details. You can send it when ready.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Campaign Name</Label>
+              <Input placeholder="e.g., Welcome New Leads" value={newCampaign.name} onChange={e => setNewCampaign(prev => ({ ...prev, name: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>Channel</Label>
+              <Select value={newCampaign.type} onValueChange={v => setNewCampaign(prev => ({ ...prev, type: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="email">📧 Email</SelectItem>
+                  <SelectItem value="whatsapp">💬 WhatsApp</SelectItem>
+                  <SelectItem value="sms">📱 SMS</SelectItem>
+                  <SelectItem value="instagram">📸 Instagram</SelectItem>
+                  <SelectItem value="facebook">📘 Facebook</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Subject Line</Label>
+              <Input placeholder="Email subject or message headline" value={newCampaign.subject} onChange={e => setNewCampaign(prev => ({ ...prev, subject: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>Content</Label>
+              <Textarea placeholder="Campaign message content... Use {{first_name}} for personalization." value={newCampaign.content} onChange={e => setNewCampaign(prev => ({ ...prev, content: e.target.value }))} rows={5} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreateCampaign} disabled={!newCampaign.name.trim()}>
+              Create Campaign
             </Button>
           </DialogFooter>
         </DialogContent>

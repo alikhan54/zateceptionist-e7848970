@@ -116,6 +116,10 @@ const Invite = lazy(() => import("./pages/Invite"));
 // Intelligence
 const Intelligence = lazy(() => import("./pages/Intelligence"));
 
+// Public Pages
+const PublicBlog = lazy(() => import("./pages/public/PublicBlog"));
+const PublicLandingPage = lazy(() => import("./pages/public/PublicLandingPage"));
+
 // Other
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -179,6 +183,24 @@ const App = () => (
                     </LazyPage>
                   }
                 />
+                {/* Public content pages */}
+                <Route
+                  path="/blog/:slug"
+                  element={
+                    <LazyPage>
+                      <PublicBlog />
+                    </LazyPage>
+                  }
+                />
+                <Route
+                  path="/lp/:slug"
+                  element={
+                    <LazyPage>
+                      <PublicLandingPage />
+                    </LazyPage>
+                  }
+                />
+
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
                 {/* Protected routes with Layout */}

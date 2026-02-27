@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase, callWebhook } from '@/integrations/supabase/client';
+import { logSystemEvent } from '@/lib/api/systemEvents';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -70,11 +71,11 @@ export default function CompetitorAnalysis() {
         .from('competitor_content' as any)
         .select('*')
         .eq('tenant_id', tenantConfig.id)
-        .order('captured_at', { ascending: false })
+        .order('discovered_at', { ascending: false })
         .limit(30);
       return (data || []).map((d: any) => {
         let parsed: any = {};
-        try { parsed = JSON.parse(d.content_data || '{}'); } catch {}
+        try { parsed = JSON.parse(d.content_text || '{}'); } catch {}
         return { ...d, analysis: parsed };
       });
     },
@@ -97,7 +98,7 @@ export default function CompetitorAnalysis() {
     enabled: !!tenantConfig?.id,
   });
 
-  const hasApify = !!(tenantConfig as any)?.features?.has_apify || !!(tenantConfig as any)?.apify_token;
+  const hasApify = !!(tenantConfig as any)?.apify_api_key || !!(tenantConfig as any)?.has_apify || !!(tenantConfig as any)?.apify_token;
 
   // ─── Add competitor to tracking ───
   const addCompetitor = useMutation({
@@ -124,16 +125,40 @@ export default function CompetitorAnalysis() {
         status: 'pending',
       });
       if (analysisErr) console.warn('competitor_analysis insert:', analysisErr.message);
+      // If BOTH inserts failed, throw so onError fires
+      if (trackErr && analysisErr) {
+        throw new Error(`Failed to add competitor: ${trackErr.message}`);
+      }
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['competitor_tracking'] });
       queryClient.invalidateQueries({ queryKey: ['competitor_analysis'] });
+      // Capture form data before clearing for auto-analysis
+      const savedName = name.trim();
+      const savedInstagram = instagramUrl.trim();
+      const savedWebsite = websiteUrl.trim();
       setIsCreateOpen(false);
       setName(''); setInstagramUrl(''); setWebsiteUrl(''); setNotes('');
       toast({
         title: '✅ Competitor added!',
-        description: 'AI will analyze their profile at next 6 AM cycle. Manually trigger analysis in n8n if needed.',
+        description: 'AI is analyzing their profile. Results typically appear within 30-60 seconds.',
       });
+      logSystemEvent({ tenantId: tenantConfig?.id || '', eventType: 'competitor_analyzed', sourceModule: 'marketing', eventData: { competitor_name: savedName } });
+      // Auto-trigger analysis webhook (same as "Analyze Now" button)
+      try {
+        const result = await callWebhook('marketing/analyze-competitor', {
+          competitor_name: savedName,
+          instagram_url: savedInstagram || null,
+          website_url: savedWebsite || null,
+        }, tenantConfig?.id || '');
+        if (result.success) {
+          queryClient.invalidateQueries({ queryKey: ['competitor_tracking'] });
+          queryClient.invalidateQueries({ queryKey: ['competitor_content'] });
+          toast({ title: '✅ Analysis Complete!', description: `${savedName} has been analyzed.` });
+        }
+      } catch {
+        // Silent fail — analysis will be picked up by scheduled cron
+      }
     },
     onError: (err: any) => {
       toast({ title: 'Error', description: err.message, variant: 'destructive' });
@@ -197,7 +222,7 @@ export default function CompetitorAnalysis() {
           {tracked.length === 0
             ? 'No competitors tracked. Add competitors below to start AI monitoring.'
             : analysisResults.length === 0
-              ? `${tracked.length} competitor(s) added. AI analysis runs daily at 6 AM — first results tomorrow.`
+              ? `${tracked.length} competitor(s) added. AI analysis will run automatically — first results within minutes.`
               : `AI monitoring active — Last scan: ${lastScrape ? formatDistanceToNow(new Date(lastScrape), { addSuffix: true }) : 'recently'}`}
         </span>
       </div>
@@ -216,7 +241,7 @@ export default function CompetitorAnalysis() {
       <Card>
         <CardContent className="p-3 flex items-center justify-between text-sm text-muted-foreground">
           <div className="flex items-center gap-4">
-            <span>📅 Analysis runs daily at 6:00 AM</span>
+            <span>📅 AI analyzes competitors automatically</span>
             <span>Last scrape: {lastScrape ? formatDistanceToNow(new Date(lastScrape), { addSuffix: true }) : 'Never'}</span>
           </div>
         </CardContent>
@@ -290,10 +315,10 @@ export default function CompetitorAnalysis() {
                               queryClient.invalidateQueries({ queryKey: ['competitor_content'] });
                               toast({ title: '✅ Analysis Complete!' });
                             } else {
-                              toast({ title: '⏳ Analysis Queued', description: 'Will be processed at next 6 AM cycle' });
+                              toast({ title: '⏳ Analysis Queued', description: 'Will be processed shortly by the AI engine.' });
                             }
                           } catch {
-                            toast({ title: '⏳ Analysis Queued', description: 'Will be processed at next 6 AM cycle' });
+                            toast({ title: '⏳ Analysis Queued', description: 'Will be processed shortly by the AI engine.' });
                           } finally {
                             setAnalyzingId(null);
                           }
@@ -371,7 +396,7 @@ export default function CompetitorAnalysis() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold">{ca.competitor_id || 'Competitor'}</h3>
-                      {ca.captured_at && <span className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(ca.captured_at), { addSuffix: true })}</span>}
+                      {ca.discovered_at && <span className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(ca.discovered_at), { addSuffix: true })}</span>}
                     </div>
                     {engRate != null && (
                       <Badge variant="outline" className={
@@ -466,7 +491,7 @@ export default function CompetitorAnalysis() {
             <Search className="h-12 w-12 text-muted-foreground/50 mb-4" />
             <h3 className="text-lg font-semibold">No Competitor Data Yet</h3>
             <p className="text-muted-foreground mt-1 max-w-md">
-              Add competitors to start monitoring. AI analyzes their Instagram profiles daily at 6 AM.
+              Add competitors to start monitoring. AI will automatically analyze their profiles.
             </p>
             <Button onClick={() => setIsCreateOpen(true)} className="marketing-gradient text-white mt-4">
               <Plus className="h-4 w-4 mr-2" /> Add Your First Competitor

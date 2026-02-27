@@ -45,7 +45,7 @@ function MarketingConnections() {
   // State for all fields — initialized from tenantConfig
   const tc = tenantConfig as any;
   const [meta, setMeta] = useState({
-    facebook_page_id: tc?.facebook_page_id || tc?.meta_page_id || '',
+    meta_page_id: tc?.meta_page_id || tc?.facebook_page_id || '',
     meta_page_token: tc?.meta_page_token || tc?.facebook_access_token || '',
     instagram_page_id: tc?.instagram_page_id || '',
   });
@@ -65,7 +65,7 @@ function MarketingConnections() {
     linkedin_access_token: tc?.linkedin_access_token || '',
     linkedin_urn: tc?.linkedin_urn || '',
   });
-  const [apify, setApify] = useState({ apify_token: tc?.apify_token || '' });
+  const [apify, setApify] = useState({ apify_api_key: tc?.apify_api_key || tc?.apify_token || '' });
   const [blog, setBlog] = useState({
     company_domain: tc?.company_domain || '',
     wordpress_url: tc?.wordpress_url || '',
@@ -158,7 +158,7 @@ function MarketingConnections() {
               <div className="grid md:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs">Facebook Page ID</Label>
-                  <Input value={meta.facebook_page_id} onChange={e => setMeta(p => ({ ...p, facebook_page_id: e.target.value }))} placeholder="e.g., 123456789" />
+                  <Input value={meta.meta_page_id} onChange={e => setMeta(p => ({ ...p, meta_page_id: e.target.value }))} placeholder="e.g., 123456789" />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Instagram Page ID</Label>
@@ -288,16 +288,16 @@ function MarketingConnections() {
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center justify-between">
                 Apify (Competitor Scraping)
-                <StatusDot connected={!!apify.apify_token} />
+                <StatusDot connected={!!apify.apify_api_key} />
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="space-y-1.5">
                 <Label className="text-xs">API Token</Label>
-                <Input type="password" value={apify.apify_token} onChange={e => setApify({ apify_token: e.target.value })} placeholder="apify_api_..." />
+                <Input type="password" value={apify.apify_api_key} onChange={e => setApify({ apify_api_key: e.target.value })} placeholder="apify_api_..." />
               </div>
               <p className="text-xs text-muted-foreground">
-                {apify.apify_token ? '🟢 Competitor scraping will use live Apify data' : '🟡 Without a token, competitor analysis uses sample data'}
+                {apify.apify_api_key ? '🟢 Competitor scraping will use live Apify data' : '🟡 Without a token, competitor analysis uses sample data'}
               </p>
               <div className="flex justify-end">
                 <SaveButton section="apify" data={apify} />

@@ -16,6 +16,10 @@ export interface LandingPage {
   conversion_rate: number;
   published_url?: string;
   published_at?: string;
+  meta_title?: string;
+  meta_description?: string;
+  og_image_url?: string;
+  template_type?: string;
   created_at: string;
   updated_at?: string;
 }
@@ -53,6 +57,8 @@ export function useLandingPages() {
           slug: slug + "-" + Date.now(),
           template: input.template,
           html_content: input.html_content,
+          meta_title: input.meta_title,
+          meta_description: input.meta_description,
           status: "draft",
           views: 0,
           conversions: 0,
@@ -70,12 +76,16 @@ export function useLandingPages() {
 
   const publishPage = useMutation({
     mutationFn: async (pageId: string) => {
+      // Get the page slug for the public URL
+      const existing = pages.find((p: any) => p.id === pageId);
+      const slug = existing?.slug || pageId;
+      const publicUrl = `${window.location.origin}/lp/${slug}`;
       const { data, error } = await supabase
         .from("landing_pages")
         .update({
           status: "published",
           published_at: new Date().toISOString(),
-          published_url: `inline-preview://${pageId}`,
+          published_url: publicUrl,
         })
         .eq("id", pageId)
         .select()
@@ -83,9 +93,9 @@ export function useLandingPages() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["landing_pages", tenantUuid] });
-      toast({ title: "Page Published" });
+      toast({ title: "Page Published", description: data?.published_url ? `Live at ${data.published_url}` : undefined });
     },
   });
 

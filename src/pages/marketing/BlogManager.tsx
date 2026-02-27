@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTenant } from "@/contexts/TenantContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase, callWebhook, WEBHOOKS } from "@/integrations/supabase/client";
+import { logSystemEvent } from "@/lib/api/systemEvents";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -98,14 +99,18 @@ export default function BlogManager() {
       if (result.success) {
         const content = (result.data as any)?.content || (result.data as any)?.html || '';
         if (content) {
+          const titleSlug = (post.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
           await supabase.from("blog_posts").update({
             content_html: content,
             ai_generated: true,
             status: 'published',
+            published_at: new Date().toISOString(),
+            canonical_url: `${window.location.origin}/blog/${titleSlug || post.id}`,
           }).eq("id", post.id);
         }
         queryClient.invalidateQueries({ queryKey: ["blog_posts"] });
         toast({ title: "✅ Blog Content Generated!" });
+        logSystemEvent({ tenantId: tenantConfig?.id || '', eventType: 'blog_generated', sourceModule: 'marketing', eventData: { blog_title: post.title, blog_id: post.id } });
       } else {
         toast({ title: "Generation Failed", description: result.error || "Could not generate", variant: "destructive" });
       }
@@ -190,9 +195,11 @@ export default function BlogManager() {
     try {
       const { data, error } = await supabase.from('landing_pages').insert({
         tenant_id: tenantConfig.id,
-        title: post.title,
+        name: post.title,
         slug: post.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 50),
         html_content: post.content_html || `<h1>${post.title}</h1><p>${post.excerpt || ''}</p>`,
+        meta_title: post.meta_title || post.title,
+        meta_description: post.meta_description || post.excerpt || '',
         status: 'draft',
         template_type: 'blog',
       }).select().single();
@@ -341,6 +348,19 @@ export default function BlogManager() {
                     {post.content_html && (
                       <Button size="sm" variant="outline" onClick={() => setPreviewPost(post)}>
                         <Eye className="h-3 w-3 mr-1" /> Preview
+                      </Button>
+                    )}
+
+                    {/* Public Link */}
+                    {post.status === 'published' && (
+                      <Button size="sm" variant="outline" asChild>
+                        <a
+                          href={`/blog/${(post.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || post.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <ExternalLink className="h-3 w-3 mr-1" /> View Public
+                        </a>
                       </Button>
                     )}
 

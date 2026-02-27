@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +10,7 @@ import {
   Megaphone, FileText, Users, PenSquare, Plus, ArrowRight,
   Sparkles, Zap, Clock, Target, TrendingUp, Brain, Calendar,
   Send, Share2, BarChart3, CheckCircle2, Activity,
+  AlertTriangle, XCircle, Shield,
 } from 'lucide-react';
 import { useTenant } from '@/contexts/TenantContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -33,7 +34,7 @@ const CRON_SCHEDULES = [
   { name: 'AI Brain', schedule: 'Every 2 hours', icon: Brain },
   { name: 'Blog Generation', schedule: 'Daily 8 AM', icon: PenSquare },
   { name: 'Engagement Tracking', schedule: '4x daily', icon: BarChart3 },
-  { name: 'Competitor Analysis', schedule: 'Daily 6 AM', icon: Target },
+  { name: 'Competitor Analysis', schedule: 'Daily', icon: Target },
 ];
 
 export default function MarketingHub() {
@@ -141,6 +142,108 @@ export default function MarketingHub() {
     enabled: !!tenantConfig?.id,
   });
 
+  // ─── Health Checks ───
+  const { data: healthChecks = [] } = useQuery({
+    queryKey: ['hub-health-checks', tenantConfig?.id],
+    queryFn: async () => {
+      if (!tenantConfig?.id) return [];
+      const checks: { label: string; status: 'ok' | 'warn' | 'error'; detail: string; path: string }[] = [];
+
+      // 1. Social Accounts — check Meta token
+      const hasMeta = !!(tenantConfig as any)?.meta_page_token;
+      checks.push({
+        label: 'Social Accounts',
+        status: hasMeta ? 'ok' : 'error',
+        detail: hasMeta ? 'Meta token configured' : 'No Meta token — connect in Integrations',
+        path: '/settings/integrations',
+      });
+
+      // 2. Customers / Contacts
+      const { count: custCount } = await supabase
+        .from('customers')
+        .select('*', { count: 'exact', head: true })
+        .eq('tenant_id', (tenantConfig as any)?.tenant_id || tenantConfig?.id);
+      checks.push({
+        label: 'Contacts',
+        status: (custCount || 0) >= 10 ? 'ok' : (custCount || 0) > 0 ? 'warn' : 'error',
+        detail: `${custCount || 0} contacts${(custCount || 0) < 10 ? ' — add more for effective campaigns' : ''}`,
+        path: '/customers',
+      });
+
+      // 3. Sequence Steps
+      const { count: stepCount } = await supabase
+        .from('marketing_sequence_steps' as any)
+        .select('*', { count: 'exact', head: true })
+        .eq('tenant_id', tenantConfig.id);
+      checks.push({
+        label: 'Sequence Steps',
+        status: (stepCount || 0) > 0 ? 'ok' : 'error',
+        detail: (stepCount || 0) > 0 ? `${stepCount} steps defined` : 'No steps — sequences need steps to work',
+        path: '/marketing/sequences',
+      });
+
+      // 4. Competitors
+      const { count: compCount } = await supabase
+        .from('competitor_tracking' as any)
+        .select('*', { count: 'exact', head: true })
+        .eq('tenant_id', tenantConfig.id);
+      checks.push({
+        label: 'Competitor Intel',
+        status: (compCount || 0) > 0 ? 'ok' : 'warn',
+        detail: (compCount || 0) > 0 ? `${compCount} competitors tracked` : 'No competitors added yet',
+        path: '/marketing/competitors',
+      });
+
+      // 5. Blog Publishing
+      const { count: blogCount2 } = await supabase
+        .from('blog_posts' as any)
+        .select('*', { count: 'exact', head: true })
+        .eq('tenant_id', tenantConfig.id)
+        .eq('status', 'published');
+      checks.push({
+        label: 'Blog Publishing',
+        status: (blogCount2 || 0) > 0 ? 'ok' : 'warn',
+        detail: (blogCount2 || 0) > 0 ? `${blogCount2} published blog(s)` : 'No published blogs yet',
+        path: '/marketing/blogs',
+      });
+
+      // 6. Email Configuration
+      const tc = tenantConfig as any;
+      const hasEmail = !!(tc?.smtp_host || tc?.resend_api_key);
+      checks.push({
+        label: 'Email Config',
+        status: hasEmail ? 'ok' : 'error',
+        detail: hasEmail ? 'Email sending configured' : 'No email config — set up SMTP or Resend',
+        path: '/settings/integrations',
+      });
+
+      // 7. WhatsApp Configuration
+      const hasWhatsApp = !!tc?.whatsapp_phone_id;
+      checks.push({
+        label: 'WhatsApp',
+        status: hasWhatsApp ? 'ok' : 'warn',
+        detail: hasWhatsApp ? 'WhatsApp Business API connected' : 'WhatsApp not configured — optional',
+        path: '/settings/integrations',
+      });
+
+      // 8. Landing Pages Live
+      const { count: livePages } = await supabase
+        .from('landing_pages')
+        .select('*', { count: 'exact', head: true })
+        .eq('tenant_id', tenantConfig.id)
+        .eq('status', 'published');
+      checks.push({
+        label: 'Landing Pages',
+        status: (livePages || 0) > 0 ? 'ok' : 'warn',
+        detail: (livePages || 0) > 0 ? `${livePages} page(s) live` : 'No published pages yet',
+        path: '/marketing/landing-pages',
+      });
+
+      return checks;
+    },
+    enabled: !!tenantConfig?.id,
+  });
+
   const isLoading = l1 || l2 || l3 || l4 || l5;
 
   const metrics = [
@@ -217,6 +320,75 @@ export default function MarketingHub() {
           </Button>
         ))}
       </div>
+
+      {/* ═══ SYSTEM HEALTH ═══ */}
+      {healthChecks.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Shield className="h-5 w-5 text-primary" /> System Health
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {healthChecks.map((check: any) => (
+                <div
+                  key={check.label}
+                  className="flex items-start gap-2 p-3 rounded-lg border cursor-pointer hover:bg-muted/30 transition-colors"
+                  onClick={() => navigate(check.path)}
+                >
+                  {check.status === 'ok' && <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />}
+                  {check.status === 'warn' && <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />}
+                  {check.status === 'error' && <XCircle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />}
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">{check.label}</p>
+                    <p className="text-[11px] text-muted-foreground leading-tight">{check.detail}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ═══ AI RECOMMENDATIONS ═══ */}
+      {(() => {
+        const recs: { priority: 'high' | 'medium' | 'low'; text: string; action: string; path: string }[] = [];
+        const tc = tenantConfig as any;
+        if (!tc?.smtp_host && !tc?.resend_api_key)
+          recs.push({ priority: 'high', text: 'Email is not configured. Campaigns and sequences cannot send emails.', action: 'Configure Email', path: '/settings/integrations' });
+        if (healthChecks.find((c: any) => c.label === 'Contacts' && c.status === 'error'))
+          recs.push({ priority: 'high', text: 'No contacts in the system. Import leads or connect lead generation.', action: 'Import Leads', path: '/sales' });
+        if (!tc?.meta_page_token)
+          recs.push({ priority: 'medium', text: 'Connect social accounts to publish posts directly from the dashboard.', action: 'Connect Accounts', path: '/settings/integrations' });
+        if (activeSequences === 0 && (blogCount + postsThisMonth) > 0)
+          recs.push({ priority: 'medium', text: 'You have content but no active sequences. Activate a sequence to nurture leads.', action: 'View Sequences', path: '/marketing/sequences' });
+        if (healthChecks.find((c: any) => c.label === 'Competitor Intel' && c.status === 'warn'))
+          recs.push({ priority: 'low', text: 'Add competitors to monitor their strategies and find content gaps.', action: 'Add Competitor', path: '/marketing/competitors' });
+        if (blogCount === 0)
+          recs.push({ priority: 'low', text: 'Start a blog to improve SEO and provide content for social media repurposing.', action: 'Write Blog', path: '/marketing/blogs' });
+        if (recs.length === 0) return null;
+        return (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Sparkles className="h-5 w-5 text-amber-500" /> AI Recommendations
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {recs.map((rec, idx) => (
+                  <div key={idx} className="flex items-start gap-3 p-3 rounded-lg border hover:bg-muted/30 cursor-pointer transition-colors" onClick={() => navigate(rec.path)}>
+                    <span className="text-lg mt-0.5">{rec.priority === 'high' ? '🔴' : rec.priority === 'medium' ? '🟡' : '🔵'}</span>
+                    <p className="text-sm flex-1">{rec.text}</p>
+                    <Button size="sm" variant="outline" className="shrink-0">{rec.action}</Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* ═══ AI BRAIN ACTIVITY FEED ═══ */}

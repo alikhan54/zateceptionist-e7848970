@@ -28,7 +28,7 @@ export interface JobRequisition {
   location_city: string | null;
   location_country: string;
   number_of_openings: number;
-  status: 'draft' | 'open' | 'on_hold' | 'closed' | 'filled';
+  status: 'draft' | 'open' | 'active' | 'on_hold' | 'closed' | 'filled';
   priority: string;
   published_at: string | null;
   closed_at: string | null;
@@ -149,6 +149,33 @@ export interface SourcingRun {
   completed_at: string | null;
   duration_seconds: number | null;
   created_at: string;
+}
+
+export interface InterviewSchedule {
+  id: string;
+  tenant_id: string;
+  application_id: string;
+  interview_type: string;
+  scheduled_date: string | null;
+  scheduled_time: string | null;
+  duration_minutes: number | null;
+  meeting_platform: string | null;
+  meeting_link: string | null;
+  location: string | null;
+  interviewer_names: string[] | null;
+  status: string;
+  notes: string | null;
+  recommendation: string | null;
+  created_at: string;
+  updated_at: string;
+  // Joined fields
+  application?: {
+    id: string;
+    candidate_id: string;
+    job_requisition_id: string;
+    candidate?: Pick<Candidate, 'id' | 'first_name' | 'last_name' | 'full_name' | 'email'>;
+    requisition?: Pick<JobRequisition, 'id' | 'job_title'>;
+  };
 }
 
 // ========================
@@ -308,14 +335,17 @@ export function useInterviewSchedules() {
         .from('hr_interview_schedules')
         .select(`
           *,
-          candidate:hr_candidates(id, first_name, last_name, full_name, email),
-          application:hr_job_applications(id, job_requisition_id)
+          application:hr_job_applications(
+            id, candidate_id, job_requisition_id,
+            candidate:hr_candidates(id, first_name, last_name, full_name, email),
+            requisition:hr_job_requisitions(id, job_title)
+          )
         `)
         .eq('tenant_id', tenantUuid)
-        .order('scheduled_at', { ascending: true });
+        .order('scheduled_date', { ascending: true });
 
       if (error) throw error;
-      return data || [];
+      return (data || []) as InterviewSchedule[];
     },
     enabled: !!tenantUuid,
   });
@@ -336,13 +366,13 @@ export function useRecruitmentStats() {
 
       const [jobsRes, candidatesRes, interviewsRes, offersRes] = await Promise.all([
         supabase.from('hr_job_requisitions').select('id', { count: 'exact', head: true })
-          .eq('tenant_id', tenantUuid).in('status', ['open', 'on_hold']),
+          .eq('tenant_id', tenantUuid).in('status', ['open', 'active', 'on_hold']),
         supabase.from('hr_candidates').select('id', { count: 'exact', head: true })
           .eq('tenant_id', tenantUuid),
         supabase.from('hr_ai_interviews').select('id', { count: 'exact', head: true })
           .eq('tenant_id', tenantUuid).eq('status', 'completed'),
         supabase.from('hr_job_applications').select('id', { count: 'exact', head: true })
-          .eq('tenant_id', tenantUuid).eq('stage', 'offered'),
+          .eq('tenant_id', tenantUuid).eq('stage', 'offer'),
       ]);
 
       return {
@@ -388,6 +418,7 @@ export function useCreateJob() {
           location_country: jobData.location_country || 'UAE',
           number_of_openings: jobData.number_of_openings || 1,
           status: 'open',
+          priority: jobData.priority || 'normal',
           auto_source_enabled: jobData.auto_source_enabled ?? true,
           min_match_score: jobData.min_match_score || 50,
           search_keywords: jobData.search_keywords,
@@ -404,6 +435,54 @@ export function useCreateJob() {
       toast.success('Job posted successfully');
     },
     onError: () => toast.error('Failed to create job posting'),
+  });
+}
+
+export function useUpdateJob() {
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: Partial<JobRequisition> & { id: string }) => {
+      if (!tenantUuid) throw new Error('No tenant');
+      const { error } = await supabase
+        .from('hr_job_requisitions')
+        .update(updates)
+        .eq('id', id)
+        .eq('tenant_id', tenantUuid);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr_job_requisitions'] });
+      queryClient.invalidateQueries({ queryKey: ['recruitment_stats'] });
+      toast.success('Job updated');
+    },
+    onError: () => toast.error('Failed to update job'),
+  });
+}
+
+export function useDeleteJob() {
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (jobId: string) => {
+      if (!tenantUuid) throw new Error('No tenant');
+      const { error } = await supabase
+        .from('hr_job_requisitions')
+        .delete()
+        .eq('id', jobId)
+        .eq('tenant_id', tenantUuid);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr_job_requisitions'] });
+      queryClient.invalidateQueries({ queryKey: ['recruitment_stats'] });
+      toast.success('Job deleted');
+    },
+    onError: () => toast.error('Failed to delete job'),
   });
 }
 
@@ -476,5 +555,248 @@ export function useTriggerAIInterview() {
       toast.success('AI interview scheduled');
     },
     onError: () => toast.error('Failed to schedule AI interview'),
+  });
+}
+
+export function useAddCandidate() {
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (candidateData: {
+      first_name: string;
+      last_name: string;
+      email?: string;
+      phone?: string;
+      current_company?: string;
+      current_position?: string;
+      linkedin_url?: string;
+      source: string;
+      notes?: string;
+    }) => {
+      if (!tenantUuid) throw new Error('No tenant');
+      const fullName = `${candidateData.first_name} ${candidateData.last_name}`.trim();
+      const { data, error } = await supabase
+        .from('hr_candidates')
+        .insert({
+          tenant_id: tenantUuid,
+          first_name: candidateData.first_name,
+          last_name: candidateData.last_name,
+          full_name: fullName,
+          email: candidateData.email || null,
+          phone: candidateData.phone || null,
+          current_company: candidateData.current_company || null,
+          current_position: candidateData.current_position || null,
+          linkedin_url: candidateData.linkedin_url || null,
+          source: candidateData.source || 'manual',
+          notes: candidateData.notes || null,
+          status: 'active',
+          enrichment_status: 'pending',
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr_candidates'] });
+      queryClient.invalidateQueries({ queryKey: ['recruitment_stats'] });
+      toast.success('Candidate added successfully');
+    },
+    onError: () => toast.error('Failed to add candidate'),
+  });
+}
+
+export function useScheduleInterview() {
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (interviewData: {
+      application_id: string;
+      interview_type: string;
+      scheduled_date: string;
+      scheduled_time: string;
+      duration_minutes?: number;
+      meeting_platform?: string;
+      meeting_link?: string;
+      notes?: string;
+    }) => {
+      if (!tenantUuid) throw new Error('No tenant');
+      const { data, error } = await supabase
+        .from('hr_interview_schedules')
+        .insert({
+          tenant_id: tenantUuid,
+          application_id: interviewData.application_id,
+          interview_type: interviewData.interview_type,
+          scheduled_date: interviewData.scheduled_date,
+          scheduled_time: interviewData.scheduled_time,
+          duration_minutes: interviewData.duration_minutes || 60,
+          meeting_platform: interviewData.meeting_platform || null,
+          meeting_link: interviewData.meeting_link || null,
+          notes: interviewData.notes || null,
+          status: 'scheduled',
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr_interview_schedules'] });
+      queryClient.invalidateQueries({ queryKey: ['hr_job_applications'] });
+      toast.success('Interview scheduled successfully');
+    },
+    onError: () => toast.error('Failed to schedule interview'),
+  });
+}
+
+export function useApplyToJob() {
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ candidateId, jobRequisitionId }: {
+      candidateId: string;
+      jobRequisitionId: string;
+    }) => {
+      if (!tenantUuid) throw new Error('No tenant');
+      const { data, error } = await supabase
+        .from('hr_job_applications')
+        .insert({
+          tenant_id: tenantUuid,
+          candidate_id: candidateId,
+          job_requisition_id: jobRequisitionId,
+          stage: 'applied',
+          stage_updated_at: new Date().toISOString(),
+          source: 'manual',
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr_job_applications'] });
+      queryClient.invalidateQueries({ queryKey: ['hr_candidates'] });
+      queryClient.invalidateQueries({ queryKey: ['recruitment_stats'] });
+      toast.success('Candidate applied to job');
+    },
+    onError: () => toast.error('Failed to apply candidate to job'),
+  });
+}
+
+export function useMakeOffer() {
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ applicationId, salary, startDate, notes }: {
+      applicationId: string;
+      salary: number;
+      startDate?: string;
+      notes?: string;
+    }) => {
+      if (!tenantUuid) throw new Error('No tenant');
+      const offerNotes = [
+        `Offer: ${salary} AED`,
+        startDate ? `Start date: ${startDate}` : null,
+        notes || null,
+      ].filter(Boolean).join('. ');
+
+      const { error } = await supabase
+        .from('hr_job_applications')
+        .update({
+          stage: 'offer',
+          stage_updated_at: new Date().toISOString(),
+          offer_salary: salary,
+          offer_status: 'pending',
+          offer_extended_at: new Date().toISOString(),
+          notes: offerNotes,
+        })
+        .eq('id', applicationId)
+        .eq('tenant_id', tenantUuid);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr_job_applications'] });
+      queryClient.invalidateQueries({ queryKey: ['recruitment_stats'] });
+      toast.success('Offer extended successfully');
+    },
+    onError: () => toast.error('Failed to make offer'),
+  });
+}
+
+export function useAcceptOffer() {
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ applicationId, candidateId }: {
+      applicationId: string;
+      candidateId: string;
+    }) => {
+      if (!tenantUuid) throw new Error('No tenant');
+      // 1. Update application to hired
+      const { error: appError } = await supabase
+        .from('hr_job_applications')
+        .update({
+          stage: 'hired',
+          stage_updated_at: new Date().toISOString(),
+          offer_status: 'accepted',
+          offer_accepted_at: new Date().toISOString(),
+        })
+        .eq('id', applicationId)
+        .eq('tenant_id', tenantUuid);
+      if (appError) throw appError;
+
+      // 2. Update candidate status to hired
+      const { error: candError } = await supabase
+        .from('hr_candidates')
+        .update({ status: 'hired' })
+        .eq('id', candidateId)
+        .eq('tenant_id', tenantUuid);
+      if (candError) throw candError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr_job_applications'] });
+      queryClient.invalidateQueries({ queryKey: ['hr_candidates'] });
+      queryClient.invalidateQueries({ queryKey: ['recruitment_stats'] });
+      toast.success('Offer accepted — candidate hired!');
+    },
+    onError: () => toast.error('Failed to accept offer'),
+  });
+}
+
+export function useRejectOffer() {
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (applicationId: string) => {
+      if (!tenantUuid) throw new Error('No tenant');
+      const { error } = await supabase
+        .from('hr_job_applications')
+        .update({
+          stage: 'rejected',
+          stage_updated_at: new Date().toISOString(),
+          offer_status: 'rejected',
+        })
+        .eq('id', applicationId)
+        .eq('tenant_id', tenantUuid);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr_job_applications'] });
+      queryClient.invalidateQueries({ queryKey: ['recruitment_stats'] });
+      toast.success('Offer rejected');
+    },
+    onError: () => toast.error('Failed to reject offer'),
   });
 }

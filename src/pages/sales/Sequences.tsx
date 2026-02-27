@@ -41,10 +41,12 @@ import {
 import { FeatureGate, TierBadge, UsageMeter } from "@/components/subscription";
 
 interface SequenceStep {
-  type: "email" | "whatsapp" | "call" | "linkedin" | "instagram" | "facebook";
+  type?: "email" | "whatsapp" | "call" | "linkedin" | "instagram" | "facebook";
+  channel?: "email" | "whatsapp" | "call" | "linkedin" | "instagram" | "facebook";
   delay_days: number;
-  delay_hours: number;
-  template: string;
+  delay_hours?: number;
+  template?: string;
+  content?: string;
   subject?: string;
 }
 
@@ -82,10 +84,8 @@ const channelColors: Record<string, string> = {
 
 export default function Sequences() {
   const navigate = useNavigate();
-  // CRITICAL FIX: Get both tenantId (slug) and tenantConfig (full object with UUID)
-  const { tenantId, tenantConfig } = useTenant();
-  // USE THIS FOR ALL DATABASE OPERATIONS - This is the actual UUID!
-  const tenantUuid = tenantConfig?.id;
+  // CRITICAL FIX: tenantId is the SLUG — sequences table uses SLUG for tenant_id
+  const { tenantId } = useTenant();
   
   const { limits, usage } = useSubscription();
   const [sequences, setSequences] = useState<Sequence[]>([]);
@@ -93,19 +93,19 @@ export default function Sequences() {
   const [activeTab, setActiveTab] = useState("library");
 
   useEffect(() => {
-    if (tenantUuid) {
+    if (tenantId) {
       fetchSequences();
     }
-  }, [tenantUuid]);
+  }, [tenantId]);
 
   const fetchSequences = async () => {
-    if (!tenantUuid) return;
+    if (!tenantId) return;
     setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from("sequences")
         .select("*")
-        .eq("tenant_id", tenantUuid)
+        .eq("tenant_id", tenantId)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -142,10 +142,10 @@ export default function Sequences() {
   };
 
   const duplicateSequence = async (sequence: Sequence) => {
-    if (!tenantUuid) return;
+    if (!tenantId) return;
     try {
       const { error } = await supabase.from("sequences").insert({
-        tenant_id: tenantUuid,
+        tenant_id: tenantId,
         name: `${sequence.name} (Copy)`,
         description: sequence.description,
         status: "draft",
@@ -227,10 +227,10 @@ export default function Sequences() {
           {sequence.steps.map((step, idx) => (
             <React.Fragment key={idx}>
               <div
-                className={`flex items-center justify-center h-6 w-6 rounded-full text-white ${channelColors[step.type] || "bg-gray-500"}`}
-                title={`${step.type} - Day ${step.delay_days}`}
+                className={`flex items-center justify-center h-6 w-6 rounded-full text-white ${channelColors[step.channel || step.type || "email"] || "bg-gray-500"}`}
+                title={`${step.channel || step.type || "email"} - Day ${step.delay_days}`}
               >
-                {channelIcons[step.type]}
+                {channelIcons[step.channel || step.type || "email"]}
               </div>
               {idx < sequence.steps.length - 1 && (
                 <div className="flex items-center">

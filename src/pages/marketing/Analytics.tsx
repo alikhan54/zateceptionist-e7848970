@@ -5,13 +5,81 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMarketingCampaigns } from '@/hooks/useMarketingCampaigns';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useTenant } from '@/contexts/TenantContext';
 import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { Download, TrendingUp, Users, Mail, MousePointer, Send, Eye, Target, Plus, Brain, AlertCircle, Clock } from 'lucide-react';
+import { Download, TrendingUp, Users, Mail, MousePointer, Send, Eye, Target, Plus, Brain, AlertCircle, Clock, Globe, Search, Zap, Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { subDays } from 'date-fns';
 
 export default function MarketingAnalytics() {
   const [period, setPeriod] = useState('30d');
-  const { campaigns, isLoading, stats } = useMarketingCampaigns();
+  const { campaigns: allCampaigns, isLoading, stats: allStats } = useMarketingCampaigns();
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id || null;
+
+  // Wire the period filter — filter campaigns by date
+  const periodDays = period === '7d' ? 7 : period === '90d' ? 90 : 30;
+  const periodStart = subDays(new Date(), periodDays);
+  const campaigns = allCampaigns.filter((c: any) => new Date(c.created_at) >= periodStart);
+
+  // Cross-system queries
+  const { data: socialStats } = useQuery({
+    queryKey: ['analytics-social', tenantUuid, period],
+    queryFn: async () => {
+      if (!tenantUuid) return { published: 0, totalEngagement: 0 };
+      const { data } = await supabase
+        .from('social_posts')
+        .select('status, likes, comments, shares')
+        .eq('tenant_id', tenantUuid)
+        .gte('created_at', periodStart.toISOString());
+      const posts = data || [];
+      const published = posts.filter((p: any) => p.status === 'published').length;
+      const totalEngagement = posts.reduce((sum: number, p: any) => sum + (p.likes || 0) + (p.comments || 0) + (p.shares || 0), 0);
+      return { published, totalEngagement };
+    },
+    enabled: !!tenantUuid,
+  });
+
+  const { data: competitorCount = 0 } = useQuery({
+    queryKey: ['analytics-competitors', tenantUuid],
+    queryFn: async () => {
+      if (!tenantUuid) return 0;
+      const { count } = await supabase
+        .from('competitor_tracking')
+        .select('*', { count: 'exact', head: true })
+        .eq('tenant_id', tenantUuid);
+      return count || 0;
+    },
+    enabled: !!tenantUuid,
+  });
+
+  const { data: aiActivityCount = 0 } = useQuery({
+    queryKey: ['analytics-ai-activity', tenantUuid, period],
+    queryFn: async () => {
+      if (!tenantUuid) return 0;
+      const tc = tenantConfig as any;
+      const slug = tc?.tenant_id || tenantUuid;
+      const { count } = await supabase
+        .from('system_events')
+        .select('*', { count: 'exact', head: true })
+        .eq('tenant_id', slug)
+        .gte('created_at', periodStart.toISOString());
+      return count || 0;
+    },
+    enabled: !!tenantUuid,
+  });
+
+  // Recalculate stats for the filtered period
+  const stats = {
+    total: campaigns.length,
+    totalSent: campaigns.reduce((sum: number, c: any) => sum + (c.sent_count || 0), 0),
+    totalDelivered: campaigns.reduce((sum: number, c: any) => sum + (c.delivered_count || 0), 0),
+    totalOpened: campaigns.reduce((sum: number, c: any) => sum + (c.opened_count || 0), 0),
+    avgOpenRate: campaigns.length > 0 ? Math.round(campaigns.reduce((sum: number, c: any) => sum + (c.open_rate || 0), 0) / campaigns.length) : 0,
+    avgClickRate: campaigns.length > 0 ? Math.round(campaigns.reduce((sum: number, c: any) => sum + (c.click_rate || 0), 0) / campaigns.length) : 0,
+  };
 
   const totalSent = stats.totalSent;
   const totalDelivered = stats.totalDelivered;
@@ -113,33 +181,81 @@ export default function MarketingAnalytics() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid md:grid-cols-3 gap-4">
-            <div className="p-4 rounded-lg border bg-primary/5 border-primary/20">
-              <div className="flex items-center gap-2 mb-2">
-                <TrendingUp className="h-4 w-4 text-primary" />
-                <span className="font-medium text-primary">Opportunity</span>
+          {totalSent > 0 ? (
+            <div className="grid md:grid-cols-3 gap-4">
+              <div className="p-4 rounded-lg border bg-primary/5 border-primary/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp className="h-4 w-4 text-primary" />
+                  <span className="font-medium text-primary">Campaign Performance</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {totalSent.toLocaleString()} messages sent across {stats.total} campaigns with a {deliveryRate}% delivery rate.
+                </p>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Your email open rate is <span className="font-bold">15% above</span> industry average. Consider increasing email frequency.
-              </p>
+              <div className="p-4 rounded-lg border bg-accent/50 border-accent">
+                <div className="flex items-center gap-2 mb-2">
+                  <Eye className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">Engagement</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {stats.avgOpenRate}% average open rate and {stats.avgClickRate}% click rate across all campaigns.
+                </p>
+              </div>
+              <div className="p-4 rounded-lg border bg-secondary/50 border-secondary">
+                <div className="flex items-center gap-2 mb-2">
+                  <Target className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">Top Channel</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {channelChartData.length > 0 ? `${channelChartData.sort((a, b) => b.sent - a.sent)[0]?.name || 'Email'} is your most active channel.` : 'Start sending campaigns to see channel insights.'}
+                </p>
+              </div>
             </div>
-            <div className="p-4 rounded-lg border bg-accent/50 border-accent">
-              <div className="flex items-center gap-2 mb-2">
-                <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium">Suggestion</span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                WhatsApp campaigns have <span className="font-bold">2x higher</span> engagement in your industry. Try adding WhatsApp to your sequences.
+          ) : (
+            <div className="flex flex-col items-center justify-center py-6 text-center">
+              <AlertCircle className="h-8 w-8 mb-3 text-muted-foreground opacity-50" />
+              <p className="text-muted-foreground font-medium">No marketing activity yet</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Send your first campaign or publish social posts to see AI-powered insights here.
               </p>
+              <Button asChild variant="link" size="sm" className="mt-2">
+                <Link to="/marketing/campaigns">Create a Campaign</Link>
+              </Button>
             </div>
-            <div className="p-4 rounded-lg border bg-secondary/50 border-secondary">
-              <div className="flex items-center gap-2 mb-2">
-                <Clock className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium">Best Time</span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Your audience is most active <span className="font-bold">Tuesday-Thursday</span> between <span className="font-bold">10AM-2PM</span>.
-              </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Cross-System Intelligence */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Globe className="h-5 w-5 text-primary" />
+            Cross-System Intelligence
+          </CardTitle>
+          <CardDescription>Metrics across all marketing channels and systems</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="p-4 rounded-lg border bg-blue-500/5 border-blue-500/20 text-center">
+              <Send className="h-5 w-5 mx-auto mb-2 text-blue-500" />
+              <p className="text-2xl font-bold">{socialStats?.published ?? 0}</p>
+              <p className="text-xs text-muted-foreground">Social Posts Published</p>
+            </div>
+            <div className="p-4 rounded-lg border bg-red-500/5 border-red-500/20 text-center">
+              <Heart className="h-5 w-5 mx-auto mb-2 text-red-500" />
+              <p className="text-2xl font-bold">{socialStats?.totalEngagement ?? 0}</p>
+              <p className="text-xs text-muted-foreground">Total Social Engagement</p>
+            </div>
+            <div className="p-4 rounded-lg border bg-amber-500/5 border-amber-500/20 text-center">
+              <Search className="h-5 w-5 mx-auto mb-2 text-amber-500" />
+              <p className="text-2xl font-bold">{competitorCount}</p>
+              <p className="text-xs text-muted-foreground">Competitors Tracked</p>
+            </div>
+            <div className="p-4 rounded-lg border bg-purple-500/5 border-purple-500/20 text-center">
+              <Zap className="h-5 w-5 mx-auto mb-2 text-purple-500" />
+              <p className="text-2xl font-bold">{aiActivityCount}</p>
+              <p className="text-xs text-muted-foreground">AI Brain Actions</p>
             </div>
           </div>
         </CardContent>

@@ -20,6 +20,7 @@ import { useTenant } from "@/contexts/TenantContext";
 import { useSocialPosts, useSocialAccounts } from "@/hooks/useSocialPosts";
 import { supabase } from "@/integrations/supabase/client";
 import { callWebhook, WEBHOOKS } from "@/lib/api/webhooks";
+import { logSystemEvent } from "@/lib/api/systemEvents";
 import { useQuery } from "@tanstack/react-query";
 import { format, formatDistanceToNow, addDays, startOfWeek, addWeeks, eachDayOfInterval, startOfMonth } from "date-fns";
 import {
@@ -46,6 +47,10 @@ const suggestedHashtags = [
 
 function extractHashtags(text: string): string[] {
   return text.match(/#\w+/g) || [];
+}
+
+function stripHtmlTags(text: string): string {
+  return text.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').trim();
 }
 
 function combineDateAndTime(date: Date, time: string): Date {
@@ -194,7 +199,7 @@ export default function SocialCommander() {
   // M1: Stats from real data
   const now = new Date();
   const monthStart = startOfMonth(now);
-  const publishedThisMonth = posts.filter(p => p.status === "published" && p.published_at && new Date(p.published_at) >= monthStart).length;
+  const publishedThisMonth = posts.filter(p => p.status === "published" && p.platform_post_id && p.published_at && new Date(p.published_at) >= monthStart).length;
   const scheduledCount = posts.filter(p => p.status === "scheduled").length;
   const avgEngagement = (() => {
     const withEngagement = posts.filter(p => p.engagement_rate && p.engagement_rate > 0);
@@ -240,7 +245,7 @@ export default function SocialCommander() {
       if (result.success && result.data) {
         const d = result.data as any;
         const content = d.content || d.text || d.caption || "";
-        if (content) { setPostContent(content); toast({ title: "✨ AI Caption Generated!" }); }
+        if (content) { setPostContent(stripHtmlTags(content)); toast({ title: "✨ AI Caption Generated!" }); }
         else toast({ title: "No content returned", variant: "destructive" });
       } else toast({ title: "AI Unavailable", variant: "destructive" });
     } catch (err: any) { toast({ title: "Generation Failed", description: err.message, variant: "destructive" }); }
@@ -281,6 +286,7 @@ export default function SocialCommander() {
         setPublishCooldown(true);
         setTimeout(() => setPublishCooldown(false), 5000);
         toast({ title: "📤 Post Queued!", description: `Posting to ${selectedPlatforms.join(", ")} now. Status will update to "Published" with a direct link within 1-2 minutes.` });
+        logSystemEvent({ tenantId: tenantConfig?.id || '', eventType: 'social_post_published', sourceModule: 'marketing', eventData: { platforms: selectedPlatforms, scheduled: false } });
       } else {
         toast({ title: "Post Scheduled", description: `Scheduled for ${format(scheduleDate, "PPP")} at ${scheduleTime}` });
       }
@@ -322,6 +328,38 @@ export default function SocialCommander() {
         <Card><CardContent className="p-4"><div className="flex items-center gap-3"><div className="p-2 rounded-lg bg-purple-500/10"><BarChart3 className="h-5 w-5 text-purple-500" /></div><div><p className="text-2xl font-bold">{avgEngagement}%</p><p className="text-xs text-muted-foreground">Avg Engagement</p></div></div></CardContent></Card>
         <Card><CardContent className="p-4"><div className="flex items-center gap-3"><div className="p-2 rounded-lg bg-amber-500/10"><Users className="h-5 w-5 text-amber-500" /></div><div><p className="text-2xl font-bold">{totalFollowers > 0 ? totalFollowers.toLocaleString() : connectedAccounts.length > 0 ? connectedAccounts.length : '—'}</p><p className="text-xs text-muted-foreground flex items-center gap-1">{totalFollowers > 0 ? 'Total Followers' : connectedAccounts.length > 0 ? 'Connected Accounts' : <span>Connect in <a href="/settings/integrations" className="underline text-primary">Settings</a></span>}<TooltipProvider><Tooltip><TooltipTrigger><Info className="h-3 w-3 text-muted-foreground" /></TooltipTrigger><TooltipContent><p>Follower counts sync from connected platforms</p></TooltipContent></Tooltip></TooltipProvider></p></div></div></CardContent></Card>
       </div>
+
+      {/* Platform Connection Status Banner */}
+      {(() => {
+        const disconnected = Object.entries(platformAvailability).filter(([, v]) => !v.connected);
+        if (disconnected.length === 0) return null;
+        const noneConnected = disconnected.length === Object.keys(platformAvailability).length;
+        return (
+          <Card className="border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-800">
+            <CardContent className="p-3 flex items-center gap-3 flex-wrap">
+              <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+              <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                {noneConnected ? 'No platforms connected' : `${disconnected.length} platform${disconnected.length > 1 ? 's' : ''} not connected:`}
+              </span>
+              {disconnected.map(([id]) => {
+                const config = platformConfig[id];
+                if (!config) return null;
+                const PlatformIcon = config.icon;
+                return (
+                  <Badge key={id} variant="outline" className="gap-1 text-muted-foreground">
+                    <PlatformIcon className={`h-3 w-3 ${config.color}`} />
+                    <span className="capitalize">{id}</span>
+                  </Badge>
+                );
+              })}
+              <Button variant="link" size="sm" className="ml-auto p-0 h-auto text-amber-700 dark:text-amber-400"
+                onClick={() => (window.location.href = '/settings/integrations')}>
+                Connect in Settings
+              </Button>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
@@ -403,6 +441,9 @@ export default function SocialCommander() {
                               <PlatformLink post={post} />
                             </div>
                           )}
+                          {post.status === "failed" && post.error_message && (
+                            <p className="text-xs text-red-600 mt-1 bg-red-50 dark:bg-red-950/30 rounded px-2 py-1">{post.error_message}</p>
+                          )}
                         </div>
                         <div className="flex flex-col items-end gap-2">
                           <PostStatusBadge post={post} />
@@ -453,6 +494,9 @@ export default function SocialCommander() {
                           <PlatformLink post={post} />
                         </div>
                       )}
+                      {post.status === "failed" && post.error_message && (
+                        <p className="text-xs text-red-600 mt-2 bg-red-50 dark:bg-red-950/30 rounded px-2 py-1">{post.error_message}</p>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -489,7 +533,83 @@ export default function SocialCommander() {
         </TabsContent>
 
         <TabsContent value="insights" className="space-y-4">
-          <Card><CardContent className="p-8 text-center"><BarChart3 className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" /><h3 className="font-semibold">Insights Coming Soon</h3><p className="text-sm text-muted-foreground mt-1">Analytics will appear as you publish more posts</p></CardContent></Card>
+          {(() => {
+            const published = posts.filter(p => p.status === 'published');
+            const failed = posts.filter(p => p.status === 'failed');
+            const realPublished = published.filter(p => p.platform_post_id);
+            const totalLikes = posts.reduce((s, p) => s + (p.likes_count || 0), 0);
+            const totalComments = posts.reduce((s, p) => s + (p.comments_count || 0), 0);
+            const totalShares = posts.reduce((s, p) => s + (p.shares_count || 0), 0);
+            const platformBreakdown = posts.reduce((acc: Record<string, number>, p) => {
+              (p.platforms || []).forEach((pl: string) => { acc[pl] = (acc[pl] || 0) + 1; });
+              return acc;
+            }, {} as Record<string, number>);
+
+            if (posts.length === 0) {
+              return <Card><CardContent className="p-8 text-center"><BarChart3 className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" /><h3 className="font-semibold">No Social Data Yet</h3><p className="text-sm text-muted-foreground mt-1">Create and publish posts to see insights here</p></CardContent></Card>;
+            }
+
+            return (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold">{posts.length}</p><p className="text-xs text-muted-foreground">Total Posts</p></CardContent></Card>
+                  <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold text-green-600">{realPublished.length}</p><p className="text-xs text-muted-foreground">Successfully Published</p></CardContent></Card>
+                  <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold text-red-600">{failed.length}</p><p className="text-xs text-muted-foreground">Failed</p></CardContent></Card>
+                  <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold text-blue-600">{avgEngagement}%</p><p className="text-xs text-muted-foreground">Avg Engagement</p></CardContent></Card>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <Card>
+                    <CardHeader className="pb-2"><CardTitle className="text-sm">Engagement Summary</CardTitle></CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-3 gap-3 text-center">
+                        <div className="p-3 rounded-lg bg-pink-500/10"><Heart className="h-4 w-4 mx-auto text-pink-500 mb-1" /><p className="text-lg font-bold">{totalLikes}</p><p className="text-[10px] text-muted-foreground">Likes</p></div>
+                        <div className="p-3 rounded-lg bg-blue-500/10"><MessageSquare className="h-4 w-4 mx-auto text-blue-500 mb-1" /><p className="text-lg font-bold">{totalComments}</p><p className="text-[10px] text-muted-foreground">Comments</p></div>
+                        <div className="p-3 rounded-lg bg-green-500/10"><Share2 className="h-4 w-4 mx-auto text-green-500 mb-1" /><p className="text-lg font-bold">{totalShares}</p><p className="text-[10px] text-muted-foreground">Shares</p></div>
+                      </div>
+                      {totalLikes === 0 && totalComments === 0 && totalShares === 0 && (
+                        <p className="text-xs text-muted-foreground text-center mt-3">Engagement data will appear once posts are live and interactions are tracked</p>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-2"><CardTitle className="text-sm">Platform Breakdown</CardTitle></CardHeader>
+                    <CardContent>
+                      {Object.keys(platformBreakdown).length > 0 ? (
+                        <div className="space-y-2">
+                          {Object.entries(platformBreakdown).sort(([, a], [, b]) => (b as number) - (a as number)).map(([platform, count]) => (
+                            <div key={platform} className="flex items-center justify-between p-2 rounded bg-muted/30">
+                              <span className="text-sm capitalize">{platform}</span>
+                              <Badge variant="outline">{count as number} post{(count as number) !== 1 ? 's' : ''}</Badge>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground text-center py-4">No platform data available</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {failed.length > 0 && (
+                  <Card className="border-red-500/20">
+                    <CardHeader className="pb-2"><CardTitle className="text-sm text-red-600 flex items-center gap-2"><AlertTriangle className="h-4 w-4" /> Failed Posts</CardTitle></CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {failed.slice(0, 5).map((p: any) => (
+                          <div key={p.id} className="flex items-center justify-between text-sm p-2 rounded bg-red-500/5">
+                            <span className="truncate flex-1">{p.content?.slice(0, 60) || 'No content'}...</span>
+                            <span className="text-xs text-red-600 ml-2">{p.error_message || 'Unknown error'}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </>
+            );
+          })()}
         </TabsContent>
 
         {/* Activity Log Tab */}
