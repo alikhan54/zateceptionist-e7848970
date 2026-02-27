@@ -26,6 +26,7 @@ import {
   Filter,
   Search,
   ChevronDown,
+  Sparkles,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -51,6 +52,7 @@ interface Deal {
   email: string | null;
   phone: string | null;
   expected_close_date: string | null;
+  ai_notes: string | null;
   created_at: string;
 }
 
@@ -279,6 +281,13 @@ export default function DealTracker() {
           <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
             <User className="h-3 w-3" />
             <span className="truncate">{deal.contact_name}</span>
+          </div>
+        )}
+
+        {deal.ai_notes && (
+          <div className="flex items-start gap-1 text-xs text-purple-600 bg-purple-50 rounded p-1.5 mb-1">
+            <Sparkles className="h-3 w-3 mt-0.5 shrink-0" />
+            <span className="line-clamp-2">{deal.ai_notes}</span>
           </div>
         )}
 

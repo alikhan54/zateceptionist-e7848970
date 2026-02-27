@@ -27,6 +27,7 @@ import {
   ArrowDownRight,
 } from "lucide-react";
 import { FeatureGate, TierBadge } from "@/components/subscription";
+import AIForecast from "@/components/sales/AIForecast";
 import {
   LineChart as ReLineChart,
   Line,
@@ -323,6 +324,9 @@ export default function Forecasting() {
           </Button>
         </div>
       </div>
+
+      {/* AI Predictions */}
+      <AIForecast />
 
       {/* Key Metrics */}
       <div className="grid grid-cols-4 gap-4">

@@ -21,6 +21,13 @@ export default function ABTesting() {
   const { tests, isLoading, stats, createTest, startTest, endTest } = useABTests();
   const { tenantConfig } = useTenant();
   const { toast } = useToast();
+
+  // Check if test data is likely seed/demo data (variants show sends but no real campaigns sent)
+  const isSeedData = (test: any) => {
+    const variants = Array.isArray(test.variants) ? test.variants : [];
+    const totalVariantSent = variants.reduce((sum: number, v: any) => sum + (v.sent || 0), 0);
+    return totalVariantSent > 0 && test.status !== 'draft';
+  };
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [testName, setTestName] = useState('');
   const [testType, setTestType] = useState('subject_line');
@@ -242,9 +249,16 @@ export default function ABTesting() {
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg">{test.name}</CardTitle>
-                    <Badge className={statusColors[test.status] || ''}>
-                      {statusIcons[test.status] || ''} {test.status}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      {isSeedData(test) && (
+                        <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-600 border-amber-500/30">
+                          Demo Data
+                        </Badge>
+                      )}
+                      <Badge className={statusColors[test.status] || ''}>
+                        {statusIcons[test.status] || ''} {test.status}
+                      </Badge>
+                    </div>
                   </div>
                   <CardDescription>Type: {(test.test_type || '').replace('_', ' ')}</CardDescription>
                 </CardHeader>

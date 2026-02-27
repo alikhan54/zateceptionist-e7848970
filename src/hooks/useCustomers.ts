@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTenant } from '@/contexts/TenantContext';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, callWebhook } from '@/integrations/supabase/client';
+import { logSystemEvent } from '@/lib/api/systemEvents';
 
 export interface Customer {
   id: string;
@@ -21,7 +22,7 @@ export interface Customer {
 export type CustomerInput = Omit<Customer, 'id' | 'tenant_id' | 'created_at' | 'updated_at'>;
 
 export function useCustomers() {
-  const { tenantId } = useTenant();
+  const { tenantId, tenantConfig } = useTenant();
   const queryClient = useQueryClient();
 
   const {
@@ -59,8 +60,40 @@ export function useCustomers() {
       if (error) throw error;
       return data as Customer;
     },
-    onSuccess: () => {
+    onSuccess: async (customer) => {
       queryClient.invalidateQueries({ queryKey: ['customers', tenantId] });
+
+      // Auto-enrollment: check for active sequences with new_lead/new_contact trigger
+      try {
+        const tenantUuid = tenantConfig?.id;
+        if (!tenantUuid) return;
+        const { data: sequences } = await supabase
+          .from('marketing_sequences' as any)
+          .select('id, name, trigger_type')
+          .eq('tenant_id', tenantUuid)
+          .eq('is_active', true)
+          .in('trigger_type', ['new_lead', 'new_contact']);
+
+        if (sequences && sequences.length > 0) {
+          for (const seq of sequences) {
+            callWebhook('/ai-tool/enroll-sequence', {
+              sequence_id: seq.id,
+              lead_id: customer.id,
+              sequence_name: seq.name,
+              reason: `auto_enrollment_${seq.trigger_type}`,
+            }, tenantUuid).catch(() => {}); // fire-and-forget
+          }
+          logSystemEvent({
+            tenantId: tenantUuid,
+            eventType: 'sequence_enrollment',
+            sourceModule: 'marketing',
+            targetModule: 'sales',
+            eventData: { lead_id: customer.id, auto_enrolled_sequences: sequences.map((s: any) => s.name), reason: 'new_customer_created' },
+          });
+        }
+      } catch {
+        // Silent fail — auto-enrollment should not block customer creation
+      }
     },
   });
 

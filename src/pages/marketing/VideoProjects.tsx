@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Video, Film, Clock, CheckCircle, Sparkles, Copy, Download, RefreshCw, Image } from 'lucide-react';
+import { Plus, Video, Film, Clock, CheckCircle, Sparkles, Copy, Download, RefreshCw, Image, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 const VIDEO_TYPE_LABELS: Record<string, { emoji: string; label: string }> = {
@@ -103,6 +103,21 @@ export default function VideoProjects() {
     },
   });
 
+  const deleteProject = useMutation({
+    mutationFn: async (projectId: string) => {
+      const { error } = await supabase.from('video_projects').delete().eq('id', projectId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['video_projects'] });
+      setDetailProject(null);
+      toast({ title: 'Video project deleted' });
+    },
+    onError: (err: any) => {
+      toast({ title: 'Delete failed', description: err.message, variant: 'destructive' });
+    },
+  });
+
   const generateScript = async (project: any) => {
     if (!tenantConfig?.id) return;
     setGeneratingScriptId(project.id);
@@ -122,9 +137,22 @@ export default function VideoProjects() {
       }, tenantConfig.id);
 
       if (result.success && result.data) {
-        const data = result.data as any;
-        const script = data?.script || data?.content || data?.script_content || '';
+        const rawData = result.data as any;
+        // Handle possible double-wrapping from callWebhook
+        const data = (rawData?.data && (rawData.data.script || rawData.data.scenes || rawData.data.script_content)) ? rawData.data : rawData;
+        const rawScript = data?.script_content || data?.script || data?.content || '';
         const scenes = data?.scenes || [];
+        // If script_content is empty but scenes exist, build readable text from scenes
+        const script = (typeof rawScript === 'string' && rawScript.length > 10)
+          ? rawScript
+          : scenes.length > 0
+            ? scenes.map((s: any, i: number) =>
+                `Scene ${s.scene_number || i+1}:\n` +
+                `Visual: ${s.description || s.visual_description || ''}\n` +
+                `Voiceover: ${s.dialogue || s.voiceover_text || ''}\n` +
+                (s.text_overlay ? `Text: ${s.text_overlay}\n` : '')
+              ).join('\n---\n')
+            : '';
         const updateData: Record<string, any> = {
           ai_generated: true,
           status: 'script_ready',
@@ -139,12 +167,12 @@ export default function VideoProjects() {
       } else {
         await supabase.from('video_projects').update({ status: 'draft' }).eq('id', project.id);
         queryClient.invalidateQueries({ queryKey: ['video_projects'] });
-        toast({ title: '⚠️ AI generation service unavailable', description: 'Check that the marketing workflow is active in n8n. Status reset to draft — you can retry.', variant: 'destructive' });
+        toast({ title: '⚠️ AI generation service unavailable', description: 'The AI engine could not process your request. Status reset to draft — you can retry.', variant: 'destructive' });
       }
     } catch (err: any) {
       await supabase.from('video_projects').update({ status: 'draft' }).eq('id', project.id);
       queryClient.invalidateQueries({ queryKey: ['video_projects'] });
-      toast({ title: '⚠️ AI generation service unavailable', description: 'Check that the marketing workflow is active in n8n. You can retry.', variant: 'destructive' });
+      toast({ title: '⚠️ AI generation service unavailable', description: 'The AI engine could not process your request. You can retry.', variant: 'destructive' });
     } finally {
       setGeneratingScriptId(null);
     }
@@ -284,6 +312,10 @@ ${s.image_url ? `<img src="${s.image_url}" alt="Scene ${i + 1}" />` : ''}</div>`
                         ? <><Clock className="h-3 w-3 mr-1 animate-spin" /> Generating...</>
                         : <><Sparkles className="h-3 w-3 mr-1" /> AI Script</>}
                     </Button>
+                    <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive"
+                      onClick={(e) => { e.stopPropagation(); if (confirm('Delete this video project?')) deleteProject.mutate(project.id); }}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -373,6 +405,10 @@ ${s.image_url ? `<img src="${s.image_url}" alt="Scene ${i + 1}" />` : ''}</div>`
                 <Button variant="outline" onClick={() => { if (detailProject) downloadScript(detailProject); }}
                   disabled={!getScriptText(detailProject)}>
                   <Download className="h-4 w-4 mr-2" /> Download Script
+                </Button>
+                <Button variant="outline" className="text-destructive border-destructive/50"
+                  onClick={() => { if (detailProject && confirm('Permanently delete this project?')) deleteProject.mutate(detailProject.id); }}>
+                  <Trash2 className="h-4 w-4 mr-2" /> Delete Project
                 </Button>
                 <Button variant="outline" onClick={() => { if (detailProject) exportStoryboard(detailProject); }}>
                   <Film className="h-4 w-4 mr-2" /> Export Storyboard

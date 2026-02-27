@@ -251,7 +251,7 @@ export default function MarketingCampaigns() {
           sms: `${tenantConfig?.company_name || 'Hi'}: Special offer for you! Reply STOP to opt out.`,
         };
         setCampaignForm((prev) => ({ ...prev, content: templates[prev.type] || templates.email }));
-        toast({ title: "Content Generated", description: "Enable n8n workflow for full AI." });
+        toast({ title: "Content Generated", description: "Template applied. AI will personalize on send." });
       }
     } catch {
       setCampaignForm((prev) => ({

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTenant } from "@/contexts/TenantContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase, callWebhook } from "@/integrations/supabase/client";
+import { logSystemEvent } from "@/lib/api/systemEvents";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +23,7 @@ import { formatDistanceToNow, format, startOfMonth } from "date-fns";
 import {
   Plus, Mail, MessageSquare, Clock, Users, Play, Pause, Trash2, Sparkles,
   Target, Layers, BarChart3, ArrowRight, Phone, Copy, MoreVertical,
-  Activity, Zap, CheckCircle2, TrendingUp,
+  Activity, Zap, CheckCircle2, TrendingUp, Edit2, Save, X, Loader2,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
@@ -58,6 +59,9 @@ export default function MarketingSequences() {
   const [enrollDialogOpen, setEnrollDialogOpen] = useState(false);
   const [selectedSequenceForEnroll, setSelectedSequenceForEnroll] = useState<any>(null);
   const [enrollmentDetail, setEnrollmentDetail] = useState<any>(null);
+  const [isAddingStep, setIsAddingStep] = useState(false);
+  const [editingStep, setEditingStep] = useState<any>(null);
+  const [newStep, setNewStep] = useState({ channel: 'email', delay_days: 0, delay_hours: 0, subject: '', content: '', name: '' });
 
   // ─── Queries ───
   const { data: customers = [] } = useQuery({
@@ -69,6 +73,25 @@ export default function MarketingSequences() {
         .select('id, name, phone_number, email')
         .eq('tenant_id', tenantConfig.id || (tenantConfig as any).tenant_id)
         .limit(100);
+      return data || [];
+    },
+    enabled: !!tenantConfig && enrollDialogOpen,
+  });
+
+  const { data: hotLeads = [] } = useQuery({
+    queryKey: ['hot-leads-for-enroll', tenantConfig?.id],
+    queryFn: async () => {
+      if (!tenantConfig) return [];
+      const tc = tenantConfig as any;
+      const slug = tc.tenant_id || tenantConfig.id;
+      const { data } = await supabase
+        .from('sales_leads')
+        .select('id, contact_name, email, phone, temperature, lead_score')
+        .eq('tenant_id', slug)
+        .eq('temperature', 'hot')
+        .in('lead_status', ['new', 'qualified', 'contacted'])
+        .order('lead_score', { ascending: false })
+        .limit(50);
       return data || [];
     },
     enabled: !!tenantConfig && enrollDialogOpen,
@@ -169,6 +192,82 @@ export default function MarketingSequences() {
     enabled: !!tenantConfig?.id && !!enrollmentDetail?.lead_id,
   });
 
+  // ─── Sequence Steps from marketing_sequence_steps table ───
+  const { data: sequenceSteps = [], refetch: refetchSteps } = useQuery({
+    queryKey: ['sequence-steps', tenantConfig?.id, detailSequence?.id],
+    queryFn: async () => {
+      if (!tenantConfig?.id || !detailSequence?.id) return [];
+      const { data } = await supabase
+        .from('marketing_sequence_steps' as any)
+        .select('*')
+        .eq('sequence_id', detailSequence.id)
+        .eq('tenant_id', tenantConfig.id)
+        .order('step_number', { ascending: true });
+      return data || [];
+    },
+    enabled: !!tenantConfig?.id && !!detailSequence?.id,
+  });
+
+  const addStep = useMutation({
+    mutationFn: async (step: { channel: string; delay_days: number; delay_hours: number; subject: string; content: string; name: string }) => {
+      if (!tenantConfig?.id || !detailSequence?.id) throw new Error('No context');
+      const nextStepNumber = sequenceSteps.length + 1;
+      const { error } = await supabase.from('marketing_sequence_steps' as any).insert({
+        sequence_id: detailSequence.id,
+        tenant_id: tenantConfig.id,
+        step_number: nextStepNumber,
+        name: step.name || `Step ${nextStepNumber}: ${step.channel}`,
+        channel: step.channel,
+        delay_days: step.delay_days,
+        delay_hours: step.delay_hours,
+        subject: step.subject,
+        content: step.content,
+        is_active: true,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      refetchSteps();
+      setIsAddingStep(false);
+      setNewStep({ channel: 'email', delay_days: 0, delay_hours: 0, subject: '', content: '', name: '' });
+      toast({ title: '✅ Step Added!' });
+    },
+    onError: (err: Error) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
+  });
+
+  const updateStep = useMutation({
+    mutationFn: async (step: any) => {
+      if (!step.id) throw new Error('No step ID');
+      const { error } = await supabase.from('marketing_sequence_steps' as any).update({
+        channel: step.channel,
+        delay_days: step.delay_days,
+        delay_hours: step.delay_hours,
+        subject: step.subject,
+        content: step.content,
+        name: step.name,
+      }).eq('id', step.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      refetchSteps();
+      setEditingStep(null);
+      toast({ title: 'Step Updated' });
+    },
+    onError: (err: Error) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
+  });
+
+  const deleteStep = useMutation({
+    mutationFn: async (stepId: string) => {
+      const { error } = await supabase.from('marketing_sequence_steps' as any).delete().eq('id', stepId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      refetchSteps();
+      toast({ title: 'Step Deleted' });
+    },
+    onError: (err: Error) => toast({ title: 'Error', description: err.message, variant: 'destructive' }),
+  });
+
   // ─── Mutations ───
   const createSequence = useMutation({
     mutationFn: async (data: { name: string; description: string; trigger_type: string }) => {
@@ -218,6 +317,7 @@ export default function MarketingSequences() {
       }, tenantConfig.id);
       if (result.success) {
         toast({ title: "✅ Lead enrolled!", description: "AI Brain will execute the first step within 2 hours." });
+        logSystemEvent({ tenantId: tenantConfig.id, eventType: 'sequence_enrollment', sourceModule: 'marketing', eventData: { sequence_name: selectedSequenceForEnroll.name, lead_id: customerId, reason: 'manual_enrollment_from_ui' } });
         refetchEnrollments();
         setEnrollDialogOpen(false);
       } else {
@@ -226,6 +326,29 @@ export default function MarketingSequences() {
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
+  };
+
+  const [bulkEnrolling, setBulkEnrolling] = useState(false);
+  const handleBulkEnrollHotLeads = async () => {
+    if (!tenantConfig?.id || !selectedSequenceForEnroll || hotLeads.length === 0) return;
+    setBulkEnrolling(true);
+    let enrolled = 0;
+    for (const lead of hotLeads) {
+      try {
+        const result = await callWebhook('/ai-tool/enroll-sequence', {
+          sequence_id: selectedSequenceForEnroll.id,
+          lead_id: lead.id,
+          sequence_name: selectedSequenceForEnroll.name,
+          reason: 'bulk_hot_leads_enrollment',
+        }, tenantConfig.id);
+        if (result.success) enrolled++;
+      } catch { /* continue with next lead */ }
+    }
+    toast({ title: `Enrolled ${enrolled} hot leads`, description: `${enrolled} of ${hotLeads.length} hot leads enrolled in "${selectedSequenceForEnroll.name}"` });
+    logSystemEvent({ tenantId: tenantConfig.id, eventType: 'sequence_bulk_enrollment', sourceModule: 'marketing', eventData: { sequence_name: selectedSequenceForEnroll.name, count: enrolled, reason: 'bulk_hot_leads_enrollment' } });
+    refetchEnrollments();
+    setBulkEnrolling(false);
+    setEnrollDialogOpen(false);
   };
 
   // ─── Global Dashboard Computed ───
@@ -467,42 +590,169 @@ export default function MarketingSequences() {
                 <TabsContent value="steps" className="flex-1 overflow-auto">
                   <ScrollArea className="max-h-[400px]">
                     <div className="space-y-2 p-1">
-                      {(detailSequence.steps || []).map((step: any, idx: number) => {
-                        const cfg = stepTypeConfig[step.type] || stepTypeConfig.email;
+                      {sequenceSteps.map((step: any, idx: number) => {
+                        const cfg = stepTypeConfig[step.channel] || stepTypeConfig.email;
                         const StepIcon = cfg.icon;
-                        const delayText = step.delay_hours === 0 ? "Immediately" : step.delay_hours < 24 ? `After ${step.delay_hours}h` : `After ${Math.round(step.delay_hours / 24)}d`;
-                        const hasBranching = step.conditions && Object.keys(step.conditions).length > 0;
+                        const delayText = (step.delay_days || 0) === 0 && (step.delay_hours || 0) === 0
+                          ? "Immediately"
+                          : (step.delay_days || 0) > 0
+                            ? `After ${step.delay_days}d${step.delay_hours ? ` ${step.delay_hours}h` : ''}`
+                            : `After ${step.delay_hours}h`;
+                        const isEditing = editingStep?.id === step.id;
+
+                        if (isEditing) {
+                          return (
+                            <div key={step.id} className="p-3 rounded-lg border-2 border-primary/30 bg-primary/5 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium">Editing Step {idx + 1}</span>
+                                <div className="flex gap-1">
+                                  <Button size="sm" variant="ghost" onClick={() => setEditingStep(null)}><X className="h-3 w-3" /></Button>
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-3 gap-2">
+                                <div>
+                                  <Label className="text-xs">Channel</Label>
+                                  <Select value={editingStep.channel} onValueChange={v => setEditingStep((prev: any) => ({ ...prev, channel: v }))}>
+                                    <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="email">Email</SelectItem>
+                                      <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                                      <SelectItem value="sms">SMS</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label className="text-xs">Delay (days)</Label>
+                                  <Input type="number" min={0} className="h-8" value={editingStep.delay_days || 0} onChange={e => setEditingStep((prev: any) => ({ ...prev, delay_days: parseInt(e.target.value) || 0 }))} />
+                                </div>
+                                <div>
+                                  <Label className="text-xs">Delay (hours)</Label>
+                                  <Input type="number" min={0} className="h-8" value={editingStep.delay_hours || 0} onChange={e => setEditingStep((prev: any) => ({ ...prev, delay_hours: parseInt(e.target.value) || 0 }))} />
+                                </div>
+                              </div>
+                              <div>
+                                <Label className="text-xs">Subject</Label>
+                                <Input className="h-8" value={editingStep.subject || ''} onChange={e => setEditingStep((prev: any) => ({ ...prev, subject: e.target.value }))} placeholder="Email subject line..." />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Content</Label>
+                                <Textarea className="min-h-[60px]" value={editingStep.content || ''} onChange={e => setEditingStep((prev: any) => ({ ...prev, content: e.target.value }))} placeholder="Message content... Use {{first_name}}, {{company_name}} for personalization" />
+                              </div>
+                              <Button size="sm" className="w-full" onClick={() => updateStep.mutate(editingStep)} disabled={updateStep.isPending}>
+                                <Save className="h-3 w-3 mr-1" /> {updateStep.isPending ? 'Saving...' : 'Save Changes'}
+                              </Button>
+                            </div>
+                          );
+                        }
+
                         return (
-                          <div key={idx}>
-                            <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 border">
+                          <div key={step.id}>
+                            <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 border group">
                               <div className="flex flex-col items-center">
                                 <div className={`p-2 rounded-lg bg-background ${cfg.color} border`}><StepIcon className="h-4 w-4" /></div>
-                                {idx < (detailSequence.steps || []).length - 1 && <div className="w-0.5 h-6 bg-border mt-1" />}
+                                {idx < sequenceSteps.length - 1 && <div className="w-0.5 h-6 bg-border mt-1" />}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
                                   <span className="font-medium text-sm">{cfg.emoji} Step {idx + 1}: {cfg.label}</span>
                                   <Badge variant="outline" className="text-[10px]">{delayText}</Badge>
-                                  {hasBranching && <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/30">Branching</Badge>}
+                                  {step.ai_personalize && <Badge variant="outline" className="text-[10px] bg-purple-500/10 text-purple-600">AI Personalize</Badge>}
                                 </div>
-                                <p className="text-xs text-muted-foreground mt-0.5 truncate">{step.subject || step.content?.slice(0, 80) || "No content"}</p>
-                                {hasBranching && (
-                                  <div className="mt-1.5 space-y-0.5">
-                                    {step.conditions.if_opened && <p className="text-[10px] text-green-600">↗️ If opened → Jump to Step {step.conditions.if_opened}</p>}
-                                    {step.conditions.if_replied && <p className="text-[10px] text-blue-600">↗️ If replied → {step.conditions.if_replied === 'complete' ? 'Mark complete' : `Jump to Step ${step.conditions.if_replied}`}</p>}
-                                    {step.conditions.no_engagement_after && <p className="text-[10px] text-orange-600">↗️ No engagement → {step.conditions.switch_channel ? `Switch to ${step.conditions.switch_channel}` : `Jump to Step ${step.conditions.no_engagement_after}`}</p>}
+                                {step.subject && <p className="text-xs text-muted-foreground mt-0.5">{step.subject}</p>}
+                                {step.content && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{step.content.slice(0, 120)}{step.content.length > 120 ? '...' : ''}</p>}
+                                {step.sent_count > 0 && (
+                                  <div className="flex gap-3 mt-1 text-[10px] text-muted-foreground">
+                                    <span>Sent: {step.sent_count}</span>
+                                    {step.opened_count > 0 && <span>Opened: {step.opened_count}</span>}
+                                    {step.clicked_count > 0 && <span>Clicked: {step.clicked_count}</span>}
                                   </div>
                                 )}
+                              </div>
+                              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); setEditingStep({ ...step }); }}>
+                                  <Edit2 className="h-3 w-3" />
+                                </Button>
+                                <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={(e) => { e.stopPropagation(); if (confirm('Delete this step?')) deleteStep.mutate(step.id); }}>
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
                               </div>
                             </div>
                           </div>
                         );
                       })}
-                      {(detailSequence.steps || []).length === 0 && (
-                        <div className="text-center py-8 text-muted-foreground">
+
+                      {/* Fallback: show JSONB steps if no marketing_sequence_steps exist */}
+                      {sequenceSteps.length === 0 && (detailSequence.steps || []).length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-xs text-amber-600 bg-amber-500/10 p-2 rounded">These steps are from the legacy format. Add new steps below to use the step builder.</p>
+                          {(detailSequence.steps || []).map((step: any, idx: number) => {
+                            const cfg = stepTypeConfig[step.type] || stepTypeConfig.email;
+                            const StepIcon = cfg.icon;
+                            return (
+                              <div key={idx} className="flex items-start gap-3 p-3 rounded-lg bg-muted/20 border opacity-60">
+                                <div className={`p-2 rounded-lg bg-background ${cfg.color} border`}><StepIcon className="h-4 w-4" /></div>
+                                <div className="flex-1 min-w-0">
+                                  <span className="font-medium text-sm">{cfg.emoji} Step {idx + 1}: {cfg.label}</span>
+                                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{step.subject || step.content?.slice(0, 80) || "No content"}</p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {sequenceSteps.length === 0 && (detailSequence.steps || []).length === 0 && (
+                        <div className="text-center py-6 text-muted-foreground">
                           <Layers className="h-8 w-8 mx-auto mb-2 opacity-40" />
                           <p className="text-sm">No steps configured yet</p>
+                          <p className="text-xs">Add steps below to define your sequence</p>
                         </div>
+                      )}
+
+                      {/* Add Step Form */}
+                      {isAddingStep ? (
+                        <div className="p-3 rounded-lg border-2 border-dashed border-primary/30 bg-primary/5 space-y-3 mt-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium">New Step {sequenceSteps.length + 1}</span>
+                            <Button size="sm" variant="ghost" onClick={() => setIsAddingStep(false)}><X className="h-3 w-3" /></Button>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            <div>
+                              <Label className="text-xs">Channel</Label>
+                              <Select value={newStep.channel} onValueChange={v => setNewStep(prev => ({ ...prev, channel: v }))}>
+                                <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="email">Email</SelectItem>
+                                  <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                                  <SelectItem value="sms">SMS</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label className="text-xs">Delay (days)</Label>
+                              <Input type="number" min={0} className="h-8" value={newStep.delay_days} onChange={e => setNewStep(prev => ({ ...prev, delay_days: parseInt(e.target.value) || 0 }))} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Delay (hours)</Label>
+                              <Input type="number" min={0} className="h-8" value={newStep.delay_hours} onChange={e => setNewStep(prev => ({ ...prev, delay_hours: parseInt(e.target.value) || 0 }))} />
+                            </div>
+                          </div>
+                          <div>
+                            <Label className="text-xs">Subject {newStep.channel === 'email' ? '(required for email)' : '(optional)'}</Label>
+                            <Input className="h-8" value={newStep.subject} onChange={e => setNewStep(prev => ({ ...prev, subject: e.target.value }))} placeholder="Subject line..." />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Content</Label>
+                            <Textarea className="min-h-[60px]" value={newStep.content} onChange={e => setNewStep(prev => ({ ...prev, content: e.target.value }))} placeholder="Hi {{first_name}}, ..." />
+                          </div>
+                          <Button size="sm" className="w-full" onClick={() => addStep.mutate(newStep)} disabled={addStep.isPending || (!newStep.content && !newStep.subject)}>
+                            <Plus className="h-3 w-3 mr-1" /> {addStep.isPending ? 'Adding...' : 'Add Step'}
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button variant="outline" size="sm" className="w-full mt-2 border-dashed" onClick={() => setIsAddingStep(true)}>
+                          <Plus className="h-3 w-3 mr-1" /> Add Step
+                        </Button>
                       )}
                     </div>
                   </ScrollArea>
@@ -721,6 +971,22 @@ export default function MarketingSequences() {
             <DialogTitle className="flex items-center gap-2"><Users className="h-5 w-5 text-blue-500" /> Enroll Lead</DialogTitle>
             <DialogDescription>Select a customer to enroll in "{selectedSequenceForEnroll?.name}"</DialogDescription>
           </DialogHeader>
+          {hotLeads.length > 0 && (
+            <div className="mb-3 p-3 rounded-lg bg-orange-500/10 border border-orange-500/20">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-orange-700 dark:text-orange-400">
+                    {hotLeads.length} Hot Lead{hotLeads.length !== 1 ? 's' : ''} Available
+                  </p>
+                  <p className="text-xs text-muted-foreground">Enroll all high-temperature leads at once</p>
+                </div>
+                <Button size="sm" variant="outline" className="border-orange-500/30 text-orange-600 hover:bg-orange-500/10"
+                  onClick={handleBulkEnrollHotLeads} disabled={bulkEnrolling}>
+                  {bulkEnrolling ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Enrolling...</> : <><Zap className="h-3 w-3 mr-1" /> Quick Enroll All</>}
+                </Button>
+              </div>
+            </div>
+          )}
           <ScrollArea className="max-h-[400px]">
             <div className="space-y-2 py-2">
               {customers.length === 0 ? (

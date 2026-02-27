@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
 import { useMarketingContent, useTrendInsights } from '@/hooks/useMarketingContent';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -13,7 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { callWebhook } from '@/lib/api/webhooks';
-import { WEBHOOKS } from '@/integrations/supabase/client';
+import { WEBHOOKS, supabase } from '@/integrations/supabase/client';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Sparkles,
   FileText,
@@ -89,6 +90,55 @@ export default function ContentStudio() {
   const [editItem, setEditItem] = useState<any | null>(null);
   const [editContent, setEditContent] = useState('');
   const [repurposingId, setRepurposingId] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const queryClient = useQueryClient();
+
+  // Media library query — fetch files from Supabase Storage 'media' bucket
+  const { data: mediaFiles = [] } = useQuery({
+    queryKey: ['media-library', tenantConfig?.id],
+    queryFn: async () => {
+      if (!tenantConfig?.id) return [];
+      const { data, error } = await supabase.storage.from('media').list(tenantConfig.id, { limit: 100, sortBy: { column: 'created_at', order: 'desc' } });
+      if (error) { console.warn('Media list error:', error); return []; }
+      return (data || []).map(f => ({
+        ...f,
+        url: supabase.storage.from('media').getPublicUrl(`${tenantConfig.id}/${f.name}`).data.publicUrl,
+      }));
+    },
+    enabled: !!tenantConfig?.id,
+  });
+
+  const handleUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0 || !tenantConfig?.id) return;
+    setIsUploading(true);
+    let uploaded = 0;
+    for (const file of Array.from(files)) {
+      const filePath = `${tenantConfig.id}/${Date.now()}-${file.name}`;
+      const { error } = await supabase.storage.from('media').upload(filePath, file, { upsert: false });
+      if (error) {
+        toast({ title: 'Upload Failed', description: `${file.name}: ${error.message}`, variant: 'destructive' });
+      } else {
+        uploaded++;
+      }
+    }
+    if (uploaded > 0) {
+      toast({ title: `✅ ${uploaded} file(s) uploaded`, description: 'Available in your Media Library' });
+      queryClient.invalidateQueries({ queryKey: ['media-library'] });
+    }
+    setIsUploading(false);
+  };
+
+  const handleDeleteMedia = async (fileName: string) => {
+    if (!tenantConfig?.id) return;
+    const { error } = await supabase.storage.from('media').remove([`${tenantConfig.id}/${fileName}`]);
+    if (error) {
+      toast({ title: 'Delete Failed', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'File deleted' });
+      queryClient.invalidateQueries({ queryKey: ['media-library'] });
+    }
+  };
 
   const handleRepurpose = async (item: any) => {
     if (!tenantConfig?.id) return;
@@ -147,12 +197,12 @@ export default function ContentStudio() {
         } else {
           const mock = generateMockContent(contentType, topic, tone);
           setGeneratedContent(mock);
-          toast({ title: 'Content Generated (Demo)', description: 'Connect n8n webhook for full AI generation.' });
+          toast({ title: 'Content Generated (Demo)', description: 'Using template. Full AI generation available when connected.' });
         }
       } else {
         const mock = generateMockContent(contentType, topic, tone);
         setGeneratedContent(mock);
-        toast({ title: 'Content Generated (Demo)', description: 'Connect n8n webhook for full AI generation.' });
+        toast({ title: 'Content Generated (Demo)', description: 'Using template. Full AI generation available when connected.' });
       }
     } catch {
       const mock = generateMockContent(contentType, topic, tone);
@@ -406,7 +456,7 @@ export default function ContentStudio() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold">Trend Insights</h2>
-              <p className="text-sm text-muted-foreground">AI-discovered trends relevant to your business</p>
+              <p className="text-sm text-muted-foreground">AI-curated trends based on industry and seasonality</p>
             </div>
             <Button variant="outline" onClick={() => refreshTrends.mutateAsync()} disabled={refreshTrends.isPending}>
               <RefreshCw className={`h-4 w-4 mr-2 ${refreshTrends.isPending ? 'animate-spin' : ''}`} />
@@ -460,17 +510,74 @@ export default function ContentStudio() {
 
         {/* Media Library Tab */}
         <TabsContent value="media" className="space-y-4">
+          <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            multiple
+            accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
+            onChange={e => handleUpload(e.target.files)}
+          />
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2"><ImageIcon className="h-5 w-5" />Media Library</CardTitle>
-              <CardDescription>Upload and manage images and videos for your content</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2"><ImageIcon className="h-5 w-5" />Media Library</CardTitle>
+                  <CardDescription>Upload and manage images and videos for your content</CardDescription>
+                </div>
+                <Button onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                  {isUploading ? <><RefreshCw className="h-4 w-4 mr-2 animate-spin" />Uploading...</> : <><Plus className="h-4 w-4 mr-2" />Upload Media</>}
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="border-2 border-dashed rounded-lg p-12 text-center">
-                <ImageIcon className="h-12 w-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
-                <p className="text-muted-foreground mb-4">Drag and drop files here, or click to browse</p>
-                <Button variant="outline"><Plus className="h-4 w-4 mr-2" />Upload Media</Button>
-              </div>
+              {mediaFiles.length === 0 ? (
+                <div
+                  className="border-2 border-dashed rounded-lg p-12 text-center cursor-pointer hover:border-primary/50 transition-colors"
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={e => { e.preventDefault(); e.stopPropagation(); }}
+                  onDrop={e => { e.preventDefault(); e.stopPropagation(); handleUpload(e.dataTransfer.files); }}
+                >
+                  <ImageIcon className="h-12 w-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
+                  <p className="text-muted-foreground mb-2">Drag and drop files here, or click to browse</p>
+                  <p className="text-xs text-muted-foreground">Supports images, videos, PDFs, and documents</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {mediaFiles.map((file: any) => {
+                    const isImage = file.metadata?.mimetype?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(file.name);
+                    return (
+                      <div key={file.id || file.name} className="group relative border rounded-lg overflow-hidden">
+                        {isImage ? (
+                          <img src={file.url} alt={file.name} className="w-full h-32 object-cover" />
+                        ) : (
+                          <div className="w-full h-32 flex items-center justify-center bg-muted">
+                            <FileText className="h-8 w-8 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="p-2">
+                          <p className="text-xs truncate">{file.name.split('-').slice(1).join('-') || file.name}</p>
+                        </div>
+                        <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                          <Button size="icon" variant="secondary" className="h-7 w-7" onClick={() => { navigator.clipboard.writeText(file.url); toast({ title: 'URL Copied!' }); }}>
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                          <Button size="icon" variant="destructive" className="h-7 w-7" onClick={() => handleDeleteMedia(file.name)}>
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div
+                    className="border-2 border-dashed rounded-lg h-32 flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-colors"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Plus className="h-6 w-6 text-muted-foreground mb-1" />
+                    <span className="text-xs text-muted-foreground">Upload More</span>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
