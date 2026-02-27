@@ -156,6 +156,25 @@ export default function SalesDashboard() {
     enabled: !!tenantUuid,
   });
 
+  // Fetch active sequence template count
+  const { data: sequenceTemplates = [] } = useQuery({
+    queryKey: ["dashboard", "sequence_templates", tenantId],
+    queryFn: async () => {
+      if (!tenantId) return [];
+      const { data, error } = await supabase
+        .from("sequences")
+        .select("id")
+        .eq("tenant_id", tenantId)
+        .eq("status", "active");
+      if (error) {
+        console.log("sequences query error:", error);
+        return [];
+      }
+      return data || [];
+    },
+    enabled: !!tenantId,
+  });
+
   // Fetch email/call stats from sales_leads aggregate counts + outbound_messages
   const { data: activityStats } = useQuery({
     queryKey: ["dashboard", "activities", tenantId],
@@ -437,11 +456,13 @@ export default function SalesDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Active Sequences</p>
-                <p className="text-2xl font-bold">{metrics.activeSequences}</p>
+                <p className="text-2xl font-bold">{sequenceTemplates.length}</p>
               </div>
               <Target className="h-8 w-8 text-purple-500" />
             </div>
-            <p className="text-xs text-muted-foreground mt-2">Contacts in nurture</p>
+            <p className="text-xs text-muted-foreground mt-2">
+              {metrics.activeSequences} contacts in nurture
+            </p>
           </CardContent>
         </Card>
 
