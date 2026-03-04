@@ -170,12 +170,78 @@ export default function LandingPages() {
     setEditorSubtitle(template?.desc || "");
     setEditorHeroImage("");
     setEditorBody("");
-    setEditorCtaText(template?.id === "contact_us" ? "Send Message" : template?.id === "event_registration" ? "Register Now" : template?.id === "free_trial" ? "Start Free Trial" : "Get Started");
+    setEditorCtaText(template?.id === "custom" ? "Send Message" : template?.id === "event" ? "Register Now" : template?.id === "webinar" ? "Register Now" : "Get Started");
     setEditorCtaColor("#6366f1");
-    setEditorFormFields(template?.id === "contact_us" ? ["name", "email", "message"] : template?.id === "event_registration" ? ["name", "email", "company"] : ["name", "email"]);
+    setEditorFormFields(template?.id === "custom" ? ["name", "email", "message"] : template?.id === "event" ? ["name", "email", "company"] : ["name", "email"]);
     setEditorThankYou("Thank you! We'll be in touch soon.");
+    setEditorGeneratedHtml("");
+    setShowHtmlSource(false);
     setIsCreateOpen(false);
     setIsEditorOpen(true);
+  };
+
+  const openEditorForPage = (page: any) => {
+    setEditingPageId(page.id);
+    setEditorTitle(page.name || "");
+    setEditorSubtitle(page.meta_description || "");
+    setEditorHeroImage("");
+    setEditorBody("");
+    setEditorCtaText("Get Started");
+    setEditorCtaColor(tenantConfig?.primary_color || "#6366f1");
+    setEditorFormFields(["name", "email"]);
+    setEditorThankYou("Thank you! We'll be in touch soon.");
+    setEditorMetaTitle(page.meta_title || "");
+    setEditorMetaDescription(page.meta_description || "");
+    setEditorGeneratedHtml(page.html_content || "");
+    setSelectedTemplate(pageTemplates.find(t => t.id === page.template_type) || null);
+    setShowHtmlSource(false);
+    setIsEditorOpen(true);
+  };
+
+  const handleAiGenerate = async (pageId?: string, pageName?: string, templateType?: string) => {
+    if (!tenantConfig) {
+      toast({ title: "No tenant config", variant: "destructive" });
+      return;
+    }
+    setIsAiGenerating(true);
+    try {
+      const result = await callWebhook(WEBHOOKS.LANDING_PAGE_GENERATE, {
+        tenant_id: tenantConfig.tenant_id,
+        tenant_uuid: tenantConfig.id,
+        page_name: pageName || editorTitle || "Landing Page",
+        page_type: templateType || selectedTemplate?.id || "lead_capture",
+        description: editorSubtitle || editorMetaDescription || "",
+        industry: tenantConfig.industry || "technology",
+        company_name: tenantConfig.company_name || "",
+        include_blog: includeBlogPosts,
+        page_id: pageId || editingPageId || "",
+        page_slug: "",
+      }, tenantConfig.tenant_id);
+
+      if (result.success && result.data) {
+        const responseData = result.data as any;
+        if (responseData.success && responseData.html) {
+          setEditorGeneratedHtml(responseData.html);
+          toast({ title: "Page Generated!", description: `${(responseData.html_bytes || responseData.html.length).toLocaleString()} bytes of AI-generated HTML` });
+          
+          if (pageId || editingPageId) {
+            await updatePage.mutateAsync({
+              id: pageId || editingPageId,
+              html_content: responseData.html,
+              ai_generated: true,
+            });
+          }
+        } else {
+          toast({ title: "Generation Failed", description: responseData.error || "Unknown error", variant: "destructive" });
+        }
+      } else {
+        toast({ title: "Webhook Error", description: result.error || "Failed to reach generation service", variant: "destructive" });
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "AI generation failed", variant: "destructive" });
+    } finally {
+      setIsAiGenerating(false);
+    }
   };
 
   const handleSavePage = async () => {
