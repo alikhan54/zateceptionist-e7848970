@@ -20,6 +20,7 @@ export interface LandingPage {
   meta_description?: string;
   og_image_url?: string;
   template_type?: string;
+  ai_generated?: boolean;
   created_at: string;
   updated_at?: string;
 }
@@ -56,6 +57,7 @@ export function useLandingPages() {
           name: input.name,
           slug: slug + "-" + Date.now(),
           template: input.template,
+          template_type: input.template_type,
           html_content: input.html_content,
           meta_title: input.meta_title,
           meta_description: input.meta_description,
@@ -74,9 +76,29 @@ export function useLandingPages() {
     },
   });
 
+  const updatePage = useMutation({
+    mutationFn: async (input: { id: string; html_content: string; ai_generated?: boolean }) => {
+      const { data, error } = await supabase
+        .from("landing_pages")
+        .update({
+          html_content: input.html_content,
+          ai_generated: input.ai_generated ?? false,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", input.id)
+        .eq("tenant_id", tenantUuid)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["landing_pages", tenantUuid] });
+    },
+  });
+
   const publishPage = useMutation({
     mutationFn: async (pageId: string) => {
-      // Get the page slug for the public URL
       const existing = pages.find((p: any) => p.id === pageId);
       const slug = existing?.slug || pageId;
       const publicUrl = `${window.location.origin}/lp/${slug}`;
@@ -117,5 +139,5 @@ export function useLandingPages() {
     totalConversions: pages.reduce((sum: number, p: any) => sum + (p.conversions || 0), 0),
   };
 
-  return { pages, isLoading, stats, createPage, publishPage, deletePage };
+  return { pages, isLoading, stats, createPage, updatePage, publishPage, deletePage };
 }
