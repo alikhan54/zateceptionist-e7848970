@@ -539,11 +539,19 @@ export default function LandingPages() {
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openEditorForPage(page)}>
+                            <Edit className="h-4 w-4 mr-2" />Edit Page
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => {
                             const injected = injectFormAction(page.html_content || "", tenantConfig?.id || '', page.id);
                             setPreviewHtml(injected);
                             setPreviewPageName(page.name);
                           }}><Eye className="h-4 w-4 mr-2" />Preview</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            handleAiGenerate(page.id, page.name, page.template_type);
+                          }}>
+                            <Zap className="h-4 w-4 mr-2" />AI Generate
+                          </DropdownMenuItem>
                           {page.status === "draft" && (
                             <DropdownMenuItem onClick={() => publishPage.mutateAsync(page.id)}><Check className="h-4 w-4 mr-2" />Publish</DropdownMenuItem>
                           )}
