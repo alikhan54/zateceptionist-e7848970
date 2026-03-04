@@ -338,6 +338,18 @@ export default function LandingPages() {
           </CardContent>
         </Card>
 
+        {/* Quality warning */}
+        {!editorGeneratedHtml && editingPageId && (
+          <Card className="border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-950/20">
+            <CardContent className="p-3 flex items-center gap-3 text-sm">
+              <span className="text-amber-600 text-lg">⚠️</span>
+              <span className="text-amber-800 dark:text-amber-200">
+                This page uses a basic template. Click <strong>"✨ AI Generate"</strong> for a professional, high-converting page with your business context, services, and blog posts.
+              </span>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="grid lg:grid-cols-[400px_1fr] gap-4">
           {/* Left: Editor Fields */}
           <div className="space-y-4">
