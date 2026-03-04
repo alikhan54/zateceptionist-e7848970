@@ -296,8 +296,34 @@ export default function LandingPages() {
             <h1 className="text-2xl font-bold mt-1">{editorTitle || "New Landing Page"}</h1>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => handleCopyHtml(editorPreviewHtml)}><Copy className="h-4 w-4 mr-1" />Copy HTML</Button>
-            <Button variant="outline" size="sm" onClick={() => handleDownloadHtml(editorPreviewHtml, editorTitle || "landing-page")}><Download className="h-4 w-4 mr-1" />Download</Button>
+            {/* Include Blog Toggle */}
+            <div className="flex items-center gap-2 mr-2 border-r pr-3">
+              <Checkbox 
+                id="include-blog" 
+                checked={includeBlogPosts} 
+                onCheckedChange={(checked) => setIncludeBlogPosts(!!checked)} 
+              />
+              <Label htmlFor="include-blog" className="text-xs cursor-pointer whitespace-nowrap">Include Blog</Label>
+            </div>
+            {/* AI Generate Button */}
+            <Button 
+              variant="default" 
+              size="sm" 
+              onClick={() => handleAiGenerate()} 
+              disabled={isAiGenerating}
+              className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white"
+            >
+              {isAiGenerating ? (
+                <>
+                  <svg className="animate-spin h-4 w-4 mr-1" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                  Generating...
+                </>
+              ) : (
+                <>✨ AI Generate</>
+              )}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => handleCopyHtml(editorGeneratedHtml || editorPreviewHtml)}><Copy className="h-4 w-4 mr-1" />Copy HTML</Button>
+            <Button variant="outline" size="sm" onClick={() => handleDownloadHtml(editorGeneratedHtml || editorPreviewHtml, editorTitle || "landing-page")}><Download className="h-4 w-4 mr-1" />Download</Button>
             <Button size="sm" onClick={handleSavePage} disabled={createPage.isPending}>{createPage.isPending ? "Saving..." : "Save Page"}</Button>
           </div>
         </div>
