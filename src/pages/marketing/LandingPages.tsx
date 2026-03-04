@@ -116,7 +116,7 @@ ${formFieldsHtml}
 // ═══════════════════════════════════════════
 export default function LandingPages() {
   const { toast } = useToast();
-  const { pages, isLoading, stats, createPage, publishPage, deletePage } = useLandingPages();
+  const { pages, isLoading, stats, createPage, updatePage, publishPage, deletePage } = useLandingPages();
   const { tenantConfig } = useTenant();
 
   const navigate = useNavigate();
