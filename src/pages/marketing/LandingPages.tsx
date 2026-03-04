@@ -39,12 +39,12 @@ function injectFormAction(html: string, tenantId: string, pageId: string): strin
 
 // ─── Template definitions ───
 const pageTemplates = [
-  { id: "lead_capture", name: "Lead Capture", icon: UserPlus, color: "bg-blue-500/10 text-blue-500", desc: "Capture leads with a clean, high-converting form" },
-  { id: "product_launch", name: "Product Launch", icon: Rocket, color: "bg-purple-500/10 text-purple-500", desc: "Showcase your new product with impact" },
-  { id: "event_registration", name: "Event Registration", icon: CalendarDays, color: "bg-green-500/10 text-green-500", desc: "Drive registrations for events and webinars" },
-  { id: "coming_soon", name: "Coming Soon", icon: Clock, color: "bg-amber-500/10 text-amber-500", desc: "Build anticipation for your upcoming launch" },
-  { id: "free_trial", name: "Free Trial", icon: Zap, color: "bg-primary/10 text-primary", desc: "Convert visitors into trial users" },
-  { id: "contact_us", name: "Contact Us", icon: MessageSquare, color: "bg-pink-500/10 text-pink-500", desc: "Simple contact form for inquiries" },
+  { id: "lead_capture", name: "Lead Capture", icon: UserPlus, color: "bg-blue-500/10 text-blue-500", desc: "Optimized for collecting contact information with compelling value propositions" },
+  { id: "product", name: "Product / Service", icon: Rocket, color: "bg-purple-500/10 text-purple-500", desc: "Showcase features, benefits, and drive conversions" },
+  { id: "event", name: "Event Promotion", icon: CalendarDays, color: "bg-green-500/10 text-green-500", desc: "Promote events with agenda, speakers, and registration" },
+  { id: "webinar", name: "Webinar Registration", icon: Clock, color: "bg-amber-500/10 text-amber-500", desc: "Drive registrations for online events and webinars" },
+  { id: "blog", name: "Blog Article", icon: Edit, color: "bg-primary/10 text-primary", desc: "Publish a blog post as a beautiful landing page" },
+  { id: "custom", name: "Custom / Flexible", icon: MessageSquare, color: "bg-pink-500/10 text-pink-500", desc: "Flexible layout for any purpose" },
 ];
 
 const formFieldOptions = [
