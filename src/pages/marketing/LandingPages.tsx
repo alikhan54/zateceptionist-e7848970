@@ -583,6 +583,14 @@ export default function LandingPages() {
                       </div>
                     </div>
 
+                    {/* Quality warning for thin pages */}
+                    {(page.html_content?.length || 0) < 1000 && (
+                      <div className="mt-2 px-2 py-1.5 bg-amber-50 dark:bg-amber-950/20 rounded text-xs text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
+                        <span>⚠️</span>
+                        <span>Minimal content ({page.html_content?.length || 0} bytes)</span>
+                      </div>
+                    )}
+
                     {page.status === 'published' && (
                       <a
                         href={`/lp/${page.slug || page.id}`}
