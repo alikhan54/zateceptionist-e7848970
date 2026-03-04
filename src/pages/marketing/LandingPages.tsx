@@ -250,7 +250,8 @@ export default function LandingPages() {
       await createPage.mutateAsync({
         name: editorTitle,
         template: selectedTemplate?.name,
-        html_content: editorPreviewHtml,
+        template_type: selectedTemplate?.id || "custom",
+        html_content: editorGeneratedHtml || editorPreviewHtml,
         meta_title: editorMetaTitle || editorTitle,
         meta_description: editorMetaDescription || editorSubtitle,
       });
