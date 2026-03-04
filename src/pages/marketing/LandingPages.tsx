@@ -140,6 +140,10 @@ export default function LandingPages() {
   const [editorThankYou, setEditorThankYou] = useState("Thank you! We'll be in touch soon.");
   const [editorMetaTitle, setEditorMetaTitle] = useState("");
   const [editorMetaDescription, setEditorMetaDescription] = useState("");
+  const [isAiGenerating, setIsAiGenerating] = useState(false);
+  const [includeBlogPosts, setIncludeBlogPosts] = useState(true);
+  const [editorGeneratedHtml, setEditorGeneratedHtml] = useState<string>("");
+  const [showHtmlSource, setShowHtmlSource] = useState(false);
 
   // Live preview HTML
   const editorPreviewHtml = useMemo(() => generatePageHtml({
