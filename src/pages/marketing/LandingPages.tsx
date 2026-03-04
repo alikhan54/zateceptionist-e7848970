@@ -417,15 +417,51 @@ export default function LandingPages() {
             <CardContent className="p-2">
               <div className="border rounded-lg overflow-hidden bg-muted/20">
                 <iframe
-                  srcDoc={editorPreviewHtml}
+                  srcDoc={editorGeneratedHtml || editorPreviewHtml}
                   className="w-full bg-white transition-all"
                   style={{ maxWidth: previewMode === "mobile" ? "375px" : "100%", margin: "0 auto", display: "block", minHeight: "600px" }}
                   title="Live Preview"
-                  sandbox=""
+                  sandbox="allow-scripts"
                 />
               </div>
             </CardContent>
           </Card>
+
+          {/* HTML Source + Stats */}
+          {editorGeneratedHtml && (
+            <Card className="mt-4">
+              <CardHeader className="py-3 px-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-sm">Generated HTML</CardTitle>
+                    <Badge variant="secondary" className="text-xs">
+                      {(editorGeneratedHtml.length / 1024).toFixed(1)} KB
+                    </Badge>
+                    <Badge variant="outline" className="text-xs text-green-600 border-green-300">
+                      AI Generated
+                    </Badge>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setShowHtmlSource(!showHtmlSource)}>
+                      {showHtmlSource ? "Hide Source" : "View Source"}
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => handleAiGenerate()} disabled={isAiGenerating}>
+                      Regenerate
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              {showHtmlSource && (
+                <CardContent className="px-4 pb-4">
+                  <textarea 
+                    readOnly 
+                    value={editorGeneratedHtml} 
+                    className="w-full h-48 p-3 font-mono text-xs bg-muted border rounded-lg resize-y" 
+                  />
+                </CardContent>
+              )}
+            </Card>
+          )}
         </div>
       </div>
     );
