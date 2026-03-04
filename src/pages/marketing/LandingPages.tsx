@@ -39,12 +39,12 @@ function injectFormAction(html: string, tenantId: string, pageId: string): strin
 
 // ─── Template definitions ───
 const pageTemplates = [
-  { id: "lead_capture", name: "Lead Capture", icon: UserPlus, color: "bg-blue-500/10 text-blue-500", desc: "Capture leads with a clean, high-converting form" },
-  { id: "product_launch", name: "Product Launch", icon: Rocket, color: "bg-purple-500/10 text-purple-500", desc: "Showcase your new product with impact" },
-  { id: "event_registration", name: "Event Registration", icon: CalendarDays, color: "bg-green-500/10 text-green-500", desc: "Drive registrations for events and webinars" },
-  { id: "coming_soon", name: "Coming Soon", icon: Clock, color: "bg-amber-500/10 text-amber-500", desc: "Build anticipation for your upcoming launch" },
-  { id: "free_trial", name: "Free Trial", icon: Zap, color: "bg-primary/10 text-primary", desc: "Convert visitors into trial users" },
-  { id: "contact_us", name: "Contact Us", icon: MessageSquare, color: "bg-pink-500/10 text-pink-500", desc: "Simple contact form for inquiries" },
+  { id: "lead_capture", name: "Lead Capture", icon: UserPlus, color: "bg-blue-500/10 text-blue-500", desc: "Optimized for collecting contact information with compelling value propositions" },
+  { id: "product", name: "Product / Service", icon: Rocket, color: "bg-purple-500/10 text-purple-500", desc: "Showcase features, benefits, and drive conversions" },
+  { id: "event", name: "Event Promotion", icon: CalendarDays, color: "bg-green-500/10 text-green-500", desc: "Promote events with agenda, speakers, and registration" },
+  { id: "webinar", name: "Webinar Registration", icon: Clock, color: "bg-amber-500/10 text-amber-500", desc: "Drive registrations for online events and webinars" },
+  { id: "blog", name: "Blog Article", icon: Edit, color: "bg-primary/10 text-primary", desc: "Publish a blog post as a beautiful landing page" },
+  { id: "custom", name: "Custom / Flexible", icon: MessageSquare, color: "bg-pink-500/10 text-pink-500", desc: "Flexible layout for any purpose" },
 ];
 
 const formFieldOptions = [
@@ -116,7 +116,7 @@ ${formFieldsHtml}
 // ═══════════════════════════════════════════
 export default function LandingPages() {
   const { toast } = useToast();
-  const { pages, isLoading, stats, createPage, publishPage, deletePage } = useLandingPages();
+  const { pages, isLoading, stats, createPage, updatePage, publishPage, deletePage } = useLandingPages();
   const { tenantConfig } = useTenant();
 
   const navigate = useNavigate();
@@ -140,6 +140,10 @@ export default function LandingPages() {
   const [editorThankYou, setEditorThankYou] = useState("Thank you! We'll be in touch soon.");
   const [editorMetaTitle, setEditorMetaTitle] = useState("");
   const [editorMetaDescription, setEditorMetaDescription] = useState("");
+  const [isAiGenerating, setIsAiGenerating] = useState(false);
+  const [includeBlogPosts, setIncludeBlogPosts] = useState(true);
+  const [editorGeneratedHtml, setEditorGeneratedHtml] = useState<string>("");
+  const [showHtmlSource, setShowHtmlSource] = useState(false);
 
   // Live preview HTML
   const editorPreviewHtml = useMemo(() => generatePageHtml({
@@ -166,12 +170,78 @@ export default function LandingPages() {
     setEditorSubtitle(template?.desc || "");
     setEditorHeroImage("");
     setEditorBody("");
-    setEditorCtaText(template?.id === "contact_us" ? "Send Message" : template?.id === "event_registration" ? "Register Now" : template?.id === "free_trial" ? "Start Free Trial" : "Get Started");
+    setEditorCtaText(template?.id === "custom" ? "Send Message" : template?.id === "event" ? "Register Now" : template?.id === "webinar" ? "Register Now" : "Get Started");
     setEditorCtaColor("#6366f1");
-    setEditorFormFields(template?.id === "contact_us" ? ["name", "email", "message"] : template?.id === "event_registration" ? ["name", "email", "company"] : ["name", "email"]);
+    setEditorFormFields(template?.id === "custom" ? ["name", "email", "message"] : template?.id === "event" ? ["name", "email", "company"] : ["name", "email"]);
     setEditorThankYou("Thank you! We'll be in touch soon.");
+    setEditorGeneratedHtml("");
+    setShowHtmlSource(false);
     setIsCreateOpen(false);
     setIsEditorOpen(true);
+  };
+
+  const openEditorForPage = (page: any) => {
+    setEditingPageId(page.id);
+    setEditorTitle(page.name || "");
+    setEditorSubtitle(page.meta_description || "");
+    setEditorHeroImage("");
+    setEditorBody("");
+    setEditorCtaText("Get Started");
+    setEditorCtaColor(tenantConfig?.primary_color || "#6366f1");
+    setEditorFormFields(["name", "email"]);
+    setEditorThankYou("Thank you! We'll be in touch soon.");
+    setEditorMetaTitle(page.meta_title || "");
+    setEditorMetaDescription(page.meta_description || "");
+    setEditorGeneratedHtml(page.html_content || "");
+    setSelectedTemplate(pageTemplates.find(t => t.id === page.template_type) || null);
+    setShowHtmlSource(false);
+    setIsEditorOpen(true);
+  };
+
+  const handleAiGenerate = async (pageId?: string, pageName?: string, templateType?: string) => {
+    if (!tenantConfig) {
+      toast({ title: "No tenant config", variant: "destructive" });
+      return;
+    }
+    setIsAiGenerating(true);
+    try {
+      const result = await callWebhook(WEBHOOKS.LANDING_PAGE_GENERATE, {
+        tenant_id: tenantConfig.tenant_id,
+        tenant_uuid: tenantConfig.id,
+        page_name: pageName || editorTitle || "Landing Page",
+        page_type: templateType || selectedTemplate?.id || "lead_capture",
+        description: editorSubtitle || editorMetaDescription || "",
+        industry: tenantConfig.industry || "technology",
+        company_name: tenantConfig.company_name || "",
+        include_blog: includeBlogPosts,
+        page_id: pageId || editingPageId || "",
+        page_slug: "",
+      }, tenantConfig.tenant_id);
+
+      if (result.success && result.data) {
+        const responseData = result.data as any;
+        if (responseData.success && responseData.html) {
+          setEditorGeneratedHtml(responseData.html);
+          toast({ title: "Page Generated!", description: `${(responseData.html_bytes || responseData.html.length).toLocaleString()} bytes of AI-generated HTML` });
+          
+          if (pageId || editingPageId) {
+            await updatePage.mutateAsync({
+              id: pageId || editingPageId,
+              html_content: responseData.html,
+              ai_generated: true,
+            });
+          }
+        } else {
+          toast({ title: "Generation Failed", description: responseData.error || "Unknown error", variant: "destructive" });
+        }
+      } else {
+        toast({ title: "Webhook Error", description: result.error || "Failed to reach generation service", variant: "destructive" });
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "AI generation failed", variant: "destructive" });
+    } finally {
+      setIsAiGenerating(false);
+    }
   };
 
   const handleSavePage = async () => {
@@ -180,7 +250,8 @@ export default function LandingPages() {
       await createPage.mutateAsync({
         name: editorTitle,
         template: selectedTemplate?.name,
-        html_content: editorPreviewHtml,
+        template_type: selectedTemplate?.id || "custom",
+        html_content: editorGeneratedHtml || editorPreviewHtml,
         meta_title: editorMetaTitle || editorTitle,
         meta_description: editorMetaDescription || editorSubtitle,
       });
@@ -225,8 +296,34 @@ export default function LandingPages() {
             <h1 className="text-2xl font-bold mt-1">{editorTitle || "New Landing Page"}</h1>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => handleCopyHtml(editorPreviewHtml)}><Copy className="h-4 w-4 mr-1" />Copy HTML</Button>
-            <Button variant="outline" size="sm" onClick={() => handleDownloadHtml(editorPreviewHtml, editorTitle || "landing-page")}><Download className="h-4 w-4 mr-1" />Download</Button>
+            {/* Include Blog Toggle */}
+            <div className="flex items-center gap-2 mr-2 border-r pr-3">
+              <Checkbox 
+                id="include-blog" 
+                checked={includeBlogPosts} 
+                onCheckedChange={(checked) => setIncludeBlogPosts(!!checked)} 
+              />
+              <Label htmlFor="include-blog" className="text-xs cursor-pointer whitespace-nowrap">Include Blog</Label>
+            </div>
+            {/* AI Generate Button */}
+            <Button 
+              variant="default" 
+              size="sm" 
+              onClick={() => handleAiGenerate()} 
+              disabled={isAiGenerating}
+              className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white"
+            >
+              {isAiGenerating ? (
+                <>
+                  <svg className="animate-spin h-4 w-4 mr-1" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                  Generating...
+                </>
+              ) : (
+                <>✨ AI Generate</>
+              )}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => handleCopyHtml(editorGeneratedHtml || editorPreviewHtml)}><Copy className="h-4 w-4 mr-1" />Copy HTML</Button>
+            <Button variant="outline" size="sm" onClick={() => handleDownloadHtml(editorGeneratedHtml || editorPreviewHtml, editorTitle || "landing-page")}><Download className="h-4 w-4 mr-1" />Download</Button>
             <Button size="sm" onClick={handleSavePage} disabled={createPage.isPending}>{createPage.isPending ? "Saving..." : "Save Page"}</Button>
           </div>
         </div>
@@ -240,6 +337,18 @@ export default function LandingPages() {
             <Button variant="ghost" size="sm" className="shrink-0" onClick={() => { navigator.clipboard.writeText(webhookUrl); toast({ title: "Webhook URL Copied!" }); }}><Copy className="h-3 w-3" /></Button>
           </CardContent>
         </Card>
+
+        {/* Quality warning */}
+        {!editorGeneratedHtml && editingPageId && (
+          <Card className="border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-950/20">
+            <CardContent className="p-3 flex items-center gap-3 text-sm">
+              <span className="text-amber-600 text-lg">⚠️</span>
+              <span className="text-amber-800 dark:text-amber-200">
+                This page uses a basic template. Click <strong>"✨ AI Generate"</strong> for a professional, high-converting page with your business context, services, and blog posts.
+              </span>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid lg:grid-cols-[400px_1fr] gap-4">
           {/* Left: Editor Fields */}
@@ -308,15 +417,51 @@ export default function LandingPages() {
             <CardContent className="p-2">
               <div className="border rounded-lg overflow-hidden bg-muted/20">
                 <iframe
-                  srcDoc={editorPreviewHtml}
+                  srcDoc={editorGeneratedHtml || editorPreviewHtml}
                   className="w-full bg-white transition-all"
                   style={{ maxWidth: previewMode === "mobile" ? "375px" : "100%", margin: "0 auto", display: "block", minHeight: "600px" }}
                   title="Live Preview"
-                  sandbox=""
+                  sandbox="allow-scripts"
                 />
               </div>
             </CardContent>
           </Card>
+
+          {/* HTML Source + Stats */}
+          {editorGeneratedHtml && (
+            <Card className="mt-4">
+              <CardHeader className="py-3 px-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-sm">Generated HTML</CardTitle>
+                    <Badge variant="secondary" className="text-xs">
+                      {(editorGeneratedHtml.length / 1024).toFixed(1)} KB
+                    </Badge>
+                    <Badge variant="outline" className="text-xs text-green-600 border-green-300">
+                      AI Generated
+                    </Badge>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setShowHtmlSource(!showHtmlSource)}>
+                      {showHtmlSource ? "Hide Source" : "View Source"}
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => handleAiGenerate()} disabled={isAiGenerating}>
+                      Regenerate
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              {showHtmlSource && (
+                <CardContent className="px-4 pb-4">
+                  <textarea 
+                    readOnly 
+                    value={editorGeneratedHtml} 
+                    className="w-full h-48 p-3 font-mono text-xs bg-muted border rounded-lg resize-y" 
+                  />
+                </CardContent>
+              )}
+            </Card>
+          )}
         </div>
       </div>
     );
@@ -394,11 +539,19 @@ export default function LandingPages() {
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openEditorForPage(page)}>
+                            <Edit className="h-4 w-4 mr-2" />Edit Page
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => {
                             const injected = injectFormAction(page.html_content || "", tenantConfig?.id || '', page.id);
                             setPreviewHtml(injected);
                             setPreviewPageName(page.name);
                           }}><Eye className="h-4 w-4 mr-2" />Preview</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            handleAiGenerate(page.id, page.name, page.template_type);
+                          }}>
+                            <Zap className="h-4 w-4 mr-2" />AI Generate
+                          </DropdownMenuItem>
                           {page.status === "draft" && (
                             <DropdownMenuItem onClick={() => publishPage.mutateAsync(page.id)}><Check className="h-4 w-4 mr-2" />Publish</DropdownMenuItem>
                           )}
@@ -429,6 +582,14 @@ export default function LandingPages() {
                         <p className="text-[10px] text-muted-foreground">CVR</p>
                       </div>
                     </div>
+
+                    {/* Quality warning for thin pages */}
+                    {(page.html_content?.length || 0) < 1000 && (
+                      <div className="mt-2 px-2 py-1.5 bg-amber-50 dark:bg-amber-950/20 rounded text-xs text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
+                        <span>⚠️</span>
+                        <span>Minimal content ({page.html_content?.length || 0} bytes)</span>
+                      </div>
+                    )}
 
                     {page.status === 'published' && (
                       <a
