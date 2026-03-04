@@ -541,7 +541,7 @@ export default function SocialCommander() {
             const totalComments = posts.reduce((s, p) => s + (p.comments_count || 0), 0);
             const totalShares = posts.reduce((s, p) => s + (p.shares_count || 0), 0);
             const platformBreakdown = posts.reduce((acc: Record<string, number>, p) => {
-              (p.platforms || []).forEach((pl: string) => { acc[pl] = (acc[pl] || 0) + 1; });
+              const pl = p.platform || ''; if (pl) { acc[pl] = (acc[pl] || 0) + 1; }
               return acc;
             }, {} as Record<string, number>);
 
