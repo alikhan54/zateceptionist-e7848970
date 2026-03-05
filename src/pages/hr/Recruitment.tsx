@@ -598,7 +598,8 @@ export default function RecruitmentPage() {
   };
 
   const handleStartOnboarding = async (app: JobApplication) => {
-    if (!tenantId || !app.candidate) return;
+    const tenantUuid = tenantConfig?.id;
+    if (!tenantUuid || !app.candidate) return;
     setOnboardingLoadingId(app.id);
     try {
       const result = await callWebhook(WEBHOOKS.EMPLOYEE_ONBOARDING, {
@@ -611,7 +612,7 @@ export default function RecruitmentPage() {
         start_date: new Date().toISOString().split('T')[0],
         salary: app.offer_salary || null,
         source: 'recruitment',
-      }, tenantId);
+      }, tenantUuid);
 
       if (result.success) {
         toast.success(`${app.candidate.full_name || app.candidate.first_name} onboarding started!`);
@@ -619,7 +620,8 @@ export default function RecruitmentPage() {
         await supabase
           .from('hr_job_applications')
           .update({ notes: ((app.notes || '') + '\n[Onboarding triggered]').trim() })
-          .eq('id', app.id);
+          .eq('id', app.id)
+          .eq('tenant_id', tenantUuid);
         queryClient.invalidateQueries({ queryKey: ['hr_job_applications'] });
       } else {
         toast.error('Failed to start onboarding: ' + (result.error || 'Unknown error'));
@@ -1372,7 +1374,7 @@ export default function RecruitmentPage() {
                                           .map((s) => (
                                             <DropdownMenuItem
                                               key={s}
-                                              onClick={() => updateStage.mutate({ applicationId: app.id, stage: s })}
+                                              onClick={() => updateStage.mutate({ applicationId: app.id, stage: s, jobRequisitionId: app.job_requisition_id })}
                                             >
                                               {stageLabels[s]}
                                             </DropdownMenuItem>
@@ -1405,7 +1407,7 @@ export default function RecruitmentPage() {
                                         .map((s) => (
                                           <DropdownMenuItem
                                             key={s}
-                                            onClick={() => updateStage.mutate({ applicationId: app.id, stage: s })}
+                                            onClick={() => updateStage.mutate({ applicationId: app.id, stage: s, jobRequisitionId: app.job_requisition_id })}
                                           >
                                             {stageLabels[s]}
                                           </DropdownMenuItem>

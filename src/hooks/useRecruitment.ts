@@ -492,7 +492,7 @@ export function useUpdateApplicationStage() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ applicationId, stage }: { applicationId: string; stage: string }) => {
+    mutationFn: async ({ applicationId, stage, jobRequisitionId }: { applicationId: string; stage: string; jobRequisitionId?: string }) => {
       if (!tenantUuid) throw new Error('No tenant');
       const { error } = await supabase
         .from('hr_job_applications')
@@ -501,9 +501,12 @@ export function useUpdateApplicationStage() {
         .eq('tenant_id', tenantUuid);
 
       if (error) throw error;
+      // Counter updates handled by DB trigger trg_update_requisition_counters
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['hr_job_applications'] });
+      queryClient.invalidateQueries({ queryKey: ['hr_job_requisitions'] });
+      queryClient.invalidateQueries({ queryKey: ['recruitment_stats'] });
       toast.success('Stage updated');
     },
     onError: () => toast.error('Failed to update stage'),
@@ -511,16 +514,17 @@ export function useUpdateApplicationStage() {
 }
 
 export function useTriggerSourcing() {
-  const { tenantId } = useTenant();
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (jobRequisitionId: string) => {
-      if (!tenantId) throw new Error('No tenant');
+      if (!tenantUuid) throw new Error('No tenant');
       return callWebhook('/hr/trigger-sourcing', {
         job_requisition_id: jobRequisitionId,
         trigger_type: 'manual',
-      }, tenantId);
+      }, tenantUuid);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['hr_job_requisitions'] });
@@ -532,7 +536,8 @@ export function useTriggerSourcing() {
 }
 
 export function useTriggerAIInterview() {
-  const { tenantId } = useTenant();
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -541,13 +546,13 @@ export function useTriggerAIInterview() {
       candidateId: string;
       jobRequisitionId: string;
     }) => {
-      if (!tenantId) throw new Error('No tenant');
+      if (!tenantUuid) throw new Error('No tenant');
       return callWebhook('/hr/ai-interview/trigger', {
         application_id: applicationId,
         candidate_id: candidateId,
         job_requisition_id: jobRequisitionId,
         interview_type: 'screening',
-      }, tenantId);
+      }, tenantUuid);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['hr_ai_interviews'] });
@@ -576,14 +581,13 @@ export function useAddCandidate() {
       notes?: string;
     }) => {
       if (!tenantUuid) throw new Error('No tenant');
-      const fullName = `${candidateData.first_name} ${candidateData.last_name}`.trim();
       const { data, error } = await supabase
         .from('hr_candidates')
         .insert({
           tenant_id: tenantUuid,
           first_name: candidateData.first_name,
           last_name: candidateData.last_name,
-          full_name: fullName,
+          // full_name is a generated column (first_name || ' ' || last_name) — do not insert
           email: candidateData.email || null,
           phone: candidateData.phone || null,
           current_company: candidateData.current_company || null,
@@ -604,7 +608,14 @@ export function useAddCandidate() {
       queryClient.invalidateQueries({ queryKey: ['recruitment_stats'] });
       toast.success('Candidate added successfully');
     },
-    onError: () => toast.error('Failed to add candidate'),
+    onError: (error: any) => {
+      const msg = error?.message || error?.toString() || '';
+      if (msg.includes('hr_candidates_tenant_email_unique')) {
+        toast.error('A candidate with this email already exists');
+      } else {
+        toast.error('Failed to add candidate');
+      }
+    },
   });
 }
 

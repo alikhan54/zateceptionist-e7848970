@@ -210,31 +210,33 @@ export interface HRDocument {
 // ═══════════════════════════════════════════════════════════
 
 export function useEmployees() {
-  const { tenantId } = useTenant();
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ["employees", tenantId],
+    queryKey: ["employees", tenantUuid],
     queryFn: async () => {
-      if (!tenantId) return [];
+      if (!tenantUuid) return [];
       // Try with department join first
       const { data, error } = await supabase
         .from("hr_employees")
         .select("*")
-        .eq("tenant_id", tenantId)
+        .eq("tenant_id", tenantUuid)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data || []) as Employee[];
     },
-    enabled: !!tenantId,
+    enabled: !!tenantUuid,
   });
 
   const createEmployee = useMutation({
     mutationFn: async (employeeData: Partial<Employee>) => {
-      return callWebhook(WEBHOOKS.EMPLOYEE_ONBOARDING, employeeData, tenantId!);
+      if (!tenantUuid) throw new Error('No tenant');
+      return callWebhook(WEBHOOKS.EMPLOYEE_ONBOARDING, employeeData, tenantUuid);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["employees", tenantId] });
+      queryClient.invalidateQueries({ queryKey: ["employees", tenantUuid] });
       toast.success("Employee added successfully");
     },
     onError: () => toast.error("Failed to add employee"),
@@ -242,10 +244,11 @@ export function useEmployees() {
 
   const updateEmployee = useMutation({
     mutationFn: async (data: Partial<Employee> & { id: string }) => {
-      return callWebhook(WEBHOOKS.UPDATE_EMPLOYEE, data, tenantId!);
+      if (!tenantUuid) throw new Error('No tenant');
+      return callWebhook(WEBHOOKS.UPDATE_EMPLOYEE, data, tenantUuid);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["employees", tenantId] });
+      queryClient.invalidateQueries({ queryKey: ["employees", tenantUuid] });
       toast.success("Employee updated successfully");
     },
     onError: () => toast.error("Failed to update employee"),
@@ -253,10 +256,11 @@ export function useEmployees() {
 
   const terminateEmployee = useMutation({
     mutationFn: async (data: { id: string; reason?: string; effective_date?: string }) => {
-      return callWebhook(WEBHOOKS.TERMINATE_EMPLOYEE, data, tenantId!);
+      if (!tenantUuid) throw new Error('No tenant');
+      return callWebhook(WEBHOOKS.TERMINATE_EMPLOYEE, data, tenantUuid);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["employees", tenantId] });
+      queryClient.invalidateQueries({ queryKey: ["employees", tenantUuid] });
       toast.success("Employee terminated");
     },
     onError: () => toast.error("Failed to terminate employee"),
@@ -270,20 +274,21 @@ export function useEmployees() {
 // ═══════════════════════════════════════════════════════════
 
 export function useAttendance(date?: string) {
-  const { tenantId } = useTenant();
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
   const queryClient = useQueryClient();
   const targetDate = date || new Date().toISOString().split("T")[0];
 
   const query = useQuery({
-    queryKey: ["attendance", tenantId, targetDate],
+    queryKey: ["attendance", tenantUuid, targetDate],
     queryFn: async () => {
-      if (!tenantId)
+      if (!tenantUuid)
         return { records: [] as AttendanceRecord[], summary: { present: 0, absent: 0, late: 0, on_leave: 0 } };
 
       const { data, error } = await supabase
         .from("hr_attendance")
         .select("*")
-        .eq("tenant_id", tenantId)
+        .eq("tenant_id", tenantUuid)
         .eq("work_date", targetDate)
         .order("check_in_time", { ascending: false });
 
@@ -299,23 +304,28 @@ export function useAttendance(date?: string) {
       };
       return { records, summary };
     },
-    enabled: !!tenantId,
+    enabled: !!tenantUuid,
   });
 
   const checkIn = useMutation({
-    mutationFn: async (data: { employee_id: string; location?: { lat: number; lng: number } }) =>
-      callWebhook(WEBHOOKS.ATTENDANCE_CHECK_IN, data, tenantId!),
+    mutationFn: async (data: { employee_id: string; location?: { lat: number; lng: number } }) => {
+      if (!tenantUuid) throw new Error('No tenant');
+      return callWebhook(WEBHOOKS.ATTENDANCE_CHECK_IN, data, tenantUuid);
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["attendance", tenantId] });
+      queryClient.invalidateQueries({ queryKey: ["attendance", tenantUuid] });
       toast.success("Checked in successfully");
     },
     onError: () => toast.error("Failed to check in"),
   });
 
   const checkOut = useMutation({
-    mutationFn: async (data: { employee_id: string }) => callWebhook(WEBHOOKS.ATTENDANCE_CHECK_OUT, data, tenantId!),
+    mutationFn: async (data: { employee_id: string }) => {
+      if (!tenantUuid) throw new Error('No tenant');
+      return callWebhook(WEBHOOKS.ATTENDANCE_CHECK_OUT, data, tenantUuid);
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["attendance", tenantId] });
+      queryClient.invalidateQueries({ queryKey: ["attendance", tenantUuid] });
       toast.success("Checked out successfully");
     },
     onError: () => toast.error("Failed to check out"),
@@ -329,13 +339,14 @@ export function useAttendance(date?: string) {
 // ═══════════════════════════════════════════════════════════
 
 export function useLeaveBalance() {
-  const { tenantId } = useTenant();
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
 
   return useQuery({
-    queryKey: ["leave-balance", tenantId],
+    queryKey: ["leave-balance", tenantUuid],
     queryFn: async () => {
-      if (!tenantId) return [];
-      const { data, error } = await supabase.from("hr_leave_balances").select("*").eq("tenant_id", tenantId);
+      if (!tenantUuid) return [];
+      const { data, error } = await supabase.from("hr_leave_balances").select("*").eq("tenant_id", tenantUuid);
       if (error) throw error;
       return (data || []).map((b: any) => ({
         ...b,
@@ -343,7 +354,7 @@ export function useLeaveBalance() {
         remaining: (b.total_entitled || 0) - (b.used || 0) - (b.pending || 0),
       })) as LeaveBalance[];
     },
-    enabled: !!tenantId,
+    enabled: !!tenantUuid,
   });
 }
 
@@ -352,24 +363,25 @@ export function useLeaveBalance() {
 // ═══════════════════════════════════════════════════════════
 
 export function useLeaveRequests(status?: string) {
-  const { tenantId } = useTenant();
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ["leave-requests", tenantId, status],
+    queryKey: ["leave-requests", tenantUuid, status],
     queryFn: async () => {
-      if (!tenantId) return [];
+      if (!tenantUuid) return [];
       let q = supabase
         .from("hr_leave_requests")
         .select("*")
-        .eq("tenant_id", tenantId)
+        .eq("tenant_id", tenantUuid)
         .order("created_at", { ascending: false });
       if (status) q = q.eq("status", status);
       const { data, error } = await q;
       if (error) throw error;
       return (data || []) as LeaveRequest[];
     },
-    enabled: !!tenantId,
+    enabled: !!tenantUuid,
   });
 
   const requestLeave = useMutation({
@@ -379,21 +391,26 @@ export function useLeaveRequests(status?: string) {
       end_date: string;
       reason?: string;
       is_half_day?: boolean;
-    }) => callWebhook(WEBHOOKS.LEAVE_REQUEST, data, tenantId!),
+    }) => {
+      if (!tenantUuid) throw new Error('No tenant');
+      return callWebhook(WEBHOOKS.LEAVE_REQUEST, data, tenantUuid);
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["leave-requests", tenantId] });
-      queryClient.invalidateQueries({ queryKey: ["leave-balance", tenantId] });
+      queryClient.invalidateQueries({ queryKey: ["leave-requests", tenantUuid] });
+      queryClient.invalidateQueries({ queryKey: ["leave-balance", tenantUuid] });
       toast.success("Leave request submitted");
     },
     onError: () => toast.error("Failed to submit leave request"),
   });
 
   const approveLeave = useMutation({
-    mutationFn: async (data: { leave_id: string; action: "approve" | "reject"; comments?: string }) =>
-      callWebhook(WEBHOOKS.LEAVE_APPROVE, data, tenantId!),
+    mutationFn: async (data: { leave_id: string; action: "approve" | "reject"; comments?: string }) => {
+      if (!tenantUuid) throw new Error('No tenant');
+      return callWebhook(WEBHOOKS.LEAVE_APPROVE, data, tenantUuid);
+    },
     onSuccess: (_, vars) => {
-      queryClient.invalidateQueries({ queryKey: ["leave-requests", tenantId] });
-      queryClient.invalidateQueries({ queryKey: ["leave-balance", tenantId] });
+      queryClient.invalidateQueries({ queryKey: ["leave-requests", tenantUuid] });
+      queryClient.invalidateQueries({ queryKey: ["leave-balance", tenantUuid] });
       toast.success(`Leave ${vars.action}d`);
     },
     onError: () => toast.error("Failed to process leave"),
@@ -407,32 +424,34 @@ export function useLeaveRequests(status?: string) {
 // ═══════════════════════════════════════════════════════════
 
 export function useDepartments() {
-  const { tenantId } = useTenant();
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ["departments", tenantId],
+    queryKey: ["departments", tenantUuid],
     queryFn: async () => {
-      if (!tenantId) return [];
-      const { data, error } = await supabase.from("hr_departments").select("*").eq("tenant_id", tenantId).order("name");
+      if (!tenantUuid) return [];
+      const { data, error } = await supabase.from("hr_departments").select("*").eq("tenant_id", tenantUuid).order("name");
       if (error) throw error;
       return (data || []) as Department[];
     },
-    enabled: !!tenantId,
+    enabled: !!tenantUuid,
   });
 
   const createDepartment = useMutation({
     mutationFn: async (dept: Partial<Department>) => {
+      if (!tenantUuid) throw new Error('No tenant');
       const { data: result, error } = await supabase
         .from("hr_departments")
-        .insert({ ...dept, tenant_id: tenantId })
+        .insert({ ...dept, tenant_id: tenantUuid })
         .select()
         .single();
       if (error) throw error;
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["departments", tenantId] });
+      queryClient.invalidateQueries({ queryKey: ["departments", tenantUuid] });
       toast.success("Department created");
     },
     onError: () => toast.error("Failed to create department"),
@@ -448,20 +467,21 @@ export function useDepartments() {
 // ═══════════════════════════════════════════════════════════
 
 export function usePerformance() {
-  const { tenantId } = useTenant();
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
 
   return useQuery({
-    queryKey: ["performance", tenantId],
+    queryKey: ["performance", tenantUuid],
     queryFn: async () => {
-      if (!tenantId) return { reviews: [] as PerformanceReview[], goals: [] as Goal[], activeCycle: null };
+      if (!tenantUuid) return { reviews: [] as PerformanceReview[], goals: [] as Goal[], activeCycle: null };
 
       const [reviewsRes, goalsRes] = await Promise.all([
         supabase
           .from("hr_performance_reviews")
           .select("*")
-          .eq("tenant_id", tenantId)
+          .eq("tenant_id", tenantUuid)
           .order("created_at", { ascending: false }),
-        supabase.from("hr_goals").select("*").eq("tenant_id", tenantId).order("created_at", { ascending: false }),
+        supabase.from("hr_goals").select("*").eq("tenant_id", tenantUuid).order("created_at", { ascending: false }),
       ]);
 
       return {
@@ -473,7 +493,7 @@ export function usePerformance() {
         activeCycle: null,
       };
     },
-    enabled: !!tenantId,
+    enabled: !!tenantUuid,
   });
 }
 
@@ -483,45 +503,47 @@ export function usePerformance() {
 // ═══════════════════════════════════════════════════════════
 
 export function useTraining() {
-  const { tenantId } = useTenant();
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
   const queryClient = useQueryClient();
 
   const programs = useQuery({
-    queryKey: ["training-programs", tenantId],
+    queryKey: ["training-programs", tenantUuid],
     queryFn: async () => {
-      if (!tenantId) return [];
+      if (!tenantUuid) return [];
       const { data, error } = await supabase
         .from("hr_training_programs")
         .select("*")
-        .eq("tenant_id", tenantId)
+        .eq("tenant_id", tenantUuid)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data || []) as TrainingProgram[];
     },
-    enabled: !!tenantId,
+    enabled: !!tenantUuid,
   });
 
   const enrollments = useQuery({
-    queryKey: ["training-enrollments", tenantId],
+    queryKey: ["training-enrollments", tenantUuid],
     queryFn: async () => {
-      if (!tenantId) return [];
+      if (!tenantUuid) return [];
       const { data, error } = await supabase
         .from("hr_training_records")
         .select("*")
-        .eq("tenant_id", tenantId)
+        .eq("tenant_id", tenantUuid)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data || []) as TrainingEnrollment[];
     },
-    enabled: !!tenantId,
+    enabled: !!tenantUuid,
   });
 
   const enroll = useMutation({
     mutationFn: async (data: { program_id: string; employee_id?: string }) => {
+      if (!tenantUuid) throw new Error('No tenant');
       const { data: result, error } = await supabase
         .from("hr_training_records")
         .insert({
-          tenant_id: tenantId,
+          tenant_id: tenantUuid,
           program_id: data.program_id,
           employee_id: data.employee_id || "current",
           status: "enrolled",
@@ -533,7 +555,7 @@ export function useTraining() {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["training-enrollments", tenantId] });
+      queryClient.invalidateQueries({ queryKey: ["training-enrollments", tenantUuid] });
       toast.success("Enrolled successfully");
     },
     onError: () => toast.error("Failed to enroll"),
@@ -548,38 +570,40 @@ export function useTraining() {
 // ═══════════════════════════════════════════════════════════
 
 export function useHRDocuments(category?: string) {
-  const { tenantId } = useTenant();
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ["hr-documents", tenantId, category],
+    queryKey: ["hr-documents", tenantUuid, category],
     queryFn: async () => {
-      if (!tenantId) return [];
+      if (!tenantUuid) return [];
       let q = supabase
         .from("hr_documents")
         .select("*")
-        .eq("tenant_id", tenantId)
+        .eq("tenant_id", tenantUuid)
         .order("created_at", { ascending: false });
       if (category && category !== "all") q = q.eq("category", category);
       const { data, error } = await q;
       if (error) throw error;
       return (data || []) as HRDocument[];
     },
-    enabled: !!tenantId,
+    enabled: !!tenantUuid,
   });
 
   const uploadDocument = useMutation({
     mutationFn: async (doc: Partial<HRDocument>) => {
+      if (!tenantUuid) throw new Error('No tenant');
       const { data: result, error } = await supabase
         .from("hr_documents")
-        .insert({ ...doc, tenant_id: tenantId })
+        .insert({ ...doc, tenant_id: tenantUuid })
         .select()
         .single();
       if (error) throw error;
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["hr-documents", tenantId] });
+      queryClient.invalidateQueries({ queryKey: ["hr-documents", tenantUuid] });
       toast.success("Document uploaded");
     },
     onError: () => toast.error("Failed to upload document"),
@@ -595,12 +619,13 @@ export function useHRDocuments(category?: string) {
 // ═══════════════════════════════════════════════════════════
 
 export function usePayroll(period?: string) {
-  const { tenantId } = useTenant();
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
 
   return useQuery({
-    queryKey: ["payroll", tenantId, period],
+    queryKey: ["payroll", tenantUuid, period],
     queryFn: async () => {
-      if (!tenantId)
+      if (!tenantUuid)
         return { employees: [], summary: { total_payroll: 0, total_employees: 0, avg_salary: 0, total_deductions: 0 } };
 
       const { data: employees, error } = await supabase
@@ -608,7 +633,7 @@ export function usePayroll(period?: string) {
         .select(
           "id, first_name, last_name, full_name, salary, salary_currency, department_id, position, employment_status, employment_type",
         )
-        .eq("tenant_id", tenantId)
+        .eq("tenant_id", tenantUuid)
         .eq("employment_status", "active");
 
       if (error) throw error;
@@ -625,7 +650,7 @@ export function usePayroll(period?: string) {
         },
       };
     },
-    enabled: !!tenantId,
+    enabled: !!tenantUuid,
   });
 }
 
@@ -634,96 +659,101 @@ export function usePayroll(period?: string) {
 // ═══════════════════════════════════════════════════════════
 
 export function useAnnouncements() {
-  const { tenantId } = useTenant();
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
   return useQuery({
-    queryKey: ["announcements", tenantId],
+    queryKey: ["announcements", tenantUuid],
     queryFn: async () => {
-      if (!tenantId) return [];
+      if (!tenantUuid) return [];
       const { data, error } = await supabase
         .from("hr_announcements")
         .select("*")
-        .eq("tenant_id", tenantId)
+        .eq("tenant_id", tenantUuid)
         .order("created_at", { ascending: false })
         .limit(10);
       if (error) return []; // Table might not exist yet
       return data || [];
     },
-    enabled: !!tenantId,
+    enabled: !!tenantUuid,
   });
 }
 
 export function useAuditLogs(limit = 20) {
-  const { tenantId } = useTenant();
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
   return useQuery({
-    queryKey: ["audit-logs", tenantId, limit],
+    queryKey: ["audit-logs", tenantUuid, limit],
     queryFn: async () => {
-      if (!tenantId) return [];
+      if (!tenantUuid) return [];
       const { data, error } = await supabase
         .from("hr_audit_logs")
         .select("*")
-        .eq("tenant_id", tenantId)
+        .eq("tenant_id", tenantUuid)
         .order("created_at", { ascending: false })
         .limit(limit);
       if (error) return [];
       return data || [];
     },
-    enabled: !!tenantId,
+    enabled: !!tenantUuid,
   });
 }
 
 export function useAssets(employeeId?: string) {
-  const { tenantId } = useTenant();
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
   return useQuery({
-    queryKey: ["hr-assets", tenantId, employeeId],
+    queryKey: ["hr-assets", tenantUuid, employeeId],
     queryFn: async () => {
-      if (!tenantId) return [];
+      if (!tenantUuid) return [];
       let q = supabase
         .from("hr_asset_assignments")
         .select("*")
-        .eq("tenant_id", tenantId)
+        .eq("tenant_id", tenantUuid)
         .order("created_at", { ascending: false });
       if (employeeId) q = q.eq("employee_id", employeeId);
       const { data, error } = await q;
       if (error) return [];
       return data || [];
     },
-    enabled: !!tenantId,
+    enabled: !!tenantUuid,
   });
 }
 
 export function useExpenseClaims(employeeId?: string) {
-  const { tenantId } = useTenant();
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
   return useQuery({
-    queryKey: ["expense-claims", tenantId, employeeId],
+    queryKey: ["expense-claims", tenantUuid, employeeId],
     queryFn: async () => {
-      if (!tenantId) return [];
+      if (!tenantUuid) return [];
       let q = supabase
         .from("hr_expense_claims")
         .select("*")
-        .eq("tenant_id", tenantId)
+        .eq("tenant_id", tenantUuid)
         .order("created_at", { ascending: false });
       if (employeeId) q = q.eq("employee_id", employeeId);
       const { data, error } = await q;
       if (error) return [];
       return data || [];
     },
-    enabled: !!tenantId,
+    enabled: !!tenantUuid,
   });
 }
 
 export function useComplianceData() {
-  const { tenantId } = useTenant();
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
   return useQuery({
-    queryKey: ["compliance-data", tenantId],
+    queryKey: ["compliance-data", tenantUuid],
     queryFn: async () => {
-      if (!tenantId) return { visaAlerts: [], wpsStatus: [], emiratisationRate: 0 };
+      if (!tenantUuid) return { visaAlerts: [], wpsStatus: [], emiratisationRate: 0 };
 
       const { data: employees } = await supabase
         .from("hr_employees")
         .select(
           "id, first_name, last_name, full_name, nationality, visa_status, visa_expiry_date, labor_card_number, labor_card_expiry, bank_name, iban_number, medical_insurance_provider, medical_insurance_expiry, work_permit_number, work_permit_expiry, employment_status",
         )
-        .eq("tenant_id", tenantId)
+        .eq("tenant_id", tenantUuid)
         .eq("employment_status", "active");
 
       const emps = employees || [];
@@ -760,7 +790,7 @@ export function useComplianceData() {
         uaeNationals: uaeNationals.length,
       };
     },
-    enabled: !!tenantId,
+    enabled: !!tenantUuid,
   });
 }
 
@@ -769,11 +799,12 @@ export function useComplianceData() {
 // ═══════════════════════════════════════════════════════════
 
 export function useHRAI() {
-  const { tenantId } = useTenant();
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
 
   const sendMessage = async (message: string, context?: { channel?: string; employee_id?: string }) => {
-    if (!tenantId) return { success: false, error: "No tenant" };
-    return callWebhook(WEBHOOKS.HR_AI_ASSISTANT, { query: message, ...context }, tenantId);
+    if (!tenantUuid) return { success: false, error: "No tenant" };
+    return callWebhook(WEBHOOKS.HR_AI_ASSISTANT, { query: message, ...context }, tenantUuid);
   };
 
   return { sendMessage };
@@ -784,11 +815,12 @@ export function useHRAI() {
 // ═══════════════════════════════════════════════════════════
 
 export function useHRReports() {
-  const { tenantId } = useTenant();
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
 
   const fetchReport = async (reportType: string, filters?: Record<string, any>) => {
-    if (!tenantId) return null;
-    const result = await callWebhook(WEBHOOKS.HR_REPORTS, { type: reportType, ...filters }, tenantId);
+    if (!tenantUuid) return null;
+    const result = await callWebhook(WEBHOOKS.HR_REPORTS, { type: reportType, ...filters }, tenantUuid);
     return result?.data || null;
   };
 
