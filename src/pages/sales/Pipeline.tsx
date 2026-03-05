@@ -263,10 +263,16 @@ function ContactCard({ contact, deals = [], onSelect, onMoveStage }: ContactCard
 
   return (
     <Card
-      className="p-3 mb-2 cursor-pointer hover:shadow-md transition-shadow border-l-4"
+      className="p-3 mb-2 cursor-grab hover:shadow-md transition-shadow border-l-4 active:cursor-grabbing"
       style={{
         borderLeftColor:
           contact.lead_temperature === "HOT" ? "#ef4444" : contact.lead_temperature === "WARM" ? "#f97316" : "#3b82f6",
+      }}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData("contactId", contact.id);
+        e.dataTransfer.setData("sourceStage", contact.pipeline_stage || "PROS");
+        e.dataTransfer.effectAllowed = "move";
       }}
       onClick={() => onSelect(contact)}
     >
@@ -721,6 +727,7 @@ export default function Pipeline() {
   const [showDetail, setShowDetail] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [temperatureFilter, setTemperatureFilter] = useState<string>("all");
+  const [dragOverStage, setDragOverStage] = useState<string | null>(null);
 
   // Fetch all leads from sales_leads table
   // sales_leads uses SLUG (tenantId) — TEXT column
@@ -1116,7 +1123,30 @@ export default function Pipeline() {
       <div className="flex-1 overflow-x-auto">
         <div className="flex gap-4 min-h-[500px]">
           {PIPELINE_STAGES.map((stage) => (
-            <div key={stage.id} className="flex-shrink-0 w-72">
+            <div
+              key={stage.id}
+              className="flex-shrink-0 w-72"
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+                setDragOverStage(stage.id);
+              }}
+              onDragLeave={(e) => {
+                // Only clear if leaving the column entirely (not entering a child)
+                if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                  setDragOverStage(null);
+                }
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOverStage(null);
+                const contactId = e.dataTransfer.getData("contactId");
+                const sourceStage = e.dataTransfer.getData("sourceStage");
+                if (contactId && sourceStage !== stage.id) {
+                  handleMoveStage(contactId, stage.id);
+                }
+              }}
+            >
               {/* Stage Header */}
               <div className={`${stage.color} text-white rounded-t-lg px-3 py-2`}>
                 <div className="flex items-center justify-between">
@@ -1129,11 +1159,19 @@ export default function Pipeline() {
               </div>
 
               {/* Stage Cards */}
-              <div className="bg-muted/50 rounded-b-lg p-2 min-h-[400px]">
+              <div
+                className={`rounded-b-lg p-2 min-h-[400px] transition-colors ${
+                  dragOverStage === stage.id
+                    ? "bg-primary/10 border-2 border-dashed border-primary"
+                    : "bg-muted/50"
+                }`}
+              >
                 {contactsLoading ? (
                   <div className="flex items-center justify-center h-32 text-muted-foreground">Loading...</div>
                 ) : contactsByStage[stage.id]?.length === 0 ? (
-                  <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">No contacts</div>
+                  <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
+                    {dragOverStage === stage.id ? "Drop here" : "No contacts"}
+                  </div>
                 ) : (
                   contactsByStage[stage.id]?.map((contact) => (
                     <ContactCard

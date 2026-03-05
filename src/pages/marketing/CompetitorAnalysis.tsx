@@ -108,7 +108,7 @@ export default function CompetitorAnalysis() {
       // Insert into competitor_tracking
       const { error: trackErr } = await supabase.from('competitor_tracking' as any).insert({
         tenant_id: tenantConfig.id,
-        name: name.trim(),
+        competitor_name: name.trim(),
         instagram_url: instagramUrl.trim() || null,
         website_url: websiteUrl.trim() || null,
         notes: notes.trim() || null,

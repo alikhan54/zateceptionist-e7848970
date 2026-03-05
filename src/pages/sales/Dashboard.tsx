@@ -38,6 +38,7 @@ import {
   Activity,
 } from "lucide-react";
 import DashboardBriefing from "@/components/sales/DashboardBriefing";
+import { PendingActions } from "@/components/sales/PendingActions";
 
 // ============================================================================
 // TYPES
@@ -192,7 +193,7 @@ export default function SalesDashboard() {
 
   const metrics = useMemo(() => {
     // Contact counts by temperature - with fallback for n8n column naming
-    const getTemp = (c: any) => (c.lead_temperature || c.temperature || "COLD").toUpperCase();
+    const getTemp = (c: any) => (c.temperature || c.lead_temperature || "COLD").toUpperCase();
     const hotLeads = contacts.filter((c) => getTemp(c) === "HOT").length;
     const warmLeads = contacts.filter((c) => getTemp(c) === "WARM").length;
     const coldLeads = contacts.filter((c) => getTemp(c) === "COLD").length;
@@ -354,6 +355,9 @@ export default function SalesDashboard() {
 
       {/* AI Briefing */}
       <DashboardBriefing />
+
+      {/* Pending Actions (Assisted Mode) */}
+      <PendingActions />
 
       {/* AI Assistant Status Banner */}
       <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">

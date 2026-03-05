@@ -75,6 +75,7 @@ import {
   Mail,
   Eye,
   Video,
+  Brain,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -381,7 +382,8 @@ export function NavigationSidebar() {
       { title: "WhatsApp", url: "/communications/whatsapp", icon: MessageCircle },
       { title: "Email", url: "/communications/email", icon: Mail },
       { title: "SMS", url: "/communications/sms", icon: MessageSquare },
-      { title: "Call Center", url: "/communications/call-center", icon: Headphones },
+      { title: "Voice Calls", url: "/communications/voice-calls", icon: Headphones },
+      { title: "Call Center", url: "/communications/call-center", icon: Phone },
       { title: "IVR Builder", url: "/communications/ivr", icon: Voicemail },
     ],
   };
@@ -396,6 +398,7 @@ export function NavigationSidebar() {
       { title: "Custom Reports", url: "/analytics/reports", icon: BarChart3 },
       { title: "AI Insights", url: "/analytics/ai-insights", icon: Sparkles },
       { title: "Predictions", url: "/analytics/predictions", icon: TrendingUp },
+      { title: "Intelligence Hub", url: "/intelligence", icon: Brain },
     ],
   };
 
@@ -405,12 +408,14 @@ export function NavigationSidebar() {
     items: [
       { title: "General Settings", url: "/settings", icon: Settings },
       { title: "Voice AI Config", url: "/settings/voice-ai", icon: Mic },
+      { title: "Phone Numbers", url: "/settings/phone-numbers", icon: Phone },
       { title: "Integrations", url: "/settings/integrations", icon: Webhook },
       { title: "API Keys", url: "/settings/api-keys", icon: Key },
       { title: "Team", url: "/settings/team", icon: UserCog },
       { title: "Billing", url: "/settings/billing", icon: CreditCard },
       { title: "Notifications", url: "/settings/notifications", icon: Bell },
       { title: "Knowledge Base", url: "/settings/knowledge-base", icon: BookOpen },
+      { title: "Outreach & Safety", url: "/settings/outreach", icon: Shield },
     ],
   };
 

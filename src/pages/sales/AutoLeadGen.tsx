@@ -3,10 +3,11 @@
 // COMPLETE FIX - Connected to auto_lead_gen_settings table
 // ============================================
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
+import Papa from "papaparse";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -257,6 +258,12 @@ export default function LeadDiscovery() {
   // CSV Upload
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const csvFileRef = useRef<HTMLInputElement>(null);
+  const [csvData, setCsvData] = useState<Record<string, string>[]>([]);
+  const [csvColumns, setCsvColumns] = useState<string[]>([]);
+  const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
+  const [csvImporting, setCsvImporting] = useState(false);
+  const [csvImportResult, setCsvImportResult] = useState<{ imported: number; duplicates: number; errors: number } | null>(null);
 
   // Manual Entry form
   const [manualForm, setManualForm] = useState({
@@ -732,6 +739,138 @@ export default function LeadDiscovery() {
     } catch (error: any) {
       toast({ title: "Failed to add", description: error.message, variant: "destructive" });
     }
+  };
+
+  // ===================== CSV UPLOAD HANDLERS =====================
+
+  const CSV_FIELD_MAP: Record<string, string[]> = {
+    contact_name: ["name", "contact_name", "full_name", "fullname", "Name", "Contact Name", "Full Name"],
+    email: ["email", "Email", "email_address", "Email Address", "e-mail", "E-mail"],
+    phone: ["phone", "Phone", "phone_number", "Phone Number", "mobile", "Mobile", "telephone"],
+    company_name: ["company", "Company", "company_name", "Company Name", "organization", "Organisation"],
+    website: ["website", "Website", "url", "URL", "web", "Web"],
+    city: ["city", "City", "location", "Location"],
+    industry: ["industry", "Industry", "sector", "Sector"],
+  };
+
+  const handleCsvFileSelect = (file: File) => {
+    if (!file.name.endsWith(".csv")) {
+      toast({ title: "Invalid File", description: "Please upload a .csv file", variant: "destructive" });
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: "File Too Large", description: "Max file size is 10MB", variant: "destructive" });
+      return;
+    }
+    setUploadedFile(file);
+    setCsvImportResult(null);
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        if (results.errors.length > 0) {
+          toast({ title: "Parse Error", description: results.errors[0].message, variant: "destructive" });
+          return;
+        }
+        const cols = results.meta.fields || [];
+        setCsvColumns(cols);
+        setCsvData(results.data as Record<string, string>[]);
+
+        // Auto-detect column mapping
+        const mapping: Record<string, string> = {};
+        for (const [dbField, aliases] of Object.entries(CSV_FIELD_MAP)) {
+          const match = cols.find((c) => aliases.some((a) => a.toLowerCase() === c.toLowerCase()));
+          if (match) mapping[dbField] = match;
+        }
+        setColumnMapping(mapping);
+
+        toast({ title: "CSV Parsed", description: `${results.data.length} rows found with ${cols.length} columns` });
+      },
+    });
+  };
+
+  const handleCsvImport = async () => {
+    if (!tenantId || csvData.length === 0) return;
+    setCsvImporting(true);
+    let imported = 0;
+    let duplicates = 0;
+    let errors = 0;
+
+    try {
+      // Get existing emails for dedup
+      const { data: existingLeads } = await supabase
+        .from("sales_leads")
+        .select("email")
+        .eq("tenant_id", tenantId)
+        .not("email", "is", null);
+      const existingEmails = new Set((existingLeads || []).map((l: any) => l.email?.toLowerCase()));
+
+      // Build rows from CSV using column mapping
+      const rows = csvData
+        .map((row) => {
+          const mapped: Record<string, any> = {
+            tenant_id: tenantId,
+            source: "csv_import",
+            lead_status: "new",
+            temperature: "cold",
+            lead_temperature: "COLD",
+            lead_score: 40,
+            enrichment_status: "pending",
+          };
+          for (const [dbField, csvCol] of Object.entries(columnMapping)) {
+            if (csvCol && row[csvCol]) mapped[dbField] = row[csvCol].trim();
+          }
+          return mapped;
+        })
+        .filter((row) => {
+          // Must have at least name or email
+          if (!row.contact_name && !row.email) {
+            errors++;
+            return false;
+          }
+          // Check duplicates by email
+          if (row.email && existingEmails.has(row.email.toLowerCase())) {
+            duplicates++;
+            return false;
+          }
+          return true;
+        });
+
+      // Batch insert (Supabase supports array inserts)
+      if (rows.length > 0) {
+        // Insert in chunks of 50 to avoid payload limits
+        for (let i = 0; i < rows.length; i += 50) {
+          const chunk = rows.slice(i, i + 50);
+          const { error } = await supabase.from("sales_leads").insert(chunk);
+          if (error) {
+            console.error("CSV import chunk error:", error);
+            errors += chunk.length;
+          } else {
+            imported += chunk.length;
+          }
+        }
+      }
+
+      setCsvImportResult({ imported, duplicates, errors });
+      if (imported > 0) {
+        toast({ title: "Import Complete", description: `${imported} leads imported successfully` });
+        refetchStats();
+      }
+    } catch (err: any) {
+      toast({ title: "Import Failed", description: err.message, variant: "destructive" });
+    } finally {
+      setCsvImporting(false);
+    }
+  };
+
+  const resetCsvUpload = () => {
+    setUploadedFile(null);
+    setCsvData([]);
+    setCsvColumns([]);
+    setColumnMapping({});
+    setCsvImportResult(null);
+    if (csvFileRef.current) csvFileRef.current.value = "";
   };
 
   // Toggle job title selection
@@ -2248,15 +2387,174 @@ export default function LeadDiscovery() {
           {importSubTab === "csv" && (
             <Card>
               <CardHeader>
-                <CardTitle>Upload CSV File</CardTitle>
-                <CardDescription>Upload a CSV with columns: name, email, phone, company</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="border-2 border-dashed rounded-lg p-12 text-center">
-                  <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <p>Click to upload or drag and drop</p>
-                  <p className="text-sm text-muted-foreground">CSV files up to 10MB</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Upload CSV File</CardTitle>
+                    <CardDescription>Import leads from a CSV file with auto column detection</CardDescription>
+                  </div>
+                  {(csvData.length > 0 || csvImportResult) && (
+                    <Button variant="outline" size="sm" onClick={resetCsvUpload}>
+                      <Trash2 className="h-4 w-4 mr-1" /> Clear
+                    </Button>
+                  )}
                 </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Hidden file input */}
+                <input
+                  ref={csvFileRef}
+                  type="file"
+                  accept=".csv"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleCsvFileSelect(file);
+                  }}
+                />
+
+                {/* Phase 1: Drop zone (shown when no CSV data loaded) */}
+                {csvData.length === 0 && !csvImportResult && (
+                  <div
+                    className={cn(
+                      "border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors",
+                      isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"
+                    )}
+                    onClick={() => csvFileRef.current?.click()}
+                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDragging(false);
+                      const file = e.dataTransfer.files[0];
+                      if (file) handleCsvFileSelect(file);
+                    }}
+                  >
+                    <Upload className={cn("h-12 w-12 mx-auto mb-4", isDragging ? "text-primary" : "text-muted-foreground")} />
+                    <p className="font-medium">{isDragging ? "Drop your CSV file here" : "Click to upload or drag and drop"}</p>
+                    <p className="text-sm text-muted-foreground mt-1">CSV files up to 10MB</p>
+                  </div>
+                )}
+
+                {/* Phase 2: Column Mapping (shown when CSV parsed) */}
+                {csvData.length > 0 && !csvImportResult && (
+                  <>
+                    <div className="flex items-center gap-2 text-sm">
+                      <FileText className="h-4 w-4 text-green-500" />
+                      <span className="font-medium">{uploadedFile?.name}</span>
+                      <Badge variant="secondary">{csvData.length} rows</Badge>
+                      <Badge variant="outline">{csvColumns.length} columns</Badge>
+                    </div>
+
+                    <div className="border rounded-lg p-4 space-y-3">
+                      <p className="text-sm font-medium">Column Mapping</p>
+                      <p className="text-xs text-muted-foreground">Map your CSV columns to lead fields. Auto-detected where possible.</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        {Object.keys(CSV_FIELD_MAP).map((dbField) => (
+                          <div key={dbField} className="flex items-center gap-2">
+                            <Label className="w-28 text-xs capitalize">{dbField.replace(/_/g, " ")}</Label>
+                            <Select
+                              value={columnMapping[dbField] || "_skip_"}
+                              onValueChange={(v) =>
+                                setColumnMapping((prev) => {
+                                  const next = { ...prev };
+                                  if (v === "_skip_") delete next[dbField];
+                                  else next[dbField] = v;
+                                  return next;
+                                })
+                              }
+                            >
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue placeholder="Skip" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="_skip_">— Skip —</SelectItem>
+                                {csvColumns.map((col) => (
+                                  <SelectItem key={col} value={col}>{col}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Preview table — first 5 rows */}
+                    <div className="border rounded-lg overflow-hidden">
+                      <p className="text-sm font-medium p-3 bg-muted/50">Preview (first 5 rows)</p>
+                      <ScrollArea className="max-h-60">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              {Object.entries(columnMapping).map(([dbField, csvCol]) => (
+                                <TableHead key={dbField} className="text-xs capitalize whitespace-nowrap">
+                                  {dbField.replace(/_/g, " ")}
+                                  <span className="block text-muted-foreground font-normal">← {csvCol}</span>
+                                </TableHead>
+                              ))}
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {csvData.slice(0, 5).map((row, i) => (
+                              <TableRow key={i}>
+                                {Object.entries(columnMapping).map(([dbField, csvCol]) => (
+                                  <TableCell key={dbField} className="text-xs py-1.5">
+                                    {row[csvCol] || <span className="text-muted-foreground italic">empty</span>}
+                                  </TableCell>
+                                ))}
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </ScrollArea>
+                    </div>
+
+                    {/* Import button */}
+                    <div className="flex items-center justify-between pt-2">
+                      <p className="text-xs text-muted-foreground">
+                        {Object.keys(columnMapping).length === 0
+                          ? "⚠️ No columns mapped — please map at least Name or Email"
+                          : `${Object.keys(columnMapping).length} field${Object.keys(columnMapping).length > 1 ? "s" : ""} mapped`}
+                      </p>
+                      <Button
+                        onClick={handleCsvImport}
+                        disabled={csvImporting || Object.keys(columnMapping).length === 0 || (!columnMapping.contact_name && !columnMapping.email)}
+                      >
+                        {csvImporting ? (
+                          <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Importing...</>
+                        ) : (
+                          <><Upload className="h-4 w-4 mr-2" /> Import {csvData.length} Leads</>
+                        )}
+                      </Button>
+                    </div>
+                  </>
+                )}
+
+                {/* Phase 3: Results */}
+                {csvImportResult && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Check className="h-5 w-5 text-green-500" />
+                      <span className="font-medium">Import Complete</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="text-center p-3 rounded-lg bg-green-500/10">
+                        <p className="text-2xl font-bold text-green-600">{csvImportResult.imported}</p>
+                        <p className="text-xs text-muted-foreground">Imported</p>
+                      </div>
+                      <div className="text-center p-3 rounded-lg bg-yellow-500/10">
+                        <p className="text-2xl font-bold text-yellow-600">{csvImportResult.duplicates}</p>
+                        <p className="text-xs text-muted-foreground">Duplicates Skipped</p>
+                      </div>
+                      <div className="text-center p-3 rounded-lg bg-red-500/10">
+                        <p className="text-2xl font-bold text-red-600">{csvImportResult.errors}</p>
+                        <p className="text-xs text-muted-foreground">Errors</p>
+                      </div>
+                    </div>
+                    <Button variant="outline" className="w-full" onClick={resetCsvUpload}>
+                      <Upload className="h-4 w-4 mr-2" /> Upload Another File
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}

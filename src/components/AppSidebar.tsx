@@ -151,6 +151,7 @@ const operationsNavItems = [
 // ========================================
 const communicationsNavItems = [
   { title: "Voice AI", url: "/communications/voice", icon: Phone },
+  { title: "Voice Calls", url: "/communications/voice-calls", icon: Headphones },
   { title: "WhatsApp", url: "/communications/whatsapp", icon: MessageCircle },
   { title: "Email", url: "/communications/email", icon: Mail },
   { title: "SMS", url: "/communications/sms", icon: MessageSquare },

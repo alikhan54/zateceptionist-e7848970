@@ -51,7 +51,7 @@ const statusConfig: Record<string, { color: string; icon: React.ReactNode; label
 };
 
 export default function CampaignCentral() {
-  const { tenantConfig, isLoading: tenantLoading } = useTenant();
+  const { tenantId, tenantConfig, isLoading: tenantLoading } = useTenant();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { campaigns, isLoading, stats, sendCampaign, deleteCampaign, refetch } = useMarketingCampaigns();
@@ -96,7 +96,7 @@ export default function CampaignCentral() {
     queryFn: async () => {
       if (!tenantUuid) return 0;
       const tc = tenantConfig as any;
-      const slug = tc?.tenant_id || tenantUuid;
+      const slug = tc?.tenant_id || tenantId;
       const { count } = await supabase
         .from('customers')
         .select('*', { count: 'exact', head: true })

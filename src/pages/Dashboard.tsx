@@ -21,7 +21,10 @@ import {
   AlertCircle,
   CheckCircle2,
   Lightbulb,
+  Phone,
+  CreditCard,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { format, formatDistanceToNow } from 'date-fns';
 
 interface StatCardProps {
@@ -89,9 +92,77 @@ function AIAgentStatus({ name, status, actions, enabled }: { name: string; statu
   );
 }
 
+// Voice AI Dashboard Widget
+function VoiceWidget({ tenantId, navigate }: { tenantId: string | null; navigate: (path: string) => void }) {
+  const { data: voiceData } = useQuery({
+    queryKey: ['dashboard-voice-widget', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return null;
+      const today = new Date().toISOString().split('T')[0];
+      const [usageRes, creditsRes] = await Promise.all([
+        supabase
+          .from('voice_usage')
+          .select('duration_seconds, call_status')
+          .eq('tenant_id', tenantId)
+          .gte('started_at', today + 'T00:00:00'),
+        supabase
+          .from('voice_credits')
+          .select('balance_minutes')
+          .eq('tenant_id', tenantId)
+          .maybeSingle(),
+      ]);
+      const calls = usageRes.data || [];
+      return {
+        callsToday: calls.length,
+        talkTime: calls.reduce((s: number, c: any) => s + (c.duration_seconds || 0), 0),
+        creditsMin: creditsRes.data ? Number(creditsRes.data.balance_minutes || 0) : null,
+      };
+    },
+    enabled: !!tenantId,
+    staleTime: 60000,
+  });
+
+  if (!voiceData || (voiceData.callsToday === 0 && voiceData.creditsMin === null)) return null;
+
+  const fmtDur = (s: number) => {
+    if (!s) return '0m';
+    const m = Math.floor(s / 60);
+    return m < 60 ? `${m}m` : `${Math.floor(m / 60)}h ${m % 60}m`;
+  };
+
+  return (
+    <Card className="animate-fade-in bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200 cursor-pointer hover:shadow-md transition-shadow"
+      onClick={() => navigate('/communications/voice-calls')}>
+      <CardContent className="py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-indigo-500 flex items-center justify-center">
+              <Phone className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-indigo-800">Voice AI Today</h3>
+              <div className="flex items-center gap-4 text-sm text-indigo-600">
+                <span>{voiceData.callsToday} call{voiceData.callsToday !== 1 ? 's' : ''}</span>
+                <span>{fmtDur(voiceData.talkTime)} talk time</span>
+                {voiceData.creditsMin !== null && (
+                  <span className="flex items-center gap-1">
+                    <CreditCard className="h-3 w-3" /> {voiceData.creditsMin.toFixed(0)}m credits
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+          <Badge className="bg-indigo-500 text-white">View Calls →</Badge>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function Dashboard() {
   const { tenantConfig, tenantId, t } = useTenant();
   const [aiAutonomousMode, setAiAutonomousMode] = useState(false);
+  const navigate = useNavigate();
 
   // Debug logging for tenant assignment
   console.log('[Dashboard] Current tenant:', {
@@ -108,14 +179,14 @@ export default function Dashboard() {
       
       const [customersRes, conversationsRes, appointmentsRes, leadsRes] = await Promise.all([
         supabase.from('customers').select('*', { count: 'exact', head: true })
-          .eq('tenant_id', tenantConfig!.id),
+          .eq('tenant_id', tenantId),
         supabase.from('conversations').select('*', { count: 'exact', head: true })
           .eq('tenant_id', tenantConfig!.id),
         supabase.from('appointments').select('*', { count: 'exact', head: true })
           .eq('tenant_id', tenantId)
           .in('status', ['scheduled', 'confirmed', 'pending']),
         supabase.from('sales_leads').select('*', { count: 'exact', head: true })
-          .eq('tenant_id', tenantConfig!.id)
+          .eq('tenant_id', tenantId)
       ]);
       
       return {
@@ -324,6 +395,9 @@ export default function Dashboard() {
           <StatCard key={index} {...stat} isLoading={statsLoading} />
         ))}
       </div>
+
+      {/* Voice AI Widget */}
+      <VoiceWidget tenantId={tenantId} navigate={navigate} />
 
       {/* AI Command Center + Recent Activity */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

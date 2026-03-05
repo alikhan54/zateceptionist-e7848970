@@ -38,7 +38,7 @@ export default function DashboardBriefing() {
     queryFn: async () => {
       const { data } = await supabase
         .from("sales_leads")
-        .select("lead_status, lead_score, enrichment_status, sequence_status, pipeline_stage, updated_at")
+        .select("lead_status, lead_score, enrichment_status, sequence_status, pipeline_stage, temperature, lead_temperature, updated_at")
         .eq("tenant_id", tenantId);
       return data || [];
     },
@@ -101,7 +101,7 @@ export default function DashboardBriefing() {
     const newLeads = leads.filter((l) => l.lead_status === "new").length;
     const enrichedLeads = leads.filter((l) => l.enrichment_status === "enriched" || l.enrichment_status === "completed").length;
     const activeSequences = leads.filter((l) => l.sequence_status === "active").length;
-    const hotLeads = leads.filter((l) => l.lead_score && l.lead_score >= 70).length;
+    const hotLeads = leads.filter((l) => (l.temperature || l.lead_temperature || "").toUpperCase() === "HOT").length;
     const stuckLeads = leads.filter((l) => {
       if (!l.updated_at) return false;
       const daysSinceUpdate = (Date.now() - new Date(l.updated_at).getTime()) / (1000 * 60 * 60 * 24);

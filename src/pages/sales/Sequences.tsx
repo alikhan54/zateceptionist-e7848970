@@ -91,6 +91,7 @@ export default function Sequences() {
   const [sequences, setSequences] = useState<Sequence[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("library");
+  const [showTemplates, setShowTemplates] = useState(true);
 
   useEffect(() => {
     if (tenantId) {
@@ -102,10 +103,11 @@ export default function Sequences() {
     if (!tenantId) return;
     setIsLoading(true);
     try {
+      // Query tenant sequences + global templates
       const { data, error } = await supabase
         .from("sequences")
         .select("*")
-        .eq("tenant_id", tenantId)
+        .or(`tenant_id.eq.${tenantId},tenant_id.eq.global`)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -177,6 +179,9 @@ export default function Sequences() {
   };
 
   const activeSequences = sequences.filter((s) => s.status === "active");
+  const tenantSequences = sequences.filter((s) => s.tenant_id !== "global");
+  const templateSequences = sequences.filter((s) => s.tenant_id === "global");
+  const displayedSequences = showTemplates ? sequences : tenantSequences;
   const totalEnrolled = sequences.reduce((sum, s) => sum + (s.enrolled_count || 0), 0);
   const avgOpenRate =
     sequences.length > 0 ? sequences.reduce((sum, s) => sum + (s.open_rate || 0), 0) / sequences.length : 0;
@@ -195,6 +200,11 @@ export default function Sequences() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {sequence.tenant_id === "global" && (
+              <Badge variant="outline" className="text-xs border-purple-500 text-purple-600">
+                Template
+              </Badge>
+            )}
             <Badge
               variant={sequence.status === "active" ? "default" : "secondary"}
               className={sequence.status === "active" ? "bg-green-500" : ""}
@@ -208,15 +218,19 @@ export default function Sequences() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => navigate(`/sales/sequences/${sequence.id}`)}>
-                  <Edit className="h-4 w-4 mr-2" /> Edit
-                </DropdownMenuItem>
+                {sequence.tenant_id !== "global" && (
+                  <DropdownMenuItem onClick={() => navigate(`/sales/sequences/${sequence.id}`)}>
+                    <Edit className="h-4 w-4 mr-2" /> Edit
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={() => duplicateSequence(sequence)}>
-                  <Copy className="h-4 w-4 mr-2" /> Duplicate
+                  <Copy className="h-4 w-4 mr-2" /> {sequence.tenant_id === "global" ? "Use Template" : "Duplicate"}
                 </DropdownMenuItem>
-                <DropdownMenuItem className="text-red-600" onClick={() => deleteSequence(sequence.id)}>
-                  <Trash2 className="h-4 w-4 mr-2" /> Delete
-                </DropdownMenuItem>
+                {sequence.tenant_id !== "global" && (
+                  <DropdownMenuItem className="text-red-600" onClick={() => deleteSequence(sequence.id)}>
+                    <Trash2 className="h-4 w-4 mr-2" /> Delete
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -384,6 +398,24 @@ export default function Sequences() {
         </TabsList>
 
         <TabsContent value="library" className="mt-4">
+          {templateSequences.length > 0 && (
+            <div className="flex items-center gap-2 mb-4">
+              <Button
+                variant={showTemplates ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowTemplates(true)}
+              >
+                All ({sequences.length})
+              </Button>
+              <Button
+                variant={!showTemplates ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowTemplates(false)}
+              >
+                My Sequences ({tenantSequences.length})
+              </Button>
+            </div>
+          )}
           {isLoading ? (
             <div className="grid grid-cols-3 gap-4">
               {[1, 2, 3].map((i) => (
@@ -392,7 +424,7 @@ export default function Sequences() {
                 </Card>
               ))}
             </div>
-          ) : sequences.length === 0 ? (
+          ) : displayedSequences.length === 0 ? (
             <Card>
               <CardContent className="p-12 text-center">
                 <Zap className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -405,7 +437,7 @@ export default function Sequences() {
             </Card>
           ) : (
             <div className="grid grid-cols-3 gap-4">
-              {sequences.map((sequence) => (
+              {displayedSequences.map((sequence) => (
                 <SequenceCard key={sequence.id} sequence={sequence} />
               ))}
             </div>

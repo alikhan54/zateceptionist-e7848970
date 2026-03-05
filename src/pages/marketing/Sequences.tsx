@@ -71,7 +71,7 @@ export default function MarketingSequences() {
       const { data } = await supabase
         .from('customers')
         .select('id, name, phone_number, email')
-        .eq('tenant_id', tenantConfig.id || (tenantConfig as any).tenant_id)
+        .eq('tenant_id', (tenantConfig as any)?.tenant_id || tenantConfig.id)
         .limit(100);
       return data || [];
     },

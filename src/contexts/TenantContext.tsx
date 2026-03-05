@@ -39,6 +39,16 @@ export interface TenantConfig {
   google_api_key?: string | null;
   google_cx_id?: string | null;
   onboarding_completed?: boolean | null;
+  outreach_settings?: Record<string, unknown> | null;
+  email_provider?: string | null;
+  email_credential_id?: string | null;
+  email_verified?: boolean | null;
+  smtp_host?: string | null;
+  smtp_port?: number | null;
+  smtp_user?: string | null;
+  smtp_from_email?: string | null;
+  smtp_from_name?: string | null;
+  automation_mode?: string | null;
 }
 
 // Industry-specific vocabulary translations

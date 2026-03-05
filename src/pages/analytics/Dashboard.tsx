@@ -11,6 +11,9 @@ import {
 } from 'lucide-react';
 import { useDashboardStats, useRevenueAnalytics, useChannelAnalytics, useConversionFunnel } from '@/hooks/useAnalytics';
 import { formatDistanceToNow } from 'date-fns';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useTenant } from '@/contexts/TenantContext';
 import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
@@ -18,6 +21,7 @@ const COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3
 export default function AnalyticsDashboard() {
   const [period, setPeriod] = useState<'7d' | '30d' | '90d'>('30d');
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
+  const { tenantId } = useTenant();
   const { data: revenueData, isLoading: revenueLoading } = useRevenueAnalytics(period);
   const { data: channelData } = useChannelAnalytics();
   const { data: funnelData } = useConversionFunnel();
@@ -30,10 +34,32 @@ export default function AnalyticsDashboard() {
     { label: 'Health Score', value: '85/100', change: '', icon: Activity, color: 'text-primary' },
   ];
 
+  // Real temperature data from sales_leads
+  const { data: tempCounts } = useQuery({
+    queryKey: ['analytics', 'temperature', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return { hot: 0, warm: 0, cold: 0 };
+      const { data } = await supabase
+        .from('sales_leads')
+        .select('temperature')
+        .eq('tenant_id', tenantId);
+      const counts = { hot: 0, warm: 0, cold: 0 };
+      (data || []).forEach((l: any) => {
+        const t = (l.temperature || 'cold').toLowerCase();
+        if (t === 'hot') counts.hot++;
+        else if (t === 'warm') counts.warm++;
+        else counts.cold++;
+      });
+      return counts;
+    },
+    enabled: !!tenantId,
+    staleTime: 5 * 60 * 1000,
+  });
+
   const temperatureData = [
-    { name: 'HOT', value: 15, icon: Flame, color: 'text-red-500 bg-red-500/10' },
-    { name: 'WARM', value: 32, icon: Thermometer, color: 'text-orange-500 bg-orange-500/10' },
-    { name: 'COLD', value: 28, icon: Snowflake, color: 'text-blue-500 bg-blue-500/10' },
+    { name: 'HOT', value: tempCounts?.hot || 0, icon: Flame, color: 'text-red-500 bg-red-500/10' },
+    { name: 'WARM', value: tempCounts?.warm || 0, icon: Thermometer, color: 'text-orange-500 bg-orange-500/10' },
+    { name: 'COLD', value: tempCounts?.cold || 0, icon: Snowflake, color: 'text-blue-500 bg-blue-500/10' },
   ];
 
   return (

@@ -31,6 +31,7 @@ const DealTracker = lazy(() => import("./pages/sales/Deals"));
 const Sequences = lazy(() => import("./pages/sales/Sequences"));
 const CreateSequence = lazy(() => import("./pages/sales/CreateSequence"));
 const Proposals = lazy(() => import("./pages/sales/Proposals"));
+const ProposalDetail = lazy(() => import("./pages/sales/ProposalDetail"));
 const SalesAnalytics = lazy(() => import("./pages/sales/Analytics"));
 const Forecasting = lazy(() => import("./pages/sales/Forecast"));
 
@@ -78,6 +79,7 @@ const EmailHub = lazy(() => import("./pages/communications/Email"));
 const SMSHub = lazy(() => import("./pages/communications/SMS"));
 const CallCenter = lazy(() => import("./pages/communications/CallCenter"));
 const IVRBuilder = lazy(() => import("./pages/communications/IVRBuilder"));
+const VoiceCalls = lazy(() => import("./pages/communications/VoiceCalls"));
 
 // Analytics Module
 const AnalyticsHub = lazy(() => import("./pages/analytics/Hub"));
@@ -95,6 +97,8 @@ const TeamSettings = lazy(() => import("./pages/settings/Team"));
 const BillingSettings = lazy(() => import("./pages/settings/Billing"));
 const NotificationSettings = lazy(() => import("./pages/settings/Notifications"));
 const KnowledgeBaseSettings = lazy(() => import("./pages/settings/KnowledgeBase"));
+const OutreachSettings = lazy(() => import("./pages/settings/OutreachSettings"));
+const PhoneNumberSettings = lazy(() => import("./pages/settings/PhoneNumbers"));
 
 // Admin Module
 const AdminPanel = lazy(() => import("./pages/admin/Panel"));
@@ -310,6 +314,14 @@ const App = () => (
                     element={
                       <LazyPage>
                         <Proposals />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/sales/proposals/:id"
+                    element={
+                      <LazyPage>
+                        <ProposalDetail />
                       </LazyPage>
                     }
                   />
@@ -621,6 +633,14 @@ const App = () => (
                     }
                   />
                   <Route
+                    path="/communications/voice-calls"
+                    element={
+                      <LazyPage>
+                        <VoiceCalls />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
                     path="/communications/call-center"
                     element={
                       <LazyPage>
@@ -751,6 +771,22 @@ const App = () => (
                     element={
                       <LazyPage>
                         <KnowledgeBaseSettings />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/settings/outreach"
+                    element={
+                      <LazyPage>
+                        <OutreachSettings />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/settings/phone-numbers"
+                    element={
+                      <LazyPage>
+                        <PhoneNumberSettings />
                       </LazyPage>
                     }
                   />

@@ -31,12 +31,12 @@ export default function MarketingAnalytics() {
       if (!tenantUuid) return { published: 0, totalEngagement: 0 };
       const { data } = await supabase
         .from('social_posts')
-        .select('status, likes, comments, shares')
+        .select('status, likes_count, comments_count, shares_count')
         .eq('tenant_id', tenantUuid)
         .gte('created_at', periodStart.toISOString());
       const posts = data || [];
       const published = posts.filter((p: any) => p.status === 'published').length;
-      const totalEngagement = posts.reduce((sum: number, p: any) => sum + (p.likes || 0) + (p.comments || 0) + (p.shares || 0), 0);
+      const totalEngagement = posts.reduce((sum: number, p: any) => sum + (p.likes_count || 0) + (p.comments_count || 0) + (p.shares_count || 0), 0);
       return { published, totalEngagement };
     },
     enabled: !!tenantUuid,

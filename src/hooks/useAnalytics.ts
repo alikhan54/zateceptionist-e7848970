@@ -36,7 +36,7 @@ export interface ConversionFunnel {
 }
 
 export function useDashboardStats() {
-  const { tenantId } = useTenant();
+  const { tenantId, tenantConfig } = useTenant();
 
   return useQuery({
     queryKey: ['analytics', 'dashboard', tenantId],
@@ -73,8 +73,8 @@ export function useDashboardStats() {
       ] = await Promise.all([
         supabase.from('customers').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
         supabase.from('customers').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).gte('created_at', startOfToday),
-        supabase.from('conversations').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
-        supabase.from('conversations').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('status', 'open'),
+        supabase.from('conversations').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantConfig?.id || tenantId),
+        supabase.from('conversations').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantConfig?.id || tenantId).eq('status', 'open'),
         supabase.from('appointments').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).gte('start_time', startOfToday).lte('start_time', endOfToday),
         supabase.from('appointments').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).gte('start_time', today.toISOString()).in('status', ['scheduled', 'confirmed']),
         supabase.from('deals').select('id, value').eq('tenant_id', tenantId).not('stage', 'eq', 'Lost'),
@@ -152,7 +152,7 @@ export function useRevenueAnalytics(period: '7d' | '30d' | '90d' = '30d') {
 }
 
 export function useChannelAnalytics() {
-  const { tenantId } = useTenant();
+  const { tenantId, tenantConfig } = useTenant();
 
   return useQuery({
     queryKey: ['analytics', 'channels', tenantId],
@@ -162,7 +162,7 @@ export function useChannelAnalytics() {
       const { data, error } = await supabase
         .from('conversations')
         .select('channel')
-        .eq('tenant_id', tenantId);
+        .eq('tenant_id', tenantConfig?.id || tenantId);
 
       if (error) throw error;
 
@@ -265,7 +265,7 @@ export function useLeadSourceAnalytics() {
 }
 
 export function useActivityTimeline(limit = 20) {
-  const { tenantId } = useTenant();
+  const { tenantId, tenantConfig } = useTenant();
 
   return useQuery({
     queryKey: ['analytics', 'activity', tenantId, limit],
@@ -277,7 +277,7 @@ export function useActivityTimeline(limit = 20) {
         supabase
           .from('conversations')
           .select('id, customer_name, channel, created_at')
-          .eq('tenant_id', tenantId)
+          .eq('tenant_id', tenantConfig?.id || tenantId)
           .order('created_at', { ascending: false })
           .limit(limit),
         supabase

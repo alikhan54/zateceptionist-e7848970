@@ -145,6 +145,7 @@ export function useMarketingCampaigns(options?: { status?: string; type?: string
         customMessage: campaign?.message_template || '',
         mediaUrl: campaign?.media_url || '',
         action: 'send',
+        tenant_slug: (tenantConfig as any)?.tenant_id || '',
       }, tenantUuid!);
       if (!result.success) throw new Error(result.error || 'Failed to trigger campaign');
       return result.data;
