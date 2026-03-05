@@ -28,6 +28,8 @@ export const WEBHOOKS = {
   AB_TEST_CREATE: "/marketing/ab-test-create",
   EMAIL_TEMPLATE_GENERATE: "/marketing/email-template-generate",
   REFRESH_TRENDS: "/marketing/refresh-trends",
+  ANALYZE_COMPETITOR: "/marketing/analyze-competitor",
+  DISCOVER_COMPETITORS: "/marketing/discover-competitors",
   VIDEO_GENERATE: "/marketing/video-generate",
 
   // HR
