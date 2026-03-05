@@ -73,13 +73,10 @@ const Expenses = lazy(() => import("./pages/operations/Expenses"));
 const Invoices = lazy(() => import("./pages/operations/Invoices"));
 
 // Communications Module
-const VoiceAI = lazy(() => import("./pages/communications/VoiceAI"));
+const VoiceAIHub = lazy(() => import("./pages/communications/VoiceAIHub"));
 const WhatsAppHub = lazy(() => import("./pages/communications/WhatsApp"));
 const EmailHub = lazy(() => import("./pages/communications/Email"));
 const SMSHub = lazy(() => import("./pages/communications/SMS"));
-const CallCenter = lazy(() => import("./pages/communications/CallCenter"));
-const IVRBuilder = lazy(() => import("./pages/communications/IVRBuilder"));
-const VoiceCalls = lazy(() => import("./pages/communications/VoiceCalls"));
 
 // Analytics Module
 const AnalyticsHub = lazy(() => import("./pages/analytics/Hub"));
@@ -90,7 +87,7 @@ const Predictions = lazy(() => import("./pages/analytics/Predictions"));
 
 // Settings Module
 const GeneralSettings = lazy(() => import("./pages/settings/General"));
-const VoiceAISettings = lazy(() => import("./pages/settings/VoiceAI"));
+// VoiceAISettings removed — now part of VoiceAIHub
 const Integrations = lazy(() => import("./pages/settings/Integrations"));
 const APIKeys = lazy(() => import("./pages/settings/APIKeys"));
 const TeamSettings = lazy(() => import("./pages/settings/Team"));
@@ -98,7 +95,7 @@ const BillingSettings = lazy(() => import("./pages/settings/Billing"));
 const NotificationSettings = lazy(() => import("./pages/settings/Notifications"));
 const KnowledgeBaseSettings = lazy(() => import("./pages/settings/KnowledgeBase"));
 const OutreachSettings = lazy(() => import("./pages/settings/OutreachSettings"));
-const PhoneNumberSettings = lazy(() => import("./pages/settings/PhoneNumbers"));
+// PhoneNumberSettings removed — now part of VoiceAIHub
 
 // Admin Module
 const AdminPanel = lazy(() => import("./pages/admin/Panel"));
@@ -599,12 +596,12 @@ const App = () => (
                   />
 
                   {/* Communications Module */}
-                  <Route path="/communications" element={<Navigate to="/communications/voice" replace />} />
+                  <Route path="/communications" element={<Navigate to="/communications/voice-ai" replace />} />
                   <Route
-                    path="/communications/voice"
+                    path="/communications/voice-ai"
                     element={
                       <LazyPage>
-                        <VoiceAI />
+                        <VoiceAIHub />
                       </LazyPage>
                     }
                   />
@@ -632,30 +629,11 @@ const App = () => (
                       </LazyPage>
                     }
                   />
-                  <Route
-                    path="/communications/voice-calls"
-                    element={
-                      <LazyPage>
-                        <VoiceCalls />
-                      </LazyPage>
-                    }
-                  />
-                  <Route
-                    path="/communications/call-center"
-                    element={
-                      <LazyPage>
-                        <CallCenter />
-                      </LazyPage>
-                    }
-                  />
-                  <Route
-                    path="/communications/ivr"
-                    element={
-                      <LazyPage>
-                        <IVRBuilder />
-                      </LazyPage>
-                    }
-                  />
+                  {/* Redirects for old voice routes */}
+                  <Route path="/communications/voice" element={<Navigate to="/communications/voice-ai" replace />} />
+                  <Route path="/communications/voice-calls" element={<Navigate to="/communications/voice-ai?tab=calls" replace />} />
+                  <Route path="/communications/call-center" element={<Navigate to="/communications/voice-ai?tab=center" replace />} />
+                  <Route path="/communications/ivr" element={<Navigate to="/communications/voice-ai?tab=ivr" replace />} />
 
                   {/* Analytics Module */}
                   <Route
@@ -718,14 +696,7 @@ const App = () => (
                       </LazyPage>
                     }
                   />
-                  <Route
-                    path="/settings/voice-ai"
-                    element={
-                      <LazyPage>
-                        <VoiceAISettings />
-                      </LazyPage>
-                    }
-                  />
+                  <Route path="/settings/voice-ai" element={<Navigate to="/communications/voice-ai?tab=config" replace />} />
                   <Route
                     path="/settings/integrations"
                     element={
@@ -782,14 +753,7 @@ const App = () => (
                       </LazyPage>
                     }
                   />
-                  <Route
-                    path="/settings/phone-numbers"
-                    element={
-                      <LazyPage>
-                        <PhoneNumberSettings />
-                      </LazyPage>
-                    }
-                  />
+                  <Route path="/settings/phone-numbers" element={<Navigate to="/communications/voice-ai?tab=phones" replace />} />
 
                   {/* Admin Module - ONLY for master_admin role */}
                   <Route

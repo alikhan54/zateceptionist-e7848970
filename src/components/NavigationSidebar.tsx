@@ -378,13 +378,10 @@ export function NavigationSidebar() {
     collapsible: true,
     featureKey: "communications_module",
     items: [
-      { title: "Voice AI", url: "/communications/voice", icon: Phone },
+      { title: "Voice AI", url: "/communications/voice-ai", icon: Phone },
       { title: "WhatsApp", url: "/communications/whatsapp", icon: MessageCircle },
       { title: "Email", url: "/communications/email", icon: Mail },
       { title: "SMS", url: "/communications/sms", icon: MessageSquare },
-      { title: "Voice Calls", url: "/communications/voice-calls", icon: Headphones },
-      { title: "Call Center", url: "/communications/call-center", icon: Phone },
-      { title: "IVR Builder", url: "/communications/ivr", icon: Voicemail },
     ],
   };
 
@@ -407,8 +404,6 @@ export function NavigationSidebar() {
     collapsible: true,
     items: [
       { title: "General Settings", url: "/settings", icon: Settings },
-      { title: "Voice AI Config", url: "/settings/voice-ai", icon: Mic },
-      { title: "Phone Numbers", url: "/settings/phone-numbers", icon: Phone },
       { title: "Integrations", url: "/settings/integrations", icon: Webhook },
       { title: "API Keys", url: "/settings/api-keys", icon: Key },
       { title: "Team", url: "/settings/team", icon: UserCog },

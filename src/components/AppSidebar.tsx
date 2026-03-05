@@ -150,13 +150,10 @@ const operationsNavItems = [
 // COMMUNICATIONS NAVIGATION
 // ========================================
 const communicationsNavItems = [
-  { title: "Voice AI", url: "/communications/voice", icon: Phone },
-  { title: "Voice Calls", url: "/communications/voice-calls", icon: Headphones },
+  { title: "Voice AI", url: "/communications/voice-ai", icon: Phone },
   { title: "WhatsApp", url: "/communications/whatsapp", icon: MessageCircle },
   { title: "Email", url: "/communications/email", icon: Mail },
   { title: "SMS", url: "/communications/sms", icon: MessageSquare },
-  { title: "Call Center", url: "/communications/call-center", icon: Headphones },
-  { title: "IVR Builder", url: "/communications/ivr", icon: Voicemail },
 ];
 
 // ========================================
