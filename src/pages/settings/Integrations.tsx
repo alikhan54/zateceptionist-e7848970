@@ -392,7 +392,7 @@ export default function Integrations() {
   const groupedIntegrations = useMemo(() => {
     const groups: Record<IntegrationCategory, IntegrationWithStatus[]> = {
       communication: [], scheduling: [], payments: [], crm: [], support: [],
-      ecommerce: [], ai: [], productivity: [], analytics: [], forms: [],
+      ecommerce: [], ai: [], productivity: [], analytics: [], forms: [], advertising: [],
     };
     filteredIntegrations.forEach(i => groups[i.category].push(i));
     return groups;
