@@ -19,9 +19,13 @@ import type { StepProps } from './index';
 
 const INDUSTRIES = [
   { value: 'healthcare', label: 'Healthcare & Medical', icon: '🏥' },
+  { value: 'healthcare_clinic', label: 'Healthcare Clinic', icon: '🩺' },
   { value: 'real_estate', label: 'Real Estate', icon: '🏠' },
   { value: 'restaurant', label: 'Restaurant & Food', icon: '🍽️' },
   { value: 'salon', label: 'Salon & Beauty', icon: '💇' },
+  { value: 'banking_collections', label: 'Banking & Collections', icon: '🏦' },
+  { value: 'construction_estimation', label: 'Construction & Estimation', icon: '🏗️' },
+  { value: 'technology', label: 'Technology & SaaS', icon: '💻' },
   { value: 'legal', label: 'Legal Services', icon: '⚖️' },
   { value: 'fitness', label: 'Fitness & Wellness', icon: '💪' },
   { value: 'education', label: 'Education & Training', icon: '📚' },
