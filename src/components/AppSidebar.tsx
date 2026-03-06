@@ -114,6 +114,7 @@ const marketingNavItems = [
   { title: "Blog Manager", url: "/marketing/blogs", icon: FileText },
   { title: "Video Projects", url: "/marketing/videos", icon: Zap },
   { title: "Competitor Intel", url: "/marketing/competitors", icon: Eye },
+  { title: "Ads Manager", url: "/marketing/ads", icon: Target },
 ];
 
 // ========================================
