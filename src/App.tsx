@@ -48,6 +48,7 @@ const MarketingSequences = lazy(() => import("./pages/marketing/Sequences"));
 const BlogManager = lazy(() => import("./pages/marketing/BlogManager"));
 const VideoProjects = lazy(() => import("./pages/marketing/VideoProjects"));
 const CompetitorAnalysis = lazy(() => import("./pages/marketing/CompetitorAnalysis"));
+const AdsManager = lazy(() => import("./pages/marketing/AdsManager"));
 
 // HR Module
 const HRDashboardOverview = lazy(() => import("./pages/hr/Dashboard"));
