@@ -49,9 +49,30 @@ export interface TenantConfig {
   smtp_from_email?: string | null;
   smtp_from_name?: string | null;
   automation_mode?: string | null;
+  voice_forward_number?: string | null;
+  voice_mode?: string | null;
+  voice_inbound_mode?: string | null;
+  voice_language?: string | null;
+  voice_language_name?: string | null;
+  voice_voice_name?: string | null;
+  voice_id?: string | null;
+  byo_vapi_api_key?: string | null;
+  byo_vapi_assistant_id?: string | null;
+  byo_vapi_phone_number_id?: string | null;
   vapi_api_key?: string | null;
   vapi_assistant_id?: string | null;
   vapi_phone_number?: string | null;
+  custom_system_prompt?: string | null;
+  voice_first_message?: string | null;
+  voice_end_message?: string | null;
+  voicemail_message?: string | null;
+  voice_ai_name?: string | null;
+  primary_language?: string | null;
+  supported_languages?: string[] | null;
+  llm_model?: string | null;
+  llm_provider?: string | null;
+  industry_override?: string | null;
+  ai_name_override?: string | null;
 }
 
 // Industry-specific vocabulary translations

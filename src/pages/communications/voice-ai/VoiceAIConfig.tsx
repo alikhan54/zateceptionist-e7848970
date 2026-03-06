@@ -30,7 +30,7 @@ export default function VoiceAIConfig() {
   const [personalityConfig, setPersonalityConfig] = useState({
     ai_name: "",
     voice_first_message: "",
-    voice_assistant_prompt: "",
+    custom_system_prompt: "",
     voice_end_message: "",
     voicemail_message: "",
     industry_template: "",
@@ -45,7 +45,7 @@ export default function VoiceAIConfig() {
     vapi_phone_number: "",
     byo_vapi_api_key: "",
     byo_vapi_assistant_id: "",
-    byo_vapi_phone_number: "",
+    byo_vapi_phone_number_id: "",
   });
   const [outboundLoaded, setOutboundLoaded] = useState(false);
 
@@ -78,7 +78,7 @@ export default function VoiceAIConfig() {
       setPersonalityConfig({
         ai_name: config.ai_name || "",
         voice_first_message: config.voice_first_message || "",
-        voice_assistant_prompt: config.voice_assistant_prompt || "",
+        custom_system_prompt: config.custom_system_prompt || "",
         voice_end_message: config.voice_end_message || "",
         voicemail_message: config.voicemail_message || "",
         industry_template: config.industry || "general",
@@ -97,7 +97,7 @@ export default function VoiceAIConfig() {
         vapi_phone_number: config.vapi_phone_number || "",
         byo_vapi_api_key: config.byo_vapi_api_key || "",
         byo_vapi_assistant_id: config.byo_vapi_assistant_id || "",
-        byo_vapi_phone_number: config.byo_vapi_phone_number || "",
+        byo_vapi_phone_number_id: config.byo_vapi_phone_number_id || "",
       });
       setOutboundLoaded(true);
     }
@@ -155,7 +155,7 @@ export default function VoiceAIConfig() {
         .update({
           ai_name: personalityConfig.ai_name || null,
           voice_first_message: personalityConfig.voice_first_message || null,
-          voice_assistant_prompt: personalityConfig.voice_assistant_prompt || null,
+          custom_system_prompt: personalityConfig.custom_system_prompt || null,
           voice_end_message: personalityConfig.voice_end_message || null,
           voicemail_message: personalityConfig.voicemail_message || null,
           industry: personalityConfig.industry_template || null,
@@ -178,14 +178,10 @@ export default function VoiceAIConfig() {
         voice_mode: outboundConfig.voice_mode || null,
         updated_at: new Date().toISOString(),
       };
-      if (outboundConfig.voice_mode === "managed") {
-        update.vapi_api_key = outboundConfig.vapi_api_key || null;
-        update.vapi_assistant_id = outboundConfig.vapi_assistant_id || null;
-        update.vapi_phone_number = outboundConfig.vapi_phone_number || null;
-      } else if (outboundConfig.voice_mode === "byo_vapi") {
+      if (outboundConfig.voice_mode === "byo_vapi") {
         update.byo_vapi_api_key = outboundConfig.byo_vapi_api_key || null;
         update.byo_vapi_assistant_id = outboundConfig.byo_vapi_assistant_id || null;
-        update.byo_vapi_phone_number = outboundConfig.byo_vapi_phone_number || null;
+        update.byo_vapi_phone_number_id = outboundConfig.byo_vapi_phone_number_id || null;
       }
       const { error } = await supabase
         .from("tenant_config")
@@ -250,7 +246,7 @@ export default function VoiceAIConfig() {
                 {templates.length > 0 ? (
                   templates.map((t: any) => (
                     <option key={t.industry} value={t.industry}>
-                      {t.display_name} ({t.voice_id})
+                      {t.display_name}
                     </option>
                   ))
                 ) : (
@@ -363,11 +359,11 @@ export default function VoiceAIConfig() {
             <textarea
               className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[120px]"
               placeholder="Override the industry template with a fully custom prompt..."
-              value={personalityConfig.voice_assistant_prompt}
+              value={personalityConfig.custom_system_prompt}
               onChange={(e) =>
                 setPersonalityConfig({
                   ...personalityConfig,
-                  voice_assistant_prompt: e.target.value,
+                  custom_system_prompt: e.target.value,
                 })
               }
             />
@@ -441,46 +437,20 @@ export default function VoiceAIConfig() {
           </div>
 
           {outboundConfig.voice_mode === "managed" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
-              <div className="space-y-2">
-                <Label>VAPI API Key (Platform)</Label>
-                <Input
-                  type="password"
-                  placeholder="Platform VAPI key"
-                  value={outboundConfig.vapi_api_key}
-                  onChange={(e) =>
-                    setOutboundConfig({
-                      ...outboundConfig,
-                      vapi_api_key: e.target.value,
-                    })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Assistant ID</Label>
-                <Input
-                  placeholder="e.g. 1238736d-..."
-                  value={outboundConfig.vapi_assistant_id}
-                  onChange={(e) =>
-                    setOutboundConfig({
-                      ...outboundConfig,
-                      vapi_assistant_id: e.target.value,
-                    })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Phone Number ID</Label>
-                <Input
-                  placeholder="e.g. a3b9b3e0-..."
-                  value={outboundConfig.vapi_phone_number}
-                  onChange={(e) =>
-                    setOutboundConfig({
-                      ...outboundConfig,
-                      vapi_phone_number: e.target.value,
-                    })
-                  }
-                />
+            <div className="pt-4 border-t">
+              <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 dark:bg-green-900">
+                  <Zap className="h-5 w-5 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <p className="font-medium text-green-800 dark:text-green-200">
+                    ✓ Platform Configured
+                  </p>
+                  <p className="text-sm text-green-600 dark:text-green-400">
+                    VAPI is managed by the platform. Contact support to change configuration.
+                  </p>
+                </div>
+                <Badge className="ml-auto bg-green-500 text-white">Active</Badge>
               </div>
             </div>
           )}
@@ -518,11 +488,11 @@ export default function VoiceAIConfig() {
                 <Label>Your Phone Number ID</Label>
                 <Input
                   placeholder="Your phone number ID"
-                  value={outboundConfig.byo_vapi_phone_number}
+                  value={outboundConfig.byo_vapi_phone_number_id}
                   onChange={(e) =>
                     setOutboundConfig({
                       ...outboundConfig,
-                      byo_vapi_phone_number: e.target.value,
+                      byo_vapi_phone_number_id: e.target.value,
                     })
                   }
                 />
