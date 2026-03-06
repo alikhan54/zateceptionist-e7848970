@@ -437,6 +437,14 @@ const App = () => (
                       </LazyPage>
                     }
                   />
+                  <Route
+                    path="/marketing/ads"
+                    element={
+                      <LazyPage>
+                        <AdsManager />
+                      </LazyPage>
+                    }
+                  />
 
                   {/* HR Module */}
                   <Route path="/hr" element={<Navigate to="/hr/dashboard" replace />} />

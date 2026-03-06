@@ -134,7 +134,13 @@ export const INTEGRATION_CATEGORIES: Record<IntegrationCategory, {
     description: 'Capture leads and feedback', 
     icon: 'FileText', 
     color: '#84CC16' 
-  }
+  },
+  advertising: {
+    label: 'Advertising',
+    description: 'Manage paid ad campaigns',
+    icon: 'Target',
+    color: '#EF4444'
+  },
 };
 
 // Mapping from integration ID to tenant_config boolean flag

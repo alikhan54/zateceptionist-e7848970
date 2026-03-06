@@ -839,6 +839,43 @@ export const INTEGRATIONS: Integration[] = [
       { key: 'jotform_api_key', label: 'API Key', type: 'password', placeholder: 'Your JotForm API key', required: true },
     ],
   },
+
+  // ============= ADVERTISING (2) =============
+  {
+    id: 'google_ads',
+    name: 'Google Ads',
+    description: 'AI-powered Google Ads campaign management with automated bidding and creative generation',
+    category: 'advertising',
+    icon: 'Target',
+    color: '#4285F4',
+    authType: 'credentials',
+    tier: 'professional',
+    features: ['Search campaigns', 'Display campaigns', 'Smart bidding', 'Keyword management', 'Conversion tracking'],
+    credentials: [
+      { key: 'google_ads_customer_id', label: 'Customer ID', type: 'text', required: true },
+      { key: 'google_ads_developer_token', label: 'Developer Token', type: 'password', required: true },
+      { key: 'google_ads_client_id', label: 'OAuth Client ID', type: 'text', required: true },
+      { key: 'google_ads_client_secret', label: 'OAuth Client Secret', type: 'password', required: true },
+      { key: 'google_ads_refresh_token', label: 'Refresh Token', type: 'password', required: true },
+    ],
+  },
+  {
+    id: 'meta_ads',
+    name: 'Meta Ads',
+    description: 'AI-powered Facebook & Instagram ad management with audience targeting and pixel tracking',
+    category: 'advertising',
+    icon: 'Megaphone',
+    color: '#1877F2',
+    authType: 'credentials',
+    tier: 'professional',
+    features: ['Facebook campaigns', 'Instagram campaigns', 'Pixel tracking', 'Lookalike audiences', 'Conversion API'],
+    credentials: [
+      { key: 'meta_ads_account_id', label: 'Ad Account ID', type: 'text', required: true },
+      { key: 'meta_ads_access_token', label: 'Access Token', type: 'password', required: true },
+      { key: 'meta_pixel_id', label: 'Pixel ID', type: 'text', required: true },
+      { key: 'meta_conversions_api_token', label: 'Conversions API Token', type: 'password', required: true },
+    ],
+  },
 ];
 
 // Helper to get integration by ID

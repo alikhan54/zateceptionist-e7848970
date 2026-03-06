@@ -31,6 +31,9 @@ export const WEBHOOKS = {
   ANALYZE_COMPETITOR: "/marketing/analyze-competitor",
   DISCOVER_COMPETITORS: "/marketing/discover-competitors",
   VIDEO_GENERATE: "/marketing/video-generate",
+  CREATE_AD_CAMPAIGN: "/marketing/create-ad-campaign",
+  GENERATE_AD_CREATIVE: "/marketing/generate-ad-creative",
+  TRACK_CONVERSION: "/marketing/track-conversion",
 
   // HR
   EMPLOYEE_ONBOARDING: "/hr/employee-onboarding",

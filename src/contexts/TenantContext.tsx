@@ -49,6 +49,9 @@ export interface TenantConfig {
   smtp_from_email?: string | null;
   smtp_from_name?: string | null;
   automation_mode?: string | null;
+  vapi_api_key?: string | null;
+  vapi_assistant_id?: string | null;
+  vapi_phone_number?: string | null;
 }
 
 // Industry-specific vocabulary translations
