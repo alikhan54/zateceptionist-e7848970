@@ -8,7 +8,8 @@ export type IntegrationCategory =
   | 'ai' 
   | 'productivity' 
   | 'analytics' 
-  | 'forms';
+  | 'forms'
+  | 'advertising';
 
 export type IntegrationStatus = 'connected' | 'disconnected' | 'error' | 'pending';
 export type AuthType = 'api_key' | 'oauth' | 'credentials' | 'webhook';
