@@ -336,6 +336,7 @@ export function NavigationSidebar() {
       { title: "Blog Manager", url: "/marketing/blogs", icon: FileText },
       { title: "Video Projects", url: "/marketing/videos", icon: Video },
       { title: "Competitor Intel", url: "/marketing/competitors", icon: Eye },
+      { title: "Ads Manager", url: "/marketing/ads", icon: Target },
     ],
   };
 
