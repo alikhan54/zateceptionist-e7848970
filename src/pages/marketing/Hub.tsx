@@ -258,6 +258,7 @@ export default function MarketingHub() {
     { label: 'Publish Post', icon: Send, path: '/marketing/social', color: 'bg-blue-500/10 text-blue-600 hover:bg-blue-500/20' },
     { label: 'Write Blog', icon: PenSquare, path: '/marketing/blogs', color: 'bg-green-500/10 text-green-600 hover:bg-green-500/20' },
     { label: 'View Sequences', icon: Zap, path: '/marketing/sequences', color: 'bg-purple-500/10 text-purple-600 hover:bg-purple-500/20' },
+    { label: 'Ads Manager', icon: Target, path: '/marketing/ads', color: 'bg-red-500/10 text-red-600 hover:bg-red-500/20' },
   ];
 
   const cronMap: Record<string, string> = {

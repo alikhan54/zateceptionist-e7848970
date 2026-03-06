@@ -8,7 +8,8 @@ export type IntegrationCategory =
   | 'ai' 
   | 'productivity' 
   | 'analytics' 
-  | 'forms';
+  | 'forms'
+  | 'advertising';
 
 export type IntegrationStatus = 'connected' | 'disconnected' | 'error' | 'pending';
 export type AuthType = 'api_key' | 'oauth' | 'credentials' | 'webhook';
@@ -133,7 +134,13 @@ export const INTEGRATION_CATEGORIES: Record<IntegrationCategory, {
     description: 'Capture leads and feedback', 
     icon: 'FileText', 
     color: '#84CC16' 
-  }
+  },
+  advertising: {
+    label: 'Advertising',
+    description: 'Manage paid ad campaigns',
+    icon: 'Target',
+    color: '#EF4444'
+  },
 };
 
 // Mapping from integration ID to tenant_config boolean flag
@@ -188,4 +195,6 @@ export const INTEGRATION_FLAGS: Record<string, string> = {
   segment: 'has_segment',
   typeform: 'has_typeform',
   jotform: 'has_jotform',
+  google_ads: 'has_google_ads',
+  meta_ads: 'has_meta_ads',
 };

@@ -22,13 +22,14 @@ import {
   Search, LayoutGrid, List, ChevronDown, Plug, Sparkles, Activity, CreditCard,
   MessageSquare, Calendar, Users, Headphones, ShoppingCart, Brain, Zap, BarChart3,
   FileText, Filter, X, Save, CheckCircle, XCircle, Eye, EyeOff, Globe, ExternalLink,
+  Target,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const CATEGORY_ICONS: Record<IntegrationCategory, React.ComponentType<{ className?: string }>> = {
   communication: MessageSquare, scheduling: Calendar, payments: CreditCard, crm: Users,
   support: Headphones, ecommerce: ShoppingCart, ai: Brain, productivity: Zap,
-  analytics: BarChart3, forms: FileText,
+  analytics: BarChart3, forms: FileText, advertising: Target,
 };
 
 // ═══════════════════════════════════════════
@@ -391,7 +392,7 @@ export default function Integrations() {
   const groupedIntegrations = useMemo(() => {
     const groups: Record<IntegrationCategory, IntegrationWithStatus[]> = {
       communication: [], scheduling: [], payments: [], crm: [], support: [],
-      ecommerce: [], ai: [], productivity: [], analytics: [], forms: [],
+      ecommerce: [], ai: [], productivity: [], analytics: [], forms: [], advertising: [],
     };
     filteredIntegrations.forEach(i => groups[i.category].push(i));
     return groups;
