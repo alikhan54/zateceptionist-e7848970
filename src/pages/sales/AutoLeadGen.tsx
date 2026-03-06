@@ -1067,6 +1067,8 @@ export default function LeadDiscovery() {
       premium: "💼 LinkedIn Premium",
       linkedin_premium: "💼 LinkedIn Premium",
       intent: "🎯 B2C Intent",
+      social_audiences: "👥 B2C Social",
+      review_hunters: "⭐ B2C Reviews",
     };
     return labels[type] || type;
   };
@@ -2110,6 +2112,9 @@ export default function LeadDiscovery() {
                       <SelectItem value="quick_search">🎁 Quick Search (Free)</SelectItem>
                       <SelectItem value="local_discovery">📍 Local Discovery</SelectItem>
                       <SelectItem value="linkedin_premium">💼 LinkedIn Premium</SelectItem>
+                      <SelectItem value="intent">🎯 B2C Intent Signals</SelectItem>
+                      <SelectItem value="social_audiences">👥 B2C Social Audiences</SelectItem>
+                      <SelectItem value="review_hunters">⭐ B2C Review Hunters</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -2140,6 +2145,16 @@ export default function LeadDiscovery() {
                     value={autoSettings.location}
                     onChange={(e) => setAutoSettings({ ...autoSettings, location: e.target.value })}
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Keywords (optional)</Label>
+                  <Input
+                    placeholder="e.g., luxury, premium, certified, award-winning"
+                    value={autoSettings.keywords}
+                    onChange={(e) => setAutoSettings({ ...autoSettings, keywords: e.target.value })}
+                  />
+                  <p className="text-xs text-muted-foreground">Comma-separated keywords to refine search results</p>
                 </div>
 
                 <div className="space-y-2">
