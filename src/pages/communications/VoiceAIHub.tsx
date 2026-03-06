@@ -2,7 +2,7 @@ import React from "react";
 import { useSearchParams } from "react-router-dom";
 import { useTenant } from "@/contexts/TenantContext";
 import { Badge } from "@/components/ui/badge";
-import { Activity, BarChart3, Settings2, Phone, List, Headphones, GitBranch } from "lucide-react";
+import { Activity, BarChart3, Settings2, Phone, List, Headphones, GitBranch, Coins } from "lucide-react";
 
 import VoiceOverview from "./voice-ai/VoiceOverview";
 import VoiceAIConfig from "./voice-ai/VoiceAIConfig";
@@ -10,6 +10,7 @@ import VoicePhoneNumbers from "./voice-ai/VoicePhoneNumbers";
 import VoiceCallLog from "./voice-ai/VoiceCallLog";
 import VoiceCallCenter from "./voice-ai/VoiceCallCenter";
 import VoiceIVRBuilder from "./voice-ai/VoiceIVRBuilder";
+import VoiceCredits from "./voice-ai/VoiceCredits";
 
 const TABS = [
   { key: "overview", label: "Overview", icon: BarChart3 },
@@ -18,6 +19,7 @@ const TABS = [
   { key: "calls", label: "Call Log", icon: List },
   { key: "center", label: "Call Center", icon: Headphones },
   { key: "ivr", label: "IVR Builder", icon: GitBranch },
+  { key: "credits", label: "Credits", icon: Coins },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -50,6 +52,8 @@ export default function VoiceAIHub() {
         return <VoiceCallCenter />;
       case "ivr":
         return <VoiceIVRBuilder />;
+      case "credits":
+        return <VoiceCredits />;
       default:
         return <VoiceOverview />;
     }

@@ -73,6 +73,36 @@ export interface TenantConfig {
   llm_provider?: string | null;
   industry_override?: string | null;
   ai_name_override?: string | null;
+  voice_provider?: string | null;
+  voice_end_call_message?: string | null;
+  recording_enabled?: boolean | null;
+  max_call_duration?: number | null;
+  silence_timeout?: number | null;
+  voice_temperature?: number | null;
+  voice_max_tokens?: number | null;
+  background_sound?: string | null;
+  voice_greeting_delay?: number | null;
+  whatsapp_phone_id?: string | null;
+  whatsapp_access_token?: string | null;
+  wati_api_key?: string | null;
+  wati_endpoint?: string | null;
+  meta_page_id?: string | null;
+  meta_page_token?: string | null;
+  instagram_page_id?: string | null;
+  openai_api_key?: string | null;
+  twilio_sid?: string | null;
+  twilio_auth_token?: string | null;
+  twilio_phone?: string | null;
+  google_api_key?: string | null;
+  google_cx_id?: string | null;
+  apify_api_key?: string | null;
+  pipeline_stages?: Record<string, any> | null;
+  default_pipeline_stage?: string | null;
+  onboarding_step?: string | null;
+  instagram_url?: string | null;
+  facebook_url?: string | null;
+  linkedin_url?: string | null;
+  custom_system_prompt_override?: string | null;
 }
 
 // Industry-specific vocabulary translations

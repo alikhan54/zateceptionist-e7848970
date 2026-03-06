@@ -19,7 +19,46 @@ import {
   AlertCircle,
   Settings2,
   Zap,
+  Mic,
+  Globe,
+  CheckCircle,
+  Loader2,
+  ShieldCheck,
+  Volume2,
 } from "lucide-react";
+
+// === Voice options (VAPI-compatible) ===
+const VOICE_OPTIONS = [
+  { id: "sarah", name: "Sarah", provider: "11labs", gender: "female", accent: "American", style: "Warm & Professional" },
+  { id: "elliot", name: "Elliot", provider: "vapi", gender: "male", accent: "American", style: "Calm & Clear" },
+  { id: "josh", name: "Josh", provider: "11labs", gender: "male", accent: "American", style: "Friendly & Casual" },
+  { id: "rachel", name: "Rachel", provider: "11labs", gender: "female", accent: "American", style: "Energetic & Upbeat" },
+  { id: "drew", name: "Drew", provider: "11labs", gender: "male", accent: "American", style: "Deep & Authoritative" },
+  { id: "clyde", name: "Clyde", provider: "11labs", gender: "male", accent: "American", style: "Strong & Confident" },
+  { id: "domi", name: "Domi", provider: "11labs", gender: "female", accent: "American", style: "Articulate & Precise" },
+  { id: "dave", name: "Dave", provider: "11labs", gender: "male", accent: "British", style: "Conversational" },
+  { id: "fin", name: "Fin", provider: "11labs", gender: "male", accent: "Irish", style: "Relaxed & Warm" },
+  { id: "emily", name: "Emily", provider: "11labs", gender: "female", accent: "American", style: "Cheerful & Bright" },
+];
+
+// === Language options ===
+const LANGUAGE_OPTIONS = [
+  { code: "en", name: "English", flag: "🇺🇸" },
+  { code: "ar", name: "Arabic", flag: "🇸🇦" },
+  { code: "ur", name: "Urdu", flag: "🇵🇰" },
+  { code: "es", name: "Spanish", flag: "🇪🇸" },
+  { code: "fr", name: "French", flag: "🇫🇷" },
+  { code: "de", name: "German", flag: "🇩🇪" },
+  { code: "hi", name: "Hindi", flag: "🇮🇳" },
+  { code: "pt", name: "Portuguese", flag: "🇧🇷" },
+  { code: "zh", name: "Chinese", flag: "🇨🇳" },
+  { code: "ja", name: "Japanese", flag: "🇯🇵" },
+  { code: "ko", name: "Korean", flag: "🇰🇷" },
+  { code: "it", name: "Italian", flag: "🇮🇹" },
+  { code: "nl", name: "Dutch", flag: "🇳🇱" },
+  { code: "tr", name: "Turkish", flag: "🇹🇷" },
+  { code: "ru", name: "Russian", flag: "🇷🇺" },
+];
 
 export default function VoiceAIConfig() {
   const { tenantId } = useTenant();
@@ -34,6 +73,9 @@ export default function VoiceAIConfig() {
     voice_end_message: "",
     voicemail_message: "",
     industry_template: "",
+    voice_id: "",
+    voice_voice_name: "",
+    primary_language: "en",
   });
   const [personalityLoaded, setPersonalityLoaded] = useState(false);
 
@@ -48,6 +90,8 @@ export default function VoiceAIConfig() {
     byo_vapi_phone_number_id: "",
   });
   const [outboundLoaded, setOutboundLoaded] = useState(false);
+  const [byoVerifying, setByoVerifying] = useState(false);
+  const [byoVerifyResult, setByoVerifyResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   // === Section D: Inbound State ===
   const [inboundConfig, setInboundConfig] = useState({
@@ -55,6 +99,9 @@ export default function VoiceAIConfig() {
     voice_forward_number: "",
   });
   const [inboundLoaded, setInboundLoaded] = useState(false);
+
+  // VAPI sync state
+  const [vapiSyncing, setVapiSyncing] = useState(false);
 
   // Load tenant config
   const { data: config } = useQuery({
@@ -82,6 +129,9 @@ export default function VoiceAIConfig() {
         voice_end_message: config.voice_end_message || "",
         voicemail_message: config.voicemail_message || "",
         industry_template: config.industry || "general",
+        voice_id: config.voice_id || "",
+        voice_voice_name: config.voice_voice_name || "",
+        primary_language: config.primary_language || "en",
       });
       setPersonalityLoaded(true);
     }
@@ -147,6 +197,71 @@ export default function VoiceAIConfig() {
       .replace(/\{\{deposit_amount\}\}/g, config?.deposit_amount || "50");
   };
 
+  // === VAPI Sync helper ===
+  const syncToVAPI = async () => {
+    if (!config?.vapi_assistant_id || config?.voice_mode === "byo_vapi") return;
+    setVapiSyncing(true);
+    try {
+      await fetch("https://webhooks.zatesystems.com/webhook/voice/sync-assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tenant_id: tenantId,
+          assistant_id: config.vapi_assistant_id,
+          updates: {
+            first_message: personalityConfig.voice_first_message || undefined,
+            system_prompt: personalityConfig.custom_system_prompt || (selectedTemplate?.system_prompt ? previewPrompt(selectedTemplate.system_prompt) : undefined),
+            voice_id: personalityConfig.voice_id || undefined,
+            voice_name: personalityConfig.voice_voice_name || undefined,
+            language: personalityConfig.primary_language || "en",
+            ai_name: personalityConfig.ai_name || undefined,
+          },
+        }),
+      });
+      toast({ title: "VAPI Synced", description: "Assistant updated on VAPI." });
+    } catch {
+      // Non-blocking — save still succeeded even if sync fails
+      console.warn("[VoiceAIConfig] VAPI sync failed — changes saved locally");
+    } finally {
+      setVapiSyncing(false);
+    }
+  };
+
+  // === BYO VAPI Verify ===
+  const verifyByoVapi = async () => {
+    if (!outboundConfig.byo_vapi_api_key) {
+      setByoVerifyResult({ ok: false, message: "Please enter your VAPI API key first." });
+      return;
+    }
+    setByoVerifying(true);
+    setByoVerifyResult(null);
+    try {
+      const response = await fetch("https://webhooks.zatesystems.com/webhook/voice/verify-byo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tenant_id: tenantId,
+          byo_api_key: outboundConfig.byo_vapi_api_key,
+          byo_assistant_id: outboundConfig.byo_vapi_assistant_id || undefined,
+          byo_phone_number_id: outboundConfig.byo_vapi_phone_number_id || undefined,
+        }),
+      });
+      if (response.ok) {
+        const result = await response.json();
+        setByoVerifyResult({
+          ok: result.success !== false,
+          message: result.message || (result.success !== false ? "Connection verified!" : "Verification failed."),
+        });
+      } else {
+        setByoVerifyResult({ ok: false, message: "Could not verify. Check your credentials." });
+      }
+    } catch {
+      setByoVerifyResult({ ok: false, message: "Connection failed. Check your API key." });
+    } finally {
+      setByoVerifying(false);
+    }
+  };
+
   // === Save mutations ===
   const savePersonality = useMutation({
     mutationFn: async () => {
@@ -159,14 +274,19 @@ export default function VoiceAIConfig() {
           voice_end_message: personalityConfig.voice_end_message || null,
           voicemail_message: personalityConfig.voicemail_message || null,
           industry: personalityConfig.industry_template || null,
+          voice_id: personalityConfig.voice_id || null,
+          voice_voice_name: personalityConfig.voice_voice_name || null,
+          primary_language: personalityConfig.primary_language || "en",
           updated_at: new Date().toISOString(),
         })
         .eq("tenant_id", tenantId);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["voice-ai-config"] });
       toast({ title: "Saved", description: "AI personality settings updated." });
+      // Attempt VAPI sync after saving
+      await syncToVAPI();
     },
     onError: (err: any) =>
       toast({ title: "Error", description: err.message, variant: "destructive" }),
@@ -217,8 +337,96 @@ export default function VoiceAIConfig() {
       toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
+  const selectedVoice = VOICE_OPTIONS.find((v) => v.id === personalityConfig.voice_id);
+
   return (
     <div className="space-y-6">
+      {/* ========== SECTION: Voice & Language ========== */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Mic className="h-5 w-5" /> Voice & Language
+          </CardTitle>
+          <CardDescription>
+            Choose the AI voice personality and primary language
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {/* Language Selector — Pill buttons */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <Globe className="h-4 w-4" /> Primary Language
+            </Label>
+            <div className="flex flex-wrap gap-2">
+              {LANGUAGE_OPTIONS.map((lang) => (
+                <button
+                  key={lang.code}
+                  onClick={() =>
+                    setPersonalityConfig({
+                      ...personalityConfig,
+                      primary_language: lang.code,
+                    })
+                  }
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                    personalityConfig.primary_language === lang.code
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                  }`}
+                >
+                  <span>{lang.flag}</span>
+                  {lang.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Voice Selector — Grid */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <Volume2 className="h-4 w-4" /> AI Voice
+            </Label>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+              {VOICE_OPTIONS.map((voice) => (
+                <div
+                  key={voice.id}
+                  onClick={() =>
+                    setPersonalityConfig({
+                      ...personalityConfig,
+                      voice_id: voice.id,
+                      voice_voice_name: voice.name,
+                    })
+                  }
+                  className={`relative p-3 rounded-lg border-2 cursor-pointer transition-all text-center ${
+                    personalityConfig.voice_id === voice.id
+                      ? "border-primary bg-primary/5 shadow-sm"
+                      : "border-muted hover:border-muted-foreground/30"
+                  }`}
+                >
+                  <div className={`mx-auto w-10 h-10 rounded-full flex items-center justify-center mb-2 ${
+                    voice.gender === "female" ? "bg-pink-100 text-pink-600" : "bg-blue-100 text-blue-600"
+                  }`}>
+                    <Mic className="h-4 w-4" />
+                  </div>
+                  <p className="font-medium text-sm">{voice.name}</p>
+                  <p className="text-[10px] text-muted-foreground">{voice.accent}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{voice.style}</p>
+                  {personalityConfig.voice_id === voice.id && (
+                    <div className="absolute top-1.5 right-1.5">
+                      <CheckCircle className="h-4 w-4 text-primary" />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            {selectedVoice && (
+              <p className="text-xs text-muted-foreground">
+                Selected: <strong>{selectedVoice.name}</strong> — {selectedVoice.style} ({selectedVoice.provider})
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* ========== SECTION A: Industry & Persona ========== */}
       <Card>
         <CardHeader>
@@ -371,13 +579,24 @@ export default function VoiceAIConfig() {
               If set, this overrides the industry template above.
             </p>
           </div>
-          <Button
-            onClick={() => savePersonality.mutate()}
-            disabled={savePersonality.isPending}
-          >
-            <Save className="h-4 w-4 mr-2" />
-            {savePersonality.isPending ? "Saving..." : "Save Personality"}
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={() => savePersonality.mutate()}
+              disabled={savePersonality.isPending || vapiSyncing}
+            >
+              {savePersonality.isPending || vapiSyncing ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
+              {vapiSyncing ? "Syncing to VAPI..." : savePersonality.isPending ? "Saving..." : "Save & Sync"}
+            </Button>
+            {config?.voice_mode !== "byo_vapi" && config?.vapi_assistant_id && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Zap className="h-3 w-3" /> Will auto-sync to VAPI on save
+              </p>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -456,46 +675,80 @@ export default function VoiceAIConfig() {
           )}
 
           {outboundConfig.voice_mode === "byo_vapi" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
-              <div className="space-y-2">
-                <Label>Your VAPI API Key</Label>
-                <Input
-                  type="password"
-                  placeholder="Your VAPI API key"
-                  value={outboundConfig.byo_vapi_api_key}
-                  onChange={(e) =>
-                    setOutboundConfig({
-                      ...outboundConfig,
-                      byo_vapi_api_key: e.target.value,
-                    })
-                  }
-                />
+            <div className="space-y-4 pt-4 border-t">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Your VAPI API Key</Label>
+                  <Input
+                    type="password"
+                    placeholder="Your VAPI API key"
+                    value={outboundConfig.byo_vapi_api_key}
+                    onChange={(e) => {
+                      setOutboundConfig({
+                        ...outboundConfig,
+                        byo_vapi_api_key: e.target.value,
+                      });
+                      setByoVerifyResult(null);
+                    }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Your Assistant ID</Label>
+                  <Input
+                    placeholder="Your assistant ID"
+                    value={outboundConfig.byo_vapi_assistant_id}
+                    onChange={(e) => {
+                      setOutboundConfig({
+                        ...outboundConfig,
+                        byo_vapi_assistant_id: e.target.value,
+                      });
+                      setByoVerifyResult(null);
+                    }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Your Phone Number ID</Label>
+                  <Input
+                    placeholder="Your phone number ID"
+                    value={outboundConfig.byo_vapi_phone_number_id}
+                    onChange={(e) => {
+                      setOutboundConfig({
+                        ...outboundConfig,
+                        byo_vapi_phone_number_id: e.target.value,
+                      });
+                      setByoVerifyResult(null);
+                    }}
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Your Assistant ID</Label>
-                <Input
-                  placeholder="Your assistant ID"
-                  value={outboundConfig.byo_vapi_assistant_id}
-                  onChange={(e) =>
-                    setOutboundConfig({
-                      ...outboundConfig,
-                      byo_vapi_assistant_id: e.target.value,
-                    })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Your Phone Number ID</Label>
-                <Input
-                  placeholder="Your phone number ID"
-                  value={outboundConfig.byo_vapi_phone_number_id}
-                  onChange={(e) =>
-                    setOutboundConfig({
-                      ...outboundConfig,
-                      byo_vapi_phone_number_id: e.target.value,
-                    })
-                  }
-                />
+
+              {/* Verify Connection Button */}
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={verifyByoVapi}
+                  disabled={byoVerifying || !outboundConfig.byo_vapi_api_key}
+                >
+                  {byoVerifying ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <ShieldCheck className="h-4 w-4 mr-2" />
+                  )}
+                  {byoVerifying ? "Verifying..." : "Verify Connection"}
+                </Button>
+                {byoVerifyResult && (
+                  <div className={`flex items-center gap-1.5 text-sm ${
+                    byoVerifyResult.ok ? "text-green-600" : "text-red-600"
+                  }`}>
+                    {byoVerifyResult.ok ? (
+                      <CheckCircle className="h-4 w-4" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4" />
+                    )}
+                    {byoVerifyResult.message}
+                  </div>
+                )}
               </div>
             </div>
           )}

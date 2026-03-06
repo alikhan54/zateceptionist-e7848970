@@ -24,6 +24,10 @@ import {
   CreditCard,
   X,
   RefreshCcw,
+  Star,
+  Brain,
+  Target,
+  Calendar,
 } from "lucide-react";
 
 const COUNTRY_FLAGS: Record<string, string> = {
@@ -33,6 +37,22 @@ const COUNTRY_FLAGS: Record<string, string> = {
   PK: "\u{1F1F5}\u{1F1F0}",
 };
 
+// Map VAPI ended_reason to human-readable labels
+const STATUS_LABELS: Record<string, string> = {
+  "completed": "Completed",
+  "customer-ended-call": "Customer Hung Up",
+  "assistant-ended-call": "AI Ended",
+  "silence-timed-out": "Silence Timeout",
+  "customer-did-not-answer": "No Answer",
+  "voicemail": "Voicemail",
+  "failed": "Failed",
+  "no-answer": "No Answer",
+  "initiated": "Initiated",
+  "ringing": "Ringing",
+  "busy": "Busy",
+  "error": "Error",
+};
+
 export default function VoiceCallLog() {
   const { tenantId } = useTenant();
   const queryClient = useQueryClient();
@@ -40,7 +60,10 @@ export default function VoiceCallLog() {
   const [filters, setFilters] = useState({
     direction: "all",
     status: "all",
+    outcome: "all",
     search: "",
+    dateFrom: "",
+    dateTo: "",
   });
 
   // Real-time subscription
@@ -61,7 +84,7 @@ export default function VoiceCallLog() {
 
   // Fetch all calls (SLUG tenant_id)
   const { data: calls = [], isLoading, refetch } = useQuery({
-    queryKey: ["voice-calllog", tenantId, filters.direction, filters.status],
+    queryKey: ["voice-calllog", tenantId, filters.direction, filters.status, filters.outcome, filters.dateFrom, filters.dateTo],
     queryFn: async () => {
       if (!tenantId) return [];
       let query = supabase
@@ -72,6 +95,9 @@ export default function VoiceCallLog() {
         .limit(200);
       if (filters.direction !== "all") query = query.eq("direction", filters.direction);
       if (filters.status !== "all") query = query.eq("call_status", filters.status);
+      if (filters.outcome !== "all") query = query.eq("outcome", filters.outcome);
+      if (filters.dateFrom) query = query.gte("started_at", filters.dateFrom + "T00:00:00");
+      if (filters.dateTo) query = query.lte("started_at", filters.dateTo + "T23:59:59");
       const { data, error } = await query;
       if (error) { console.error("[VoiceCallLog] Error:", error); return []; }
       return data || [];
@@ -88,7 +114,8 @@ export default function VoiceCallLog() {
           (c.lead_name || "").toLowerCase().includes(s) ||
           (c.from_number || "").includes(s) ||
           (c.to_number || "").includes(s) ||
-          (c.lead_company || "").toLowerCase().includes(s)
+          (c.lead_company || "").toLowerCase().includes(s) ||
+          (c.ai_summary || "").toLowerCase().includes(s)
         );
       })
     : calls;
@@ -111,11 +138,19 @@ export default function VoiceCallLog() {
   // Stats
   const today = new Date().toISOString().split("T")[0];
   const todayCalls = calls.filter((c: any) => c.started_at?.startsWith(today));
-  const completedCalls = calls.filter((c: any) => c.call_status === "completed");
+  const completedCalls = calls.filter((c: any) => c.call_status === "completed" || c.call_status === "customer-ended-call" || c.call_status === "assistant-ended-call");
   const successRate = calls.length > 0 ? Math.round((completedCalls.length / calls.length) * 100) : 0;
   const avgDuration = completedCalls.length > 0
     ? Math.round(completedCalls.reduce((s: number, c: any) => s + (c.duration_seconds || 0), 0) / completedCalls.length)
     : 0;
+  const avgScore = calls.filter((c: any) => c.call_score != null).length > 0
+    ? Math.round(calls.filter((c: any) => c.call_score != null).reduce((s: number, c: any) => s + (c.call_score || 0), 0) / calls.filter((c: any) => c.call_score != null).length)
+    : null;
+
+  // Unique outcomes for filter
+  const uniqueOutcomes = Array.from(new Set(calls.map((c: any) => c.outcome).filter(Boolean)));
+
+  const hasActiveFilters = filters.search || filters.direction !== "all" || filters.status !== "all" || filters.outcome !== "all" || filters.dateFrom || filters.dateTo;
 
   const formatDuration = (s: number) => {
     if (!s) return "0s";
@@ -133,9 +168,10 @@ export default function VoiceCallLog() {
   };
 
   const getStatusColor = (s: string) => {
-    if (s === "completed") return "bg-green-100 text-green-800";
-    if (s === "failed" || s === "no-answer") return "bg-red-100 text-red-800";
+    if (s === "completed" || s === "customer-ended-call" || s === "assistant-ended-call") return "bg-green-100 text-green-800";
+    if (s === "failed" || s === "no-answer" || s === "error" || s === "customer-did-not-answer") return "bg-red-100 text-red-800";
     if (s === "initiated" || s === "ringing") return "bg-blue-100 text-blue-800";
+    if (s === "voicemail" || s === "silence-timed-out" || s === "busy") return "bg-amber-100 text-amber-800";
     return "bg-gray-100 text-gray-600";
   };
 
@@ -146,10 +182,16 @@ export default function VoiceCallLog() {
     return "bg-yellow-100 text-yellow-800";
   };
 
+  const getScoreColor = (score: number) => {
+    if (score >= 80) return "text-green-600";
+    if (score >= 60) return "text-yellow-600";
+    return "text-red-600";
+  };
+
   return (
     <div className="space-y-6">
       {/* Stats Row */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center justify-between">
@@ -206,6 +248,19 @@ export default function VoiceCallLog() {
           <CardContent className="pt-4">
             <div className="flex items-center justify-between">
               <div>
+                <p className="text-sm text-muted-foreground">Avg Score</p>
+                <p className={`text-2xl font-bold ${avgScore != null ? getScoreColor(avgScore) : ""}`}>
+                  {avgScore != null ? `${avgScore}/100` : "N/A"}
+                </p>
+              </div>
+              <Star className="h-8 w-8 text-yellow-500" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between">
+              <div>
                 <p className="text-sm text-muted-foreground">Credits</p>
                 <p className="text-2xl font-bold">
                   {credits ? `${Number(credits.balance_minutes || 0).toFixed(0)}m` : "N/A"}
@@ -224,7 +279,7 @@ export default function VoiceCallLog() {
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by name, company, or phone..."
+                placeholder="Search by name, company, phone, or summary..."
                 className="pl-9"
                 value={filters.search}
                 onChange={(e) => setFilters({ ...filters, search: e.target.value })}
@@ -246,13 +301,46 @@ export default function VoiceCallLog() {
             >
               <option value="all">All Statuses</option>
               <option value="completed">Completed</option>
-              <option value="initiated">Initiated</option>
+              <option value="customer-ended-call">Customer Ended</option>
+              <option value="assistant-ended-call">AI Ended</option>
               <option value="failed">Failed</option>
               <option value="no-answer">No Answer</option>
+              <option value="voicemail">Voicemail</option>
+              <option value="silence-timed-out">Silence Timeout</option>
             </select>
-            {(filters.search || filters.direction !== "all" || filters.status !== "all") && (
+            {uniqueOutcomes.length > 0 && (
+              <select
+                className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={filters.outcome}
+                onChange={(e) => setFilters({ ...filters, outcome: e.target.value })}
+              >
+                <option value="all">All Outcomes</option>
+                {uniqueOutcomes.map((o: string) => (
+                  <option key={o} value={o}>{o}</option>
+                ))}
+              </select>
+            )}
+            <div className="flex items-center gap-1">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <Input
+                type="date"
+                className="h-10 w-36"
+                value={filters.dateFrom}
+                onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
+                placeholder="From"
+              />
+              <span className="text-muted-foreground text-xs">to</span>
+              <Input
+                type="date"
+                className="h-10 w-36"
+                value={filters.dateTo}
+                onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
+                placeholder="To"
+              />
+            </div>
+            {hasActiveFilters && (
               <Button variant="ghost" size="sm"
-                onClick={() => setFilters({ direction: "all", status: "all", search: "" })}>
+                onClick={() => setFilters({ direction: "all", status: "all", outcome: "all", search: "", dateFrom: "", dateTo: "" })}>
                 <X className="h-4 w-4 mr-1" /> Clear
               </Button>
             )}
@@ -317,6 +405,11 @@ export default function VoiceCallLog() {
                           {call.lead_country && (
                             <span className="text-xs">{COUNTRY_FLAGS[call.lead_country] || ""}</span>
                           )}
+                          {call.call_score != null && (
+                            <span className={`text-xs font-medium ${getScoreColor(call.call_score)}`}>
+                              <Star className="h-3 w-3 inline mr-0.5" />{call.call_score}
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <span>{formatTime(call.started_at)}</span>
@@ -324,6 +417,12 @@ export default function VoiceCallLog() {
                           <span>{formatDuration(call.duration_seconds || 0)}</span>
                           {call.total_cost != null && Number(call.total_cost) > 0 && (
                             <><span>&middot;</span><span>${Number(call.total_cost).toFixed(3)}</span></>
+                          )}
+                          {call.outcome && (
+                            <><span>&middot;</span>
+                            <span className="flex items-center gap-0.5">
+                              <Target className="h-3 w-3" /> {call.outcome}
+                            </span></>
                           )}
                         </div>
                       </div>
@@ -335,10 +434,10 @@ export default function VoiceCallLog() {
                         </Badge>
                       )}
                       <Badge className={getStatusColor(call.call_status || "unknown")}>
-                        {call.call_status === "completed"
+                        {(call.call_status === "completed" || call.call_status === "customer-ended-call" || call.call_status === "assistant-ended-call")
                           ? <CheckCircle className="h-3 w-3 mr-1" />
                           : <AlertCircle className="h-3 w-3 mr-1" />}
-                        {call.call_status || "initiated"}
+                        {STATUS_LABELS[call.call_status] || call.call_status || "initiated"}
                       </Badge>
                     </div>
                   </div>
@@ -356,16 +455,41 @@ export default function VoiceCallLog() {
                             <p><span className="text-muted-foreground">Duration:</span> {formatDuration(call.duration_seconds || 0)}</p>
                             <p><span className="text-muted-foreground">Cost:</span> ${Number(call.total_cost || 0).toFixed(4)}</p>
                             {call.vapi_mode && <p><span className="text-muted-foreground">Mode:</span> {call.vapi_mode}</p>}
+                            {call.language && <p><span className="text-muted-foreground">Language:</span> {call.language}</p>}
                           </div>
                         </div>
                         <div>
-                          <p className="text-xs font-medium text-muted-foreground mb-1">AI Analysis</p>
+                          <p className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1">
+                            <Brain className="h-3 w-3" /> AI Analysis
+                          </p>
                           <div className="space-y-1 text-sm">
-                            {call.sentiment
-                              ? <p><span className="text-muted-foreground">Sentiment:</span> {call.sentiment}</p>
-                              : <p className="text-muted-foreground italic">No AI analysis yet</p>}
+                            {call.call_score != null && (
+                              <p>
+                                <span className="text-muted-foreground">Call Score:</span>{" "}
+                                <span className={`font-bold ${getScoreColor(call.call_score)}`}>{call.call_score}/100</span>
+                              </p>
+                            )}
+                            {call.sentiment && <p><span className="text-muted-foreground">Sentiment:</span> {call.sentiment}</p>}
                             {call.outcome && <p><span className="text-muted-foreground">Outcome:</span> {call.outcome}</p>}
                             {call.next_action && <p><span className="text-muted-foreground">Next Action:</span> {call.next_action}</p>}
+                            {call.follow_up_action && (
+                              <p>
+                                <span className="text-muted-foreground">Follow-up:</span> {call.follow_up_action}
+                                {call.follow_up_sent && <Badge className="ml-2 bg-green-100 text-green-800 text-[10px]">Sent</Badge>}
+                              </p>
+                            )}
+                            {call.talk_ratio != null && (
+                              <p><span className="text-muted-foreground">Talk Ratio:</span> {Number(call.talk_ratio).toFixed(0)}% customer / {(100 - Number(call.talk_ratio)).toFixed(0)}% AI</p>
+                            )}
+                            {call.questions_asked != null && call.questions_asked > 0 && (
+                              <p><span className="text-muted-foreground">Questions Asked:</span> {call.questions_asked}</p>
+                            )}
+                            {call.objections_raised != null && call.objections_raised > 0 && (
+                              <p><span className="text-muted-foreground">Objections:</span> {call.objections_raised}</p>
+                            )}
+                            {!call.sentiment && !call.outcome && !call.call_score && (
+                              <p className="text-muted-foreground italic">No AI analysis yet</p>
+                            )}
                           </div>
                         </div>
                         <div>
@@ -374,6 +498,7 @@ export default function VoiceCallLog() {
                             {call.lead_name && <p><span className="text-muted-foreground">Name:</span> {call.lead_name}</p>}
                             {call.lead_company && <p><span className="text-muted-foreground">Company:</span> {call.lead_company}</p>}
                             {call.lead_country && <p><span className="text-muted-foreground">Country:</span> {call.lead_country}</p>}
+                            {call.industry && <p><span className="text-muted-foreground">Industry:</span> {call.industry}</p>}
                             {call.lead_id && (
                               <p><span className="text-muted-foreground">Lead ID:</span>{" "}
                                 <span className="font-mono text-xs">{call.lead_id.substring(0, 8)}...</span>
@@ -385,6 +510,18 @@ export default function VoiceCallLog() {
                           </div>
                         </div>
                       </div>
+
+                      {/* AI Coaching Notes */}
+                      {call.ai_coaching_notes && (
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1">
+                            <Brain className="h-3 w-3" /> AI Coaching Notes
+                          </p>
+                          <div className="text-sm bg-amber-50 dark:bg-amber-950/30 p-3 rounded border border-amber-200 dark:border-amber-800">
+                            {call.ai_coaching_notes}
+                          </div>
+                        </div>
+                      )}
 
                       {(call.ai_summary || call.summary) && (
                         <div>
