@@ -195,4 +195,6 @@ export const INTEGRATION_FLAGS: Record<string, string> = {
   segment: 'has_segment',
   typeform: 'has_typeform',
   jotform: 'has_jotform',
+  google_ads: 'has_google_ads',
+  meta_ads: 'has_meta_ads',
 };
