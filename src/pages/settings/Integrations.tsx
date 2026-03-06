@@ -22,6 +22,7 @@ import {
   Search, LayoutGrid, List, ChevronDown, Plug, Sparkles, Activity, CreditCard,
   MessageSquare, Calendar, Users, Headphones, ShoppingCart, Brain, Zap, BarChart3,
   FileText, Filter, X, Save, CheckCircle, XCircle, Eye, EyeOff, Globe, ExternalLink,
+  Target,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
