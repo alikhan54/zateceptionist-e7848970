@@ -72,6 +72,9 @@ const Orders = lazy(() => import("./pages/operations/Orders"));
 const Vendors = lazy(() => import("./pages/operations/Vendors"));
 const Expenses = lazy(() => import("./pages/operations/Expenses"));
 const Invoices = lazy(() => import("./pages/operations/Invoices"));
+const KitchenDisplay = lazy(() => import("./pages/operations/KitchenDisplay"));
+const MenuEditor = lazy(() => import("./pages/operations/MenuEditor"));
+const Reservations = lazy(() => import("./pages/operations/Reservations"));
 
 // Communications Module
 const VoiceAIHub = lazy(() => import("./pages/communications/VoiceAIHub"));
@@ -111,6 +114,7 @@ const CompanySetup = lazy(() => import("./pages/onboarding/CompanySetup"));
 
 // Auth
 const AuthCallback = lazy(() => import("./pages/auth/Callback"));
+const OAuthChannelCallback = lazy(() => import("./pages/auth/OAuthChannelCallback"));
 
 // Invite
 const Invite = lazy(() => import("./pages/Invite"));
@@ -166,6 +170,14 @@ const App = () => (
                   element={
                     <LazyPage>
                       <AuthCallback />
+                    </LazyPage>
+                  }
+                />
+                <Route
+                  path="/auth/oauth/channel-callback"
+                  element={
+                    <LazyPage>
+                      <OAuthChannelCallback />
                     </LazyPage>
                   }
                 />
@@ -600,6 +612,30 @@ const App = () => (
                     element={
                       <LazyPage>
                         <Invoices />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/operations/kitchen-display"
+                    element={
+                      <LazyPage>
+                        <KitchenDisplay />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/operations/menu"
+                    element={
+                      <LazyPage>
+                        <MenuEditor />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/operations/reservations"
+                    element={
+                      <LazyPage>
+                        <Reservations />
                       </LazyPage>
                     }
                   />

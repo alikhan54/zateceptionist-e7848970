@@ -76,6 +76,9 @@ import {
   Eye,
   Video,
   Brain,
+  ChefHat,
+  CalendarCheck,
+  UtensilsCrossed,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -366,8 +369,11 @@ export function NavigationSidebar() {
     collapsible: true,
     featureKey: "operations_module",
     items: [
-      { title: "Inventory", url: "/operations/inventory", icon: Package },
       { title: "Orders", url: "/operations/orders", icon: ShoppingCart },
+      { title: "Kitchen Display", url: "/operations/kitchen-display", icon: ChefHat },
+      { title: "Menu Editor", url: "/operations/menu", icon: UtensilsCrossed },
+      { title: "Reservations", url: "/operations/reservations", icon: CalendarCheck },
+      { title: "Inventory", url: "/operations/inventory", icon: Package },
       { title: "Vendors", url: "/operations/vendors", icon: Truck },
       { title: "Expenses", url: "/operations/expenses", icon: Receipt },
       { title: "Invoices", url: "/operations/invoices", icon: FileCheck },
