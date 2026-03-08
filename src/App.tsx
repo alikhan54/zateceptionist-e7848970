@@ -76,6 +76,12 @@ const KitchenDisplay = lazy(() => import("./pages/operations/KitchenDisplay"));
 const MenuEditor = lazy(() => import("./pages/operations/MenuEditor"));
 const Reservations = lazy(() => import("./pages/operations/Reservations"));
 
+// Collections Module
+const CollectionsDashboard = lazy(() => import("./pages/collections/CollectionsDashboard"));
+const PTTracker = lazy(() => import("./pages/collections/PTTracker"));
+const SettlementTracker = lazy(() => import("./pages/collections/SettlementTracker"));
+const AgentKPIs = lazy(() => import("./pages/collections/AgentKPIs"));
+
 // Communications Module
 const VoiceAIHub = lazy(() => import("./pages/communications/VoiceAIHub"));
 const WhatsAppHub = lazy(() => import("./pages/communications/WhatsApp"));
@@ -636,6 +642,41 @@ const App = () => (
                     element={
                       <LazyPage>
                         <Reservations />
+                      </LazyPage>
+                    }
+                  />
+
+                  {/* Collections Module */}
+                  <Route path="/collections" element={<Navigate to="/collections/dashboard" replace />} />
+                  <Route
+                    path="/collections/dashboard"
+                    element={
+                      <LazyPage>
+                        <CollectionsDashboard />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/collections/ptp"
+                    element={
+                      <LazyPage>
+                        <PTTracker />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/collections/settlements"
+                    element={
+                      <LazyPage>
+                        <SettlementTracker />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/collections/kpis"
+                    element={
+                      <LazyPage>
+                        <AgentKPIs />
                       </LazyPage>
                     }
                   />

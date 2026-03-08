@@ -79,6 +79,10 @@ import {
   ChefHat,
   CalendarCheck,
   UtensilsCrossed,
+  Banknote,
+  HandCoins,
+  Scale,
+  Gauge,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -114,7 +118,7 @@ export function NavigationSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, isAdmin, isMasterAdmin, authUser, hasPermission } = useAuth();
-  const { tenantConfig, translate, tenantId, setTenantId } = useTenant();
+  const { tenantConfig, translate, tenantId, setTenantId, isBankingCollections } = useTenant();
   const { isEnabled } = useFeatureFlags();
   const { toast } = useToast();
 
@@ -380,6 +384,17 @@ export function NavigationSidebar() {
     ],
   };
 
+  const collectionsSection: NavSection = {
+    label: "Collections",
+    collapsible: true,
+    items: [
+      { title: "Collections Dashboard", url: "/collections/dashboard", icon: Banknote },
+      { title: "PTP Tracker", url: "/collections/ptp", icon: HandCoins },
+      { title: "Settlements", url: "/collections/settlements", icon: Scale },
+      { title: "Agent KPIs", url: "/collections/kpis", icon: Gauge },
+    ],
+  };
+
   const communicationsSection: NavSection = {
     label: "Communications",
     collapsible: true,
@@ -631,6 +646,11 @@ export function NavigationSidebar() {
         {/* Operations Section */}
         {canAccessSection(operationsSection) && (
           <CollapsibleSection section={operationsSection} sectionKey="operations" />
+        )}
+
+        {/* Collections Section — Banking Collections industry only */}
+        {isBankingCollections && canAccessSection(collectionsSection) && (
+          <CollapsibleSection section={collectionsSection} sectionKey="collections" />
         )}
 
         {/* Communications Section */}

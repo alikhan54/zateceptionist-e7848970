@@ -322,6 +322,7 @@ interface TenantContextType {
   isRealEstate: boolean;
   isRestaurant: boolean;
   isSalon: boolean;
+  isBankingCollections: boolean;
   refreshConfig: () => Promise<void>;
 }
 
@@ -515,6 +516,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const isRealEstate = industry === "real_estate";
   const isRestaurant = industry === "restaurant";
   const isSalon = industry === "salon";
+  const isBankingCollections = industry === "banking_collections";
 
   useEffect(() => {
     fetchTenantConfig();
@@ -539,6 +541,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         isRealEstate,
         isRestaurant,
         isSalon,
+        isBankingCollections,
         refreshConfig: fetchTenantConfig,
       }}
     >
