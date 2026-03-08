@@ -180,14 +180,6 @@ const App = () => (
                   }
                 />
                 <Route
-                  path="/auth/oauth/channel-callback"
-                  element={
-                    <LazyPage>
-                      <OAuthChannelCallback />
-                    </LazyPage>
-                  }
-                />
-                <Route
                   path="/onboarding"
                   element={
                     <LazyPage>
