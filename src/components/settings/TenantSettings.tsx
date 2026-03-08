@@ -27,7 +27,7 @@ export function TenantSettings() {
   const { toast } = useToast();
 
   const [businessName, setBusinessName] = useState(tenantConfig?.company_name || '');
-  const [industry, setIndustry] = useState<IndustryType>(tenantConfig?.industry || 'general');
+  const [industry, setIndustry] = useState(tenantConfig?.industry || 'general');
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = async () => {
