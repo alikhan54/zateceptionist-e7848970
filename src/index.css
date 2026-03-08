@@ -1,9 +1,9 @@
+@import './styles/marketing-power.css';
+@import './styles/theme-fixes.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import './styles/marketing-power.css';
-@import './styles/theme-fixes.css';
 
 @layer base {
   :root {

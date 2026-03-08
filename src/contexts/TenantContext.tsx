@@ -93,9 +93,6 @@ export interface TenantConfig {
   twilio_sid?: string | null;
   twilio_auth_token?: string | null;
   twilio_phone?: string | null;
-  google_api_key?: string | null;
-  google_cx_id?: string | null;
-  apify_api_key?: string | null;
   pipeline_stages?: Record<string, any> | null;
   default_pipeline_stage?: string | null;
   onboarding_step?: string | null;

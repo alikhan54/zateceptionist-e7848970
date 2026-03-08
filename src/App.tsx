@@ -120,7 +120,7 @@ const CompanySetup = lazy(() => import("./pages/onboarding/CompanySetup"));
 
 // Auth
 const AuthCallback = lazy(() => import("./pages/auth/Callback"));
-const OAuthChannelCallback = lazy(() => import("./pages/auth/OAuthChannelCallback"));
+
 
 // Invite
 const Invite = lazy(() => import("./pages/Invite"));
@@ -176,14 +176,6 @@ const App = () => (
                   element={
                     <LazyPage>
                       <AuthCallback />
-                    </LazyPage>
-                  }
-                />
-                <Route
-                  path="/auth/oauth/channel-callback"
-                  element={
-                    <LazyPage>
-                      <OAuthChannelCallback />
                     </LazyPage>
                   }
                 />
