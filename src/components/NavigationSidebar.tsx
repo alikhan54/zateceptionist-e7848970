@@ -118,7 +118,7 @@ export function NavigationSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, isAdmin, isMasterAdmin, authUser, hasPermission } = useAuth();
-  const { tenantConfig, translate, tenantId, setTenantId, isBankingCollections } = useTenant();
+  const { tenantConfig, translate, tenantId, setTenantId, isRestaurant, isBankingCollections } = useTenant();
   const { isEnabled } = useFeatureFlags();
   const { toast } = useToast();
 
@@ -368,16 +368,23 @@ export function NavigationSidebar() {
     ],
   };
 
-  const operationsSection: NavSection = {
-    label: "Operations",
+  const restaurantSection: NavSection = {
+    label: "Restaurant",
     collapsible: true,
-    featureKey: "operations_module",
     items: [
       { title: "Orders", url: "/operations/orders", icon: ShoppingCart },
       { title: "Kitchen Display", url: "/operations/kitchen-display", icon: ChefHat },
       { title: "Menu Editor", url: "/operations/menu", icon: UtensilsCrossed },
       { title: "Reservations", url: "/operations/reservations", icon: CalendarCheck },
       { title: "Inventory", url: "/operations/inventory", icon: Package },
+    ],
+  };
+
+  const operationsSection: NavSection = {
+    label: "Operations",
+    collapsible: true,
+    featureKey: "operations_module",
+    items: [
       { title: "Vendors", url: "/operations/vendors", icon: Truck },
       { title: "Expenses", url: "/operations/expenses", icon: Receipt },
       { title: "Invoices", url: "/operations/invoices", icon: FileCheck },
@@ -643,14 +650,19 @@ export function NavigationSidebar() {
         {/* HR AI Section */}
         {canAccessSection(hrSection) && <CollapsibleSection section={hrSection} sectionKey="hr" />}
 
-        {/* Operations Section */}
-        {canAccessSection(operationsSection) && (
-          <CollapsibleSection section={operationsSection} sectionKey="operations" />
+        {/* Restaurant Section — restaurant tenants only */}
+        {isRestaurant && canAccessSection(restaurantSection) && (
+          <CollapsibleSection section={restaurantSection} sectionKey="restaurant" />
         )}
 
         {/* Collections Section — Banking Collections industry only */}
         {isBankingCollections && canAccessSection(collectionsSection) && (
           <CollapsibleSection section={collectionsSection} sectionKey="collections" />
+        )}
+
+        {/* Operations Section (general: Vendors, Expenses, Invoices) */}
+        {canAccessSection(operationsSection) && (
+          <CollapsibleSection section={operationsSection} sectionKey="operations" />
         )}
 
         {/* Communications Section */}
