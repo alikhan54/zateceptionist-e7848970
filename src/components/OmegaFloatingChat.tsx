@@ -28,7 +28,7 @@ interface ChatMessage {
 }
 
 export function OmegaFloatingChat() {
-  const { user } = useAuth();
+  const { user, authUser, isAdmin } = useAuth();
   const { tenantId, tenantUuid } = useTenant();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -66,14 +66,14 @@ export function OmegaFloatingChat() {
         message: msg,
         channel: "web_chat",
         sender_identifier: user?.email || "",
-        sender_type: user?.role === "master_admin" || user?.role === "admin" ? "admin" : "team_member",
+        sender_type: isAdmin ? "admin" : "team_member",
         tenant_uuid: tenantUuid || "",
       }, tenantId || "zateceptionist");
       const data = res.data as any;
       if (res.success && data) {
         setMessages(prev => [...prev, {
           role: "assistant",
-          content: data.response || data.message || JSON.stringify(data),
+          content: data.response || data.message || data.error || "OMEGA returned an unexpected response. Please try again.",
           agent_used: data.agent_used,
           execution_time_ms: data.execution_time_ms,
         }]);

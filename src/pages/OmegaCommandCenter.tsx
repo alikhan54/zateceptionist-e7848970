@@ -65,7 +65,10 @@ function useHealth(tenantId: string) {
   const check = useCallback(async () => {
     try {
       const res = await callWebhook(WEBHOOKS.OMEGA_HEALTH, {}, tenantId);
-      if (res.success && res.data) {
+      if (res.success && res.data && res.data.status === "healthy") {
+        setData(res.data);
+        setStatus("healthy");
+      } else if (res.success && res.data && res.data.status === "online") {
         setData(res.data);
         setStatus("healthy");
       } else {
@@ -82,7 +85,7 @@ function useHealth(tenantId: string) {
 
 // --- Chat Tab ---
 function ChatTab({ tenantId, tenantUuid }: { tenantId: string; tenantUuid: string }) {
-  const { user } = useAuth();
+  const { user, authUser, isAdmin } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -104,14 +107,14 @@ function ChatTab({ tenantId, tenantUuid }: { tenantId: string; tenantUuid: strin
         message: userMsg.content,
         channel: "web_chat",
         sender_identifier: user?.email || "",
-        sender_type: user?.role === "master_admin" || user?.role === "admin" ? "admin" : "team_member",
+        sender_type: isAdmin ? "admin" : "team_member",
         tenant_uuid: tenantUuid,
       }, tenantId);
       const data = res.data as any;
       if (res.success && data) {
         setMessages(prev => [...prev, {
           role: "assistant",
-          content: data.response || data.message || JSON.stringify(data),
+          content: data.response || data.message || data.error || "OMEGA returned an unexpected response. Please try again.",
           agent_used: data.agent_used,
           execution_time_ms: data.execution_time_ms,
           timestamp: new Date(),
@@ -189,16 +192,21 @@ function ChatTab({ tenantId, tenantUuid }: { tenantId: string; tenantUuid: strin
 }
 
 // --- Activity Feed Tab ---
-function ActivityFeedTab() {
+function ActivityFeedTab({ tenantId }: { tenantId: string }) {
   const [actions, setActions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetch_ = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase.from("agent_actions" as any).select("*").order("created_at", { ascending: false }).limit(50);
+    const { data } = await supabase
+      .from("agent_actions" as any)
+      .select("*, agent_conversations!inner(tenant_id)")
+      .eq("agent_conversations.tenant_id", tenantId)
+      .order("created_at", { ascending: false })
+      .limit(50);
     setActions(data || []);
     setLoading(false);
-  }, []);
+  }, [tenantId]);
 
   useEffect(() => { fetch_(); const i = setInterval(fetch_, 30000); return () => clearInterval(i); }, [fetch_]);
 
@@ -283,7 +291,22 @@ function AutonomousLogTab({ tenantId, tenantUuid }: { tenantId: string; tenantUu
       {runResult && (
         <Card className="border-violet-500/30 bg-violet-500/5 p-4">
           <p className="text-sm font-medium text-violet-400 mb-2">Latest Run Result</p>
-          <pre className="text-xs text-muted-foreground overflow-auto max-h-40">{JSON.stringify(runResult, null, 2)}</pre>
+          <div className="space-y-3 mt-4">
+            <div className="flex gap-2 flex-wrap">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-violet-500/20 text-violet-400">Issues: {runResult.issues_found ?? 0}</span>
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400">Actions: {runResult.actions_taken ?? 0}</span>
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-400">Warnings: {runResult.warnings_logged ?? 0}</span>
+            </div>
+            {runResult.details && Array.isArray(runResult.details) && runResult.details.map((d: any, i: number) => (
+              <div key={i} className="text-sm p-3 rounded-lg bg-muted/50 border border-border">
+                <span className={`font-semibold ${d.severity === 'critical' ? 'text-red-400' : d.severity === 'warning' ? 'text-yellow-400' : 'text-green-400'}`}>
+                  [{d.severity?.toUpperCase()}]
+                </span>{' '}
+                <span className="text-muted-foreground">{d.category}:</span>{' '}
+                {d.description || d.message}
+              </div>
+            ))}
+          </div>
         </Card>
       )}
       <div className="space-y-2">
@@ -489,10 +512,9 @@ function MemoryTab({ tenantId }: { tenantId: string }) {
 
 // --- System Status Tab ---
 function SystemStatusTab({ healthData, healthStatus, refreshHealth, tenantId }: { healthData: any; healthStatus: string; refreshHealth: () => void; tenantId: string }) {
-  const { user } = useAuth();
+  const { user, authUser, isAdmin } = useAuth();
   const [omegaMode, setOmegaMode] = useState<string>("");
   const { toast } = useToast();
-  const isAdmin = user?.role === "master_admin" || user?.role === "admin";
 
   useEffect(() => {
     supabase.from("tenant_config" as any).select("ai_agent_mode").eq("tenant_id", tenantId).single().then(({ data }) => {
@@ -648,7 +670,7 @@ export default function OmegaCommandCenter() {
             <TabsTrigger value="system"><Cpu className="h-4 w-4 mr-1.5 hidden sm:inline" /> System</TabsTrigger>
           </TabsList>
           <TabsContent value="chat"><ChatTab tenantId={tenantId || "zateceptionist"} tenantUuid={tenantUuid || ""} /></TabsContent>
-          <TabsContent value="activity"><ActivityFeedTab /></TabsContent>
+          <TabsContent value="activity"><ActivityFeedTab tenantId={tenantId || "zateceptionist"} /></TabsContent>
           <TabsContent value="autonomous"><AutonomousLogTab tenantId={tenantId || "zateceptionist"} tenantUuid={tenantUuid || ""} /></TabsContent>
           <TabsContent value="approvals"><ApprovalQueueTab /></TabsContent>
           <TabsContent value="memory"><MemoryTab tenantId={tenantId || "zateceptionist"} /></TabsContent>
