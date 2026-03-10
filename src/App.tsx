@@ -88,6 +88,8 @@ const ClinicPatients = lazy(() => import("./pages/clinic/Patients"));
 const ClinicTreatments = lazy(() => import("./pages/clinic/Treatments"));
 const ClinicProducts = lazy(() => import("./pages/clinic/Products"));
 const ConsultationNotes = lazy(() => import("./pages/clinic/ConsultationNotes"));
+const HealthReports = lazy(() => import("./pages/clinic/HealthReports"));
+const DoctorReviewQueue = lazy(() => import("./pages/clinic/DoctorReviewQueue"));
 
 // Communications Module
 const VoiceAIHub = lazy(() => import("./pages/communications/VoiceAIHub"));
@@ -721,6 +723,22 @@ const App = () => (
                     element={
                       <LazyPage>
                         <ConsultationNotes />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/clinic/health-reports"
+                    element={
+                      <LazyPage>
+                        <HealthReports />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/clinic/review-queue"
+                    element={
+                      <LazyPage>
+                        <DoctorReviewQueue />
                       </LazyPage>
                     }
                   />

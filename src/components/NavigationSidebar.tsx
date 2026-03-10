@@ -416,6 +416,8 @@ export function NavigationSidebar() {
       { title: "Treatments", url: "/clinic/treatments", icon: Syringe },
       { title: "Products", url: "/clinic/products", icon: Pill },
       { title: "Consultation Notes", url: "/clinic/consultations", icon: ClipboardCheck },
+      { title: "Health Reports", url: "/clinic/health-reports", icon: FileText },
+      { title: "Doctor Reviews", url: "/clinic/review-queue", icon: ClipboardList },
     ],
   };
 

@@ -3,12 +3,16 @@ import { Badge } from "@/components/ui/badge";
 import { useClinicPatients } from "@/hooks/useClinicPatients";
 import { useClinicTreatments } from "@/hooks/useClinicTreatments";
 import { useClinicProducts } from "@/hooks/useClinicProducts";
-import { Users, Calendar, DollarSign, AlertTriangle, Syringe } from "lucide-react";
+import { useHealthReports } from "@/hooks/useHealthReports";
+import { useReviewQueue } from "@/hooks/useReviewQueue";
+import { Users, Calendar, DollarSign, AlertTriangle, Syringe, Brain, ClipboardList, FileText } from "lucide-react";
 
 export default function ClinicDashboard() {
   const { patients, stats: patientStats, isLoading: pLoading } = useClinicPatients();
   const { treatments, isLoading: tLoading } = useClinicTreatments();
   const { lowStockProducts, isLoading: prLoading } = useClinicProducts();
+  const { stats: reportStats } = useHealthReports();
+  const { stats: reviewStats } = useReviewQueue();
 
   const isLoading = pLoading || tLoading || prLoading;
 
@@ -58,6 +62,42 @@ export default function ClinicDashboard() {
           <CardContent>
             <div className="text-2xl font-bold">AED {patientStats.totalRevenue.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">From all patients</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Health Intelligence Row */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Avg Health Score</CardTitle>
+            <Brain className="h-4 w-4 text-purple-500" />
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${(reportStats.avgHealthScore || 0) >= 70 ? 'text-green-600' : (reportStats.avgHealthScore || 0) >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>
+              {reportStats.avgHealthScore ?? "—"}
+            </div>
+            <p className="text-xs text-muted-foreground">Across all patients</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pending Reviews</CardTitle>
+            <ClipboardList className="h-4 w-4 text-orange-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{reviewStats.pending}</div>
+            <p className="text-xs text-muted-foreground">{reviewStats.urgent > 0 ? `${reviewStats.urgent} urgent` : "None urgent"}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Reports This Month</CardTitle>
+            <FileText className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{reportStats.reportsThisMonth}</div>
+            <p className="text-xs text-muted-foreground">{reportStats.totalReports} total reports</p>
           </CardContent>
         </Card>
       </div>
