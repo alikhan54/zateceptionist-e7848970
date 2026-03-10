@@ -128,6 +128,9 @@ const Invite = lazy(() => import("./pages/Invite"));
 // Intelligence
 const Intelligence = lazy(() => import("./pages/Intelligence"));
 
+// OMEGA Command Center
+const OmegaCommandCenter = lazy(() => import("./pages/OmegaCommandCenter"));
+
 // Public Pages
 const PublicBlog = lazy(() => import("./pages/public/PublicBlog"));
 const PublicLandingPage = lazy(() => import("./pages/public/PublicLandingPage"));
