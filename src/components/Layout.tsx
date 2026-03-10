@@ -6,6 +6,7 @@ import { Header } from "@/components/layout/Header";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { OnboardingFlow } from "@/components/global/OnboardingFlow";
 import { SkipLink } from "@/components/shared/AccessibleComponents";
+import { OmegaFloatingChat } from "@/components/OmegaFloatingChat";
 import { Loader2 } from "lucide-react";
 
 export default function Layout() {
@@ -51,6 +52,7 @@ export default function Layout() {
         </main>
       </div>
       <OnboardingFlow />
+      <OmegaFloatingChat />
     </SidebarProvider>
   );
 }

@@ -16,10 +16,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { PageWrapper } from "@/components/shared/PageWrapper";
-
-const LANGGRAPH_URL = "http://localhost:8123";
-const TENANT_ID = "zateceptionist";
-const TENANT_UUID = "ac308ab6-f381-4eef-88ec-4d5c7a860ff9";
+import { callWebhook, WEBHOOKS } from "@/lib/api/webhooks";
+import { useTenant } from "@/contexts/TenantContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 const AGENT_COLORS: Record<string, string> = {
   OMEGA: "bg-violet-500/15 text-violet-400 border-violet-500/30",
@@ -29,6 +28,7 @@ const AGENT_COLORS: Record<string, string> = {
   CORTEX: "bg-orange-500/15 text-orange-400 border-orange-500/30",
   BEACON: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
   NEXUS: "bg-slate-500/15 text-slate-400 border-slate-500/30",
+  MEDICA: "bg-teal-500/15 text-teal-400 border-teal-500/30",
 };
 
 const MEMORY_TYPE_COLORS: Record<string, string> = {
@@ -57,34 +57,37 @@ interface ChatMessage {
   timestamp: Date;
 }
 
-// ─── Health Hook ───
-function useHealth() {
+// --- Health Hook ---
+function useHealth(tenantId: string) {
   const [status, setStatus] = useState<"loading" | "healthy" | "offline">("loading");
   const [data, setData] = useState<any>(null);
 
   const check = useCallback(async () => {
     try {
-      const res = await fetch(`${LANGGRAPH_URL}/health`);
-      if (res.ok) {
-        const d = await res.json();
-        setData(d);
+      const res = await callWebhook(WEBHOOKS.OMEGA_HEALTH, {}, tenantId);
+      if (res.success && res.data) {
+        setData(res.data);
         setStatus("healthy");
-      } else setStatus("offline");
+      } else {
+        setStatus("offline");
+      }
     } catch {
       setStatus("offline");
     }
-  }, []);
+  }, [tenantId]);
 
   useEffect(() => { check(); const i = setInterval(check, 60000); return () => clearInterval(i); }, [check]);
   return { status, data, refresh: check };
 }
 
-// ─── Chat Tab ───
-function ChatTab() {
+// --- Chat Tab ---
+function ChatTab({ tenantId, tenantUuid }: { tenantId: string; tenantUuid: string }) {
+  const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -97,21 +100,32 @@ function ChatTab() {
     setInput("");
     setLoading(true);
     try {
-      const res = await fetch(`${LANGGRAPH_URL}/omega`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMsg.content, tenant_id: TENANT_ID, tenant_uuid: TENANT_UUID }),
-      });
-      const data = await res.json();
-      setMessages(prev => [...prev, {
-        role: "assistant",
-        content: data.response || data.message || JSON.stringify(data),
-        agent_used: data.agent_used,
-        execution_time_ms: data.execution_time_ms,
-        timestamp: new Date(),
-      }]);
-    } catch (e: any) {
-      setMessages(prev => [...prev, { role: "assistant", content: `Error: ${e.message}`, timestamp: new Date() }]);
+      const res = await callWebhook(WEBHOOKS.OMEGA_CHAT, {
+        message: userMsg.content,
+        channel: "web_chat",
+        sender_identifier: user?.email || "",
+        sender_type: user?.role === "master_admin" || user?.role === "admin" ? "admin" : "team_member",
+        tenant_uuid: tenantUuid,
+      }, tenantId);
+      const data = res.data as any;
+      if (res.success && data) {
+        setMessages(prev => [...prev, {
+          role: "assistant",
+          content: data.response || data.message || JSON.stringify(data),
+          agent_used: data.agent_used,
+          execution_time_ms: data.execution_time_ms,
+          timestamp: new Date(),
+        }]);
+      } else {
+        setMessages(prev => [...prev, {
+          role: "assistant",
+          content: "OMEGA is temporarily unavailable. Please try again.",
+          timestamp: new Date(),
+        }]);
+      }
+    } catch {
+      toast({ title: "Error", description: "OMEGA is temporarily unavailable. Please try again.", variant: "destructive" });
+      setMessages(prev => [...prev, { role: "assistant", content: "OMEGA is temporarily unavailable. Please try again.", timestamp: new Date() }]);
     } finally {
       setLoading(false);
     }
@@ -150,7 +164,7 @@ function ChatTab() {
                     <span className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
                     <span className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
                   </div>
-                  <span className="text-sm text-muted-foreground">Thinking...</span>
+                  <span className="text-sm text-muted-foreground">OMEGA is thinking...</span>
                 </div>
               </div>
             </div>
@@ -174,7 +188,7 @@ function ChatTab() {
   );
 }
 
-// ─── Activity Feed Tab ───
+// --- Activity Feed Tab ---
 function ActivityFeedTab() {
   const [actions, setActions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -213,8 +227,8 @@ function ActivityFeedTab() {
   );
 }
 
-// ─── Autonomous Log Tab ───
-function AutonomousLogTab() {
+// --- Autonomous Log Tab ---
+function AutonomousLogTab({ tenantId, tenantUuid }: { tenantId: string; tenantUuid: string }) {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
@@ -228,12 +242,12 @@ function AutonomousLogTab() {
       .from("system_events" as any)
       .select("*")
       .in("event_type", ["autonomous_check", "autonomous_check_cron"])
-      .eq("tenant_id", TENANT_UUID)
+      .eq("tenant_id", tenantUuid)
       .order("created_at", { ascending: false })
       .limit(20);
     setEvents(data || []);
     setLoading(false);
-  }, []);
+  }, [tenantUuid]);
 
   useEffect(() => { fetch_(); }, [fetch_]);
 
@@ -241,17 +255,18 @@ function AutonomousLogTab() {
     setRunning(true);
     setRunResult(null);
     try {
-      const res = await fetch(`${LANGGRAPH_URL}/omega/autonomous`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tenant_id: TENANT_ID, tenant_uuid: TENANT_UUID }),
-      });
-      const data = await res.json();
-      setRunResult(data);
-      toast({ title: "Autonomous check complete" });
-      fetch_();
-    } catch (e: any) {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      const res = await callWebhook(WEBHOOKS.OMEGA_AUTONOMOUS_TRIGGER, {
+        tenant_uuid: tenantUuid,
+      }, tenantId);
+      if (res.success && res.data) {
+        setRunResult(res.data);
+        toast({ title: "Autonomous check complete" });
+        fetch_();
+      } else {
+        toast({ title: "Error", description: "OMEGA is temporarily unavailable.", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "OMEGA is temporarily unavailable.", variant: "destructive" });
     } finally {
       setRunning(false);
     }
@@ -298,7 +313,7 @@ function AutonomousLogTab() {
   );
 }
 
-// ─── Approval Queue Tab ───
+// --- Approval Queue Tab ---
 function ApprovalQueueTab() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -332,7 +347,7 @@ function ApprovalQueueTab() {
       <div className="text-center py-20">
         <Check className="h-12 w-12 mx-auto mb-4 text-emerald-400 opacity-50" />
         <p className="text-lg font-medium text-muted-foreground">No pending approvals</p>
-        <p className="text-sm text-muted-foreground">All clear — OMEGA has nothing waiting for your review.</p>
+        <p className="text-sm text-muted-foreground">All clear -- OMEGA has nothing waiting for your review.</p>
       </div>
     );
   }
@@ -365,8 +380,8 @@ function ApprovalQueueTab() {
   );
 }
 
-// ─── Memory Tab ───
-function MemoryTab() {
+// --- Memory Tab ---
+function MemoryTab({ tenantId }: { tenantId: string }) {
   const [memories, setMemories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -379,12 +394,12 @@ function MemoryTab() {
     const { data } = await supabase
       .from("agent_memory" as any)
       .select("*")
-      .eq("tenant_id", TENANT_ID)
+      .eq("tenant_id", tenantId)
       .order("updated_at", { ascending: false })
       .limit(50);
     setMemories(data || []);
     setLoading(false);
-  }, []);
+  }, [tenantId]);
 
   useEffect(() => { fetch_(); }, [fetch_]);
 
@@ -393,12 +408,13 @@ function MemoryTab() {
   const addMemory = async () => {
     if (!newMem.key.trim()) return;
     await supabase.from("agent_memory" as any).insert({
-      tenant_id: TENANT_ID,
+      tenant_id: tenantId,
       key: newMem.key,
       value: newMem.value,
       memory_type: newMem.memory_type,
       confidence: newMem.confidence[0] / 100,
-      source_agent: "OMEGA",
+      source_agent: "manual",
+      source_brain: "omega",
       access_count: 0,
     });
     toast({ title: "Memory added" });
@@ -460,8 +476,8 @@ function MemoryTab() {
               <Progress value={(m.confidence || 0) * 100} className="h-1.5" />
             </div>
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Source: {m.source_agent || "—"}</span>
-              <span>Used {m.access_count || 0}×</span>
+              <span>Source: {m.source_agent || "---"}</span>
+              <span>Used {m.access_count || 0}x</span>
             </div>
             <p className="text-[10px] text-muted-foreground">Updated {formatDistanceToNow(new Date(m.updated_at || m.created_at), { addSuffix: true })}</p>
           </Card>
@@ -471,25 +487,38 @@ function MemoryTab() {
   );
 }
 
-// ─── System Status Tab ───
-function SystemStatusTab({ healthData, healthStatus, refreshHealth }: { healthData: any; healthStatus: string; refreshHealth: () => void }) {
+// --- System Status Tab ---
+function SystemStatusTab({ healthData, healthStatus, refreshHealth, tenantId }: { healthData: any; healthStatus: string; refreshHealth: () => void; tenantId: string }) {
+  const { user } = useAuth();
   const [omegaMode, setOmegaMode] = useState<string>("");
   const { toast } = useToast();
+  const isAdmin = user?.role === "master_admin" || user?.role === "admin";
 
   useEffect(() => {
-    supabase.from("tenant_config" as any).select("ai_agent_mode").eq("tenant_id", TENANT_ID).single().then(({ data }) => {
+    supabase.from("tenant_config" as any).select("ai_agent_mode").eq("tenant_id", tenantId).single().then(({ data }) => {
       if (data?.ai_agent_mode) setOmegaMode(data.ai_agent_mode);
     });
-  }, []);
+  }, [tenantId]);
 
   const changeMode = async (mode: string) => {
-    await supabase.from("tenant_config" as any).update({ ai_agent_mode: mode }).eq("tenant_id", TENANT_ID);
+    if (!isAdmin) return;
+    await supabase.from("tenant_config" as any).update({ ai_agent_mode: mode }).eq("tenant_id", tenantId);
     setOmegaMode(mode);
     toast({ title: `OMEGA mode set to ${mode}` });
   };
 
   const agents = healthData?.agents || [];
   const channels = healthData?.channel_support || [];
+
+  if (!isAdmin) {
+    return (
+      <div className="text-center py-20">
+        <Shield className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+        <p className="text-lg font-medium text-muted-foreground">Admin Access Required</p>
+        <p className="text-sm text-muted-foreground">Only admins can view system status.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -536,7 +565,7 @@ function SystemStatusTab({ healthData, healthStatus, refreshHealth }: { healthDa
             <p className="font-medium">OMEGA Mode</p>
             <p className="text-sm text-muted-foreground">Current operational mode for the AI agent system</p>
           </div>
-          <Select value={omegaMode} onValueChange={changeMode}>
+          <Select value={omegaMode} onValueChange={changeMode} disabled={!isAdmin}>
             <SelectTrigger className="w-40"><SelectValue placeholder="Select mode" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="standard">Standard</SelectItem>
@@ -583,9 +612,10 @@ function SystemStatusTab({ healthData, healthStatus, refreshHealth }: { healthDa
   );
 }
 
-// ─── Main Page ───
+// --- Main Page ---
 export default function OmegaCommandCenter() {
-  const { status, data: healthData, refresh: refreshHealth } = useHealth();
+  const { tenantId, tenantUuid } = useTenant();
+  const { status, data: healthData, refresh: refreshHealth } = useHealth(tenantId || "zateceptionist");
 
   return (
     <PageWrapper>
@@ -603,7 +633,7 @@ export default function OmegaCommandCenter() {
           </div>
           <Badge variant="outline" className={status === "healthy" ? "border-emerald-500/30 text-emerald-400" : "border-red-500/30 text-red-400"}>
             <span className={`h-2 w-2 rounded-full mr-2 ${status === "healthy" ? "bg-emerald-400" : status === "offline" ? "bg-red-400" : "bg-amber-400 animate-pulse"}`} />
-            {status === "healthy" ? "Healthy" : status === "offline" ? "Offline" : "Checking..."}
+            {status === "healthy" ? "Online" : status === "offline" ? "Offline" : "Checking..."}
           </Badge>
         </div>
 
@@ -617,12 +647,12 @@ export default function OmegaCommandCenter() {
             <TabsTrigger value="memory"><Database className="h-4 w-4 mr-1.5 hidden sm:inline" /> Memory</TabsTrigger>
             <TabsTrigger value="system"><Cpu className="h-4 w-4 mr-1.5 hidden sm:inline" /> System</TabsTrigger>
           </TabsList>
-          <TabsContent value="chat"><ChatTab /></TabsContent>
+          <TabsContent value="chat"><ChatTab tenantId={tenantId || "zateceptionist"} tenantUuid={tenantUuid || ""} /></TabsContent>
           <TabsContent value="activity"><ActivityFeedTab /></TabsContent>
-          <TabsContent value="autonomous"><AutonomousLogTab /></TabsContent>
+          <TabsContent value="autonomous"><AutonomousLogTab tenantId={tenantId || "zateceptionist"} tenantUuid={tenantUuid || ""} /></TabsContent>
           <TabsContent value="approvals"><ApprovalQueueTab /></TabsContent>
-          <TabsContent value="memory"><MemoryTab /></TabsContent>
-          <TabsContent value="system"><SystemStatusTab healthData={healthData} healthStatus={status} refreshHealth={refreshHealth} /></TabsContent>
+          <TabsContent value="memory"><MemoryTab tenantId={tenantId || "zateceptionist"} /></TabsContent>
+          <TabsContent value="system"><SystemStatusTab healthData={healthData} healthStatus={status} refreshHealth={refreshHealth} tenantId={tenantId || "zateceptionist"} /></TabsContent>
         </Tabs>
       </div>
     </PageWrapper>

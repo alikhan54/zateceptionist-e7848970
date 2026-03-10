@@ -93,6 +93,10 @@ export const WEBHOOKS = {
   TRAIN_AI_KNOWLEDGE: "/onboarding/train-agents",
   // OBD workflow for document analysis
   ANALYZE_DOCUMENT: "/onboarding/analyze-document",
+  // OMEGA AI Proxy (Phase 7)
+  OMEGA_CHAT: "/omega-chat",
+  OMEGA_HEALTH: "/omega-health",
+  OMEGA_AUTONOMOUS_TRIGGER: "/omega-autonomous-trigger",
 } as const;
 
 export type WebhookEndpoint = (typeof WEBHOOKS)[keyof typeof WEBHOOKS];
