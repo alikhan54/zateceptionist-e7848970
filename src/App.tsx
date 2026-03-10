@@ -767,6 +767,15 @@ const App = () => (
                     }
                   />
 
+                  {/* OMEGA Command Center */}
+                  <Route
+                    path="/omega"
+                    element={
+                      <LazyPage>
+                        <OmegaCommandCenter />
+                      </LazyPage>
+                    }
+                  />
                   {/* Settings Module */}
                   <Route
                     path="/settings"
