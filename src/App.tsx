@@ -82,6 +82,13 @@ const PTTracker = lazy(() => import("./pages/collections/PTTracker"));
 const SettlementTracker = lazy(() => import("./pages/collections/SettlementTracker"));
 const AgentKPIs = lazy(() => import("./pages/collections/AgentKPIs"));
 
+// Clinic Module
+const ClinicDashboard = lazy(() => import("./pages/clinic/ClinicDashboard"));
+const ClinicPatients = lazy(() => import("./pages/clinic/Patients"));
+const ClinicTreatments = lazy(() => import("./pages/clinic/Treatments"));
+const ClinicProducts = lazy(() => import("./pages/clinic/Products"));
+const ConsultationNotes = lazy(() => import("./pages/clinic/ConsultationNotes"));
+
 // Communications Module
 const VoiceAIHub = lazy(() => import("./pages/communications/VoiceAIHub"));
 const WhatsAppHub = lazy(() => import("./pages/communications/WhatsApp"));
@@ -671,6 +678,49 @@ const App = () => (
                     element={
                       <LazyPage>
                         <AgentKPIs />
+                      </LazyPage>
+                    }
+                  />
+
+                  {/* Clinic Module */}
+                  <Route path="/clinic" element={<Navigate to="/clinic/dashboard" replace />} />
+                  <Route
+                    path="/clinic/dashboard"
+                    element={
+                      <LazyPage>
+                        <ClinicDashboard />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/clinic/patients"
+                    element={
+                      <LazyPage>
+                        <ClinicPatients />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/clinic/treatments"
+                    element={
+                      <LazyPage>
+                        <ClinicTreatments />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/clinic/products"
+                    element={
+                      <LazyPage>
+                        <ClinicProducts />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/clinic/consultations"
+                    element={
+                      <LazyPage>
+                        <ConsultationNotes />
                       </LazyPage>
                     }
                   />

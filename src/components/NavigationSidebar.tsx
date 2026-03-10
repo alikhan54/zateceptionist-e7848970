@@ -83,6 +83,11 @@ import {
   HandCoins,
   Scale,
   Gauge,
+  Stethoscope,
+  Heart,
+  Pill,
+  Syringe,
+  ClipboardCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -118,7 +123,7 @@ export function NavigationSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, isAdmin, isMasterAdmin, authUser, hasPermission } = useAuth();
-  const { tenantConfig, translate, tenantId, setTenantId, isRestaurant, isBankingCollections } = useTenant();
+  const { tenantConfig, translate, tenantId, setTenantId, isRestaurant, isBankingCollections, isHealthcareClinic } = useTenant();
   const { isEnabled } = useFeatureFlags();
   const { toast } = useToast();
 
@@ -402,6 +407,18 @@ export function NavigationSidebar() {
     ],
   };
 
+  const clinicSection: NavSection = {
+    label: "Clinic",
+    collapsible: true,
+    items: [
+      { title: "Clinic Dashboard", url: "/clinic/dashboard", icon: Stethoscope },
+      { title: "Patients", url: "/clinic/patients", icon: Heart },
+      { title: "Treatments", url: "/clinic/treatments", icon: Syringe },
+      { title: "Products", url: "/clinic/products", icon: Pill },
+      { title: "Consultation Notes", url: "/clinic/consultations", icon: ClipboardCheck },
+    ],
+  };
+
   const communicationsSection: NavSection = {
     label: "Communications",
     collapsible: true,
@@ -658,6 +675,11 @@ export function NavigationSidebar() {
         {/* Collections Section — Banking Collections industry only */}
         {isBankingCollections && canAccessSection(collectionsSection) && (
           <CollapsibleSection section={collectionsSection} sectionKey="collections" />
+        )}
+
+        {/* Clinic Section — Healthcare/Aesthetics industry only */}
+        {isHealthcareClinic && canAccessSection(clinicSection) && (
+          <CollapsibleSection section={clinicSection} sectionKey="clinic" />
         )}
 
         {/* Operations Section (general: Vendors, Expenses, Invoices) */}

@@ -316,6 +316,7 @@ interface TenantContextType {
   getDealStages: () => string[];
   industry: IndustryType;
   isHealthcare: boolean;
+  isHealthcareClinic: boolean;
   isRealEstate: boolean;
   isRestaurant: boolean;
   isSalon: boolean;
@@ -510,6 +511,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   }, [industry]);
 
   const isHealthcare = industry === "healthcare";
+  const isHealthcareClinic = industry === "healthcare_clinic" || industry === "healthcare";
   const isRealEstate = industry === "real_estate";
   const isRestaurant = industry === "restaurant";
   const isSalon = industry === "salon";
@@ -535,6 +537,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         getDealStages,
         industry,
         isHealthcare,
+        isHealthcareClinic,
         isRealEstate,
         isRestaurant,
         isSalon,
