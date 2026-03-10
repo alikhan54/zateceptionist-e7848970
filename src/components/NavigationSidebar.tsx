@@ -88,6 +88,13 @@ import {
   Pill,
   Syringe,
   ClipboardCheck,
+  Ruler,
+  Warehouse,
+  HelpCircle,
+  Calculator,
+  Home,
+  Handshake,
+  MapPin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -123,7 +130,7 @@ export function NavigationSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, isAdmin, isMasterAdmin, authUser, hasPermission } = useAuth();
-  const { tenantConfig, translate, tenantId, setTenantId, isRestaurant, isBankingCollections, isHealthcareClinic } = useTenant();
+  const { tenantConfig, translate, tenantId, setTenantId, isRestaurant, isBankingCollections, isHealthcareClinic, isConstructionEstimation, isRealEstate } = useTenant();
   const { isEnabled } = useFeatureFlags();
   const { toast } = useToast();
 
@@ -161,6 +168,8 @@ export function NavigationSidebar() {
       analytics: ["/analytics"],
       settings: ["/settings"],
       admin: ["/admin"],
+      estimation: ["/estimation"],
+      realestate: ["/realestate"],
     };
 
     const newOpenSections: Record<string, boolean> = { ...openSections };
@@ -418,6 +427,33 @@ export function NavigationSidebar() {
       { title: "Consultation Notes", url: "/clinic/consultations", icon: ClipboardCheck },
       { title: "Health Reports", url: "/clinic/health-reports", icon: FileText },
       { title: "Doctor Reviews", url: "/clinic/review-queue", icon: ClipboardList },
+    ],
+  };
+
+  const estimationSection: NavSection = {
+    label: "Estimation",
+    collapsible: true,
+    items: [
+      { title: "Projects", url: "/estimation/projects", icon: Building2 },
+      { title: "Takeoff Workspace", url: "/estimation/takeoffs", icon: Ruler },
+      { title: "Material Database", url: "/estimation/materials", icon: Warehouse },
+      { title: "Team Workload", url: "/estimation/team", icon: Users },
+      { title: "RFI Tracker", url: "/estimation/rfis", icon: HelpCircle },
+      { title: "Reports", url: "/estimation/reports", icon: Calculator },
+    ],
+  };
+
+  const realEstateSection: NavSection = {
+    label: "Real Estate",
+    collapsible: true,
+    items: [
+      { title: "RE Dashboard", url: "/realestate", icon: Building2 },
+      { title: "Listings", url: "/realestate/listings", icon: Home },
+      { title: "Clients", url: "/realestate/clients", icon: Users },
+      { title: "Viewings", url: "/realestate/viewings", icon: Calendar },
+      { title: "Deals", url: "/realestate/deals", icon: Handshake },
+      { title: "EOI Tracker", url: "/realestate/eoi", icon: FileCheck },
+      { title: "Road Shows", url: "/realestate/road-shows", icon: MapPin },
     ],
   };
 
@@ -682,6 +718,16 @@ export function NavigationSidebar() {
         {/* Clinic Section — Healthcare/Aesthetics industry only */}
         {isHealthcareClinic && canAccessSection(clinicSection) && (
           <CollapsibleSection section={clinicSection} sectionKey="clinic" />
+        )}
+
+        {/* Estimation Section — Construction industry only */}
+        {isConstructionEstimation && canAccessSection(estimationSection) && (
+          <CollapsibleSection section={estimationSection} sectionKey="estimation" />
+        )}
+
+        {/* Real Estate Section — Real Estate industry only */}
+        {isRealEstate && canAccessSection(realEstateSection) && (
+          <CollapsibleSection section={realEstateSection} sectionKey="realestate" />
         )}
 
         {/* Operations Section (general: Vendors, Expenses, Invoices) */}

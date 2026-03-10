@@ -91,6 +91,24 @@ const ConsultationNotes = lazy(() => import("./pages/clinic/ConsultationNotes"))
 const HealthReports = lazy(() => import("./pages/clinic/HealthReports"));
 const DoctorReviewQueue = lazy(() => import("./pages/clinic/DoctorReviewQueue"));
 
+// Real Estate Module
+const RealEstateDashboard = lazy(() => import("./pages/realestate/RealEstateDashboard"));
+const PropertyListings = lazy(() => import("./pages/realestate/PropertyListings"));
+const REClientManagement = lazy(() => import("./pages/realestate/ClientManagement"));
+const ViewingCalendar = lazy(() => import("./pages/realestate/ViewingCalendar"));
+const DealPipeline = lazy(() => import("./pages/realestate/DealPipeline"));
+const EOITracker = lazy(() => import("./pages/realestate/EOITracker"));
+const RoadShowManager = lazy(() => import("./pages/realestate/RoadShowManager"));
+
+// Estimation Module
+const EstimationProjects = lazy(() => import("./pages/estimation/ProjectsDashboard"));
+const EstimationProjectDetail = lazy(() => import("./pages/estimation/ProjectDetail"));
+const EstimationTakeoffs = lazy(() => import("./pages/estimation/TakeoffWorkspace"));
+const EstimationMaterials = lazy(() => import("./pages/estimation/MaterialDatabase"));
+const EstimationTeam = lazy(() => import("./pages/estimation/TeamWorkload"));
+const EstimationRFIs = lazy(() => import("./pages/estimation/RFITracker"));
+const EstimationReports = lazy(() => import("./pages/estimation/EstimationReports"));
+
 // Communications Module
 const VoiceAIHub = lazy(() => import("./pages/communications/VoiceAIHub"));
 const WhatsAppHub = lazy(() => import("./pages/communications/WhatsApp"));
@@ -742,6 +760,25 @@ const App = () => (
                       </LazyPage>
                     }
                   />
+
+                  {/* Estimation Module */}
+                  <Route path="/estimation" element={<Navigate to="/estimation/projects" replace />} />
+                  <Route path="/estimation/projects" element={<LazyPage><EstimationProjects /></LazyPage>} />
+                  <Route path="/estimation/projects/:id" element={<LazyPage><EstimationProjectDetail /></LazyPage>} />
+                  <Route path="/estimation/takeoffs" element={<LazyPage><EstimationTakeoffs /></LazyPage>} />
+                  <Route path="/estimation/materials" element={<LazyPage><EstimationMaterials /></LazyPage>} />
+                  <Route path="/estimation/team" element={<LazyPage><EstimationTeam /></LazyPage>} />
+                  <Route path="/estimation/rfis" element={<LazyPage><EstimationRFIs /></LazyPage>} />
+                  <Route path="/estimation/reports" element={<LazyPage><EstimationReports /></LazyPage>} />
+
+                  {/* Real Estate Module */}
+                  <Route path="/realestate" element={<LazyPage><RealEstateDashboard /></LazyPage>} />
+                  <Route path="/realestate/listings" element={<LazyPage><PropertyListings /></LazyPage>} />
+                  <Route path="/realestate/clients" element={<LazyPage><REClientManagement /></LazyPage>} />
+                  <Route path="/realestate/viewings" element={<LazyPage><ViewingCalendar /></LazyPage>} />
+                  <Route path="/realestate/deals" element={<LazyPage><DealPipeline /></LazyPage>} />
+                  <Route path="/realestate/eoi" element={<LazyPage><EOITracker /></LazyPage>} />
+                  <Route path="/realestate/road-shows" element={<LazyPage><RoadShowManager /></LazyPage>} />
 
                   {/* Communications Module */}
                   <Route path="/communications" element={<Navigate to="/communications/voice-ai" replace />} />
