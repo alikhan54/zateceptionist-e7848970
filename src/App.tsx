@@ -121,12 +121,14 @@ const CompanySetup = lazy(() => import("./pages/onboarding/CompanySetup"));
 // Auth
 const AuthCallback = lazy(() => import("./pages/auth/Callback"));
 
-
 // Invite
 const Invite = lazy(() => import("./pages/Invite"));
 
 // Intelligence
 const Intelligence = lazy(() => import("./pages/Intelligence"));
+
+// OMEGA Command Center
+const OmegaCommandCenter = lazy(() => import("./pages/OmegaCommandCenter"));
 
 // Public Pages
 const PublicBlog = lazy(() => import("./pages/public/PublicBlog"));
@@ -765,6 +767,15 @@ const App = () => (
                     }
                   />
 
+                  {/* OMEGA Command Center */}
+                  <Route
+                    path="/omega"
+                    element={
+                      <LazyPage>
+                        <OmegaCommandCenter />
+                      </LazyPage>
+                    }
+                  />
                   {/* Settings Module */}
                   <Route
                     path="/settings"

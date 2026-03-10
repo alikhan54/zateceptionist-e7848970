@@ -670,6 +670,12 @@ export function NavigationSidebar() {
           <CollapsibleSection section={communicationsSection} sectionKey="communications" />
         )}
 
+        {/* AI Command */}
+        <StaticSection section={{
+          label: "AI Command",
+          items: [{ title: "OMEGA", url: "/omega", icon: Brain }],
+        }} />
+
         {/* Analytics Section */}
         {canAccessSection(analyticsSection) && <CollapsibleSection section={analyticsSection} sectionKey="analytics" />}
 
