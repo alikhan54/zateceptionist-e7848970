@@ -440,6 +440,7 @@ export function NavigationSidebar() {
       { title: "Team Workload", url: "/estimation/team", icon: Users },
       { title: "RFI Tracker", url: "/estimation/rfis", icon: HelpCircle },
       { title: "Reports", url: "/estimation/reports", icon: Calculator },
+      { title: "AI Approval Queue", url: "/estimation/approval", icon: Bot },
     ],
   };
 

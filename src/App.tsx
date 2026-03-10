@@ -108,6 +108,7 @@ const EstimationMaterials = lazy(() => import("./pages/estimation/MaterialDataba
 const EstimationTeam = lazy(() => import("./pages/estimation/TeamWorkload"));
 const EstimationRFIs = lazy(() => import("./pages/estimation/RFITracker"));
 const EstimationReports = lazy(() => import("./pages/estimation/EstimationReports"));
+const EstimationApprovalQueue = lazy(() => import("./pages/estimation/EstimationApprovalQueue"));
 
 // Communications Module
 const VoiceAIHub = lazy(() => import("./pages/communications/VoiceAIHub"));
@@ -770,6 +771,7 @@ const App = () => (
                   <Route path="/estimation/team" element={<LazyPage><EstimationTeam /></LazyPage>} />
                   <Route path="/estimation/rfis" element={<LazyPage><EstimationRFIs /></LazyPage>} />
                   <Route path="/estimation/reports" element={<LazyPage><EstimationReports /></LazyPage>} />
+                  <Route path="/estimation/approval" element={<LazyPage><EstimationApprovalQueue /></LazyPage>} />
 
                   {/* Real Estate Module */}
                   <Route path="/realestate" element={<LazyPage><RealEstateDashboard /></LazyPage>} />

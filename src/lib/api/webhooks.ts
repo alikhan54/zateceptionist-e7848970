@@ -97,6 +97,24 @@ export const WEBHOOKS = {
   OMEGA_CHAT: "/omega-chat",
   OMEGA_HEALTH: "/omega-health",
   OMEGA_AUTONOMOUS_TRIGGER: "/omega-autonomous-trigger",
+
+  // Deep scrape — cascading website + social + document analysis
+  DEEP_SCRAPE: "/onboarding/deep-scrape",
+  // Analyze social profiles
+  ANALYZE_SOCIAL: "/onboarding/analyze-social",
+
+  // Billing — Stripe payment
+  BILLING_SETUP_INTENT: "/billing/create-setup-intent",
+  BILLING_CREATE_CHECKOUT: "/billing/create-checkout",
+  BILLING_CUSTOMER_PORTAL: "/billing/customer-portal",
+
+  // OAuth — channel connections
+  OAUTH_EXCHANGE_TOKEN: "/oauth/exchange-token",
+
+  // Construction Estimation (Phase 7E-B)
+  ESTIMATION_ACTION: "/estimation-action",
+  ESTIMATION_AI: "/estimation-ai",
+  ESTIMATION_VAPI_TOOLS: "/vapi-estimation-tools",
 } as const;
 
 export type WebhookEndpoint = (typeof WEBHOOKS)[keyof typeof WEBHOOKS];

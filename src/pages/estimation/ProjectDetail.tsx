@@ -16,7 +16,11 @@ import { useEstimationEstimates } from "@/hooks/useEstimationEstimates";
 import { useEstimationRFIs } from "@/hooks/useEstimationRFIs";
 import { useEstimationRevisions } from "@/hooks/useEstimationRevisions";
 import { useEstimationTeam } from "@/hooks/useEstimationTeam";
-import { ArrowLeft, Building2, Calendar, Users, DollarSign, Plus, Ruler, FileText, HelpCircle, History, Activity, Truck } from "lucide-react";
+import { useTenant } from "@/contexts/TenantContext";
+import { exportEstimationData } from "@/lib/api/estimationApi";
+import { exportQuantitiesXlsx, exportCostSheetXlsx, exportQualificationPdf, exportColorCodedPdf, exportCsv, type ExportData } from "@/lib/estimation/exportUtils";
+import { ArrowLeft, Building2, Calendar, Users, DollarSign, Plus, Ruler, FileText, HelpCircle, History, Activity, Truck, Download, Bot, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 const STATUS_LABELS: Record<string, string> = {
   rfp_received: "RFP Received", reviewing: "Reviewing", in_progress: "In Progress",
@@ -49,6 +53,67 @@ export default function ProjectDetail() {
   const [newRoom, setNewRoom] = useState({ room_name: "", room_number: "", floor_level: "1", length_ft: "", width_ft: "", ceiling_height_ft: "9" });
   const [newRFI, setNewRFI] = useState({ topic: "", question: "", assumptions: "" });
   const [newTeam, setNewTeam] = useState({ team_member_name: "", role: "estimator", trades_assigned: "" });
+  const [exportLoading, setExportLoading] = useState<string | null>(null);
+
+  const { tenantId } = useTenant();
+
+  // ── Estimation Mode ──────────────────────────────────────────────
+  const estimationMode = (project?.estimation_mode as string) || "manual";
+  const handleModeChange = async (mode: string) => {
+    if (!project) return;
+    await updateProject.mutateAsync({ id: project.id, updates: { estimation_mode: mode } });
+    toast.success(`Mode changed to ${mode.replace(/_/g, " ")}`);
+  };
+
+  // ── Export Handler ───────────────────────────────────────────────
+  const handleExport = async (exportType: "quantities_xlsx" | "cost_sheet" | "qualification" | "color_coded" | "csv") => {
+    if (!project || !id) return;
+    setExportLoading(exportType);
+    try {
+      const result = await exportEstimationData(id, exportType, tenantId || "marhama-group");
+      const respData = (result as any)?.data || result;
+
+      // Build ExportData from webhook response
+      const exportData: ExportData = {
+        project_name: project.project_name,
+        project_number: project.project_number || undefined,
+        client_name: project.client_name,
+        columns: respData.columns || [],
+        groups: respData.groups || [],
+        totals: respData.totals || undefined,
+        qualification: respData.qualification || {
+          assumptions: project.assumptions,
+          exclusions: project.exclusions,
+          notes: project.qualification_notes,
+        },
+      };
+
+      // Route to correct export function
+      switch (exportType) {
+        case "quantities_xlsx":
+          exportQuantitiesXlsx(exportData);
+          break;
+        case "cost_sheet":
+          exportCostSheetXlsx(exportData);
+          break;
+        case "qualification":
+          exportQualificationPdf(exportData);
+          break;
+        case "color_coded":
+          exportColorCodedPdf(exportData);
+          break;
+        case "csv":
+          exportCsv(exportData);
+          break;
+      }
+      toast.success(`Exported ${exportType.replace(/_/g, " ")} successfully`);
+    } catch (err) {
+      console.error("Export failed:", err);
+      toast.error("Export failed. Check console for details.");
+    } finally {
+      setExportLoading(null);
+    }
+  };
 
   if (!project) {
     return (
@@ -258,6 +323,28 @@ export default function ProjectDetail() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Estimation Mode Selector */}
+          <Card>
+            <CardHeader><CardTitle className="text-base flex items-center gap-2"><Bot className="h-4 w-4" /> Estimation Mode</CardTitle></CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-4">
+                <Select value={estimationMode} onValueChange={handleModeChange}>
+                  <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="manual">Manual</SelectItem>
+                    <SelectItem value="ai_assisted">AI-Assisted</SelectItem>
+                    <SelectItem value="ai_auto">Autonomous (AI)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span className="text-sm text-muted-foreground">
+                  {estimationMode === "manual" && "All takeoff and estimation done manually by the estimator."}
+                  {estimationMode === "ai_assisted" && "AI suggests materials, waste factors, and accessories. Estimator approves."}
+                  {estimationMode === "ai_auto" && "AI generates full takeoff from bid documents. Estimator reviews and approves."}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* ROOMS TAB */}
@@ -358,6 +445,35 @@ export default function ProjectDetail() {
         <TabsContent value="estimate" className="space-y-4">
           {latestEstimate ? (
             <div className="space-y-4">
+              {/* Export Buttons */}
+              <Card>
+                <CardHeader><CardTitle className="text-base flex items-center gap-2"><Download className="h-4 w-4" /> Export</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {(
+                      [
+                        { type: "quantities_xlsx", label: "Quantities (.xlsx)" },
+                        { type: "cost_sheet", label: "Cost Sheet (.xlsx)" },
+                        { type: "qualification", label: "Qualification (.pdf)" },
+                        { type: "color_coded", label: "Color-Coded (.pdf)" },
+                        { type: "csv", label: "Raw Data (.csv)" },
+                      ] as { type: "quantities_xlsx" | "cost_sheet" | "qualification" | "color_coded" | "csv"; label: string }[]
+                    ).map(({ type, label }) => (
+                      <Button
+                        key={type}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleExport(type)}
+                        disabled={exportLoading !== null}
+                      >
+                        {exportLoading === type ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Download className="mr-1 h-3 w-3" />}
+                        {label}
+                      </Button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
               <Card>
                 <CardHeader><CardTitle>Estimate v{latestEstimate.version} (Rev {latestEstimate.revision_number})</CardTitle></CardHeader>
                 <CardContent className="space-y-3 text-sm">
