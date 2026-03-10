@@ -121,6 +121,16 @@ const CompanySetup = lazy(() => import("./pages/onboarding/CompanySetup"));
 // Auth
 const AuthCallback = lazy(() => import("./pages/auth/Callback"));
 
+                  {/* OMEGA Command Center */}
+                  <Route
+                    path="/omega"
+                    element={
+                      <LazyPage>
+                        <OmegaCommandCenter />
+                      </LazyPage>
+                    }
+                  />
+
 
 // Invite
 const Invite = lazy(() => import("./pages/Invite"));
