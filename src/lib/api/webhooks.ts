@@ -34,6 +34,7 @@ export const WEBHOOKS = {
   CREATE_AD_CAMPAIGN: "/marketing/create-ad-campaign",
   GENERATE_AD_CREATIVE: "/marketing/generate-ad-creative",
   TRACK_CONVERSION: "/marketing/track-conversion",
+  AIDA_CLASSIFY: "/marketing/aida-classify",
 
   // HR
   EMPLOYEE_ONBOARDING: "/hr/employee-onboarding",

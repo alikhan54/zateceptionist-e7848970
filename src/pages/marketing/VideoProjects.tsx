@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Video, Film, Clock, CheckCircle, Sparkles, Copy, Download, RefreshCw, Image, Trash2 } from 'lucide-react';
+import { Plus, Video, Film, Clock, CheckCircle, Sparkles, Copy, Download, RefreshCw, Image, Trash2, Target, Eye, Heart, Zap, Users } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 const VIDEO_TYPE_LABELS: Record<string, { emoji: string; label: string }> = {
@@ -44,6 +44,55 @@ export default function VideoProjects() {
   const [videoType, setVideoType] = useState('short_form');
   const [generatingScriptId, setGeneratingScriptId] = useState<string | null>(null);
   const [detailProject, setDetailProject] = useState<any>(null);
+  const [isClassifying, setIsClassifying] = useState(false);
+
+  const { data: aidaAudiences = [], refetch: refetchAida } = useQuery({
+    queryKey: ['aida_audiences', tenantConfig?.id],
+    queryFn: async () => {
+      if (!tenantConfig?.id) return [];
+      const { data } = await supabase
+        .from('video_retargeting_audiences')
+        .select('*')
+        .eq('tenant_id', tenantConfig.id)
+        .order('aida_stage');
+      return data || [];
+    },
+    enabled: !!tenantConfig?.id,
+  });
+
+  const { data: aidaViews = [], refetch: refetchViews } = useQuery({
+    queryKey: ['aida_views', tenantConfig?.id],
+    queryFn: async () => {
+      if (!tenantConfig?.id) return [];
+      const { data } = await supabase
+        .from('video_view_tracking')
+        .select('*')
+        .eq('tenant_id', tenantConfig.id)
+        .order('last_viewed_at', { ascending: false })
+        .limit(100);
+      return data || [];
+    },
+    enabled: !!tenantConfig?.id,
+  });
+
+  const refreshAidaSegments = async () => {
+    if (!tenantConfig?.id) return;
+    setIsClassifying(true);
+    try {
+      const result = await callWebhook(WEBHOOKS.AIDA_CLASSIFY, {}, tenantConfig.id);
+      if (result.success) {
+        toast({ title: 'AIDA segments refreshed!' });
+        refetchAida();
+        refetchViews();
+      } else {
+        toast({ title: 'Classification failed', description: String(result.error), variant: 'destructive' });
+      }
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } finally {
+      setIsClassifying(false);
+    }
+  };
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ['video_projects', tenantConfig?.id],
@@ -246,6 +295,15 @@ ${s.image_url ? `<img src="${s.image_url}" alt="Scene ${i + 1}" />` : ''}</div>`
     );
   }
 
+  const AIDA_STAGE_CONFIG: Record<string, { icon: any; color: string; bgColor: string; label: string; description: string }> = {
+    attention: { icon: Eye, color: 'text-blue-600', bgColor: 'bg-blue-50 border-blue-200', label: 'Attention', description: '0-25% watched' },
+    interest: { icon: Zap, color: 'text-amber-600', bgColor: 'bg-amber-50 border-amber-200', label: 'Interest', description: '25-50% watched' },
+    desire: { icon: Heart, color: 'text-rose-600', bgColor: 'bg-rose-50 border-rose-200', label: 'Desire', description: '50-75% watched' },
+    action: { icon: Target, color: 'text-green-600', bgColor: 'bg-green-50 border-green-200', label: 'Action', description: '75%+ or CTA clicked' },
+  };
+
+  const [pageTab, setPageTab] = useState('projects');
+
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
@@ -253,11 +311,113 @@ ${s.image_url ? `<img src="${s.image_url}" alt="Scene ${i + 1}" />` : ''}</div>`
           <h1 className="text-2xl font-bold">Video Projects</h1>
           <p className="text-muted-foreground">AI-generated video scripts, scenes &amp; storyboards</p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)} className="marketing-gradient text-white">
-          <Plus className="h-4 w-4 mr-2" /> New Video Project
-        </Button>
+        <div className="flex gap-2">
+          {pageTab === 'aida' && (
+            <Button variant="outline" onClick={refreshAidaSegments} disabled={isClassifying}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${isClassifying ? 'animate-spin' : ''}`} />
+              {isClassifying ? 'Classifying...' : 'Refresh Segments'}
+            </Button>
+          )}
+          <Button onClick={() => setIsCreateOpen(true)} className="marketing-gradient text-white">
+            <Plus className="h-4 w-4 mr-2" /> New Video Project
+          </Button>
+        </div>
       </div>
 
+      <Tabs value={pageTab} onValueChange={setPageTab}>
+        <TabsList>
+          <TabsTrigger value="projects"><Video className="h-4 w-4 mr-1" /> Projects</TabsTrigger>
+          <TabsTrigger value="aida"><Target className="h-4 w-4 mr-1" /> AIDA Retargeting</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="aida" className="space-y-6 mt-4">
+          {/* AIDA Funnel Visualization */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {(['attention', 'interest', 'desire', 'action'] as const).map((stage) => {
+              const config = AIDA_STAGE_CONFIG[stage];
+              const audience = aidaAudiences.find((a: any) => a.aida_stage === stage);
+              const stageViews = aidaViews.filter((v: any) => v.aida_stage === stage);
+              const Icon = config.icon;
+              return (
+                <Card key={stage} className={`border-2 ${config.bgColor}`}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Icon className={`h-5 w-5 ${config.color}`} />
+                      <h3 className={`font-bold ${config.color}`}>{config.label}</h3>
+                    </div>
+                    <p className="text-3xl font-bold">{audience?.member_count || 0}</p>
+                    <p className="text-xs text-muted-foreground">{config.description}</p>
+                    {audience?.retargeting_action && (
+                      <p className="text-xs mt-2 italic text-muted-foreground">{audience.retargeting_action}</p>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Viewer Table */}
+          {aidaViews.length > 0 ? (
+            <Card>
+              <CardContent className="p-4">
+                <h3 className="font-semibold mb-3 flex items-center gap-2">
+                  <Users className="h-4 w-4" /> Viewer Engagement ({aidaViews.length})
+                </h3>
+                <div className="overflow-auto max-h-[400px]">
+                  <table className="w-full text-sm">
+                    <thead className="text-xs text-muted-foreground border-b sticky top-0 bg-background">
+                      <tr>
+                        <th className="text-left p-2">Viewer</th>
+                        <th className="text-left p-2">Platform</th>
+                        <th className="text-right p-2">Watch %</th>
+                        <th className="text-center p-2">CTA</th>
+                        <th className="text-center p-2">Stage</th>
+                        <th className="text-right p-2">Views</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {aidaViews.map((view: any) => {
+                        const stageConf = AIDA_STAGE_CONFIG[view.aida_stage] || AIDA_STAGE_CONFIG.attention;
+                        return (
+                          <tr key={view.id} className="border-b hover:bg-muted/50">
+                            <td className="p-2">
+                              <div className="font-medium">{view.viewer_email || view.viewer_id}</div>
+                              {view.viewer_phone && <div className="text-xs text-muted-foreground">{view.viewer_phone}</div>}
+                            </td>
+                            <td className="p-2 capitalize">{view.platform}</td>
+                            <td className="p-2 text-right font-mono">{Number(view.watch_percentage).toFixed(0)}%</td>
+                            <td className="p-2 text-center">{view.cta_clicked ? <CheckCircle className="h-4 w-4 text-green-500 mx-auto" /> : '-'}</td>
+                            <td className="p-2 text-center">
+                              <Badge variant="outline" className={`text-xs ${stageConf.color}`}>{stageConf.label}</Badge>
+                            </td>
+                            <td className="p-2 text-right">{view.total_views}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                <Target className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                <h3 className="text-lg font-semibold">No Viewer Data Yet</h3>
+                <p className="text-muted-foreground mt-1 max-w-md">
+                  Video view tracking data will appear here as viewers watch your content.
+                  Click "Refresh Segments" to classify existing viewers into AIDA stages.
+                </p>
+                <Button onClick={refreshAidaSegments} disabled={isClassifying} className="mt-4" variant="outline">
+                  <RefreshCw className={`h-4 w-4 mr-2 ${isClassifying ? 'animate-spin' : ''}`} />
+                  Refresh Segments
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="projects" className="space-y-6 mt-4">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {statCards.map((stat, idx) => (
           <Card key={idx}>
@@ -323,6 +483,8 @@ ${s.image_url ? `<img src="${s.image_url}" alt="Scene ${i + 1}" />` : ''}</div>`
           })}
         </div>
       )}
+        </TabsContent>
+      </Tabs>
 
       {/* Detail Dialog */}
       <Dialog open={!!detailProject} onOpenChange={() => setDetailProject(null)}>

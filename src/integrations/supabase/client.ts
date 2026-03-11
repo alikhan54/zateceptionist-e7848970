@@ -60,6 +60,9 @@ export const WEBHOOKS = {
   // Revenue & A/B Testing AI Tools
   REVENUE_ATTRIBUTION: "ai-tool/revenue-attribution",
   AB_TEST_MANAGE: "ai-tool/ab-test-manage",
+
+  // AIDA Retargeting
+  AIDA_CLASSIFY: "marketing/aida-classify",
 } as const;
 
 export type WebhookEndpoint = (typeof WEBHOOKS)[keyof typeof WEBHOOKS];
