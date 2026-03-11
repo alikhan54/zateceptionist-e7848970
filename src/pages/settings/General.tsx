@@ -1,12 +1,59 @@
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Settings, Building2, Globe, Palette } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Building2, Globe, Palette, Loader2 } from 'lucide-react';
 import { useTenant } from '@/contexts/TenantContext';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { INDUSTRIES, TIMEZONES } from '@/pages/onboarding/constants';
 
 export default function GeneralSettings() {
-  const { tenantConfig } = useTenant();
+  const { tenantConfig, tenantId, refreshConfig } = useTenant();
+  const { toast } = useToast();
+  const [saving, setSaving] = useState(false);
+
+  const [companyName, setCompanyName] = useState('');
+  const [industry, setIndustry] = useState('general');
+  const [timezone, setTimezone] = useState('America/New_York');
+  const [primaryColor, setPrimaryColor] = useState('#7c3aed');
+
+  useEffect(() => {
+    if (tenantConfig) {
+      setCompanyName(tenantConfig.company_name || '');
+      setIndustry(tenantConfig.industry || 'general');
+      setTimezone(tenantConfig.timezone || 'America/New_York');
+      setPrimaryColor(tenantConfig.primary_color || '#7c3aed');
+    }
+  }, [tenantConfig]);
+
+  const handleSave = async () => {
+    if (!tenantId) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('tenant_config')
+        .update({
+          company_name: companyName,
+          industry,
+          timezone,
+          primary_color: primaryColor,
+        })
+        .eq('tenant_id', tenantId);
+
+      if (error) throw error;
+
+      await refreshConfig();
+      toast({ title: 'Settings saved', description: 'Your changes have been applied.' });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to save settings';
+      toast({ title: 'Error', description: message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -27,14 +74,32 @@ export default function GeneralSettings() {
           <div className="grid md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Company Name</Label>
-              <Input defaultValue={tenantConfig?.company_name || ''} placeholder="Your company name" />
+              <Input
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                placeholder="Your company name"
+              />
             </div>
             <div className="space-y-2">
               <Label>Industry</Label>
-              <Input defaultValue={tenantConfig?.industry || ''} placeholder="Your industry" />
+              <Select value={industry} onValueChange={setIndustry}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select industry" />
+                </SelectTrigger>
+                <SelectContent>
+                  {INDUSTRIES.map((ind) => (
+                    <SelectItem key={ind.value} value={ind.value}>
+                      {ind.icon} {ind.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
-          <Button>Save Changes</Button>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Save Changes
+          </Button>
         </CardContent>
       </Card>
 
@@ -50,11 +115,22 @@ export default function GeneralSettings() {
           <div className="grid md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Language</Label>
-              <Input defaultValue="English" />
+              <Input defaultValue="English" disabled />
             </div>
             <div className="space-y-2">
               <Label>Timezone</Label>
-              <Input defaultValue="UTC" />
+              <Select value={timezone} onValueChange={setTimezone}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select timezone" />
+                </SelectTrigger>
+                <SelectContent>
+                  {TIMEZONES.map((tz) => (
+                    <SelectItem key={tz.value} value={tz.value}>
+                      {tz.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardContent>
@@ -72,10 +148,14 @@ export default function GeneralSettings() {
           <div className="space-y-2">
             <Label>Primary Color</Label>
             <div className="flex gap-2">
-              <Input defaultValue={tenantConfig?.primary_color || '#7c3aed'} className="w-32" />
-              <div 
+              <Input
+                value={primaryColor}
+                onChange={(e) => setPrimaryColor(e.target.value)}
+                className="w-32"
+              />
+              <div
                 className="h-10 w-10 rounded-md border"
-                style={{ backgroundColor: tenantConfig?.primary_color || '#7c3aed' }}
+                style={{ backgroundColor: primaryColor }}
               />
             </div>
           </div>

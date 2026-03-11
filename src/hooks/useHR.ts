@@ -457,7 +457,27 @@ export function useDepartments() {
     onError: () => toast.error("Failed to create department"),
   });
 
-  return { ...query, createDepartment };
+  const updateDepartment = useMutation({
+    mutationFn: async ({ id, ...changes }: Partial<Department> & { id: string }) => {
+      if (!tenantUuid) throw new Error('No tenant');
+      const { data: result, error } = await supabase
+        .from("hr_departments")
+        .update(changes)
+        .eq("id", id)
+        .eq("tenant_id", tenantUuid)
+        .select()
+        .single();
+      if (error) throw error;
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["departments", tenantUuid] });
+      toast.success("Department updated");
+    },
+    onError: () => toast.error("Failed to update department"),
+  });
+
+  return { ...query, createDepartment, updateDepartment };
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -469,8 +489,9 @@ export function useDepartments() {
 export function usePerformance() {
   const { tenantConfig } = useTenant();
   const tenantUuid = tenantConfig?.id;
+  const queryClient = useQueryClient();
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ["performance", tenantUuid],
     queryFn: async () => {
       if (!tenantUuid) return { reviews: [] as PerformanceReview[], goals: [] as Goal[], activeCycle: null };
@@ -495,6 +516,44 @@ export function usePerformance() {
     },
     enabled: !!tenantUuid,
   });
+
+  const createReview = useMutation({
+    mutationFn: async (review: { employee_id: string; employee_name?: string; review_type?: string; review_period_start?: string; review_period_end?: string }) => {
+      if (!tenantUuid) throw new Error('No tenant');
+      const { data: result, error } = await supabase
+        .from("hr_performance_reviews")
+        .insert({ ...review, tenant_id: tenantUuid, status: 'draft' })
+        .select()
+        .single();
+      if (error) throw error;
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["performance", tenantUuid] });
+      toast.success("Review created");
+    },
+    onError: () => toast.error("Failed to create review"),
+  });
+
+  const createGoal = useMutation({
+    mutationFn: async (goal: { title: string; employee_id?: string; description?: string; category?: string; target_date?: string }) => {
+      if (!tenantUuid) throw new Error('No tenant');
+      const { data: result, error } = await supabase
+        .from("hr_goals")
+        .insert({ ...goal, tenant_id: tenantUuid, progress_percent: 0, status: 'not_started' })
+        .select()
+        .single();
+      if (error) throw error;
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["performance", tenantUuid] });
+      toast.success("Goal created");
+    },
+    onError: () => toast.error("Failed to create goal"),
+  });
+
+  return { ...query, createReview, createGoal };
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -746,7 +805,7 @@ export function useComplianceData() {
   return useQuery({
     queryKey: ["compliance-data", tenantUuid],
     queryFn: async () => {
-      if (!tenantUuid) return { visaAlerts: [], wpsStatus: [], emiratisationRate: 0 };
+      if (!tenantUuid) return { visaAlerts: [], wpsStatus: [], emiratisationRate: 0, totalEmployees: 0, uaeNationals: 0, medicalStatus: [], laborCardAlerts: [] };
 
       const { data: employees } = await supabase
         .from("hr_employees")
@@ -782,12 +841,37 @@ export function useComplianceData() {
       );
       const emiratisationRate = emps.length > 0 ? Math.round((uaeNationals.length / emps.length) * 100) : 0;
 
+      const medicalStatus = emps.map((e: any) => ({
+        id: e.id,
+        name: e.full_name || `${e.first_name} ${e.last_name}`,
+        provider: e.medical_insurance_provider,
+        expiry: e.medical_insurance_expiry,
+        has_insurance: !!e.medical_insurance_provider,
+        days_until_expiry: e.medical_insurance_expiry
+          ? Math.floor((new Date(e.medical_insurance_expiry).getTime() - now) / 86400000)
+          : null,
+      }));
+
+      const laborCardAlerts = emps
+        .filter((e: any) => e.labor_card_expiry)
+        .map((e: any) => ({
+          id: e.id,
+          name: e.full_name || `${e.first_name} ${e.last_name}`,
+          labor_card_number: e.labor_card_number,
+          labor_card_expiry: e.labor_card_expiry,
+          nationality: e.nationality,
+          days_until_lc_expiry: Math.floor((new Date(e.labor_card_expiry).getTime() - now) / 86400000),
+        }))
+        .sort((a: any, b: any) => a.days_until_lc_expiry - b.days_until_lc_expiry);
+
       return {
         visaAlerts,
         wpsStatus,
         emiratisationRate,
         totalEmployees: emps.length,
         uaeNationals: uaeNationals.length,
+        medicalStatus,
+        laborCardAlerts,
       };
     },
     enabled: !!tenantUuid,

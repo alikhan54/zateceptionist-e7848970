@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Navigate, Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useTenant } from '@/contexts/TenantContext';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { useEmployees, useLeaveRequests, useAttendance, useDepartments } from '@/hooks/useHR';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +31,21 @@ export default function HRDashboardPage() {
   const { data: attendance } = useAttendance();
   const { data: departments } = useDepartments();
 
+  // Open positions — direct query to avoid coupling with useRecruitment
+  const { data: openPositionsCount } = useQuery({
+    queryKey: ['hr-dashboard-open-positions', tenantConfig?.id],
+    queryFn: async () => {
+      if (!tenantConfig?.id) return 0;
+      const { count } = await supabase
+        .from('hr_job_requisitions')
+        .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', tenantConfig.id)
+        .in('status', ['open', 'active']);
+      return count || 0;
+    },
+    enabled: !!tenantConfig?.id,
+  });
+
   const { isEnabled } = useFeatureFlags();
   if (!isEnabled('hr_module')) {
     return <Navigate to="/dashboard" replace />;
@@ -38,7 +55,7 @@ export default function HRDashboardPage() {
     totalEmployees: employees?.length || 0,
     activeToday: attendance?.summary?.present || 0,
     onLeave: attendance?.summary?.on_leave || 0,
-    openPositions: 0,
+    openPositions: openPositionsCount || 0,
     pendingApprovals: leaveRequests?.length || 0,
     newHires: employees?.filter(e => {
       if (!e.date_of_joining) return false;
@@ -87,7 +104,7 @@ export default function HRDashboardPage() {
       </div>
 
       {/* KPI Cards with Animated Counters */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
         <Card className="group hover:shadow-md transition-all duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total {t('staffs')}</CardTitle>
@@ -165,6 +182,24 @@ export default function HRDashboardPage() {
             <Button variant="link" size="sm" className="h-auto p-0 text-xs" asChild>
               <Link to="/hr/leave">
                 Review now <ArrowRight className="h-3 w-3 ml-1" />
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+        <Card className="group hover:shadow-md transition-all duration-300">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Open Positions</CardTitle>
+            <div className="h-8 w-8 rounded-lg bg-chart-3/10 flex items-center justify-center">
+              <Briefcase className="h-4 w-4 text-chart-3" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-chart-3">
+              <AnimatedNumber value={stats.openPositions} />
+            </div>
+            <Button variant="link" size="sm" className="h-auto p-0 text-xs" asChild>
+              <Link to="/hr/recruitment">
+                View jobs <ArrowRight className="h-3 w-3 ml-1" />
               </Link>
             </Button>
           </CardContent>

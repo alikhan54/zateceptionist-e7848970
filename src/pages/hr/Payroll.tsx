@@ -8,16 +8,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Progress } from '@/components/ui/progress';
-import { 
-  DollarSign, 
-  Users, 
-  TrendingUp, 
+import {
+  DollarSign,
+  Users,
+  TrendingUp,
   Download,
   FileText,
   Calculator,
   Calendar,
-  CheckCircle2,
   Clock,
   BarChart3
 } from 'lucide-react';
@@ -25,7 +23,7 @@ import { format } from 'date-fns';
 
 export default function PayrollPage() {
   const { t } = useTenant();
-  const [selectedPeriod, setSelectedPeriod] = useState('2024-01');
+  const [selectedPeriod, setSelectedPeriod] = useState(format(new Date(), 'yyyy-MM'));
   const { data, isLoading } = usePayroll(selectedPeriod);
 
   const formatCurrency = (amount: number) => {
@@ -91,12 +89,18 @@ export default function PayrollPage() {
     );
   };
 
-  const periods = [
-    { value: '2024-01', label: 'January 2024' },
-    { value: '2023-12', label: 'December 2023' },
-    { value: '2023-11', label: 'November 2023' },
-    { value: '2023-10', label: 'October 2023' },
-  ];
+  const periods = (() => {
+    const result = [];
+    const now = new Date();
+    for (let i = 0; i < 6; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      result.push({
+        value: format(d, 'yyyy-MM'),
+        label: format(d, 'MMMM yyyy'),
+      });
+    }
+    return result;
+  })();
 
   return (
     <div className="space-y-6">
@@ -134,20 +138,15 @@ export default function PayrollPage() {
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div>
               <p className="text-sm text-muted-foreground">Current Pay Period</p>
-              <p className="text-2xl font-bold">January 1 - January 31, 2024</p>
+              <p className="text-2xl font-bold">
+                {format(new Date(selectedPeriod + '-01'), 'MMMM yyyy')}
+              </p>
               <p className="text-sm text-muted-foreground mt-1">
-                Payment date: January 31, 2024
+                {data?.summary?.total_employees || 0} {t('staffs').toLowerCase()} in payroll
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="text-right mr-4">
-                <p className="text-sm text-muted-foreground">Processing Progress</p>
-                <p className="text-lg font-semibold">75% Complete</p>
-              </div>
-              <Button>Run Payroll</Button>
-            </div>
+            <Button>Run Payroll</Button>
           </div>
-          <Progress value={75} className="mt-4 h-2" />
         </CardContent>
       </Card>
 
@@ -251,25 +250,12 @@ export default function PayrollPage() {
               <CardDescription>Previous payroll runs and their status</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {periods.map((period) => (
-                  <div key={period.value} className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-                    <div>
-                      <p className="font-medium">{period.label}</p>
-                      <p className="text-sm text-muted-foreground">Paid on the 31st</p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className="font-semibold">{formatCurrency(125000)}</span>
-                      <Badge variant="outline" className="bg-chart-2/10 text-chart-2">
-                        <CheckCircle2 className="h-3 w-3 mr-1" />
-                        Paid
-                      </Badge>
-                      <Button variant="ghost" size="sm">
-                        <Download className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+              <div className="text-center py-12">
+                <Calendar className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                <p className="text-muted-foreground">No payroll history yet</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Run payroll to start building payment history
+                </p>
               </div>
             </CardContent>
           </Card>

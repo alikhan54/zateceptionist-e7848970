@@ -56,7 +56,7 @@ const TIER_DEFAULTS: Record<SubscriptionTier, TierLimits> = {
     whatsapp_per_day: 5,
     calls_per_day: 2,
     max_users: 1,
-    voice_minutes: 10,
+    voice_minutes: 5,
   },
   starter: {
     leads_per_month: 100,
@@ -134,7 +134,7 @@ export const SUBSCRIPTION_TIERS: Record<SubscriptionTier, TierConfig> = {
       "5 WhatsApp messages per day",
       "2 voice calls per day",
       "1 team member",
-      "10 voice minutes",
+      "5 voice minutes",
       "Community support",
     ],
   },

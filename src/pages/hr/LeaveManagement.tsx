@@ -337,13 +337,54 @@ export default function LeaveManagementPage() {
               <CardDescription>Leave requests awaiting your approval</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-12">
-                <CheckCircle2 className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                <p className="text-muted-foreground">No pending approvals</p>
-                <p className="text-sm text-muted-foreground">
-                  Team leave requests will appear here
-                </p>
-              </div>
+              {(() => {
+                const pendingRequests = (requests || []).filter(r => r.status === 'pending');
+                return pendingRequests.length > 0 ? (
+                  <div className="space-y-4">
+                    {pendingRequests.map((request) => (
+                      <div key={request.id} className="flex items-center justify-between p-4 bg-chart-4/5 rounded-lg border border-chart-4/10">
+                        <div>
+                          <p className="font-medium">{request.employee_name || request.leave_type}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {request.start_date} to {request.end_date} ({request.requested_days} days)
+                          </p>
+                          {request.reason && (
+                            <p className="text-sm text-muted-foreground mt-1 max-w-[300px] truncate">{request.reason}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-destructive"
+                            onClick={() => approveLeave.mutate({ leave_id: request.id, action: 'reject' })}
+                            disabled={approveLeave.isPending}
+                          >
+                            <XCircle className="h-4 w-4 mr-1" />
+                            Reject
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => approveLeave.mutate({ leave_id: request.id, action: 'approve' })}
+                            disabled={approveLeave.isPending}
+                          >
+                            <CheckCircle2 className="h-4 w-4 mr-1" />
+                            Approve
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <CheckCircle2 className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                    <p className="text-muted-foreground">No pending approvals</p>
+                    <p className="text-sm text-muted-foreground">
+                      Team leave requests will appear here
+                    </p>
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
         </TabsContent>

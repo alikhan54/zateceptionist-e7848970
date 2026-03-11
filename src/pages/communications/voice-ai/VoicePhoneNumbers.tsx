@@ -24,6 +24,9 @@ import {
   Loader2,
   Shield,
   Zap,
+  Wand2,
+  ArrowRight,
+  ArrowLeft,
 } from "lucide-react";
 
 interface PhoneNumber {
@@ -65,6 +68,267 @@ const COUNTRY_NAMES: Record<string, string> = {
   DE: "Germany", FR: "France", SA: "Saudi Arabia", PK: "Pakistan",
   ES: "Spain", IT: "Italy", BR: "Brazil", MX: "Mexico", JP: "Japan",
 };
+
+const PROVIDER_BADGES: Record<string, { label: string; className: string }> = {
+  vapi: { label: "VAPI", className: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300" },
+  twilio: { label: "Twilio", className: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300" },
+  custom: { label: "Custom", className: "bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-300" },
+};
+
+// ── SmartSetupWizard ── 3-step guided setup for new tenants ──
+function SmartSetupWizard({
+  onComplete,
+  onSyncVAPI,
+  isSyncing,
+  tenantId,
+}: {
+  onComplete: () => void;
+  onSyncVAPI: () => void;
+  isSyncing: boolean;
+  tenantId: string | null;
+}) {
+  const [step, setStep] = useState(1);
+  const [selectedProvider, setSelectedProvider] = useState<"vapi" | "twilio" | null>(null);
+  const [twilioSid, setTwilioSid] = useState("");
+  const [twilioToken, setTwilioToken] = useState("");
+  const [savingTwilio, setSavingTwilio] = useState(false);
+  const [twilioSaved, setTwilioSaved] = useState(false);
+  const { toast } = useToast();
+
+  const handleSaveTwilioCredentials = async () => {
+    if (!tenantId || !twilioSid || !twilioToken) return;
+    setSavingTwilio(true);
+    try {
+      const { error } = await supabase
+        .from("tenant_config")
+        .update({
+          byo_twilio_sid: twilioSid,
+          byo_twilio_token: twilioToken,
+          updated_at: new Date().toISOString(),
+        } as any)
+        .eq("tenant_id", tenantId);
+      if (error) throw error;
+      setTwilioSaved(true);
+      toast({ title: "Twilio connected", description: "Your Twilio credentials have been saved." });
+    } catch (err: any) {
+      toast({ title: "Error saving credentials", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingTwilio(false);
+    }
+  };
+
+  return (
+    <Card className="border-2 border-dashed border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10">
+      <CardHeader className="text-center pb-2">
+        <div className="mx-auto h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-2">
+          <Wand2 className="h-6 w-6 text-primary" />
+        </div>
+        <CardTitle>Phone Number Setup</CardTitle>
+        <CardDescription>Get your AI voice calls running in 3 simple steps</CardDescription>
+        {/* Step indicators */}
+        <div className="flex items-center justify-center gap-2 mt-4">
+          {[1, 2, 3].map((s) => (
+            <div key={s} className="flex items-center gap-2">
+              <div
+                className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
+                  s === step
+                    ? "bg-primary text-primary-foreground"
+                    : s < step
+                    ? "bg-green-500 text-white"
+                    : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {s < step ? <CheckCircle className="h-4 w-4" /> : s}
+              </div>
+              {s < 3 && <div className={`w-8 h-0.5 ${s < step ? "bg-green-500" : "bg-muted"}`} />}
+            </div>
+          ))}
+        </div>
+        <div className="flex justify-center gap-8 mt-1">
+          <span className={`text-xs ${step === 1 ? "text-primary font-medium" : "text-muted-foreground"}`}>Provider</span>
+          <span className={`text-xs ${step === 2 ? "text-primary font-medium" : "text-muted-foreground"}`}>Connect</span>
+          <span className={`text-xs ${step === 3 ? "text-primary font-medium" : "text-muted-foreground"}`}>Done</span>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-4">
+        {/* Step 1: Choose Provider */}
+        {step === 1 && (
+          <div className="space-y-4">
+            <p className="text-center text-sm text-muted-foreground">Choose how you want to connect phone numbers</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div
+                onClick={() => setSelectedProvider("vapi")}
+                className={`p-4 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md ${
+                  selectedProvider === "vapi"
+                    ? "border-purple-500 bg-purple-50 dark:bg-purple-950/30"
+                    : "border-muted hover:border-purple-300"
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
+                    <Zap className="h-4 w-4 text-purple-600" />
+                  </div>
+                  <span className="font-semibold">VAPI</span>
+                  <Badge className="bg-purple-100 text-purple-700 text-xs">Recommended</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground mb-3">Managed Voice AI &mdash; auto-sync your existing VAPI numbers</p>
+                <ul className="space-y-1 text-xs text-muted-foreground">
+                  <li className="flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-green-500" /> Full AI agent on every call</li>
+                  <li className="flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-green-500" /> US, UK, CA coverage</li>
+                  <li className="flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-green-500" /> One-click sync</li>
+                </ul>
+              </div>
+              <div
+                onClick={() => setSelectedProvider("twilio")}
+                className={`p-4 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md ${
+                  selectedProvider === "twilio"
+                    ? "border-red-500 bg-red-50 dark:bg-red-950/30"
+                    : "border-muted hover:border-red-300"
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="h-8 w-8 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center">
+                    <Globe className="h-4 w-4 text-red-600" />
+                  </div>
+                  <span className="font-semibold">Twilio</span>
+                  <Badge className="bg-red-100 text-red-700 text-xs">International</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground mb-3">Bring your own numbers &mdash; imported into VAPI for AI calls</p>
+                <ul className="space-y-1 text-xs text-muted-foreground">
+                  <li className="flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-green-500" /> 100+ countries</li>
+                  <li className="flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-green-500" /> UAE, Pakistan, GCC</li>
+                  <li className="flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-green-500" /> Import into VAPI AI</li>
+                </ul>
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <Button onClick={() => { if (selectedProvider) setStep(2); }} disabled={!selectedProvider}>
+                Next <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: Connect — VAPI */}
+        {step === 2 && selectedProvider === "vapi" && (
+          <div className="space-y-4">
+            <div className="text-center">
+              <div className="inline-flex items-center gap-2 bg-purple-50 dark:bg-purple-950/30 rounded-full px-4 py-2 mb-3">
+                <Zap className="h-4 w-4 text-purple-600" />
+                <span className="text-sm font-medium text-purple-700 dark:text-purple-300">VAPI Provider</span>
+              </div>
+              <p className="text-sm text-muted-foreground">Click below to sync your existing VAPI phone numbers automatically.</p>
+            </div>
+            <div className="flex justify-center py-4">
+              <Button
+                size="lg"
+                onClick={() => { onSyncVAPI(); setTimeout(() => setStep(3), 4000); }}
+                disabled={isSyncing}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                {isSyncing ? (
+                  <><Loader2 className="h-5 w-5 mr-2 animate-spin" /> Syncing from VAPI...</>
+                ) : (
+                  <><RefreshCcw className="h-5 w-5 mr-2" /> Sync Phone Numbers from VAPI</>
+                )}
+              </Button>
+            </div>
+            <div className="flex justify-between">
+              <Button variant="ghost" onClick={() => setStep(1)}>
+                <ArrowLeft className="h-4 w-4 mr-2" /> Back
+              </Button>
+              <Button variant="outline" onClick={() => setStep(3)}>
+                Skip & Add Manually <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: Connect — Twilio */}
+        {step === 2 && selectedProvider === "twilio" && (
+          <div className="space-y-4">
+            <div className="text-center">
+              <div className="inline-flex items-center gap-2 bg-red-50 dark:bg-red-950/30 rounded-full px-4 py-2 mb-3">
+                <Globe className="h-4 w-4 text-red-600" />
+                <span className="text-sm font-medium text-red-700 dark:text-red-300">Twilio Provider</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Enter your Twilio credentials. Numbers will be imported into VAPI for AI-powered calls.
+              </p>
+            </div>
+            {!twilioSaved ? (
+              <div className="max-w-md mx-auto space-y-3">
+                <div className="space-y-2">
+                  <Label>Twilio Account SID</Label>
+                  <Input placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" value={twilioSid}
+                    onChange={(e) => setTwilioSid(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Twilio Auth Token</Label>
+                  <Input type="password" placeholder="Your Twilio auth token" value={twilioToken}
+                    onChange={(e) => setTwilioToken(e.target.value)} />
+                </div>
+                <Button onClick={handleSaveTwilioCredentials} className="w-full bg-red-600 hover:bg-red-700"
+                  disabled={!twilioSid || !twilioToken || savingTwilio}>
+                  {savingTwilio ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
+                  ) : (
+                    <><Shield className="h-4 w-4 mr-2" /> Save & Connect</>
+                  )}
+                </Button>
+              </div>
+            ) : (
+              <div className="text-center py-4">
+                <div className="inline-flex items-center gap-2 bg-green-50 dark:bg-green-950/30 rounded-full px-4 py-2">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  <span className="text-sm font-medium text-green-700 dark:text-green-300">Twilio connected</span>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  You can now add Twilio phone numbers using the Add Number form.
+                </p>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <Button variant="ghost" onClick={() => setStep(1)}>
+                <ArrowLeft className="h-4 w-4 mr-2" /> Back
+              </Button>
+              <Button onClick={() => setStep(3)} disabled={!twilioSaved}>
+                Continue <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Complete */}
+        {step === 3 && (
+          <div className="text-center space-y-4 py-4">
+            <div className="mx-auto h-16 w-16 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
+              <CheckCircle className="h-8 w-8 text-green-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold">
+                {selectedProvider === "vapi" ? "VAPI Sync Complete!" : "Twilio Connected!"}
+              </h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                {selectedProvider === "vapi"
+                  ? "Your VAPI numbers have been synced. Use Add Number to register additional numbers."
+                  : "Your Twilio credentials are saved. Use Add Number to register your Twilio phone numbers."}
+              </p>
+            </div>
+            <div className="flex flex-col items-center gap-2">
+              <Button onClick={onComplete} size="lg">
+                <Plus className="h-4 w-4 mr-2" /> Add Phone Numbers
+              </Button>
+              <Button variant="ghost" size="sm" onClick={onComplete}>
+                I'll do this later
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function VoicePhoneNumbers() {
   const { tenantId, tenantConfig } = useTenant();
@@ -340,19 +604,14 @@ export default function VoicePhoneNumbers() {
         </div>
       )}
 
-      {/* Warning Banner */}
-      {hasNoNumbers && (
-        <Card className="bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950/30 dark:to-yellow-950/30 border-amber-200 dark:border-amber-800">
-          <CardContent className="py-4">
-            <div className="flex items-center gap-3">
-              <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0" />
-              <div>
-                <p className="font-medium text-amber-800 dark:text-amber-200">No phone numbers configured</p>
-                <p className="text-sm text-amber-600 dark:text-amber-400">Add a phone number to enable AI voice calls. You can register numbers from VAPI or Twilio.</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Setup Wizard — shown when tenant has zero phone numbers */}
+      {hasNoNumbers && !showAddForm && (
+        <SmartSetupWizard
+          onComplete={() => setShowAddForm(true)}
+          onSyncVAPI={handleSyncFromVAPI}
+          isSyncing={isSyncing}
+          tenantId={tenantId}
+        />
       )}
 
       {/* Coverage Gaps */}
@@ -488,8 +747,9 @@ export default function VoicePhoneNumbers() {
             <div className="text-center py-8">
               <Phone className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <p className="text-muted-foreground">No phone numbers registered yet</p>
+              <p className="text-xs text-muted-foreground mt-1">Use the setup wizard above or add a number manually</p>
               <Button variant="outline" className="mt-4" onClick={() => setShowAddForm(true)}>
-                <Plus className="h-4 w-4 mr-2" /> Add Your First Number
+                <Plus className="h-4 w-4 mr-2" /> Add Manually
               </Button>
             </div>
           ) : (
@@ -520,7 +780,9 @@ export default function VoicePhoneNumbers() {
                         <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground flex-wrap">
                           <span>{COUNTRY_NAMES[num.country_code] || num.country_code}</span>
                           <span>&middot;</span>
-                          <span className="capitalize">{num.provider}</span>
+                          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-4 font-medium ${PROVIDER_BADGES[num.provider]?.className || "bg-gray-100 text-gray-600"}`}>
+                            {PROVIDER_BADGES[num.provider]?.label || num.provider}
+                          </Badge>
                           <span>&middot;</span>
                           <span className="capitalize">{num.direction}</span>
                           <span>&middot;</span>

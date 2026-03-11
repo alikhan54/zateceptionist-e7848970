@@ -48,7 +48,7 @@ export default function VoiceCredits() {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
       const { data, error } = await supabase
         .from("voice_usage")
-        .select("total_cost, duration_seconds, direction, started_at, call_status")
+        .select("total_cost, duration_seconds, direction, started_at, call_status, language")
         .eq("tenant_id", tenantId)
         .gte("started_at", thirtyDaysAgo)
         .order("started_at", { ascending: false });
@@ -97,11 +97,17 @@ export default function VoiceCredits() {
   const usagePercent = totalMinutesPurchased > 0 ? Math.min((usedMinutes / totalMinutesPurchased) * 100, 100) : 0;
 
   const CREDIT_PACKAGES = [
-    { name: "Starter", minutes: 100, price: 9.99, perMin: 0.10, popular: false },
-    { name: "Growth", minutes: 500, price: 39.99, perMin: 0.08, popular: true },
-    { name: "Business", minutes: 2000, price: 119.99, perMin: 0.06, popular: false },
-    { name: "Enterprise", minutes: 10000, price: 449.99, perMin: 0.045, popular: false },
+    { name: "Starter", minutes: 100, price: 15, perMin: 0.15, popular: false },
+    { name: "Growth", minutes: 500, price: 60, perMin: 0.12, popular: true },
+    { name: "Business", minutes: 1500, price: 200, perMin: 0.133, popular: false },
+    { name: "Enterprise", minutes: 5000, price: 500, perMin: 0.10, popular: false },
   ];
+
+  // Language code to label mapping for call history badges
+  const LANG_LABELS: Record<string, string> = {
+    en: "EN", ar: "AR", es: "ES", fr: "FR", de: "DE", hi: "HI",
+    ur: "UR", zh: "ZH", ja: "JA", ko: "KO", pt: "PT", it: "IT", tr: "TR",
+  };
 
   return (
     <div className="space-y-6">
@@ -351,6 +357,11 @@ export default function VoiceCredits() {
                       <p className="text-sm">{Math.ceil((call.duration_seconds || 0) / 60)} min</p>
                       <p className="text-xs text-muted-foreground">{call.duration_seconds || 0}s</p>
                     </div>
+                    {call.language && call.language !== "en" && (
+                      <Badge variant="outline" className="text-xs font-mono px-1">
+                        {LANG_LABELS[call.language] || call.language.toUpperCase()}
+                      </Badge>
+                    )}
                     <Badge variant={call.call_status === "completed" || call.call_status === "customer-ended-call" || call.call_status === "assistant-ended-call"
                       ? "default" : "destructive"} className="text-xs">
                       ${(Number(call.total_cost) || 0).toFixed(3)}

@@ -849,7 +849,17 @@ export default function ProjectDetail() {
                   </span>
                 )}
               </div>
-              <Badge variant="outline">Mode: {estimationMode.replace(/_/g, " ")}</Badge>
+              <div className="flex items-center gap-2">
+                {aiSuggestions.summary?.total_rooms != null && (
+                  <span className="text-xs text-muted-foreground">
+                    {aiSuggestions.summary.total_rooms} rooms | {aiSuggestions.summary.total_materials} materials | {aiSuggestions.summary.total_rfis} RFIs
+                  </span>
+                )}
+                {aiSuggestions.summary?.verification_applied && (
+                  <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">Verified</Badge>
+                )}
+                <Badge variant="outline">Mode: {estimationMode.replace(/_/g, " ")}</Badge>
+              </div>
             </div>
           </Card>
 
@@ -891,18 +901,35 @@ export default function ProjectDetail() {
                 <table className="w-full text-sm">
                   <thead><tr className="border-b bg-muted/50">
                     <th className="p-3 text-left">Room Name</th><th className="p-3 text-left">Number</th><th className="p-3 text-right">Area (SF)</th>
-                    <th className="p-3 text-left">Finish Tags</th><th className="p-3 text-right">Actions</th>
+                    <th className="p-3 text-left">Finish Tags</th><th className="p-3 text-right">Confidence</th><th className="p-3 text-right">Actions</th>
                   </tr></thead>
                   <tbody>
-                    {aiRooms.map((room: any, i: number) => (
+                    {aiRooms.map((room: any, i: number) => {
+                      const floorTag = room.floor_finish_tag;
+                      const wallTags = room.wall_finish_tags || room.finish_tags || [];
+                      const baseTag = room.base_tag;
+                      const confidence = room.confidence;
+                      return (
                       <tr key={i} className="border-b hover:bg-muted/30">
-                        <td className="p-3 font-medium">{room.room_name}</td>
-                        <td className="p-3">{room.room_number || "—"}</td>
-                        <td className="p-3 text-right">{room.area_sqft?.toLocaleString() || "—"}</td>
+                        <td className="p-3 font-medium">
+                          {room.room_name}
+                          {room._verified && <CheckCircle className="inline ml-1 h-3 w-3 text-green-500" />}
+                        </td>
+                        <td className="p-3">{room.room_number || "---"}</td>
+                        <td className="p-3 text-right">{room.area_sqft?.toLocaleString() || "---"}</td>
                         <td className="p-3">
                           <div className="flex flex-wrap gap-1">
-                            {(room.finish_tags || []).map((t: string) => <Badge key={t} variant="outline" className="text-xs">{t}</Badge>)}
+                            {floorTag && <Badge variant="outline" className="text-xs bg-blue-50 border-blue-200">{floorTag} (floor)</Badge>}
+                            {wallTags.map((t: string) => <Badge key={t} variant="outline" className="text-xs bg-amber-50 border-amber-200">{t}</Badge>)}
+                            {baseTag && <Badge variant="outline" className="text-xs bg-gray-100 border-gray-300">{baseTag} (base)</Badge>}
                           </div>
+                        </td>
+                        <td className="p-3 text-right">
+                          {confidence != null && (
+                            <Badge variant={confidence >= 90 ? "default" : confidence >= 70 ? "secondary" : "destructive"} className={confidence >= 90 ? "bg-green-500" : confidence >= 70 ? "bg-yellow-500 text-black" : ""}>
+                              {confidence >= 90 ? "High" : confidence >= 70 ? "Review" : "Low"} {confidence}%
+                            </Badge>
+                          )}
                         </td>
                         <td className="p-3 text-right">
                           <div className="flex gap-1 justify-end">
@@ -910,7 +937,8 @@ export default function ProjectDetail() {
                           </div>
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </CardContent>
@@ -933,16 +961,26 @@ export default function ProjectDetail() {
                     <th className="p-3 text-right">Area</th><th className="p-3 text-right">Confidence</th><th className="p-3 text-right">Actions</th>
                   </tr></thead>
                   <tbody>
-                    {aiMaterials.map((mat: any, i: number) => (
+                    {aiMaterials.map((mat: any, i: number) => {
+                      const conf = mat.confidence;
+                      const tag = mat.material_tag || mat.tag || "---";
+                      const name = mat.material_name || mat.item_name || mat.product_name || "---";
+                      const matchedName = mat.matched_material_name;
+                      return (
                       <tr key={i} className="border-b hover:bg-muted/30">
-                        <td className="p-3 font-mono">{mat.material_tag || "—"}</td>
-                        <td className="p-3">{mat.material_name || mat.item_name || "—"}</td>
-                        <td className="p-3">{mat.surface || "—"}</td>
-                        <td className="p-3 text-right">{mat.net_area?.toLocaleString() || "—"} SF</td>
+                        <td className="p-3 font-mono">{tag}</td>
+                        <td className="p-3">
+                          {name}
+                          {matchedName && matchedName !== name && (
+                            <span className="block text-xs text-muted-foreground">DB: {matchedName}</span>
+                          )}
+                        </td>
+                        <td className="p-3">{mat.surface || "---"}</td>
+                        <td className="p-3 text-right">{mat.net_area?.toLocaleString() || "---"} {mat.unit_of_measure || "SF"}</td>
                         <td className="p-3 text-right">
-                          {mat.confidence != null && (
-                            <Badge variant={mat.confidence >= 80 ? "default" : mat.confidence >= 50 ? "secondary" : "outline"}>
-                              {mat.confidence}%
+                          {conf != null && (
+                            <Badge variant={conf >= 90 ? "default" : conf >= 70 ? "secondary" : "destructive"} className={conf >= 90 ? "bg-green-500" : conf >= 70 ? "bg-yellow-500 text-black" : ""}>
+                              {conf >= 90 ? "High" : conf >= 70 ? "Review" : "Low"} {conf}%
                             </Badge>
                           )}
                         </td>
@@ -950,7 +988,8 @@ export default function ProjectDetail() {
                           <Button size="sm" variant="outline" onClick={() => handleAcceptMaterial(mat)}><CheckCircle className="h-3 w-3" /></Button>
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </CardContent>

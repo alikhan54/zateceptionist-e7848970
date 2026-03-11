@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useTenant } from '@/contexts/TenantContext';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
+import { useRecruitmentStats, useCreateJob } from '@/hooks/useRecruitment';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,24 +62,39 @@ export default function HRDashboard() {
   });
 
   const { isEnabled } = useFeatureFlags();
+  const { data: recruitmentStats } = useRecruitmentStats();
+  const createJob = useCreateJob();
+
   if (!isEnabled('hr_module')) {
     return <Navigate to="/dashboard" replace />;
   }
 
   const handleAddJob = () => {
-    toast({
-      title: 'Job Posted',
-      description: `${newJob.title} has been created.`,
-    });
-    setIsAddJobOpen(false);
-    setNewJob({
-      title: '',
-      department: '',
-      location: '',
-      type: 'Full-time',
-      salary_min: '',
-      salary_max: '',
-      description: ''
+    createJob.mutate({
+      title: newJob.title,
+      department: newJob.department,
+      location: newJob.location,
+      employment_type: newJob.type,
+      salary_min: newJob.salary_min ? Number(newJob.salary_min) : undefined,
+      salary_max: newJob.salary_max ? Number(newJob.salary_max) : undefined,
+      description: newJob.description,
+    } as any, {
+      onSuccess: () => {
+        toast({
+          title: 'Job Posted',
+          description: `${newJob.title} has been created.`,
+        });
+        setIsAddJobOpen(false);
+        setNewJob({
+          title: '',
+          department: '',
+          location: '',
+          type: 'Full-time',
+          salary_min: '',
+          salary_max: '',
+          description: ''
+        });
+      },
     });
   };
 
@@ -146,7 +162,9 @@ export default function HRDashboard() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsAddJobOpen(false)}>Cancel</Button>
-              <Button onClick={handleAddJob}>Post Job</Button>
+              <Button onClick={handleAddJob} disabled={createJob.isPending || !newJob.title}>
+                {createJob.isPending ? 'Posting...' : 'Post Job'}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -160,8 +178,10 @@ export default function HRDashboard() {
             <Briefcase className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground">No positions posted yet</p>
+            <div className="text-2xl font-bold">{recruitmentStats?.openJobs ?? 0}</div>
+            <p className="text-xs text-muted-foreground">
+              {(recruitmentStats?.openJobs ?? 0) === 0 ? 'No positions posted yet' : 'Active job requisitions'}
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -170,18 +190,22 @@ export default function HRDashboard() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground">No candidates yet</p>
+            <div className="text-2xl font-bold">{recruitmentStats?.totalCandidates ?? 0}</div>
+            <p className="text-xs text-muted-foreground">
+              {(recruitmentStats?.totalCandidates ?? 0) === 0 ? 'No candidates yet' : 'In pipeline'}
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Interviews Scheduled</CardTitle>
+            <CardTitle className="text-sm font-medium">Applications</CardTitle>
             <CalendarDays className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground">No interviews scheduled</p>
+            <div className="text-2xl font-bold">{recruitmentStats?.aiInterviews ?? 0}</div>
+            <p className="text-xs text-muted-foreground">
+              {(recruitmentStats?.aiInterviews ?? 0) === 0 ? 'No interviews yet' : 'AI interviews completed'}
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -190,8 +214,10 @@ export default function HRDashboard() {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground">No pending offers</p>
+            <div className="text-2xl font-bold">{recruitmentStats?.offersPending ?? 0}</div>
+            <p className="text-xs text-muted-foreground">
+              {(recruitmentStats?.offersPending ?? 0) === 0 ? 'No pending offers' : 'Awaiting response'}
+            </p>
           </CardContent>
         </Card>
       </div>

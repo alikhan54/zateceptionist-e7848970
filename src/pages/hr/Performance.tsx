@@ -1,22 +1,34 @@
+import { useState } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
-import { usePerformance } from '@/hooks/useHR';
+import { usePerformance, useEmployees } from '@/hooks/useHR';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { CircularProgress } from '@/components/hr/CircularProgress';
 import { AnimatedNumber } from '@/components/hr/AnimatedNumber';
-import { 
-  TrendingUp, Target, Star, Users, ClipboardCheck, Award, 
+import {
+  TrendingUp, Target, Star, Users, ClipboardCheck, Award,
   MessageSquare, ChevronRight, Plus, Clock, AlertTriangle
 } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
 
 export default function PerformancePage() {
   const { t } = useTenant();
-  const { data, isLoading } = usePerformance();
+  const { data, isLoading, createReview, createGoal } = usePerformance();
+  const { data: employees } = useEmployees();
+  const employeeList = employees || [];
+
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [isGoalOpen, setIsGoalOpen] = useState(false);
+  const [newReview, setNewReview] = useState({ employee_id: '', employee_name: '', review_type: 'quarterly', review_period_start: '', review_period_end: '' });
+  const [newGoal, setNewGoal] = useState({ title: '', description: '', category: 'performance', target_date: '' });
 
   const reviews = data?.reviews || [];
   const goals = data?.goals || [];
@@ -60,7 +72,7 @@ export default function PerformancePage() {
           <h1 className="text-3xl font-bold">Performance</h1>
           <p className="text-muted-foreground mt-1">Track goals, reviews, and {t('staff').toLowerCase()} development</p>
         </div>
-        <Button className="gap-2"><Plus className="h-4 w-4" />Create Review</Button>
+        <Button className="gap-2" onClick={() => setIsReviewOpen(true)}><Plus className="h-4 w-4" />Create Review</Button>
       </div>
 
       {/* Stats */}
@@ -102,7 +114,7 @@ export default function PerformancePage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div><CardTitle>Goals & Objectives</CardTitle><CardDescription>Track progress on your key objectives</CardDescription></div>
-              <Button size="sm" variant="outline" className="gap-2"><Plus className="h-4 w-4" />Add Goal</Button>
+              <Button size="sm" variant="outline" className="gap-2" onClick={() => setIsGoalOpen(true)}><Plus className="h-4 w-4" />Add Goal</Button>
             </CardHeader>
             <CardContent>
               {isLoading ? (
@@ -136,7 +148,7 @@ export default function PerformancePage() {
                   <Target className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
                   <p className="font-medium text-muted-foreground">No goals set yet</p>
                   <p className="text-sm text-muted-foreground">Click "Add Goal" to create your first objective</p>
-                  <Button variant="outline" className="mt-4 gap-2"><Plus className="h-4 w-4" />Add Your First Goal</Button>
+                  <Button variant="outline" className="mt-4 gap-2" onClick={() => setIsGoalOpen(true)}><Plus className="h-4 w-4" />Add Your First Goal</Button>
                 </div>
               )}
             </CardContent>
@@ -216,6 +228,108 @@ export default function PerformancePage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Create Review Dialog */}
+      <Dialog open={isReviewOpen} onOpenChange={setIsReviewOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Performance Review</DialogTitle>
+            <DialogDescription>Start a new performance review cycle for a team member</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Employee</Label>
+              <Select value={newReview.employee_id} onValueChange={(v) => {
+                const emp = employeeList.find(e => e.id === v);
+                setNewReview({ ...newReview, employee_id: v, employee_name: emp ? `${emp.first_name} ${emp.last_name}` : '' });
+              }}>
+                <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
+                <SelectContent>
+                  {employeeList.map(emp => (
+                    <SelectItem key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Review Type</Label>
+              <Select value={newReview.review_type} onValueChange={(v) => setNewReview({ ...newReview, review_type: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="quarterly">Quarterly</SelectItem>
+                  <SelectItem value="annual">Annual</SelectItem>
+                  <SelectItem value="probation">Probation</SelectItem>
+                  <SelectItem value="project">Project-based</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Period Start</Label>
+                <Input type="date" value={newReview.review_period_start} onChange={(e) => setNewReview({ ...newReview, review_period_start: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Period End</Label>
+                <Input type="date" value={newReview.review_period_end} onChange={(e) => setNewReview({ ...newReview, review_period_end: e.target.value })} />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsReviewOpen(false)}>Cancel</Button>
+            <Button disabled={!newReview.employee_id} onClick={() => {
+              createReview.mutate(newReview);
+              setIsReviewOpen(false);
+              setNewReview({ employee_id: '', employee_name: '', review_type: 'quarterly', review_period_start: '', review_period_end: '' });
+            }}>Create Review</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Goal Dialog */}
+      <Dialog open={isGoalOpen} onOpenChange={setIsGoalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Goal</DialogTitle>
+            <DialogDescription>Set a new objective to track progress</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Goal Title</Label>
+              <Input placeholder="e.g. Increase team velocity by 20%" value={newGoal.title} onChange={(e) => setNewGoal({ ...newGoal, title: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Input placeholder="Describe the objective" value={newGoal.description} onChange={(e) => setNewGoal({ ...newGoal, description: e.target.value })} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Category</Label>
+                <Select value={newGoal.category} onValueChange={(v) => setNewGoal({ ...newGoal, category: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="performance">Performance</SelectItem>
+                    <SelectItem value="development">Development</SelectItem>
+                    <SelectItem value="project">Project</SelectItem>
+                    <SelectItem value="team">Team</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Target Date</Label>
+                <Input type="date" value={newGoal.target_date} onChange={(e) => setNewGoal({ ...newGoal, target_date: e.target.value })} />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsGoalOpen(false)}>Cancel</Button>
+            <Button disabled={!newGoal.title} onClick={() => {
+              createGoal.mutate(newGoal);
+              setIsGoalOpen(false);
+              setNewGoal({ title: '', description: '', category: 'performance', target_date: '' });
+            }}>Add Goal</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

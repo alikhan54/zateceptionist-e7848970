@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTenant } from '@/contexts/TenantContext';
 import { useDepartments, useEmployees } from '@/hooks/useHR';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -31,15 +32,25 @@ import {
 
 export default function DepartmentsPage() {
   const { t } = useTenant();
-  const { data: departments, isLoading, createDepartment } = useDepartments();
+  const { data: departments, isLoading, createDepartment, updateDepartment } = useDepartments();
   const { data: employees } = useEmployees();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editDept, setEditDept] = useState<{ id: string; name: string; code: string; manager_id: string }>({ id: '', name: '', code: '', manager_id: '' });
   const [newDept, setNewDept] = useState({ name: '', code: '', manager_id: '' });
+
+  const navigate = useNavigate();
 
   const handleCreateDepartment = () => {
     createDepartment.mutate(newDept);
     setIsDialogOpen(false);
     setNewDept({ name: '', code: '', manager_id: '' });
+  };
+
+  const handleEditDepartment = () => {
+    if (!editDept.id) return;
+    updateDepartment.mutate({ id: editDept.id, name: editDept.name, code: editDept.code, manager_id: editDept.manager_id || undefined });
+    setIsEditOpen(false);
   };
 
   const formatCurrency = (amount: number) => {
@@ -232,11 +243,14 @@ export default function DepartmentsPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            setEditDept({ id: dept.id, name: dept.name, code: dept.code || '', manager_id: dept.manager_id || '' });
+                            setIsEditOpen(true);
+                          }}>
                             <Edit className="h-4 w-4 mr-2" />
                             Edit
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => navigate(`/hr/employees?department=${dept.name}`)}>
                             <Users className="h-4 w-4 mr-2" />
                             View {t('staffs')}
                           </DropdownMenuItem>
@@ -390,6 +404,59 @@ export default function DepartmentsPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Edit Department Dialog */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Department</DialogTitle>
+            <DialogDescription>Update department details</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Department Name</Label>
+              <Input
+                value={editDept.name}
+                onChange={(e) => setEditDept({ ...editDept, name: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Department Code</Label>
+              <Input
+                value={editDept.code}
+                onChange={(e) => setEditDept({ ...editDept, code: e.target.value.toUpperCase() })}
+                maxLength={5}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Department Manager</Label>
+              <Select
+                value={editDept.manager_id}
+                onValueChange={(value) => setEditDept({ ...editDept, manager_id: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select manager" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(employees || [])
+                    .filter(e => e.employment_status === 'active')
+                    .map(e => (
+                      <SelectItem key={e.id} value={e.id}>
+                        {e.full_name || `${e.first_name} ${e.last_name}`}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditOpen(false)}>Cancel</Button>
+            <Button onClick={handleEditDepartment} disabled={updateDepartment.isPending}>
+              {updateDepartment.isPending ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

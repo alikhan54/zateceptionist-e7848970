@@ -39,6 +39,7 @@ export default function DocumentsPage() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [newDoc, setNewDoc] = useState({ name: '', category: '' });
   const { data: documents, isLoading, uploadDocument } = useHRDocuments(selectedCategory !== 'all' ? selectedCategory : undefined);
 
   const displayDocuments = documents || [];
@@ -113,11 +114,11 @@ export default function DocumentsPage() {
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label>Document Name</Label>
-                <Input placeholder="Enter document name" />
+                <Input placeholder="Enter document name" value={newDoc.name} onChange={(e) => setNewDoc({ ...newDoc, name: e.target.value })} />
               </div>
               <div className="space-y-2">
                 <Label>Category</Label>
-                <Select>
+                <Select value={newDoc.category} onValueChange={(v) => setNewDoc({ ...newDoc, category: v })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
@@ -134,10 +135,7 @@ export default function DocumentsPage() {
                 <div className="border-2 border-dashed rounded-lg p-8 text-center">
                   <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
                   <p className="text-sm text-muted-foreground">
-                    Drag and drop your file here, or click to browse
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    PDF, DOCX, XLSX up to 10MB
+                    File upload coming soon — document metadata will be saved
                   </p>
                 </div>
               </div>
@@ -146,7 +144,11 @@ export default function DocumentsPage() {
               <Button variant="outline" onClick={() => setIsUploadOpen(false)}>
                 Cancel
               </Button>
-              <Button>Upload</Button>
+              <Button disabled={!newDoc.name || !newDoc.category} onClick={() => {
+                uploadDocument.mutate({ name: newDoc.name, category: newDoc.category, status: 'active' });
+                setIsUploadOpen(false);
+                setNewDoc({ name: '', category: '' });
+              }}>Upload</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

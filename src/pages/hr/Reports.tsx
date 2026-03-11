@@ -1,19 +1,16 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
-import { useHRReports } from '@/hooks/useHR';
+import { useEmployees, useDepartments, useAttendance, useLeaveRequests } from '@/hooks/useHR';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { 
-  BarChart3, 
+import {
+  BarChart3,
   Download,
   Users,
-  TrendingUp,
   TrendingDown,
   PieChart,
   Calendar as CalendarIcon,
@@ -23,17 +20,22 @@ import {
   DollarSign,
   Award
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, differenceInYears, parseISO } from 'date-fns';
 import { DateRange } from 'react-day-picker';
-import { cn } from '@/lib/utils';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPie, Pie, Cell, LineChart, Line, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function ReportsPage() {
   const { t } = useTenant();
-  const { fetchReport } = useHRReports();
+  const { data: employees } = useEmployees();
+  const { data: departments } = useDepartments();
+  const { data: leaveData } = useLeaveRequests();
   const [selectedReport, setSelectedReport] = useState('headcount');
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [department, setDepartment] = useState('all');
+
+  const employeeList = employees || [];
+  const departmentList = departments || [];
+  const leaveRequests = leaveData || [];
 
   const reportTypes = [
     { id: 'headcount', label: 'Headcount Report', icon: Users, description: 'Employee count by department and time' },
@@ -45,135 +47,92 @@ export default function ReportsPage() {
     { id: 'performance', label: 'Performance Distribution', icon: Award, description: 'Rating distribution analysis' },
   ];
 
-  // Mock chart data
-  const headcountData = [
-    { name: 'Engineering', count: 45, growth: 12 },
-    { name: 'Sales', count: 30, growth: 5 },
-    { name: 'Marketing', count: 20, growth: 8 },
-    { name: 'HR', count: 10, growth: 2 },
-    { name: 'Finance', count: 15, growth: 3 },
-    { name: 'Operations', count: 25, growth: 6 },
-  ];
+  // Computed chart data from real hooks
+  const headcountData = useMemo(() => {
+    if (departmentList.length === 0) return [];
+    return departmentList.map(d => ({ name: d.name, count: d.employee_count || 0 }));
+  }, [departmentList]);
 
-  const turnoverData = [
-    { month: 'Jan', hired: 8, left: 3 },
-    { month: 'Feb', hired: 5, left: 2 },
-    { month: 'Mar', hired: 12, left: 4 },
-    { month: 'Apr', hired: 6, left: 5 },
-    { month: 'May', hired: 10, left: 3 },
-    { month: 'Jun', hired: 8, left: 2 },
-  ];
+  const leaveUtilData = useMemo(() => {
+    if (leaveRequests.length === 0) return [];
+    const byType: Record<string, number> = {};
+    leaveRequests.forEach(lr => {
+      const t = lr.leave_type || 'other';
+      byType[t] = (byType[t] || 0) + (lr.requested_days || 1);
+    });
+    return Object.entries(byType).map(([name, days]) => ({ name, days }));
+  }, [leaveRequests]);
 
-  const diversityData = [
-    { name: 'Male', value: 55, color: 'hsl(var(--chart-1))' },
-    { name: 'Female', value: 42, color: 'hsl(var(--chart-2))' },
-    { name: 'Other', value: 3, color: 'hsl(var(--chart-3))' },
-  ];
+  const emptyChart = (message: string) => (
+    <div className="h-[350px] flex flex-col items-center justify-center text-muted-foreground">
+      <BarChart3 className="h-12 w-12 text-muted-foreground/30 mb-3" />
+      <p>{message}</p>
+      <p className="text-sm mt-1">Add employees and data to populate this report</p>
+    </div>
+  );
 
-  const attendanceData = [
-    { week: 'Week 1', present: 95, absent: 3, late: 2 },
-    { week: 'Week 2', present: 92, absent: 5, late: 3 },
-    { week: 'Week 3', present: 96, absent: 2, late: 2 },
-    { week: 'Week 4', present: 94, absent: 4, late: 2 },
-  ];
+  const tooltipStyle = {
+    backgroundColor: 'hsl(var(--card))',
+    border: '1px solid hsl(var(--border))',
+    borderRadius: '8px'
+  };
 
   const renderChart = () => {
     switch (selectedReport) {
       case 'headcount':
-        return (
+        return headcountData.length > 0 ? (
           <ResponsiveContainer width="100%" height={350}>
             <BarChart data={headcountData}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis dataKey="name" className="text-xs" />
               <YAxis className="text-xs" />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: 'hsl(var(--card))', 
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px'
-                }} 
-              />
+              <Tooltip contentStyle={tooltipStyle} />
               <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
-        );
-      case 'turnover':
-        return (
+        ) : emptyChart('No department headcount data yet');
+      case 'leave':
+        return leaveUtilData.length > 0 ? (
           <ResponsiveContainer width="100%" height={350}>
-            <LineChart data={turnoverData}>
+            <BarChart data={leaveUtilData}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis dataKey="month" className="text-xs" />
+              <XAxis dataKey="name" className="text-xs" />
               <YAxis className="text-xs" />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: 'hsl(var(--card))', 
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px'
-                }} 
-              />
-              <Legend />
-              <Line type="monotone" dataKey="hired" stroke="hsl(var(--chart-2))" strokeWidth={2} />
-              <Line type="monotone" dataKey="left" stroke="hsl(var(--destructive))" strokeWidth={2} />
-            </LineChart>
-          </ResponsiveContainer>
-        );
-      case 'diversity':
-        return (
-          <ResponsiveContainer width="100%" height={350}>
-            <RechartsPie>
-              <Pie
-                data={diversityData}
-                cx="50%"
-                cy="50%"
-                innerRadius={80}
-                outerRadius={120}
-                paddingAngle={5}
-                dataKey="value"
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-              >
-                {diversityData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip />
-            </RechartsPie>
-          </ResponsiveContainer>
-        );
-      case 'attendance':
-        return (
-          <ResponsiveContainer width="100%" height={350}>
-            <BarChart data={attendanceData}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis dataKey="week" className="text-xs" />
-              <YAxis className="text-xs" />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: 'hsl(var(--card))', 
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px'
-                }} 
-              />
-              <Legend />
-              <Bar dataKey="present" stackId="a" fill="hsl(var(--chart-2))" />
-              <Bar dataKey="late" stackId="a" fill="hsl(var(--chart-4))" />
-              <Bar dataKey="absent" stackId="a" fill="hsl(var(--destructive))" />
+              <Tooltip contentStyle={tooltipStyle} />
+              <Bar dataKey="days" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
-        );
+        ) : emptyChart('No leave utilization data yet');
       default:
-        return (
-          <div className="h-[350px] flex items-center justify-center text-muted-foreground">
-            Select a report type to view data
-          </div>
-        );
+        return emptyChart('No data available for this report yet');
     }
   };
 
+  const avgTenure = useMemo(() => {
+    if (employeeList.length === 0) return '-';
+    const now = new Date();
+    const tenures = employeeList
+      .filter(e => e.date_of_joining)
+      .map(e => differenceInYears(now, parseISO(e.date_of_joining)));
+    if (tenures.length === 0) return '-';
+    const avg = tenures.reduce((a, b) => a + b, 0) / tenures.length;
+    return `${avg.toFixed(1)} yrs`;
+  }, [employeeList]);
+
+  const terminatedCount = useMemo(() => {
+    return employeeList.filter(e => e.employment_status === 'terminated').length;
+  }, [employeeList]);
+
+  const turnoverRate = useMemo(() => {
+    if (employeeList.length === 0) return '0%';
+    return `${((terminatedCount / employeeList.length) * 100).toFixed(1)}%`;
+  }, [employeeList, terminatedCount]);
+
   const stats = [
-    { label: 'Total Headcount', value: '145', change: '+8%', trend: 'up', icon: Users },
-    { label: 'Turnover Rate', value: '4.2%', change: '-1.5%', trend: 'down', icon: TrendingDown },
-    { label: 'Avg Tenure', value: '2.4 yrs', change: '+0.3', trend: 'up', icon: Clock },
-    { label: 'Open Positions', value: '12', change: '+4', trend: 'up', icon: Building2 },
+    { label: 'Total Headcount', value: String(employeeList.length), icon: Users },
+    { label: 'Turnover Rate', value: turnoverRate, icon: TrendingDown },
+    { label: 'Avg Tenure', value: avgTenure, icon: Clock },
+    { label: 'Departments', value: String(departmentList.length), icon: Building2 },
   ];
 
   return (
@@ -201,17 +160,6 @@ export default function ReportsPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">{stat.label}</p>
                   <p className="text-2xl font-bold mt-1">{stat.value}</p>
-                  <div className={cn(
-                    'text-xs flex items-center gap-1 mt-1',
-                    stat.trend === 'up' ? 'text-chart-2' : 'text-destructive'
-                  )}>
-                    {stat.trend === 'up' ? (
-                      <TrendingUp className="h-3 w-3" />
-                    ) : (
-                      <TrendingDown className="h-3 w-3" />
-                    )}
-                    {stat.change}
-                  </div>
                 </div>
                 <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
                   <stat.icon className="h-5 w-5 text-primary" />
@@ -289,10 +237,9 @@ export default function ReportsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Departments</SelectItem>
-                  <SelectItem value="engineering">Engineering</SelectItem>
-                  <SelectItem value="sales">Sales</SelectItem>
-                  <SelectItem value="marketing">Marketing</SelectItem>
-                  <SelectItem value="hr">HR</SelectItem>
+                  {departmentList.map((dept) => (
+                    <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

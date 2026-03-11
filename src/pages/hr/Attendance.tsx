@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
-import { useAttendance } from '@/hooks/useHR';
+import { useAttendance, useDepartments } from '@/hooks/useHR';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,8 @@ export default function AttendancePage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [filterDepartment, setFilterDepartment] = useState('all');
   const { data, isLoading, checkIn, checkOut } = useAttendance(format(selectedDate, 'yyyy-MM-dd'));
+  const { data: departments } = useDepartments();
+  const departmentList = departments || [];
 
   const handleCheckIn = async () => {
     try {
@@ -85,7 +87,23 @@ export default function AttendancePage() {
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={() => {
+                if (!data?.records?.length) {
+                  toast.error('No attendance data to export');
+                  return;
+                }
+                const header = 'Employee,Check In,Check Out,Work Hours,Overtime,Status\n';
+                const rows = data.records.map(r =>
+                  `"${r.employee_name}","${r.check_in_time || ''}","${r.check_out_time || ''}","${r.work_hours || r.total_hours || ''}","${r.overtime_hours || ''}","${r.status}"`
+                ).join('\n');
+                const blob = new Blob([header + rows], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `attendance-${format(selectedDate, 'yyyy-MM-dd')}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}>
                 <Download className="h-4 w-4 mr-2" />
                 Export
               </Button>
@@ -173,9 +191,9 @@ export default function AttendancePage() {
                     <SelectTrigger className="w-[150px]"><SelectValue placeholder="Department" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Departments</SelectItem>
-                      <SelectItem value="engineering">Engineering</SelectItem>
-                      <SelectItem value="sales">Sales</SelectItem>
-                      <SelectItem value="hr">HR</SelectItem>
+                      {departmentList.map((dept) => (
+                        <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

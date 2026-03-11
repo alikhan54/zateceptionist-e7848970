@@ -47,7 +47,7 @@ export const PLANS = [
       'Basic AI features',
       'Email support',
     ],
-    limits: { users: 3, api_calls: 1000, storage_gb: 1, voice_minutes: 0 },
+    limits: { users: 3, api_calls: 1000, storage_gb: 1, voice_minutes: 5 },
   },
   {
     id: 'starter',

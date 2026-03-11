@@ -100,6 +100,7 @@ export interface TenantConfig {
   facebook_url?: string | null;
   linkedin_url?: string | null;
   custom_system_prompt_override?: string | null;
+  country?: string | null;
 }
 
 // Industry-specific vocabulary translations
@@ -516,7 +517,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const isRealEstate = industry === "real_estate";
   const isRestaurant = industry === "restaurant";
   const isSalon = industry === "salon";
-  const isBankingCollections = industry === "banking_collections";
+  const isBankingCollections = industry === "banking_collections" || industry === "finance";
   const isConstructionEstimation = industry === "construction_estimation" || industry === "construction";
 
   useEffect(() => {

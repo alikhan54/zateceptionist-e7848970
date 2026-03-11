@@ -512,12 +512,36 @@ export default function BillingSettings() {
           <CardDescription>Manage your payment information</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8 text-muted-foreground">
-            <CreditCard className="h-12 w-12 mx-auto mb-4 opacity-30" />
-            <p className="font-medium">Payment integration coming soon</p>
-            <p className="text-sm mt-1">Contact us to upgrade your plan</p>
-            <Button variant="outline" className="mt-4">
-              Contact Sales
+          <div className="text-center py-8">
+            <CreditCard className="h-12 w-12 mx-auto mb-4 text-primary/40" />
+            <p className="font-medium">Manage your payment method and invoices via Stripe</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              View billing history, update card, or download invoices
+            </p>
+            <Button
+              variant="outline"
+              className="mt-4"
+              onClick={async () => {
+                try {
+                  const { callWebhook } = await import('@/lib/api/webhooks');
+                  const response = await callWebhook(
+                    '/billing/customer-portal',
+                    { return_url: `${window.location.origin}/settings/billing` },
+                    tenantId || ''
+                  );
+                  const data = response.data as { url?: string } | undefined;
+                  if (response.success && data?.url) {
+                    window.location.href = data.url;
+                  } else {
+                    toast({ title: 'Unable to open billing portal', description: response.error || 'Please try again later.', variant: 'destructive' });
+                  }
+                } catch {
+                  toast({ title: 'Error', description: 'Could not connect to billing portal.', variant: 'destructive' });
+                }
+              }}
+            >
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Open Billing Portal
             </Button>
           </div>
         </CardContent>

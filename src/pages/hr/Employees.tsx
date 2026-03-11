@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
-import { useEmployees } from '@/hooks/useHR';
+import { useEmployees, useDepartments } from '@/hooks/useHR';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,16 +30,24 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 
-const departments = ['All', 'Engineering', 'Sales', 'Marketing', 'HR', 'Finance', 'Operations'];
 const statuses = ['All', 'Active', 'On Leave', 'Terminated'];
 const employmentTypes = ['All', 'Full-time', 'Part-time', 'Contract', 'Intern'];
+
+const emptyNewEmployee = {
+  first_name: '', last_name: '', company_email: '', phone: '', date_of_birth: '',
+  department_name: '', position: '', employment_type: 'Full-time', date_of_joining: '',
+  salary: '', emergency_contact_name: '', emergency_contact_phone: '',
+};
 
 export default function EmployeesPage() {
   const { t } = useTenant();
   const { toast } = useToast();
   const { data: employees, isLoading, createEmployee, updateEmployee } = useEmployees();
-  
+  const { data: deptList } = useDepartments();
+  const departments = ['All', ...(deptList || []).map(d => d.name)];
+
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [newEmployee, setNewEmployee] = useState(emptyNewEmployee);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterDept, setFilterDept] = useState('All');
   const [filterStatus, setFilterStatus] = useState('All');
@@ -156,34 +164,34 @@ export default function EmployeesPage() {
                 {wizardStep === 1 && (
                   <div className="grid gap-4">
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2"><Label>First Name</Label><Input placeholder="John" /></div>
-                      <div className="space-y-2"><Label>Last Name</Label><Input placeholder="Doe" /></div>
+                      <div className="space-y-2"><Label>First Name</Label><Input placeholder="John" value={newEmployee.first_name} onChange={(e) => setNewEmployee({ ...newEmployee, first_name: e.target.value })} /></div>
+                      <div className="space-y-2"><Label>Last Name</Label><Input placeholder="Doe" value={newEmployee.last_name} onChange={(e) => setNewEmployee({ ...newEmployee, last_name: e.target.value })} /></div>
                     </div>
-                    <div className="space-y-2"><Label>Email</Label><Input type="email" placeholder="john.doe@company.com" /></div>
-                    <div className="space-y-2"><Label>Phone</Label><Input type="tel" placeholder="+1 555-0100" /></div>
-                    <div className="space-y-2"><Label>Date of Birth</Label><Input type="date" /></div>
+                    <div className="space-y-2"><Label>Email</Label><Input type="email" placeholder="john.doe@company.com" value={newEmployee.company_email} onChange={(e) => setNewEmployee({ ...newEmployee, company_email: e.target.value })} /></div>
+                    <div className="space-y-2"><Label>Phone</Label><Input type="tel" placeholder="+1 555-0100" value={newEmployee.phone} onChange={(e) => setNewEmployee({ ...newEmployee, phone: e.target.value })} /></div>
+                    <div className="space-y-2"><Label>Date of Birth</Label><Input type="date" value={newEmployee.date_of_birth} onChange={(e) => setNewEmployee({ ...newEmployee, date_of_birth: e.target.value })} /></div>
                   </div>
                 )}
                 {wizardStep === 2 && (
                   <div className="grid gap-4">
-                    <div className="space-y-2"><Label>Department</Label><Select><SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger><SelectContent>{departments.filter(d => d !== 'All').map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent></Select></div>
-                    <div className="space-y-2"><Label>Position</Label><Input placeholder="Software Engineer" /></div>
+                    <div className="space-y-2"><Label>Department</Label><Select value={newEmployee.department_name} onValueChange={(v) => setNewEmployee({ ...newEmployee, department_name: v })}><SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger><SelectContent>{departments.filter(d => d !== 'All').map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent></Select></div>
+                    <div className="space-y-2"><Label>Position</Label><Input placeholder="Software Engineer" value={newEmployee.position} onChange={(e) => setNewEmployee({ ...newEmployee, position: e.target.value })} /></div>
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2"><Label>Employment Type</Label><Select><SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger><SelectContent>{employmentTypes.filter(t => t !== 'All').map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent></Select></div>
-                      <div className="space-y-2"><Label>Start Date</Label><Input type="date" /></div>
+                      <div className="space-y-2"><Label>Employment Type</Label><Select value={newEmployee.employment_type} onValueChange={(v) => setNewEmployee({ ...newEmployee, employment_type: v })}><SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger><SelectContent>{employmentTypes.filter(t => t !== 'All').map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent></Select></div>
+                      <div className="space-y-2"><Label>Start Date</Label><Input type="date" value={newEmployee.date_of_joining} onChange={(e) => setNewEmployee({ ...newEmployee, date_of_joining: e.target.value })} /></div>
                     </div>
                   </div>
                 )}
                 {wizardStep === 3 && (
                   <div className="grid gap-4">
-                    <div className="space-y-2"><Label>Annual Salary</Label><Input type="number" placeholder="85000" /></div>
+                    <div className="space-y-2"><Label>Annual Salary</Label><Input type="number" placeholder="85000" value={newEmployee.salary} onChange={(e) => setNewEmployee({ ...newEmployee, salary: e.target.value })} /></div>
                     <div className="space-y-2"><Label>Pay Frequency</Label><Select defaultValue="monthly"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="monthly">Monthly</SelectItem><SelectItem value="biweekly">Bi-weekly</SelectItem></SelectContent></Select></div>
                   </div>
                 )}
                 {wizardStep === 4 && (
                   <div className="grid gap-4">
-                    <div className="space-y-2"><Label>Emergency Contact Name</Label><Input placeholder="Jane Doe" /></div>
-                    <div className="space-y-2"><Label>Contact Phone</Label><Input type="tel" placeholder="+1 555-0199" /></div>
+                    <div className="space-y-2"><Label>Emergency Contact Name</Label><Input placeholder="Jane Doe" value={newEmployee.emergency_contact_name} onChange={(e) => setNewEmployee({ ...newEmployee, emergency_contact_name: e.target.value })} /></div>
+                    <div className="space-y-2"><Label>Contact Phone</Label><Input type="tel" placeholder="+1 555-0199" value={newEmployee.emergency_contact_phone} onChange={(e) => setNewEmployee({ ...newEmployee, emergency_contact_phone: e.target.value })} /></div>
                   </div>
                 )}
                 {wizardStep === 5 && (
@@ -195,9 +203,21 @@ export default function EmployeesPage() {
                   </div>
                 )}
                 {wizardStep === 6 && (
-                  <div className="space-y-4 text-center">
-                    <CheckCircle2 className="h-12 w-12 mx-auto text-chart-2" />
-                    <p className="text-muted-foreground">Review the information and click Submit to create the employee profile.</p>
+                  <div className="space-y-4">
+                    <div className="text-center mb-4">
+                      <CheckCircle2 className="h-12 w-12 mx-auto text-chart-2" />
+                      <p className="text-muted-foreground mt-2">Review and submit</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div><span className="text-muted-foreground">Name:</span> {newEmployee.first_name} {newEmployee.last_name}</div>
+                      <div><span className="text-muted-foreground">Email:</span> {newEmployee.company_email || '-'}</div>
+                      <div><span className="text-muted-foreground">Phone:</span> {newEmployee.phone || '-'}</div>
+                      <div><span className="text-muted-foreground">Department:</span> {newEmployee.department_name || '-'}</div>
+                      <div><span className="text-muted-foreground">Position:</span> {newEmployee.position || '-'}</div>
+                      <div><span className="text-muted-foreground">Type:</span> {newEmployee.employment_type}</div>
+                      <div><span className="text-muted-foreground">Start Date:</span> {newEmployee.date_of_joining || '-'}</div>
+                      <div><span className="text-muted-foreground">Salary:</span> {newEmployee.salary ? `$${Number(newEmployee.salary).toLocaleString()}` : '-'}</div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -206,9 +226,27 @@ export default function EmployeesPage() {
                   {wizardStep === 1 ? 'Cancel' : 'Back'}
                 </Button>
                 <Button onClick={() => {
-                  if (wizardStep < 6) { setWizardStep(wizardStep + 1); } 
-                  else { toast({ title: `${t('staff')} added successfully` }); setIsAddDialogOpen(false); setWizardStep(1); }
-                }}>
+                  if (wizardStep < 6) { setWizardStep(wizardStep + 1); }
+                  else {
+                    createEmployee.mutate({
+                      first_name: newEmployee.first_name,
+                      last_name: newEmployee.last_name,
+                      company_email: newEmployee.company_email,
+                      phone: newEmployee.phone,
+                      date_of_birth: newEmployee.date_of_birth || undefined,
+                      department_name: newEmployee.department_name || undefined,
+                      position: newEmployee.position || undefined,
+                      employment_type: newEmployee.employment_type || 'Full-time',
+                      date_of_joining: newEmployee.date_of_joining || undefined,
+                      salary: newEmployee.salary ? Number(newEmployee.salary) : undefined,
+                      emergency_contact_name: newEmployee.emergency_contact_name || undefined,
+                      emergency_contact_phone: newEmployee.emergency_contact_phone || undefined,
+                    });
+                    setIsAddDialogOpen(false);
+                    setWizardStep(1);
+                    setNewEmployee(emptyNewEmployee);
+                  }
+                }} disabled={wizardStep === 6 && (!newEmployee.first_name || !newEmployee.last_name)}>
                   {wizardStep === 6 ? 'Submit' : 'Next'}
                 </Button>
               </DialogFooter>
