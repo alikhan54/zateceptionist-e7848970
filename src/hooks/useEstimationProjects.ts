@@ -78,6 +78,9 @@ export interface EstimationProject {
   qualification_notes: string | null;
   exclusions: string | null;
   assumptions: string | null;
+  ai_suggestions: Record<string, any>;
+  ai_analysis_status: string;
+  ai_analysis_completed_at: string | null;
   created_at: string;
   updated_at: string;
 }

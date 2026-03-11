@@ -141,3 +141,64 @@ export async function closeProject(
     notes,
   }, tenantId);
 }
+
+// ── AI Convenience Wrappers ────────────────────────────────────────
+
+/**
+ * Analyze bidset / specification text using GPT-4o.
+ * Extracts rooms, materials, and RFI candidates.
+ * Mode-dependent: ai_auto inserts, ai_assisted stores in ai_suggestions, manual returns only.
+ */
+export async function analyzeBidsetText(
+  projectId: string,
+  documentText: string,
+  tenantId: string,
+) {
+  return estimationAI("analyze_bidset_text", {
+    project_id: projectId,
+    document_text: documentText,
+    tenant_id: tenantId,
+  }, tenantId);
+}
+
+/**
+ * Run AI QA review on an existing estimate.
+ * Returns qa_score (0-100), issues with severity/category, and summary.
+ */
+export async function aiQAReview(
+  projectId: string,
+  tenantId: string,
+) {
+  return estimationAI("review_estimate", {
+    project_id: projectId,
+    tenant_id: tenantId,
+  }, tenantId);
+}
+
+/**
+ * Match specification text references against the material catalog.
+ * Returns matched materials with confidence scores.
+ */
+export async function suggestMaterials(
+  specText: string,
+  tenantId: string,
+) {
+  return estimationAI("suggest_materials", {
+    spec_text: specText,
+    tenant_id: tenantId,
+  }, tenantId);
+}
+
+/**
+ * Generate a professional qualification letter for a project.
+ * Returns letter text, assumptions, exclusions, and clarifications.
+ */
+export async function generateQualification(
+  projectId: string,
+  tenantId: string,
+) {
+  return estimationAI("generate_qualification", {
+    project_id: projectId,
+    tenant_id: tenantId,
+  }, tenantId);
+}

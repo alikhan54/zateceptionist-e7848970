@@ -17,9 +17,10 @@ import { useEstimationRFIs } from "@/hooks/useEstimationRFIs";
 import { useEstimationRevisions } from "@/hooks/useEstimationRevisions";
 import { useEstimationTeam } from "@/hooks/useEstimationTeam";
 import { useTenant } from "@/contexts/TenantContext";
-import { exportEstimationData } from "@/lib/api/estimationApi";
+import { exportEstimationData, analyzeBidsetText, aiQAReview, suggestMaterials, generateQualification } from "@/lib/api/estimationApi";
+import { supabase } from "@/integrations/supabase/client";
 import { exportQuantitiesXlsx, exportCostSheetXlsx, exportQualificationPdf, exportColorCodedPdf, exportCsv, type ExportData } from "@/lib/estimation/exportUtils";
-import { ArrowLeft, Building2, Calendar, Users, DollarSign, Plus, Ruler, FileText, HelpCircle, History, Activity, Truck, Download, Bot, Loader2 } from "lucide-react";
+import { ArrowLeft, Building2, Calendar, Users, DollarSign, Plus, Ruler, FileText, HelpCircle, History, Activity, Truck, Download, Bot, Loader2, CheckCircle, XCircle, Copy, Sparkles, AlertTriangle, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -54,6 +55,14 @@ export default function ProjectDetail() {
   const [newRFI, setNewRFI] = useState({ topic: "", question: "", assumptions: "" });
   const [newTeam, setNewTeam] = useState({ team_member_name: "", role: "estimator", trades_assigned: "" });
   const [exportLoading, setExportLoading] = useState<string | null>(null);
+
+  // AI Analysis state
+  const [bidsetText, setBidsetText] = useState("");
+  const [aiAnalyzing, setAiAnalyzing] = useState(false);
+  const [qaResults, setQaResults] = useState<any>(null);
+  const [qaLoading, setQaLoading] = useState(false);
+  const [qualificationText, setQualificationText] = useState("");
+  const [qualLoading, setQualLoading] = useState(false);
 
   const { tenantId } = useTenant();
 
@@ -114,6 +123,160 @@ export default function ProjectDetail() {
       setExportLoading(null);
     }
   };
+
+  // ── AI Handlers ────────────────────────────────────────────────
+  const handleAnalyzeBidset = async () => {
+    if (!bidsetText.trim() || !id || !tenantId) return;
+    setAiAnalyzing(true);
+    try {
+      const result = await analyzeBidsetText(id, bidsetText.trim(), tenantId);
+      const data = (result as any)?.data || result;
+      toast.success(`Analysis complete: ${data.rooms_found || 0} rooms, ${data.materials_found || 0} materials, ${data.rfis_found || 0} RFI candidates`);
+      // Refetch project to get updated ai_suggestions
+      window.location.reload();
+    } catch (err) {
+      console.error("Bidset analysis failed:", err);
+      toast.error("Analysis failed. Check console for details.");
+    } finally {
+      setAiAnalyzing(false);
+    }
+  };
+
+  const handleQAReview = async () => {
+    if (!id || !tenantId) return;
+    setQaLoading(true);
+    try {
+      const result = await aiQAReview(id, tenantId);
+      const data = (result as any)?.data || result;
+      setQaResults(data);
+      toast.success(`QA Review: Score ${data.qa_score}/100`);
+    } catch (err) {
+      console.error("QA review failed:", err);
+      toast.error("QA review failed.");
+    } finally {
+      setQaLoading(false);
+    }
+  };
+
+  const handleGenerateQualification = async () => {
+    if (!id || !tenantId) return;
+    setQualLoading(true);
+    try {
+      const result = await generateQualification(id, tenantId);
+      const data = (result as any)?.data || result;
+      setQualificationText(data.letter_text || JSON.stringify(data, null, 2));
+      toast.success("Qualification letter generated");
+    } catch (err) {
+      console.error("Qualification generation failed:", err);
+      toast.error("Qualification generation failed.");
+    } finally {
+      setQualLoading(false);
+    }
+  };
+
+  const handleAcceptRoom = async (room: any) => {
+    if (!id || !tenantId) return;
+    try {
+      await supabase.from("estimation_rooms" as any).insert({
+        tenant_id: tenantId,
+        project_id: id,
+        room_name: room.room_name,
+        room_number: room.room_number || null,
+        floor_level: room.floor_level || 1,
+        length_ft: room.length_ft || null,
+        width_ft: room.width_ft || null,
+        ceiling_height_ft: room.ceiling_height_ft || 9,
+        gross_area_sqft: room.area_sqft || null,
+        net_area_sqft: room.area_sqft || null,
+        finish_schedule_tags: room.finish_tags || [],
+        is_verified: false,
+      } as any);
+      // Remove from ai_suggestions
+      const suggestions = { ...(project?.ai_suggestions || {}) };
+      if (suggestions.rooms) {
+        suggestions.rooms = suggestions.rooms.filter((r: any) => r.room_name !== room.room_name);
+      }
+      await updateProject.mutateAsync({ id, updates: { ai_suggestions: suggestions } as any });
+      toast.success(`Room "${room.room_name}" accepted`);
+    } catch (err) {
+      toast.error("Failed to accept room");
+    }
+  };
+
+  const handleAcceptMaterial = async (material: any) => {
+    if (!id || !tenantId) return;
+    try {
+      await supabase.from("estimation_takeoff_items" as any).insert({
+        tenant_id: tenantId,
+        project_id: id,
+        trade: material.trade || "tile",
+        surface: material.surface || "floor",
+        material_tag: material.material_tag || null,
+        item_name: material.material_name || material.item_name || null,
+        net_area: material.net_area || 0,
+        waste_factor: material.waste_factor || 10,
+        quantity: material.quantity || material.net_area || 0,
+        unit_of_measure: material.unit_of_measure || "SF",
+        takeoff_method: "ai_generated",
+        confidence_score: material.confidence || null,
+        verified: false,
+      } as any);
+      const suggestions = { ...(project?.ai_suggestions || {}) };
+      if (suggestions.materials) {
+        suggestions.materials = suggestions.materials.filter((m: any) => m.material_tag !== material.material_tag || m.surface !== material.surface);
+      }
+      await updateProject.mutateAsync({ id, updates: { ai_suggestions: suggestions } as any });
+      toast.success(`Material "${material.material_tag || material.material_name}" accepted`);
+    } catch (err) {
+      toast.error("Failed to accept material");
+    }
+  };
+
+  const handleCreateRFIFromAI = async (rfiCandidate: any) => {
+    if (!id) return;
+    try {
+      await createRFI.mutateAsync({
+        project_id: id,
+        rfi_number: (rfiStats.totalRFIs || 0) + 1,
+        topic: rfiCandidate.topic || rfiCandidate.category || "AI-Detected Issue",
+        question: rfiCandidate.question || rfiCandidate.description,
+        assumptions: rfiCandidate.assumption || null,
+        date_submitted: new Date().toISOString().split("T")[0],
+        status: "open",
+        priority: rfiCandidate.severity === "error" ? "high" : "normal",
+        impacts_estimate: true,
+      } as any);
+      const suggestions = { ...(project?.ai_suggestions || {}) };
+      if (suggestions.rfis) {
+        suggestions.rfis = suggestions.rfis.filter((r: any) => r.question !== rfiCandidate.question);
+      }
+      await updateProject.mutateAsync({ id, updates: { ai_suggestions: suggestions } as any });
+      toast.success("RFI created from AI suggestion");
+    } catch (err) {
+      toast.error("Failed to create RFI");
+    }
+  };
+
+  const handleAcceptAllRooms = async () => {
+    const aiRooms = project?.ai_suggestions?.rooms || [];
+    for (const room of aiRooms) {
+      await handleAcceptRoom(room);
+    }
+  };
+
+  const handleAcceptAllMaterials = async () => {
+    const aiMaterials = project?.ai_suggestions?.materials || [];
+    for (const mat of aiMaterials) {
+      await handleAcceptMaterial(mat);
+    }
+  };
+
+  // Parse AI suggestions
+  const aiSuggestions = project?.ai_suggestions || {};
+  const aiRooms = aiSuggestions.rooms || [];
+  const aiMaterials = aiSuggestions.materials || [];
+  const aiRFIs = aiSuggestions.rfis || [];
+  const aiStatus = (project?.ai_analysis_status as string) || "none";
 
   if (!project) {
     return (
@@ -242,6 +405,7 @@ export default function ProjectDetail() {
           <TabsTrigger value="team"><Users className="h-4 w-4 mr-1" /> Team</TabsTrigger>
           <TabsTrigger value="activity"><Activity className="h-4 w-4 mr-1" /> Activity</TabsTrigger>
           <TabsTrigger value="suppliers"><Truck className="h-4 w-4 mr-1" /> Suppliers</TabsTrigger>
+          <TabsTrigger value="ai"><Bot className="h-4 w-4 mr-1" /> AI Analysis</TabsTrigger>
         </TabsList>
 
         {/* OVERVIEW TAB */}
@@ -666,6 +830,234 @@ export default function ProjectDetail() {
         {/* SUPPLIERS TAB */}
         <TabsContent value="suppliers">
           <Card><CardContent className="py-12 text-center text-muted-foreground">Supplier quotes coming soon. Track pricing from estimation_supplier_pricing.</CardContent></Card>
+        </TabsContent>
+
+        {/* AI ANALYSIS TAB */}
+        <TabsContent value="ai" className="space-y-4">
+          {/* Status Bar */}
+          <Card className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Bot className="h-5 w-5" />
+                <span className="font-medium">AI Analysis Status:</span>
+                <Badge variant={aiStatus === "completed" ? "default" : aiStatus === "analyzing" ? "secondary" : "outline"}>
+                  {aiStatus === "none" ? "Not Started" : aiStatus === "analyzing" ? "Analyzing..." : aiStatus === "completed" ? "Completed" : aiStatus}
+                </Badge>
+                {project.ai_analysis_completed_at && (
+                  <span className="text-xs text-muted-foreground">
+                    Completed {new Date(project.ai_analysis_completed_at).toLocaleString()}
+                  </span>
+                )}
+              </div>
+              <Badge variant="outline">Mode: {estimationMode.replace(/_/g, " ")}</Badge>
+            </div>
+          </Card>
+
+          {/* Paste Bidset Text */}
+          <Card>
+            <CardHeader><CardTitle className="text-base flex items-center gap-2"><Sparkles className="h-4 w-4" /> Analyze Bidset Specifications</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <Textarea
+                rows={8}
+                placeholder="Paste specification text here... (e.g., finish schedules, room descriptions, material specs from your bidset documents)"
+                value={bidsetText}
+                onChange={e => setBidsetText(e.target.value)}
+                className="font-mono text-sm"
+              />
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={handleAnalyzeBidset}
+                  disabled={aiAnalyzing || !bidsetText.trim() || estimationMode === "manual"}
+                >
+                  {aiAnalyzing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Analyzing...</> : <><Bot className="mr-2 h-4 w-4" /> Analyze Bidset</>}
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  {estimationMode === "manual" ? "Switch to AI-Assisted or Autonomous mode to use AI analysis." : `${bidsetText.length.toLocaleString()} characters`}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* AI Results: Rooms */}
+          {aiRooms.length > 0 && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">Rooms Found ({aiRooms.length})</CardTitle>
+                  <Button size="sm" variant="outline" onClick={handleAcceptAllRooms}><CheckCircle className="mr-1 h-4 w-4" /> Accept All</Button>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                <table className="w-full text-sm">
+                  <thead><tr className="border-b bg-muted/50">
+                    <th className="p-3 text-left">Room Name</th><th className="p-3 text-left">Number</th><th className="p-3 text-right">Area (SF)</th>
+                    <th className="p-3 text-left">Finish Tags</th><th className="p-3 text-right">Actions</th>
+                  </tr></thead>
+                  <tbody>
+                    {aiRooms.map((room: any, i: number) => (
+                      <tr key={i} className="border-b hover:bg-muted/30">
+                        <td className="p-3 font-medium">{room.room_name}</td>
+                        <td className="p-3">{room.room_number || "—"}</td>
+                        <td className="p-3 text-right">{room.area_sqft?.toLocaleString() || "—"}</td>
+                        <td className="p-3">
+                          <div className="flex flex-wrap gap-1">
+                            {(room.finish_tags || []).map((t: string) => <Badge key={t} variant="outline" className="text-xs">{t}</Badge>)}
+                          </div>
+                        </td>
+                        <td className="p-3 text-right">
+                          <div className="flex gap-1 justify-end">
+                            <Button size="sm" variant="outline" onClick={() => handleAcceptRoom(room)}><CheckCircle className="h-3 w-3" /></Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* AI Results: Materials */}
+          {aiMaterials.length > 0 && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">Materials Found ({aiMaterials.length})</CardTitle>
+                  <Button size="sm" variant="outline" onClick={handleAcceptAllMaterials}><CheckCircle className="mr-1 h-4 w-4" /> Accept All</Button>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                <table className="w-full text-sm">
+                  <thead><tr className="border-b bg-muted/50">
+                    <th className="p-3 text-left">Tag</th><th className="p-3 text-left">Material</th><th className="p-3 text-left">Surface</th>
+                    <th className="p-3 text-right">Area</th><th className="p-3 text-right">Confidence</th><th className="p-3 text-right">Actions</th>
+                  </tr></thead>
+                  <tbody>
+                    {aiMaterials.map((mat: any, i: number) => (
+                      <tr key={i} className="border-b hover:bg-muted/30">
+                        <td className="p-3 font-mono">{mat.material_tag || "—"}</td>
+                        <td className="p-3">{mat.material_name || mat.item_name || "—"}</td>
+                        <td className="p-3">{mat.surface || "—"}</td>
+                        <td className="p-3 text-right">{mat.net_area?.toLocaleString() || "—"} SF</td>
+                        <td className="p-3 text-right">
+                          {mat.confidence != null && (
+                            <Badge variant={mat.confidence >= 80 ? "default" : mat.confidence >= 50 ? "secondary" : "outline"}>
+                              {mat.confidence}%
+                            </Badge>
+                          )}
+                        </td>
+                        <td className="p-3 text-right">
+                          <Button size="sm" variant="outline" onClick={() => handleAcceptMaterial(mat)}><CheckCircle className="h-3 w-3" /></Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* AI Results: RFI Candidates */}
+          {aiRFIs.length > 0 && (
+            <Card>
+              <CardHeader><CardTitle className="text-base">RFI Candidates ({aiRFIs.length})</CardTitle></CardHeader>
+              <CardContent className="p-0">
+                <table className="w-full text-sm">
+                  <thead><tr className="border-b bg-muted/50">
+                    <th className="p-3 text-left">Severity</th><th className="p-3 text-left">Category</th><th className="p-3 text-left">Question</th>
+                    <th className="p-3 text-right">Actions</th>
+                  </tr></thead>
+                  <tbody>
+                    {aiRFIs.map((rfi: any, i: number) => (
+                      <tr key={i} className="border-b hover:bg-muted/30">
+                        <td className="p-3">
+                          <Badge variant={rfi.severity === "error" ? "destructive" : rfi.severity === "warning" ? "secondary" : "outline"}>
+                            {rfi.severity === "error" ? <AlertCircle className="mr-1 h-3 w-3" /> : <AlertTriangle className="mr-1 h-3 w-3" />}
+                            {rfi.severity}
+                          </Badge>
+                        </td>
+                        <td className="p-3">{rfi.category || rfi.topic || "—"}</td>
+                        <td className="p-3 max-w-sm">{rfi.question || rfi.description}</td>
+                        <td className="p-3 text-right">
+                          <Button size="sm" variant="outline" onClick={() => handleCreateRFIFromAI(rfi)}>
+                            <Plus className="mr-1 h-3 w-3" /> Create RFI
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* No AI results placeholder */}
+          {aiRooms.length === 0 && aiMaterials.length === 0 && aiRFIs.length === 0 && aiStatus !== "analyzing" && (
+            <Card><CardContent className="py-6 text-center text-muted-foreground text-sm">
+              {aiStatus === "completed" ? "Analysis completed — all items were auto-inserted (autonomous mode)." : "Paste bidset text above and click Analyze to extract rooms, materials, and RFIs."}
+            </CardContent></Card>
+          )}
+
+          {/* QA Review Section */}
+          <Card>
+            <CardHeader><CardTitle className="text-base flex items-center gap-2"><Sparkles className="h-4 w-4" /> AI QA Review</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <Button onClick={handleQAReview} disabled={qaLoading}>
+                {qaLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Running QA...</> : <><Bot className="mr-2 h-4 w-4" /> Run AI QA Review</>}
+              </Button>
+              {qaResults && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-4">
+                    <div className="text-3xl font-bold">{qaResults.qa_score}<span className="text-base font-normal text-muted-foreground">/100</span></div>
+                    <Badge variant={qaResults.qa_score >= 80 ? "default" : qaResults.qa_score >= 60 ? "secondary" : "destructive"}>
+                      {qaResults.qa_score >= 80 ? "Good" : qaResults.qa_score >= 60 ? "Needs Attention" : "Issues Found"}
+                    </Badge>
+                    <span className="text-sm text-muted-foreground">{qaResults.summary}</span>
+                  </div>
+                  {qaResults.issues && qaResults.issues.length > 0 && (
+                    <div className="space-y-2">
+                      {qaResults.issues.map((issue: any, i: number) => (
+                        <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                          {issue.severity === "error" ? <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" /> : <AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5 shrink-0" />}
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-xs">{issue.category}</Badge>
+                              {issue.room && <span className="text-xs text-muted-foreground">{issue.room}</span>}
+                              {issue.material_tag && <span className="text-xs font-mono">{issue.material_tag}</span>}
+                            </div>
+                            <div className="text-sm mt-1">{issue.description}</div>
+                            {issue.suggestion && <div className="text-xs text-muted-foreground mt-1">{issue.suggestion}</div>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Qualification Letter Section */}
+          <Card>
+            <CardHeader><CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4" /> Qualification Letter Generator</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <Button onClick={handleGenerateQualification} disabled={qualLoading}>
+                {qualLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...</> : <><Sparkles className="mr-2 h-4 w-4" /> Generate Qualification</>}
+              </Button>
+              {qualificationText && (
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(qualificationText); toast.success("Copied to clipboard"); }}>
+                      <Copy className="mr-1 h-3 w-3" /> Copy
+                    </Button>
+                  </div>
+                  <div className="p-4 bg-muted/50 rounded-lg text-sm whitespace-pre-wrap font-mono max-h-96 overflow-y-auto">
+                    {qualificationText}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
