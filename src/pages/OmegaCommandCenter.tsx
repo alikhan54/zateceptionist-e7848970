@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Brain, Send, RefreshCw, Check, X, Plus, Search, Activity, Shield, Database, Cpu, MessageSquare, Clock, Zap, ChevronDown, ChevronUp } from "lucide-react";
+import { Brain, Send, RefreshCw, Check, X, Plus, Search, Activity, Shield, Database, Cpu, MessageSquare, Clock, Zap, ChevronDown, ChevronUp, Mic, MicOff, Volume2, VolumeX, Phone } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -92,13 +92,84 @@ function ChatTab({ tenantId, tenantUuid }: { tenantId: string; tenantUuid: strin
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
+  // Voice state
+  const [isListening, setIsListening] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  // Initialize speech recognition
+  useEffect(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      setSpeechSupported(true);
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = "en-US";
+
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setInput(transcript);
+        setTimeout(() => {
+          sendMessage(transcript);
+        }, 400);
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error("Speech recognition error:", event.error);
+        setIsListening(false);
+        if (event.error === "not-allowed") {
+          toast({ title: "Microphone blocked", description: "Please allow microphone access in your browser settings.", variant: "destructive" });
+        }
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+    }
+  }, []);
+
+  // Text-to-speech
+  const speakResponse = useCallback((text: string) => {
+    if (!voiceEnabled || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find(v =>
+      v.name.includes("Google") || v.name.includes("Natural") || v.name.includes("Samantha")
+    );
+    if (preferredVoice) utterance.voice = preferredVoice;
+    window.speechSynthesis.speak(utterance);
+  }, [voiceEnabled]);
+
+  const toggleVoice = () => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+    } else {
+      try {
+        recognitionRef.current?.start();
+        setIsListening(true);
+      } catch (e) {
+        console.error("Failed to start speech recognition:", e);
+      }
+    }
+  };
+
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
-  const send = async () => {
-    if (!input.trim() || loading) return;
-    const userMsg: ChatMessage = { role: "user", content: input.trim(), timestamp: new Date() };
+  const sendMessage = async (overrideMsg?: string) => {
+    const msg = (overrideMsg || input).trim();
+    if (!msg || loading) return;
+    const userMsg: ChatMessage = { role: "user", content: msg, timestamp: new Date() };
     setMessages(prev => [...prev, userMsg]);
     setInput("");
     setLoading(true);
@@ -112,13 +183,15 @@ function ChatTab({ tenantId, tenantUuid }: { tenantId: string; tenantUuid: strin
       }, tenantId);
       const data = res.data as any;
       if (res.success && data) {
+        const responseText = data.response || data.message || data.error || "OMEGA returned an unexpected response. Please try again.";
         setMessages(prev => [...prev, {
           role: "assistant",
-          content: data.response || data.message || data.error || "OMEGA returned an unexpected response. Please try again.",
+          content: responseText,
           agent_used: data.agent_used,
           execution_time_ms: data.execution_time_ms,
           timestamp: new Date(),
         }]);
+        speakResponse(responseText);
       } else {
         setMessages(prev => [...prev, {
           role: "assistant",
@@ -134,15 +207,32 @@ function ChatTab({ tenantId, tenantUuid }: { tenantId: string; tenantUuid: strin
     }
   };
 
+  const send = () => sendMessage();
+
   return (
     <div className="flex flex-col h-[calc(100vh-280px)]">
+      {/* Voice toggle bar */}
+      <div className="flex items-center justify-end px-4 pt-2 gap-2">
+        {speechSupported && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs gap-1.5"
+            onClick={() => setVoiceEnabled(!voiceEnabled)}
+            title={voiceEnabled ? "Disable voice responses" : "Enable voice responses"}
+          >
+            {voiceEnabled ? <Volume2 className="h-3.5 w-3.5 text-violet-400" /> : <VolumeX className="h-3.5 w-3.5 text-muted-foreground" />}
+            {voiceEnabled ? "Voice On" : "Voice Off"}
+          </Button>
+        )}
+      </div>
       <ScrollArea ref={scrollRef} className="flex-1 p-4">
         <div className="space-y-4">
           {messages.length === 0 && (
             <div className="text-center text-muted-foreground py-20">
               <Brain className="h-12 w-12 mx-auto mb-4 opacity-30" />
               <p className="text-lg font-medium">Talk to OMEGA</p>
-              <p className="text-sm">Send a message to start a conversation with the super-agent.</p>
+              <p className="text-sm">Send a message or tap the mic to speak with the super-agent.</p>
             </div>
           )}
           {messages.map((msg, i) => (
@@ -179,10 +269,22 @@ function ChatTab({ tenantId, tenantUuid }: { tenantId: string; tenantUuid: strin
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === "Enter" && !e.shiftKey && send()}
-          placeholder="Message OMEGA..."
-          disabled={loading}
+          placeholder={isListening ? "Listening..." : "Message OMEGA..."}
+          disabled={loading || isListening}
           className="flex-1"
         />
+        {speechSupported && (
+          <Button
+            onClick={toggleVoice}
+            disabled={loading}
+            size="icon"
+            variant={isListening ? "destructive" : "ghost"}
+            className={isListening ? "animate-pulse" : ""}
+            title={isListening ? "Stop listening" : "Voice input"}
+          >
+            {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+          </Button>
+        )}
         <Button onClick={send} disabled={loading || !input.trim()} size="icon">
           <Send className="h-4 w-4" />
         </Button>
