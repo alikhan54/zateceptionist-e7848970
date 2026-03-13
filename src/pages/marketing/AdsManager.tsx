@@ -24,7 +24,7 @@ import {
   Target, Plus, TrendingUp, DollarSign, MousePointerClick,
   BarChart3, Eye, Pause, Play, Trash2, RefreshCw, Zap,
   ArrowLeft, Settings, Megaphone, Search, Image, Video,
-  ExternalLink, Copy, FileText, Sparkles,
+  ExternalLink, Copy, FileText, Sparkles, Brain,
 } from "lucide-react";
 
 const fmt = (v: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(v);
@@ -83,6 +83,13 @@ export default function AdsManager() {
   // Settings
   const [googleCreds, setGoogleCreds] = useState<Record<string, string>>({});
   const [metaCreds, setMetaCreds] = useState<Record<string, string>>({});
+
+  // Ad Intelligence state
+  const [intelMode, setIntelMode] = useState("manual");
+  const [intelMaxComp, setIntelMaxComp] = useState("5");
+  const [intelAdsPerComp, setIntelAdsPerComp] = useState("5");
+  const [selectedReport, setSelectedReport] = useState<any>(null);
+  const [intelSubTab, setIntelSubTab] = useState("patterns");
 
   // ─── Queries ───
   const { data: campaigns = [], isLoading: loadingCampaigns } = useQuery({
@@ -153,6 +160,35 @@ export default function AdsManager() {
       return data || [];
     },
     enabled: !!tenantConfig?.id,
+  });
+
+  // ─── Ad Intelligence Queries ───
+  const { data: intelReports = [], isLoading: loadingIntelReports } = useQuery({
+    queryKey: ["ad_script_intelligence", tenantConfig?.id],
+    queryFn: async () => {
+      if (!tenantConfig?.id) return [];
+      const { data, error } = await supabase
+        .from("ad_script_intelligence" as any).select("*")
+        .eq("tenant_id", tenantConfig.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!tenantConfig?.id,
+  });
+
+  const { data: competitorAds = [] } = useQuery({
+    queryKey: ["competitor_ad_intelligence", tenantConfig?.id, selectedReport?.id],
+    queryFn: async () => {
+      if (!tenantConfig?.id || !selectedReport?.id) return [];
+      const { data, error } = await supabase
+        .from("competitor_ad_intelligence" as any).select("*")
+        .eq("tenant_id", tenantConfig.id)
+        .order("running_days", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!tenantConfig?.id && !!selectedReport?.id,
   });
 
   // ─── Computed ───
@@ -226,6 +262,36 @@ export default function AdsManager() {
   const resetCreateForm = () => {
     setFormName(""); setFormPlatform("google_ads"); setFormType("search");
     setFormObjective("lead_generation"); setFormBudget(""); setFormTarget(""); setFormKeywords("");
+  };
+
+  const runIntelligence = useMutation({
+    mutationFn: async () => {
+      return callWebhook(WEBHOOKS.AD_INTELLIGENCE, {
+        tenant_id: tenantConfig!.id,
+        mode: intelMode,
+        max_competitors: Number(intelMaxComp),
+        ads_per_competitor: Number(intelAdsPerComp),
+      }, tenantConfig!.id);
+    },
+    onSuccess: (result) => {
+      toast({ title: "Intelligence Complete", description: `Found ${(result?.data as any)?.patterns_found || 0} patterns, generated ${(result?.data as any)?.scripts_generated || 0} scripts` });
+      queryClient.invalidateQueries({ queryKey: ["ad_script_intelligence", tenantConfig?.id] });
+      queryClient.invalidateQueries({ queryKey: ["competitor_ad_intelligence", tenantConfig?.id] });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Intelligence analysis failed", variant: "destructive" });
+    },
+  });
+
+  const createFromScript = (script: any) => {
+    setFormName(script.title || "");
+    setFormPlatform("meta_ads");
+    setFormType("feed");
+    setFormObjective("conversions");
+    setFormBudget("");
+    setFormTarget(script.target_audience || "");
+    setFormKeywords("");
+    setIsCreateOpen(true);
   };
 
   const toggleCampaign = async (id: string, currentStatus: string) => {
@@ -341,6 +407,7 @@ export default function AdsManager() {
           <TabsTrigger value="creatives">Creatives</TabsTrigger>
           <TabsTrigger value="conversions">Conversions</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
+          <TabsTrigger value="intelligence"><Brain className="h-4 w-4 mr-1" />Ad Intelligence</TabsTrigger>
         </TabsList>
 
         {/* ═══ TAB 1: OVERVIEW ═══ */}
@@ -725,6 +792,332 @@ export default function AdsManager() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        {/* ═══ TAB 6: AD INTELLIGENCE ═══ */}
+        <TabsContent value="intelligence" className="space-y-6">
+          {/* Launch Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Brain className="h-5 w-5 text-purple-500" />Competitive Ad Intelligence Engine</CardTitle>
+              <CardDescription>Analyze competitor ads → Find winning patterns → Generate proven ad scripts → Create campaigns</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Flow Visualization */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-2">
+                {["Scrape Competitor Ads", "Transcribe Scripts", "Analyze Patterns", "Generate Scripts", "Create Campaigns"].map((step, i) => (
+                  <div key={step} className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-1.5 bg-muted/50 rounded-lg px-3 py-1.5">
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${i <= 2 ? "bg-purple-500 text-white" : "bg-muted-foreground/20 text-muted-foreground"}`}>{i + 1}</div>
+                      <span className="text-xs font-medium">{step}</span>
+                    </div>
+                    {i < 4 && <span className="text-muted-foreground">→</span>}
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <Label>Mode</Label>
+                  <Select value={intelMode} onValueChange={setIntelMode}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="manual">Manual</SelectItem>
+                      <SelectItem value="deep">Deep Analysis</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Max Competitors</Label>
+                  <Select value={intelMaxComp} onValueChange={setIntelMaxComp}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {["3", "5", "10"].map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Ads per Competitor</Label>
+                  <Select value={intelAdsPerComp} onValueChange={setIntelAdsPerComp}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {["3", "5", "10"].map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-end">
+                  <Button onClick={() => runIntelligence.mutate()} disabled={runIntelligence.isPending} className="w-full">
+                    {runIntelligence.isPending ? (
+                      <><RefreshCw className="h-4 w-4 mr-1 animate-spin" />Analyzing...</>
+                    ) : (
+                      <><Brain className="h-4 w-4 mr-1" />Run Analysis</>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Reports List */}
+          {intelReports.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold">Intelligence Reports</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {intelReports.map((report: any) => (
+                  <Card
+                    key={report.id}
+                    className={`cursor-pointer transition-all hover:shadow-md ${selectedReport?.id === report.id ? "ring-2 ring-purple-500" : ""}`}
+                    onClick={() => setSelectedReport(selectedReport?.id === report.id ? null : report)}
+                  >
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm">{report.analysis_name || "Analysis"}</CardTitle>
+                        <StatusBadge status={report.status} />
+                      </div>
+                      <CardDescription className="text-xs">{new Date(report.created_at).toLocaleDateString()}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                        <div><p className="font-bold text-lg">{report.competitors_analyzed || 0}</p><p className="text-muted-foreground">Competitors</p></div>
+                        <div><p className="font-bold text-lg">{report.ads_analyzed || 0}</p><p className="text-muted-foreground">Ads</p></div>
+                        <div><p className="font-bold text-lg">{Array.isArray(report.generated_scripts) ? report.generated_scripts.length : (typeof report.generated_scripts === 'string' ? JSON.parse(report.generated_scripts || '[]').length : 0)}</p><p className="text-muted-foreground">Scripts</p></div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Expanded Report */}
+          {selectedReport && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>{selectedReport.analysis_name}</CardTitle>
+                  <Button variant="ghost" size="sm" onClick={() => setSelectedReport(null)}>Close</Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Tabs value={intelSubTab} onValueChange={setIntelSubTab}>
+                  <TabsList>
+                    <TabsTrigger value="patterns">Winning Patterns</TabsTrigger>
+                    <TabsTrigger value="competitor_ads">Competitor Ads</TabsTrigger>
+                    <TabsTrigger value="scripts">Generated Scripts</TabsTrigger>
+                    <TabsTrigger value="analytics">Analytics</TabsTrigger>
+                  </TabsList>
+
+                  {/* Sub-Tab 1: Patterns */}
+                  <TabsContent value="patterns" className="space-y-4 mt-4">
+                    {(() => {
+                      const patterns = typeof selectedReport.common_patterns === 'string'
+                        ? JSON.parse(selectedReport.common_patterns || '[]')
+                        : (selectedReport.common_patterns || []);
+                      if (patterns.length === 0) return <p className="text-muted-foreground text-sm">No patterns found yet. Run analysis first.</p>;
+                      return (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {patterns.map((p: any, i: number) => (
+                            <Card key={i}>
+                              <CardHeader className="pb-2">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-sm">{p.pattern_name}</CardTitle>
+                                  <Badge className={p.importance === "critical" ? "bg-red-100 text-red-800" : p.importance === "high" ? "bg-orange-100 text-orange-800" : "bg-blue-100 text-blue-800"}>
+                                    {p.importance}
+                                  </Badge>
+                                </div>
+                              </CardHeader>
+                              <CardContent className="space-y-2">
+                                <p className="text-xs text-muted-foreground">{p.description}</p>
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline" className="text-xs">{p.category}</Badge>
+                                  <span className="text-xs text-muted-foreground">Used in {p.frequency} ads</span>
+                                </div>
+                                {p.examples && p.examples.length > 0 && (
+                                  <p className="text-xs italic text-muted-foreground">"{p.examples[0]}"</p>
+                                )}
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </TabsContent>
+
+                  {/* Sub-Tab 2: Competitor Ads */}
+                  <TabsContent value="competitor_ads" className="mt-4">
+                    {competitorAds.length === 0 ? (
+                      <p className="text-muted-foreground text-sm">No competitor ads found.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {competitorAds.map((ad: any) => (
+                          <Card key={ad.id}>
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between">
+                                <div className="space-y-1 flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="outline">{ad.competitor_name}</Badge>
+                                    <Badge className="bg-blue-100 text-blue-800 text-xs">{ad.ad_format}</Badge>
+                                    <span className="text-xs text-muted-foreground">{ad.running_days} days running</span>
+                                  </div>
+                                  <p className="font-medium text-sm">{ad.ad_title}</p>
+                                  <p className="text-xs text-muted-foreground">{ad.ad_body}</p>
+                                </div>
+                                <div className="text-right shrink-0 ml-4">
+                                  <p className="text-2xl font-bold">{ad.ad_score}</p>
+                                  <p className="text-xs text-muted-foreground">Score</p>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  {/* Sub-Tab 3: Generated Scripts */}
+                  <TabsContent value="scripts" className="mt-4">
+                    {(() => {
+                      const scripts = typeof selectedReport.generated_scripts === 'string'
+                        ? JSON.parse(selectedReport.generated_scripts || '[]')
+                        : (selectedReport.generated_scripts || []);
+                      if (scripts.length === 0) return <p className="text-muted-foreground text-sm">No scripts generated yet.</p>;
+                      return (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {scripts.map((script: any, i: number) => (
+                            <Card key={i} className="relative">
+                              <CardHeader className="pb-2">
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-sm">{script.title}</CardTitle>
+                                  <div className="flex items-center gap-1">
+                                    <Badge variant="outline" className="text-xs">{script.format || "feed"}</Badge>
+                                    <Badge variant="outline" className="text-xs">{script.platform || "both"}</Badge>
+                                  </div>
+                                </div>
+                              </CardHeader>
+                              <CardContent className="space-y-3">
+                                {/* Hook */}
+                                <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-2">
+                                  <p className="text-xs font-semibold text-green-700 dark:text-green-300 mb-0.5">Hook</p>
+                                  <p className="text-sm">{script.hook}</p>
+                                </div>
+                                {/* Body */}
+                                <p className="text-sm text-muted-foreground">{script.body}</p>
+                                {/* CTA */}
+                                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2">
+                                  <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-0.5">CTA</p>
+                                  <p className="text-sm">{script.cta}</p>
+                                </div>
+                                {/* Patterns used */}
+                                {script.patterns_used && script.patterns_used.length > 0 && (
+                                  <div className="flex flex-wrap gap-1">
+                                    {script.patterns_used.map((p: string, pi: number) => (
+                                      <Badge key={pi} variant="secondary" className="text-xs">{p}</Badge>
+                                    ))}
+                                  </div>
+                                )}
+                                {/* Effectiveness */}
+                                <div className="flex items-center gap-2">
+                                  <div className="flex-1 bg-muted rounded-full h-2">
+                                    <div className="bg-purple-500 rounded-full h-2" style={{ width: `${script.estimated_effectiveness || 0}%` }} />
+                                  </div>
+                                  <span className="text-xs font-medium">{script.estimated_effectiveness || 0}%</span>
+                                </div>
+                                <p className="text-xs text-muted-foreground italic">{script.why_it_works}</p>
+                                {/* Actions */}
+                                <div className="flex gap-2 pt-1">
+                                  <Button size="sm" onClick={() => createFromScript(script)}>
+                                    <Sparkles className="h-3 w-3 mr-1" />Create Campaign
+                                  </Button>
+                                  <Button size="sm" variant="outline" onClick={() => {
+                                    navigator.clipboard.writeText(`Hook: ${script.hook}\n\n${script.body}\n\nCTA: ${script.cta}`);
+                                    toast({ title: "Copied", description: "Script copied to clipboard" });
+                                  }}>
+                                    <Copy className="h-3 w-3 mr-1" />Copy
+                                  </Button>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </TabsContent>
+
+                  {/* Sub-Tab 4: Analytics */}
+                  <TabsContent value="analytics" className="mt-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Top Performing Ads */}
+                      <Card>
+                        <CardHeader><CardTitle className="text-sm">Top Performing Competitor Ads</CardTitle></CardHeader>
+                        <CardContent>
+                          {(() => {
+                            const topAds = typeof selectedReport.top_performing_ads === 'string'
+                              ? JSON.parse(selectedReport.top_performing_ads || '[]')
+                              : (selectedReport.top_performing_ads || []);
+                            if (topAds.length === 0) return <p className="text-xs text-muted-foreground">No data</p>;
+                            return (
+                              <div className="space-y-2">
+                                {topAds.map((ad: any, i: number) => (
+                                  <div key={i} className="flex items-center justify-between border-b pb-2 last:border-0">
+                                    <div>
+                                      <p className="text-sm font-medium">{ad.title || ad.competitor}</p>
+                                      <p className="text-xs text-muted-foreground">{ad.competitor} · {ad.trigger}</p>
+                                    </div>
+                                    <Badge variant="outline">{ad.running_days}d</Badge>
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })()}
+                        </CardContent>
+                      </Card>
+                      {/* Pattern Frequency */}
+                      <Card>
+                        <CardHeader><CardTitle className="text-sm">Pattern Frequency</CardTitle></CardHeader>
+                        <CardContent>
+                          {(() => {
+                            const freq = typeof selectedReport.pattern_frequency === 'string'
+                              ? JSON.parse(selectedReport.pattern_frequency || '{}')
+                              : (selectedReport.pattern_frequency || {});
+                            const entries = Object.entries(freq).sort((a: any, b: any) => b[1] - a[1]);
+                            if (entries.length === 0) return <p className="text-xs text-muted-foreground">No data</p>;
+                            const maxFreq = Math.max(...entries.map((e: any) => e[1]));
+                            return (
+                              <div className="space-y-2">
+                                {entries.map(([name, count]: any) => (
+                                  <div key={name} className="space-y-1">
+                                    <div className="flex justify-between text-xs">
+                                      <span>{name}</span>
+                                      <span className="font-medium">{count}</span>
+                                    </div>
+                                    <div className="bg-muted rounded-full h-1.5">
+                                      <div className="bg-purple-500 rounded-full h-1.5" style={{ width: `${(count / maxFreq) * 100}%` }} />
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })()}
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Empty state */}
+          {intelReports.length === 0 && !runIntelligence.isPending && (
+            <Card className="border-dashed">
+              <CardContent className="p-12 text-center">
+                <Brain className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No Intelligence Reports Yet</h3>
+                <p className="text-muted-foreground mb-4">Run your first analysis to discover competitor ad patterns and generate proven ad scripts.</p>
+                <p className="text-xs text-muted-foreground">Make sure you have competitors tracked in the Competitor Intel section first.</p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
 

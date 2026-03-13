@@ -35,6 +35,7 @@ export const WEBHOOKS = {
   GENERATE_AD_CREATIVE: "/marketing/generate-ad-creative",
   TRACK_CONVERSION: "/marketing/track-conversion",
   AIDA_CLASSIFY: "/marketing/aida-classify",
+  AD_INTELLIGENCE: "/marketing/ad-intelligence",
 
   // HR
   EMPLOYEE_ONBOARDING: "/hr/employee-onboarding",
