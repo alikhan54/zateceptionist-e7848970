@@ -359,7 +359,14 @@ export default function ProjectDetail() {
             )}
           </div>
         </div>
-        <Select value={project.status} onValueChange={v => updateProject.mutateAsync({ id: project.id, updates: { status: v } })}>
+        <Select value={project.status} onValueChange={async (v) => {
+          try {
+            await updateProject.mutateAsync({ id: project.id, updates: { status: v } });
+            toast.success(`Status updated to ${v.replace(/_/g, " ")}`);
+          } catch (err: any) {
+            toast.error(err.message || "Failed to update status");
+          }
+        }}>
           <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
           <SelectContent>
             {Object.entries(STATUS_LABELS).map(([k, v]) => (

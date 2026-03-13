@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,20 +37,25 @@ export default function MaterialDatabase() {
 
   const handleCreate = async () => {
     if (!newMat.material_name) return;
-    await createMaterial.mutateAsync({
-      material_name: newMat.material_name,
-      material_tag: newMat.material_tag || null,
-      manufacturer: newMat.manufacturer || null,
-      category: newMat.category,
-      unit_of_measure: newMat.unit_of_measure,
-      unit_price: newMat.unit_price ? parseFloat(newMat.unit_price) : null,
-      size: newMat.size || null,
-      color: newMat.color || null,
-      waste_factor_pct: parseFloat(newMat.waste_factor_pct) || 10,
-      is_active: true,
-    } as any);
-    setShowCreate(false);
-    setNewMat({ material_name: "", material_tag: "", manufacturer: "", category: "tile", unit_of_measure: "SF", unit_price: "", size: "", color: "", waste_factor_pct: "10" });
+    try {
+      await createMaterial.mutateAsync({
+        material_name: newMat.material_name,
+        material_tag: newMat.material_tag || null,
+        manufacturer: newMat.manufacturer || null,
+        category: newMat.category,
+        unit_of_measure: newMat.unit_of_measure,
+        unit_price: newMat.unit_price ? parseFloat(newMat.unit_price) : null,
+        size: newMat.size || null,
+        color: newMat.color || null,
+        waste_factor_pct: parseFloat(newMat.waste_factor_pct) || 10,
+        is_active: true,
+      } as any);
+      toast.success("Material added successfully");
+      setShowCreate(false);
+      setNewMat({ material_name: "", material_tag: "", manufacturer: "", category: "tile", unit_of_measure: "SF", unit_price: "", size: "", color: "", waste_factor_pct: "10" });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to add material");
+    }
   };
 
   return (

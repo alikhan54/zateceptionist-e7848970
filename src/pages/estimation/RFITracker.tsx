@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,18 +36,23 @@ export default function RFITracker() {
 
   const handleCreate = async () => {
     if (!newRFI.topic || !newRFI.question) return;
-    await createRFI.mutateAsync({
-      ...newRFI,
-      rfi_number: (stats.totalRFIs || 0) + 1,
-      date_submitted: new Date().toISOString().split("T")[0],
-      status: "open",
-      impacts_estimate: false,
-      assumptions: newRFI.assumptions || null,
-      reference_sheets: newRFI.reference_sheets || null,
-      directed_to: newRFI.directed_to || null,
-    } as any);
-    setShowCreate(false);
-    setNewRFI({ project_id: "", topic: "", question: "", assumptions: "", reference_sheets: "", directed_to: "", priority: "normal" });
+    try {
+      await createRFI.mutateAsync({
+        ...newRFI,
+        rfi_number: (stats.totalRFIs || 0) + 1,
+        date_submitted: new Date().toISOString().split("T")[0],
+        status: "open",
+        impacts_estimate: false,
+        assumptions: newRFI.assumptions || null,
+        reference_sheets: newRFI.reference_sheets || null,
+        directed_to: newRFI.directed_to || null,
+      } as any);
+      toast.success("RFI submitted successfully");
+      setShowCreate(false);
+      setNewRFI({ project_id: "", topic: "", question: "", assumptions: "", reference_sheets: "", directed_to: "", priority: "normal" });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to submit RFI");
+    }
   };
 
   const daysOpen = (dateSubmitted: string) => Math.floor((Date.now() - new Date(dateSubmitted).getTime()) / (1000 * 60 * 60 * 24));

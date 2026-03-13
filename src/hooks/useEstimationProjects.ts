@@ -140,6 +140,19 @@ export function useEstimationProjects(searchTerm?: string, statusFilter?: string
 
   const updateProject = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<EstimationProject> }) => {
+      // If status is being changed, route through n8n for transition validation
+      if (updates.status) {
+        const response = await estimationAction("update_status", {
+          project_id: id,
+          new_status: updates.status,
+        }, tenantId);
+        if (!response.success) {
+          const errData = response.data as any;
+          throw new Error(errData?.error || errData?.message || response.error || "Status update failed");
+        }
+        return;
+      }
+      // For non-status updates (estimation_mode, ai_suggestions, etc.), direct Supabase is fine
       const { error } = await supabase
         .from("estimation_projects" as any)
         .update({ ...updates, updated_at: new Date().toISOString() } as any)
