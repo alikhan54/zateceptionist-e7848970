@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useEstimationProjects, EstimationProject } from "@/hooks/useEstimationProjects";
 import { useNavigate } from "react-router-dom";
 import { Building2, Calendar, TrendingUp, DollarSign, Plus, Search, Clock, AlertTriangle } from "lucide-react";
+import { toast } from "sonner";
 
 const STATUS_LABELS: Record<string, string> = {
   rfp_received: "RFP Received",
@@ -84,28 +85,34 @@ export default function ProjectsDashboard() {
 
   const handleCreate = async () => {
     if (!newProject.project_name || !newProject.client_name) return;
-    await createProject.mutateAsync({
-      ...newProject,
-      status: "rfp_received",
-      country: "US",
-      number_of_buildings: 1,
-      estimation_mode: "manual",
-      current_revision: 0,
-      total_revisions: 0,
-      has_addenda: false,
-      addenda_count: 0,
-      alternates: [],
-      building_sections: [],
-      unit_system: "imperial",
-      estimation_fee_status: "unpaid",
-      deliverable_qualification: true,
-      deliverable_color_coded: true,
-      deliverable_takeoff_file: true,
-      deliverable_working_drawings: false,
-      deliverable_quantities_excel: true,
-    } as any);
-    setShowCreate(false);
-    setNewProject({ project_name: "", project_type: "commercial", client_name: "", gc_company: "", building_type: "", city: "", state: "", bid_date: "", priority: "normal", trades_requested: [] });
+    try {
+      await createProject.mutateAsync({
+        ...newProject,
+        status: "rfp_received",
+        country: "US",
+        number_of_buildings: 1,
+        estimation_mode: "manual",
+        current_revision: 0,
+        total_revisions: 0,
+        has_addenda: false,
+        addenda_count: 0,
+        alternates: [],
+        building_sections: [],
+        unit_system: "imperial",
+        estimation_fee_status: "unpaid",
+        deliverable_qualification: true,
+        deliverable_color_coded: true,
+        deliverable_takeoff_file: true,
+        deliverable_working_drawings: false,
+        deliverable_quantities_excel: true,
+      } as any);
+      toast.success("Project created successfully");
+      setShowCreate(false);
+      setNewProject({ project_name: "", project_type: "commercial", client_name: "", gc_company: "", building_type: "", city: "", state: "", bid_date: "", priority: "normal", trades_requested: [] });
+    } catch (error) {
+      console.error("Create project error:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to create project. Please try again.");
+    }
   };
 
   const toggleTrade = (trade: string) => {

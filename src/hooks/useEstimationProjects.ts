@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
 import { useEffect } from "react";
+import { estimationAction } from "@/lib/api/estimationApi";
 
 export interface EstimationProject {
   id: string;
@@ -126,13 +127,13 @@ export function useEstimationProjects(searchTerm?: string, statusFilter?: string
 
   const createProject = useMutation({
     mutationFn: async (project: Partial<EstimationProject>) => {
-      const { data, error } = await supabase
-        .from("estimation_projects" as any)
-        .insert({ ...project, tenant_id: tenantId } as any)
-        .select()
-        .single();
-      if (error) throw error;
-      return data as unknown as EstimationProject;
+      const response = await estimationAction("create_project", project as Record<string, unknown>, tenantId);
+      if (!response.success) {
+        throw new Error(response.error || response.message || "Failed to create project");
+      }
+      // n8n returns the created project in the response data
+      const result = response.data as any;
+      return (result?.project || result) as EstimationProject;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["estimation_projects", tenantId] }); },
   });
