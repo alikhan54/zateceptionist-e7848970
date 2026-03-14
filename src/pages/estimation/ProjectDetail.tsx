@@ -556,9 +556,9 @@ export default function ProjectDetail() {
                         <td className="p-3"><div className="font-medium">{r.room_name}</div>{r.room_number && <div className="text-xs text-muted-foreground">#{r.room_number}</div>}</td>
                         <td className="p-3">{r.floor_level}</td>
                         <td className="p-3 text-right">{r.length_ft && r.width_ft ? `${r.length_ft}' x ${r.width_ft}'` : "—"}</td>
-                        <td className="p-3 text-right">{r.net_area_sqft?.toLocaleString() || "—"}</td>
+                        <td className="p-3 text-right">{r.area_sqft?.toLocaleString() || "—"}</td>
                         <td className="p-3 text-right">{r.perimeter_lf?.toLocaleString() || "—"}</td>
-                        <td className="p-3"><Badge variant={r.is_verified ? "default" : "outline"}>{r.is_verified ? "Verified" : "Draft"}</Badge></td>
+                        <td className="p-3"><Badge variant={r.verified ? "default" : "outline"}>{r.verified ? "Verified" : "Draft"}</Badge></td>
                       </tr>
                     ))}
                     {rooms.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No rooms added yet.</td></tr>}
