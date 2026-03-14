@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,10 +17,10 @@ import { useEstimationRFIs } from "@/hooks/useEstimationRFIs";
 import { useEstimationRevisions } from "@/hooks/useEstimationRevisions";
 import { useEstimationTeam } from "@/hooks/useEstimationTeam";
 import { useTenant } from "@/contexts/TenantContext";
-import { exportEstimationData, analyzeBidsetText, aiQAReview, suggestMaterials, generateQualification } from "@/lib/api/estimationApi";
+import { exportEstimationData, analyzeBidsetText, aiQAReview, suggestMaterials, generateQualification, processVisionPdf } from "@/lib/api/estimationApi";
 import { supabase } from "@/integrations/supabase/client";
 import { exportQuantitiesXlsx, exportCostSheetXlsx, exportQualificationPdf, exportColorCodedPdf, exportCsv, type ExportData } from "@/lib/estimation/exportUtils";
-import { ArrowLeft, Building2, Calendar, Users, DollarSign, Plus, Ruler, FileText, HelpCircle, History, Activity, Truck, Download, Bot, Loader2, CheckCircle, XCircle, Copy, Sparkles, AlertTriangle, AlertCircle } from "lucide-react";
+import { ArrowLeft, Building2, Calendar, Users, DollarSign, Plus, Ruler, FileText, HelpCircle, History, Activity, Truck, Download, Bot, Loader2, CheckCircle, XCircle, Copy, Sparkles, AlertTriangle, AlertCircle, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -63,6 +63,13 @@ export default function ProjectDetail() {
   const [qaLoading, setQaLoading] = useState(false);
   const [qualificationText, setQualificationText] = useState("");
   const [qualLoading, setQualLoading] = useState(false);
+
+  // PDF Vision state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [pdfUploading, setPdfUploading] = useState(false);
+  const [pdfProgress, setPdfProgress] = useState(0);
+  const [pdfError, setPdfError] = useState<string | null>(null);
 
   const { tenantId } = useTenant();
 
@@ -139,6 +146,55 @@ export default function ProjectDetail() {
       toast.error("Analysis failed. Check console for details.");
     } finally {
       setAiAnalyzing(false);
+    }
+  };
+
+  // ── PDF Vision Upload Handler ────────────────────────────────────
+  const handlePdfUpload = async () => {
+    if (!pdfFile || !id || !tenantId) return;
+    if (pdfFile.type !== "application/pdf") {
+      setPdfError("Only PDF files are supported.");
+      return;
+    }
+    if (pdfFile.size > 15 * 1024 * 1024) {
+      setPdfError("PDF must be under 15MB.");
+      return;
+    }
+    setPdfUploading(true);
+    setPdfProgress(10);
+    setPdfError(null);
+    try {
+      // 1. Upload to Supabase Storage
+      const filePath = `${tenantId}/${id}/${Date.now()}-${pdfFile.name}`;
+      setPdfProgress(20);
+      const { error: uploadError } = await supabase.storage
+        .from("estimation-files")
+        .upload(filePath, pdfFile, { contentType: "application/pdf", upsert: false });
+      if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
+      setPdfProgress(40);
+
+      // 2. Get public URL (bucket is public)
+      const { data: urlData } = supabase.storage.from("estimation-files").getPublicUrl(filePath);
+      const fileUrl = urlData?.publicUrl;
+      if (!fileUrl) throw new Error("Failed to get file URL");
+      setPdfProgress(50);
+
+      // 3. Call vision webhook
+      setPdfProgress(60);
+      const result = await processVisionPdf(id, fileUrl, pdfFile.name, estimationMode, tenantId);
+      setPdfProgress(90);
+      const data = (result as any)?.data || result;
+      if (data?.success === false) throw new Error(data.error || "Vision processing failed");
+      setPdfProgress(100);
+      toast.success(`Vision AI complete: ${data.rooms_count || 0} rooms, ${data.materials_count || 0} materials, ${data.rfis_count || 0} RFIs extracted`);
+      // Refresh to show results
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (err: any) {
+      console.error("PDF vision failed:", err);
+      setPdfError(err.message || "PDF processing failed");
+      toast.error(err.message || "PDF processing failed");
+    } finally {
+      setPdfUploading(false);
     }
   };
 
@@ -869,6 +925,52 @@ export default function ProjectDetail() {
               </div>
             </div>
           </Card>
+
+          {/* PDF Vision Upload */}
+          <Card>
+            <CardHeader><CardTitle className="text-base flex items-center gap-2"><Upload className="h-4 w-4" /> Upload PDF Floor Plans</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">Upload construction PDF drawings (floor plans, finish schedules) for AI vision extraction of rooms, dimensions, and materials.</p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="application/pdf"
+                className="hidden"
+                onChange={e => { setPdfFile(e.target.files?.[0] || null); setPdfError(null); }}
+              />
+              <div className="flex items-center gap-3">
+                <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={pdfUploading}>
+                  <FileText className="mr-2 h-4 w-4" /> {pdfFile ? pdfFile.name : "Choose PDF"}
+                </Button>
+                {pdfFile && (
+                  <span className="text-xs text-muted-foreground">{(pdfFile.size / 1024 / 1024).toFixed(1)} MB</span>
+                )}
+                <Button
+                  onClick={handlePdfUpload}
+                  disabled={!pdfFile || pdfUploading || estimationMode === "manual"}
+                >
+                  {pdfUploading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</> : <><Bot className="mr-2 h-4 w-4" /> Analyze with Vision AI</>}
+                </Button>
+              </div>
+              {pdfUploading && (
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="bg-blue-600 h-2 rounded-full transition-all duration-500" style={{ width: `${pdfProgress}%` }} />
+                </div>
+              )}
+              {pdfError && (
+                <div className="flex items-center gap-2 text-sm text-red-600"><AlertCircle className="h-4 w-4" /> {pdfError}</div>
+              )}
+              {estimationMode === "manual" && (
+                <p className="text-xs text-muted-foreground">Switch to AI-Assisted or Autonomous mode to use vision analysis.</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="relative flex items-center py-1">
+            <div className="flex-grow border-t border-muted" />
+            <span className="mx-3 text-xs text-muted-foreground">or paste text manually</span>
+            <div className="flex-grow border-t border-muted" />
+          </div>
 
           {/* Paste Bidset Text */}
           <Card>

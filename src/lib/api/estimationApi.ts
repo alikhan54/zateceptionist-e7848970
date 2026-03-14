@@ -12,7 +12,8 @@ export type EstimationAction =
   | "export_data"
   | "send_to_client"
   | "close_project"
-  | "log_activity";
+  | "log_activity"
+  | "process_pdf_vision";
 
 export type EstimationAIAction =
   | "analyze_bidset_text"
@@ -139,6 +140,27 @@ export async function closeProject(
     project_id: projectId,
     outcome,
     notes,
+  }, tenantId);
+}
+
+// ── PDF Vision Pipeline ──────────────────────────────────────────────
+
+/**
+ * Upload a PDF to Gemini Vision for room/material extraction.
+ * Routes through EST.2 process_pdf_vision action.
+ */
+export async function processVisionPdf(
+  projectId: string,
+  fileUrl: string,
+  fileName: string,
+  estimationMode: string,
+  tenantId: string,
+) {
+  return estimationAction("process_pdf_vision", {
+    project_id: projectId,
+    file_url: fileUrl,
+    file_name: fileName,
+    estimation_mode: estimationMode,
   }, tenantId);
 }
 
