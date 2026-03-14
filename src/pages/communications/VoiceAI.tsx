@@ -21,6 +21,7 @@ import {
   RefreshCcw,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { VoiceSetupWizard } from "@/components/voice/VoiceSetupWizard";
 
 export default function VoiceAI() {
   const { tenantId, tenantConfig } = useTenant();
