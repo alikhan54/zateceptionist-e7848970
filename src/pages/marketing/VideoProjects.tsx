@@ -45,6 +45,7 @@ export default function VideoProjects() {
   const [generatingScriptId, setGeneratingScriptId] = useState<string | null>(null);
   const [detailProject, setDetailProject] = useState<any>(null);
   const [isClassifying, setIsClassifying] = useState(false);
+  const [pageTab, setPageTab] = useState('projects');
 
   const { data: aidaAudiences = [], refetch: refetchAida } = useQuery({
     queryKey: ['aida_audiences', tenantConfig?.id],
@@ -301,8 +302,6 @@ ${s.image_url ? `<img src="${s.image_url}" alt="Scene ${i + 1}" />` : ''}</div>`
     desire: { icon: Heart, color: 'text-rose-600', bgColor: 'bg-rose-50 border-rose-200', label: 'Desire', description: '50-75% watched' },
     action: { icon: Target, color: 'text-green-600', bgColor: 'bg-green-50 border-green-200', label: 'Action', description: '75%+ or CTA clicked' },
   };
-
-  const [pageTab, setPageTab] = useState('projects');
 
   return (
     <div className="space-y-6 p-6">
