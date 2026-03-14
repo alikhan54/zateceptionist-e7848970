@@ -48,11 +48,11 @@ export default function EstimationApprovalQueue() {
     return allItems.filter((item) => {
       const matchesSearch =
         !searchTerm ||
-        item.material_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (item as any).material_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.material_tag?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.trade?.toLowerCase().includes(searchTerm.toLowerCase());
       // Show items that are not yet verified (AI-generated items to review)
-      return !item.is_verified && matchesSearch;
+      return !item.verified && matchesSearch;
     });
   }, [allItems, searchTerm]);
 
