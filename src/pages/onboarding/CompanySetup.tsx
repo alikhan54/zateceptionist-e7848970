@@ -76,7 +76,7 @@ export default function CompanySetup() {
 
   const handleNext = () => {
     const nextStep = currentStep + 1;
-    setCompletedSteps((prev) => [...new Set([...prev, currentStep])]);
+    setCompletedSteps((prev) => [...new Set([...prev, String(currentStep)])]);
     if (nextStep < ONBOARDING_STEPS.length) {
       goToStep(nextStep);
     }
