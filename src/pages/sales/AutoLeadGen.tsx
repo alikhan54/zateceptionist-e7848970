@@ -87,6 +87,10 @@ const INDUSTRIES = [
   { id: "cleaning", label: "Cleaning Services", icon: "🧹" },
   { id: "moving", label: "Moving / Storage", icon: "📦" },
   { id: "general", label: "General / Other", icon: "🏢" },
+  { id: 'banking', label: 'Banking / Financial Services', icon: '🏦' },
+  { id: 'fintech', label: 'Fintech / Digital Payments', icon: '💳' },
+  { id: 'bpo_collections', label: 'BPO / Collections Services', icon: '📞' },
+  { id: 'microfinance', label: 'Microfinance / Financial Inclusion', icon: '🌍' },
 ];
 
 // LOCAL DISCOVERY CATEGORIES - For Google Places/Maps
