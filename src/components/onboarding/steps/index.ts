@@ -8,7 +8,7 @@ export { ProfileStep } from './ProfileStep';
 export { ServicesStep } from './ServicesStep';
 export { PersonasStep } from './PersonasStep';
 export { AIConfigStep } from './AIConfigStep';
-export { ChannelsStep } from './ChannelsStep';
+export { default as ChannelsStep } from './ChannelsStep';
 export { TrainingStep } from './TrainingStep';
 export { CompleteStep } from './CompleteStep';
 

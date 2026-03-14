@@ -17,7 +17,8 @@ import {
   Calculator,
   Calendar,
   Clock,
-  BarChart3
+  BarChart3,
+  CheckCircle2
 } from 'lucide-react';
 import { format } from 'date-fns';
 

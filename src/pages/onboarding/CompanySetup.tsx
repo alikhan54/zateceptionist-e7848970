@@ -44,7 +44,7 @@ export default function CompanySetup() {
   });
 
   const [skippedSteps, setSkippedSteps] = useState<string[]>(data.skippedSteps || []);
-  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
+  const [completedSteps, setCompletedSteps] = useState<string[]>([]);
 
   const currentStep = data.currentStep;
 

@@ -264,13 +264,13 @@ export default function EstimationApprovalQueue() {
                         />
                       </td>
                       <td className="p-3">
-                        <div className="font-medium">{item.material_tag || item.material_name || "Unknown"}</div>
+                        <div className="font-medium">{item.material_tag || (item as any).material_name || "Unknown"}</div>
                         {item.notes && <div className="text-xs text-muted-foreground">{item.notes}</div>}
                       </td>
-                      <td className="p-3">{item.surface_type || "-"}</td>
-                      <td className="p-3 text-right">{item.net_area_sqft?.toLocaleString() || "0"}</td>
-                      <td className="p-3 text-right">{item.waste_factor_pct != null ? `${item.waste_factor_pct}%` : "-"}</td>
-                      <td className="p-3 text-right">{item.total_quantity_with_waste?.toLocaleString() || "0"}</td>
+                      <td className="p-3">{item.surface || "-"}</td>
+                      <td className="p-3 text-right">{item.net_area?.toLocaleString() || "0"}</td>
+                      <td className="p-3 text-right">{item.waste_factor != null ? `${item.waste_factor}%` : "-"}</td>
+                      <td className="p-3 text-right">{item.quantity?.toLocaleString() || "0"}</td>
                       <td className="p-3 text-right">
                         {item.total_material_cost ? `$${item.total_material_cost.toLocaleString()}` : "$0"}
                       </td>

@@ -739,7 +739,8 @@ function SystemStatusTab({ healthData, healthStatus, refreshHealth, tenantId }: 
 
 // --- Main Page ---
 export default function OmegaCommandCenter() {
-  const { tenantId, tenantUuid } = useTenant();
+  const { tenantId, tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
   const { status, data: healthData, refresh: refreshHealth } = useHealth(tenantId || "zateceptionist");
 
   return (

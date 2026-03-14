@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { cn } from '@/lib/utils';
 import { useTenant } from '@/contexts/TenantContext';
 import { useEmployees, useDepartments, useAttendance, useLeaveRequests } from '@/hooks/useHR';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';

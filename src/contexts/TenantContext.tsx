@@ -517,8 +517,8 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const isRealEstate = industry === "real_estate";
   const isRestaurant = industry === "restaurant";
   const isSalon = industry === "salon";
-  const isBankingCollections = industry === "banking_collections" || industry === "finance";
-  const isConstructionEstimation = industry === "construction_estimation" || industry === "construction";
+  const isBankingCollections = industry === "banking_collections" || (industry as string) === "finance";
+  const isConstructionEstimation = industry === "construction_estimation" || (industry as string) === "construction";
 
   useEffect(() => {
     fetchTenantConfig();

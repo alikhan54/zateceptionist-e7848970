@@ -29,7 +29,8 @@ interface ChatMessage {
 
 export function OmegaFloatingChat() {
   const { user, authUser, isAdmin } = useAuth();
-  const { tenantId, tenantUuid } = useTenant();
+  const { tenantId, tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);

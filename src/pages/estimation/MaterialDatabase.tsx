@@ -216,7 +216,7 @@ export default function MaterialDatabase() {
                       <td className="p-3">{m.color || "—"}</td>
                       <td className="p-3">{m.unit_of_measure}</td>
                       <td className="p-3 text-right">{m.unit_price ? `$${m.unit_price.toFixed(2)}` : "—"}</td>
-                      <td className="p-3 text-right">{m.waste_factor_pct != null ? `${m.waste_factor_pct}%` : "—"}</td>
+                      <td className="p-3 text-right">{m.standard_waste_pct != null ? `${m.standard_waste_pct}%` : "—"}</td>
                       <td className="p-3">
                         <Badge variant={m.tenant_id === "global" ? "secondary" : "default"} className="text-xs">
                           {m.tenant_id === "global" ? "Global" : "Custom"}

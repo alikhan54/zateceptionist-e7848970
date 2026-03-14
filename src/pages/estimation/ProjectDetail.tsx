@@ -596,11 +596,11 @@ export default function ProjectDetail() {
                     {takeoffItems.map(item => (
                       <tr key={item.id} className="border-b hover:bg-muted/30">
                         <td className="p-3"><Badge variant="outline">{item.trade}</Badge></td>
-                        <td className="p-3">{item.surface_type || "—"}</td>
+                        <td className="p-3">{item.surface || "—"}</td>
                         <td className="p-3">{item.material_tag || "—"}</td>
-                        <td className="p-3 text-right">{item.net_area_sqft?.toLocaleString() || "—"} SF</td>
-                        <td className="p-3 text-right">{item.waste_factor_pct != null ? `${item.waste_factor_pct}%` : "—"}</td>
-                        <td className="p-3 text-right">{item.total_quantity_with_waste?.toLocaleString() || "—"}</td>
+                        <td className="p-3 text-right">{item.net_area?.toLocaleString() || "—"} SF</td>
+                        <td className="p-3 text-right">{item.waste_factor != null ? `${item.waste_factor}%` : "—"}</td>
+                        <td className="p-3 text-right">{item.quantity?.toLocaleString() || "—"}</td>
                         <td className="p-3 text-right">{item.total_material_cost ? `$${item.total_material_cost.toLocaleString()}` : "—"}</td>
                       </tr>
                     ))}
