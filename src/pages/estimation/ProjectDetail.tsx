@@ -556,9 +556,9 @@ export default function ProjectDetail() {
                         <td className="p-3"><div className="font-medium">{r.room_name}</div>{r.room_number && <div className="text-xs text-muted-foreground">#{r.room_number}</div>}</td>
                         <td className="p-3">{r.floor_level}</td>
                         <td className="p-3 text-right">{r.length_ft && r.width_ft ? `${r.length_ft}' x ${r.width_ft}'` : "—"}</td>
-                        <td className="p-3 text-right">{r.net_area_sqft?.toLocaleString() || "—"}</td>
+                        <td className="p-3 text-right">{r.area_sqft?.toLocaleString() || "—"}</td>
                         <td className="p-3 text-right">{r.perimeter_lf?.toLocaleString() || "—"}</td>
-                        <td className="p-3"><Badge variant={r.is_verified ? "default" : "outline"}>{r.is_verified ? "Verified" : "Draft"}</Badge></td>
+                        <td className="p-3"><Badge variant={r.verified ? "default" : "outline"}>{r.verified ? "Verified" : "Draft"}</Badge></td>
                       </tr>
                     ))}
                     {rooms.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No rooms added yet.</td></tr>}
@@ -596,11 +596,11 @@ export default function ProjectDetail() {
                     {takeoffItems.map(item => (
                       <tr key={item.id} className="border-b hover:bg-muted/30">
                         <td className="p-3"><Badge variant="outline">{item.trade}</Badge></td>
-                        <td className="p-3">{item.surface_type || "—"}</td>
+                        <td className="p-3">{item.surface || "—"}</td>
                         <td className="p-3">{item.material_tag || "—"}</td>
-                        <td className="p-3 text-right">{item.net_area_sqft?.toLocaleString() || "—"} SF</td>
-                        <td className="p-3 text-right">{item.waste_factor_pct != null ? `${item.waste_factor_pct}%` : "—"}</td>
-                        <td className="p-3 text-right">{item.total_quantity_with_waste?.toLocaleString() || "—"}</td>
+                        <td className="p-3 text-right">{item.net_area?.toLocaleString() || "—"} SF</td>
+                        <td className="p-3 text-right">{item.waste_factor != null ? `${item.waste_factor}%` : "—"}</td>
+                        <td className="p-3 text-right">{item.quantity?.toLocaleString() || "—"}</td>
                         <td className="p-3 text-right">{item.total_material_cost ? `$${item.total_material_cost.toLocaleString()}` : "—"}</td>
                       </tr>
                     ))}

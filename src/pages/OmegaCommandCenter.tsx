@@ -65,11 +65,12 @@ function useHealth(tenantId: string) {
   const check = useCallback(async () => {
     try {
       const res = await callWebhook(WEBHOOKS.OMEGA_HEALTH, {}, tenantId);
-      if (res.success && res.data && res.data.status === "healthy") {
-        setData(res.data);
+      const resData = res.data as Record<string, unknown> | undefined;
+      if (res.success && resData && resData.status === "healthy") {
+        setData(resData);
         setStatus("healthy");
-      } else if (res.success && res.data && res.data.status === "online") {
-        setData(res.data);
+      } else if (res.success && resData && resData.status === "online") {
+        setData(resData);
         setStatus("healthy");
       } else {
         setStatus("offline");
@@ -738,7 +739,8 @@ function SystemStatusTab({ healthData, healthStatus, refreshHealth, tenantId }: 
 
 // --- Main Page ---
 export default function OmegaCommandCenter() {
-  const { tenantId, tenantUuid } = useTenant();
+  const { tenantId, tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
   const { status, data: healthData, refresh: refreshHealth } = useHealth(tenantId || "zateceptionist");
 
   return (

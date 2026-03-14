@@ -135,6 +135,7 @@ export function usePayment() {
               billing_details: {
                 name: tenantConfig?.company_name || '',
                 email: tenantConfig?.smtp_from_email || '',
+                address: { line1: '', city: '', country: '', postal_code: '' },
               },
             },
           });

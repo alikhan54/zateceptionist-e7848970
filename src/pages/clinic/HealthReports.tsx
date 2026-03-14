@@ -241,7 +241,7 @@ export default function HealthReports() {
         </TabsContent>
 
         <TabsContent value="analyses" className="space-y-4">
-          {analysesLoading ? (
+          {isLoading ? (
             <p className="text-muted-foreground text-sm p-4">Loading analyses...</p>
           ) : analyses.length === 0 ? (
             <Card>
