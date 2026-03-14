@@ -342,6 +342,7 @@ export default function VoiceAIConfig() {
 
   return (
     <div className="space-y-6">
+      <VoiceSetupWizard />
       {/* ========== SECTION: Voice & Language ========== */}
       <Card>
         <CardHeader>

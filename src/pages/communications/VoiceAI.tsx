@@ -117,6 +117,7 @@ export default function VoiceAI() {
 
   return (
     <div className="space-y-6">
+      <VoiceSetupWizard />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
