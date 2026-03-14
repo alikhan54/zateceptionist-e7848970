@@ -26,6 +26,7 @@ import {
   ShieldCheck,
   Volume2,
 } from "lucide-react";
+import { VoiceSetupWizard } from "@/components/voice/VoiceSetupWizard";
 
 // === Voice options (VAPI-compatible) ===
 const VOICE_OPTIONS = [
