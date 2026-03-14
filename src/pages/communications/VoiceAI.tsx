@@ -21,6 +21,7 @@ import {
   RefreshCcw,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { VoiceSetupWizard } from "@/components/voice/VoiceSetupWizard";
 
 export default function VoiceAI() {
   const { tenantId, tenantConfig } = useTenant();
@@ -116,6 +117,7 @@ export default function VoiceAI() {
 
   return (
     <div className="space-y-6">
+      <VoiceSetupWizard />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

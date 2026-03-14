@@ -26,6 +26,7 @@ import {
   ShieldCheck,
   Volume2,
 } from "lucide-react";
+import { VoiceSetupWizard } from "@/components/voice/VoiceSetupWizard";
 
 // === Voice options (VAPI-compatible) ===
 const VOICE_OPTIONS = [
@@ -341,6 +342,7 @@ export default function VoiceAIConfig() {
 
   return (
     <div className="space-y-6">
+      <VoiceSetupWizard />
       {/* ========== SECTION: Voice & Language ========== */}
       <Card>
         <CardHeader>
