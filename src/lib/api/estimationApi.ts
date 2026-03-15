@@ -1,4 +1,5 @@
-import { WEBHOOKS, callWebhook, type WebhookResponse } from "./webhooks";
+import { WEBHOOKS, callWebhook, callWebhookWithTimeout, type WebhookResponse } from "./webhooks";
+import { supabase } from "@/integrations/supabase/client";
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -147,7 +148,9 @@ export async function closeProject(
 
 /**
  * Upload a PDF to Gemini Vision for room/material extraction.
- * Routes through EST.2 process_pdf_vision action.
+ * Uses 5-minute timeout since Gemini analysis takes 1-3 minutes.
+ * Returns "TIMEOUT" error if webhook doesn't respond in time —
+ * caller should fall back to polling checkVisionStatus().
  */
 export async function processVisionPdf(
   projectId: string,
@@ -156,12 +159,40 @@ export async function processVisionPdf(
   estimationMode: string,
   tenantId: string,
 ) {
-  return estimationAction("process_pdf_vision", {
+  return callWebhookWithTimeout(WEBHOOKS.ESTIMATION_ACTION, {
+    action: "process_pdf_vision",
     project_id: projectId,
     file_url: fileUrl,
     file_name: fileName,
     estimation_mode: estimationMode,
-  }, tenantId);
+  }, tenantId, 300000); // 5-minute timeout
+}
+
+/**
+ * Poll bidset processing status. Used when vision webhook times out.
+ * The backend creates the bidset record BEFORE Gemini analysis starts,
+ * then updates ai_processing_status to "completed" or "failed".
+ */
+export async function checkVisionStatus(
+  projectId: string,
+  tenantId: string,
+): Promise<{ status: string; error?: string; data?: unknown } | null> {
+  const { data, error } = await supabase
+    .from("estimation_bidsets" as any)
+    .select("id, ai_processing_status, ai_extracted_data, ai_error_message")
+    .eq("project_id", projectId)
+    .eq("tenant_id", tenantId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error || !data) return null;
+  const row = data as any;
+  return {
+    status: row.ai_processing_status || "unknown",
+    error: row.ai_error_message || (row.ai_extracted_data?.error as string) || undefined,
+    data: row.ai_extracted_data,
+  };
 }
 
 // ── AI Convenience Wrappers ────────────────────────────────────────

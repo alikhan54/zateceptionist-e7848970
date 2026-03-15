@@ -17,7 +17,7 @@ import { useEstimationRFIs } from "@/hooks/useEstimationRFIs";
 import { useEstimationRevisions } from "@/hooks/useEstimationRevisions";
 import { useEstimationTeam } from "@/hooks/useEstimationTeam";
 import { useTenant } from "@/contexts/TenantContext";
-import { exportEstimationData, analyzeBidsetText, aiQAReview, suggestMaterials, generateQualification, processVisionPdf } from "@/lib/api/estimationApi";
+import { exportEstimationData, analyzeBidsetText, aiQAReview, suggestMaterials, generateQualification, processVisionPdf, checkVisionStatus } from "@/lib/api/estimationApi";
 import { supabase } from "@/integrations/supabase/client";
 import { exportQuantitiesXlsx, exportCostSheetXlsx, exportQualificationPdf, exportColorCodedPdf, exportCsv, type ExportData } from "@/lib/estimation/exportUtils";
 import { ArrowLeft, Building2, Calendar, Users, DollarSign, Plus, Ruler, FileText, HelpCircle, History, Activity, Truck, Download, Bot, Loader2, CheckCircle, XCircle, Copy, Sparkles, AlertTriangle, AlertCircle, Upload } from "lucide-react";
@@ -70,6 +70,7 @@ export default function ProjectDetail() {
   const [pdfUploading, setPdfUploading] = useState(false);
   const [pdfProgress, setPdfProgress] = useState(0);
   const [pdfError, setPdfError] = useState<string | null>(null);
+  const [pdfStatusMsg, setPdfStatusMsg] = useState("");
 
   const { tenantId } = useTenant();
 
@@ -150,6 +151,28 @@ export default function ProjectDetail() {
   };
 
   // ── PDF Vision Upload Handler ────────────────────────────────────
+  const pollVisionStatus = async (projectId: string, tid: string, maxPolls = 60): Promise<boolean> => {
+    for (let i = 0; i < maxPolls; i++) {
+      await new Promise(r => setTimeout(r, 5000)); // 5 second intervals
+      setPdfProgress(Math.min(60 + Math.floor((i / maxPolls) * 35), 95));
+      setPdfStatusMsg(`AI analyzing drawings... (${i * 5 + 5}s elapsed)`);
+      try {
+        const status = await checkVisionStatus(projectId, tid);
+        if (!status) continue;
+        if (status.status === "completed") {
+          return true;
+        }
+        if (status.status === "failed") {
+          throw new Error(status.error || "Vision analysis failed on server");
+        }
+      } catch (pollErr: any) {
+        if (pollErr.message?.includes("failed")) throw pollErr;
+        // Network blip — keep trying
+      }
+    }
+    throw new Error("Vision analysis timed out after 5 minutes. Check the project later — it may still complete.");
+  };
+
   const handlePdfUpload = async () => {
     if (!pdfFile || !id || !tenantId) return;
     if (pdfFile.type !== "application/pdf") {
@@ -163,6 +186,7 @@ export default function ProjectDetail() {
     setPdfUploading(true);
     setPdfProgress(10);
     setPdfError(null);
+    setPdfStatusMsg("Uploading PDF...");
     try {
       // 1. Upload to Supabase Storage
       const filePath = `${tenantId}/${id}/${Date.now()}-${pdfFile.name}`;
@@ -178,23 +202,53 @@ export default function ProjectDetail() {
       const fileUrl = urlData?.publicUrl;
       if (!fileUrl) throw new Error("Failed to get file URL");
       setPdfProgress(50);
+      setPdfStatusMsg("AI reading floor plans... (this takes 1-3 minutes)");
 
-      // 3. Call vision webhook
-      setPdfProgress(60);
+      // 3. Call vision webhook (5-minute timeout)
+      setPdfProgress(55);
       const result = await processVisionPdf(id, fileUrl, pdfFile.name, estimationMode, tenantId);
-      setPdfProgress(90);
       const data = (result as any)?.data || result;
-      if (data?.success === false) throw new Error(data.error || "Vision processing failed");
-      setPdfProgress(100);
-      toast.success(`Vision AI complete: ${data.rooms_count || 0} rooms, ${data.materials_count || 0} materials, ${data.rfis_count || 0} RFIs extracted`);
-      // Refresh to show results
-      setTimeout(() => window.location.reload(), 1500);
+
+      // 4. Handle response
+      if (data?.success === false && data?.error === "TIMEOUT") {
+        // Webhook timed out but backend may still be processing
+        // The bidset record was created before Gemini started — poll it
+        setPdfStatusMsg("Still processing... polling for results...");
+        const completed = await pollVisionStatus(id, tenantId);
+        if (completed) {
+          setPdfProgress(100);
+          setPdfStatusMsg("Complete!");
+          toast.success("Vision AI analysis complete! Refreshing...");
+          setTimeout(() => window.location.reload(), 1500);
+          return;
+        }
+      } else if (data?.error === "TIMEOUT" || result?.error === "TIMEOUT") {
+        // Top-level timeout from callWebhookWithTimeout
+        setPdfStatusMsg("Still processing... polling for results...");
+        const completed = await pollVisionStatus(id, tenantId);
+        if (completed) {
+          setPdfProgress(100);
+          setPdfStatusMsg("Complete!");
+          toast.success("Vision AI analysis complete! Refreshing...");
+          setTimeout(() => window.location.reload(), 1500);
+          return;
+        }
+      } else if (data?.success === false) {
+        throw new Error(data.error || "Vision processing failed");
+      } else {
+        // Direct success
+        setPdfProgress(100);
+        setPdfStatusMsg("Complete!");
+        toast.success(`Vision AI complete: ${data.rooms_count || 0} rooms, ${data.materials_count || 0} materials, ${data.rfis_count || 0} RFIs extracted`);
+        setTimeout(() => window.location.reload(), 1500);
+      }
     } catch (err: any) {
       console.error("PDF vision failed:", err);
       setPdfError(err.message || "PDF processing failed");
       toast.error(err.message || "PDF processing failed");
     } finally {
       setPdfUploading(false);
+      setPdfStatusMsg("");
     }
   };
 
@@ -953,8 +1007,11 @@ export default function ProjectDetail() {
                 </Button>
               </div>
               {pdfUploading && (
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-blue-600 h-2 rounded-full transition-all duration-500" style={{ width: `${pdfProgress}%` }} />
+                <div className="space-y-1">
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-blue-600 h-2 rounded-full transition-all duration-500" style={{ width: `${pdfProgress}%` }} />
+                  </div>
+                  {pdfStatusMsg && <p className="text-xs text-muted-foreground">{pdfStatusMsg}</p>}
                 </div>
               )}
               {pdfError && (
