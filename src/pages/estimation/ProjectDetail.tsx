@@ -156,8 +156,8 @@ export default function ProjectDetail() {
       setPdfError("Only PDF files are supported.");
       return;
     }
-    if (pdfFile.size > 15 * 1024 * 1024) {
-      setPdfError("PDF must be under 15MB.");
+    if (pdfFile.size > 50 * 1024 * 1024) {
+      setPdfError("PDF must be under 50MB.");
       return;
     }
     setPdfUploading(true);
