@@ -179,7 +179,7 @@ export async function checkVisionStatus(
 ): Promise<{ status: string; error?: string; data?: unknown } | null> {
   const { data, error } = await supabase
     .from("estimation_bidsets" as any)
-    .select("id, ai_processing_status, ai_extracted_data, ai_error_message")
+    .select("id, ai_processing_status, ai_extracted_data")
     .eq("project_id", projectId)
     .eq("tenant_id", tenantId)
     .order("created_at", { ascending: false })
@@ -190,7 +190,7 @@ export async function checkVisionStatus(
   const row = data as any;
   return {
     status: row.ai_processing_status || "unknown",
-    error: row.ai_error_message || (row.ai_extracted_data?.error as string) || undefined,
+    error: (row.ai_extracted_data?.error as string) || undefined,
     data: row.ai_extracted_data,
   };
 }
