@@ -13,8 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Video, Film, Clock, CheckCircle, Sparkles, Copy, Download, RefreshCw, Image, Trash2, Target, Eye, Heart, Zap, Users } from 'lucide-react';
+import { Plus, Video, Film, Clock, CheckCircle, Sparkles, Copy, Download, RefreshCw, Image, Trash2, Target, Eye, Heart, Zap, Users, Play, Presentation } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import VideoPlayer from '@/components/video/VideoPlayer';
 
 const VIDEO_TYPE_LABELS: Record<string, { emoji: string; label: string }> = {
   short_form: { emoji: '📱', label: 'Reel/TikTok' },
@@ -46,6 +47,7 @@ export default function VideoProjects() {
   const [detailProject, setDetailProject] = useState<any>(null);
   const [isClassifying, setIsClassifying] = useState(false);
   const [pageTab, setPageTab] = useState('projects');
+  const [isPlayerOpen, setIsPlayerOpen] = useState(false);
 
   const { data: aidaAudiences = [], refetch: refetchAida } = useQuery({
     queryKey: ['aida_audiences', tenantConfig?.id],
@@ -273,6 +275,57 @@ ${s.image_url ? `<img src="${s.image_url}" alt="Scene ${i + 1}" />` : ''}</div>`
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = `${project.title}-storyboard.html`; a.click();
     toast({ title: 'Storyboard exported!' });
+  };
+
+  const exportPresentation = (project: any) => {
+    const scenes = getScenes(project);
+    if (!scenes.length) return;
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${project.title} - Presentation</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;font-family:system-ui;color:#fff;overflow:hidden}
+.slide{position:absolute;inset:0;opacity:0;transition:opacity 1s ease-in-out;display:flex;align-items:center;justify-content:center}
+.slide.active{opacity:1}
+.slide img{width:100%;height:100%;object-fit:cover}
+.slide .placeholder{width:100%;height:100%;background:linear-gradient(135deg,#1a1a2e,#16213e);display:flex;align-items:center;justify-content:center;font-size:2rem;color:#444}
+.overlay-top{position:absolute;top:0;left:0;right:0;padding:1.5rem 2rem;background:linear-gradient(to bottom,rgba(0,0,0,0.7),transparent);z-index:2}
+.overlay-bottom{position:absolute;bottom:4rem;left:0;right:0;padding:0 3rem;z-index:2;text-align:center}
+.subtitle{background:rgba(0,0,0,0.75);display:inline-block;padding:0.75rem 1.5rem;border-radius:8px;font-size:1.1rem;line-height:1.6;max-width:800px}
+.controls{position:absolute;bottom:0;left:0;right:0;padding:0.75rem 2rem;background:rgba(0,0,0,0.8);display:flex;align-items:center;gap:1rem;z-index:3}
+.controls button{background:none;border:none;color:#fff;cursor:pointer;font-size:1.2rem;padding:0.25rem 0.5rem}
+.controls button:hover{color:#3b82f6}
+.progress{flex:1;height:4px;background:#333;border-radius:2px;cursor:pointer}
+.progress-fill{height:100%;background:#3b82f6;border-radius:2px;transition:width 0.3s}
+.scene-counter{font-size:0.85rem;color:#aaa;min-width:60px;text-align:right}
+</style></head><body>
+${scenes.map((s: any, i: number) => `<div class="slide" id="s${i}">
+${s.image_url ? `<img src="${s.image_url}" alt="Scene ${i+1}" crossorigin="anonymous" onerror="this.outerHTML='<div class=placeholder>Scene ${i+1}</div>'">` : `<div class="placeholder">Scene ${i+1}</div>`}
+<div class="overlay-top"><strong>${project.title}</strong>${s.text_overlay ? `<br><span style="font-size:0.9rem;opacity:0.8">${s.text_overlay}</span>` : ''}</div>
+${s.dialogue ? `<div class="overlay-bottom"><span class="subtitle">${s.dialogue}</span></div>` : ''}
+</div>`).join('\n')}
+<div class="controls">
+<button onclick="prev()">&#9664;&#9664;</button>
+<button id="playBtn" onclick="toggle()">&#9654;</button>
+<button onclick="next()">&#9654;&#9654;</button>
+<div class="progress" onclick="seekClick(event)"><div class="progress-fill" id="bar"></div></div>
+<span class="scene-counter" id="counter">1/${scenes.length}</span>
+</div>
+<script>
+var cur=0,total=${scenes.length},playing=false,timer=null;
+var durations=[${scenes.map((s: any) => (s.duration_seconds||5)*1000).join(',')}];
+function show(i){document.querySelectorAll('.slide').forEach(function(s,j){s.classList.toggle('active',j===i)});document.getElementById('counter').textContent=(i+1)+'/'+total;updateBar()}
+function updateBar(){var elapsed=0;for(var i=0;i<cur;i++)elapsed+=durations[i];document.getElementById('bar').style.width=(elapsed/durations.reduce(function(a,b){return a+b},0)*100)+'%'}
+function next(){cur=Math.min(cur+1,total-1);show(cur);if(playing)startTimer()}
+function prev(){cur=Math.max(cur-1,0);show(cur);if(playing)startTimer()}
+function toggle(){playing=!playing;document.getElementById('playBtn').textContent=playing?'\\u23F8':'\\u25B6';if(playing)startTimer();else clearTimeout(timer)}
+function startTimer(){clearTimeout(timer);timer=setTimeout(function(){if(cur<total-1){cur++;show(cur);startTimer()}else{playing=false;document.getElementById('playBtn').textContent='\\u25B6'}},durations[cur])}
+function seekClick(e){var r=e.target.getBoundingClientRect();var p=(e.clientX-r.left)/r.width;var acc=0,t=durations.reduce(function(a,b){return a+b},0);for(var i=0;i<total;i++){acc+=durations[i];if(acc/t>=p){cur=i;show(cur);break}}}
+show(0);
+</script></body></html>`;
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `${project.title}-presentation.html`; a.click();
+    toast({ title: 'Presentation exported! Open the HTML file in any browser.' });
   };
 
   const totalProjects = projects.length;
@@ -555,6 +608,13 @@ ${s.image_url ? `<img src="${s.image_url}" alt="Scene ${i + 1}" />` : ''}</div>`
 
             <TabsContent value="actions" className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
+                <Button
+                  className="marketing-gradient text-white col-span-2"
+                  disabled={getScenes(detailProject).length === 0}
+                  onClick={() => setIsPlayerOpen(true)}
+                >
+                  <Play className="h-4 w-4 mr-2" /> Preview Video
+                </Button>
                 <Button variant="outline" disabled={generatingScriptId === detailProject?.id}
                   onClick={() => { if (detailProject) generateScript(detailProject); }}>
                   <RefreshCw className="h-4 w-4 mr-2" /> Regenerate Script
@@ -567,12 +627,16 @@ ${s.image_url ? `<img src="${s.image_url}" alt="Scene ${i + 1}" />` : ''}</div>`
                   disabled={!getScriptText(detailProject)}>
                   <Download className="h-4 w-4 mr-2" /> Download Script
                 </Button>
-                <Button variant="outline" className="text-destructive border-destructive/50"
-                  onClick={() => { if (detailProject && confirm('Permanently delete this project?')) deleteProject.mutate(detailProject.id); }}>
-                  <Trash2 className="h-4 w-4 mr-2" /> Delete Project
+                <Button variant="outline" onClick={() => { if (detailProject) exportPresentation(detailProject); }}
+                  disabled={getScenes(detailProject).length === 0}>
+                  <Presentation className="h-4 w-4 mr-2" /> Export Presentation
                 </Button>
                 <Button variant="outline" onClick={() => { if (detailProject) exportStoryboard(detailProject); }}>
                   <Film className="h-4 w-4 mr-2" /> Export Storyboard
+                </Button>
+                <Button variant="outline" className="text-destructive border-destructive/50"
+                  onClick={() => { if (detailProject && confirm('Permanently delete this project?')) deleteProject.mutate(detailProject.id); }}>
+                  <Trash2 className="h-4 w-4 mr-2" /> Delete Project
                 </Button>
               </div>
               {detailProject?.description && (
@@ -582,6 +646,28 @@ ${s.image_url ? `<img src="${s.image_url}" alt="Scene ${i + 1}" />` : ''}</div>`
               )}
             </TabsContent>
           </Tabs>
+        </DialogContent>
+      </Dialog>
+
+      {/* Video Player Dialog */}
+      <Dialog open={isPlayerOpen} onOpenChange={setIsPlayerOpen}>
+        <DialogContent className="max-w-5xl p-0 bg-black border-none overflow-hidden [&>button]:text-white [&>button]:hover:bg-white/20">
+          <VideoPlayer
+            scenes={getScenes(detailProject).map((s: any, i: number) => ({
+              scene_number: s.scene_number || i + 1,
+              description: s.description || s.visual_description || '',
+              dialogue: s.dialogue || s.voiceover_text || '',
+              visual_notes: s.visual_notes || s.visual_description || '',
+              duration_seconds: s.duration_seconds || 5,
+              image_url: s.image_url || null,
+              voice: s.voice || null,
+              text_overlay: s.text_overlay || '',
+              image_source: s.image_source || 'unknown',
+            }))}
+            title={detailProject?.title || ''}
+            aspectRatio={detailProject?.aspect_ratio || '16:9'}
+            onClose={() => setIsPlayerOpen(false)}
+          />
         </DialogContent>
       </Dialog>
 
