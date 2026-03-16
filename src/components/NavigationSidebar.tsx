@@ -337,6 +337,7 @@ export function NavigationSidebar() {
       { title: "Proposals", url: "/sales/proposals", icon: FileText },
       { title: "Sales Analytics", url: "/sales/analytics", icon: BarChart3 },
       { title: "Forecasting", url: "/sales/forecast", icon: LineChart },
+      { title: "LTV:CAC", url: "/sales/ltv-cac", icon: TrendingUp },
     ],
   };
 

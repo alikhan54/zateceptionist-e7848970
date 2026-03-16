@@ -34,6 +34,7 @@ const Proposals = lazy(() => import("./pages/sales/Proposals"));
 const ProposalDetail = lazy(() => import("./pages/sales/ProposalDetail"));
 const SalesAnalytics = lazy(() => import("./pages/sales/Analytics"));
 const Forecasting = lazy(() => import("./pages/sales/Forecast"));
+const LtvCac = lazy(() => import("./pages/sales/LtvCac"));
 
 // Marketing Module
 const MarketingHub = lazy(() => import("./pages/MarketingEngine"));
@@ -376,6 +377,14 @@ const App = () => (
                     element={
                       <LazyPage>
                         <Forecasting />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/sales/ltv-cac"
+                    element={
+                      <LazyPage>
+                        <LtvCac />
                       </LazyPage>
                     }
                   />
