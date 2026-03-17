@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useRealEstateClients, REClient } from "@/hooks/useRealEstateClients";
 import { useToast } from "@/hooks/use-toast";
 import { Users, Search, Plus, Phone, Mail, Globe, Star, DollarSign } from "lucide-react";
+import { RTLWrapper } from "@/components/realestate/RTLWrapper";
 
 const formatAED = (amount: number) => `AED ${amount.toLocaleString()}`;
 
@@ -52,6 +53,7 @@ export default function ClientManagement() {
   };
 
   return (
+    <RTLWrapper>
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -153,5 +155,6 @@ export default function ClientManagement() {
         </div>
       )}
     </div>
+    </RTLWrapper>
   );
 }

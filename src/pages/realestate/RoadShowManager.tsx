@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useRealEstateRoadShows, RERoadShow } from "@/hooks/useRealEstateRoadShows";
 import { useToast } from "@/hooks/use-toast";
 import { MapPin, Plus, Users, Eye, Handshake, DollarSign, TrendingUp, Calendar } from "lucide-react";
+import { RTLWrapper } from "@/components/realestate/RTLWrapper";
 
 const formatAED = (amount: number) => `AED ${amount.toLocaleString()}`;
 
@@ -73,6 +74,7 @@ export default function RoadShowManager() {
   const today = new Date().toISOString().split("T")[0];
 
   return (
+    <RTLWrapper>
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -220,5 +222,6 @@ export default function RoadShowManager() {
         </div>
       )}
     </div>
+    </RTLWrapper>
   );
 }

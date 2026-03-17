@@ -5,6 +5,7 @@ import { useRealEstateClients } from "@/hooks/useRealEstateClients";
 import { useRealEstateDeals } from "@/hooks/useRealEstateDeals";
 import { useRealEstateViewings } from "@/hooks/useRealEstateViewings";
 import { Building2, Users, DollarSign, Calendar, TrendingUp, Home, Handshake, Target } from "lucide-react";
+import { RTLWrapper } from "@/components/realestate/RTLWrapper";
 
 const formatAED = (amount: number) => `AED ${amount.toLocaleString()}`;
 
@@ -39,6 +40,7 @@ export default function RealEstateDashboard() {
   const isLoading = listingsLoading || clientsLoading || dealsLoading || viewingsLoading;
 
   return (
+    <RTLWrapper>
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Real Estate Dashboard</h1>
@@ -178,5 +180,6 @@ export default function RealEstateDashboard() {
         </Card>
       </div>
     </div>
+    </RTLWrapper>
   );
 }

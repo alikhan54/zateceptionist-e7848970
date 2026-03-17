@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useRealEstateEOI, REEOI } from "@/hooks/useRealEstateEOI";
 import { useToast } from "@/hooks/use-toast";
 import { FileCheck, Plus, CheckCircle2, Clock, DollarSign, AlertCircle, ArrowRight } from "lucide-react";
+import { RTLWrapper } from "@/components/realestate/RTLWrapper";
 
 const formatAED = (amount: number) => `AED ${amount.toLocaleString()}`;
 
@@ -98,6 +99,7 @@ export default function EOITracker() {
   }, {});
 
   return (
+    <RTLWrapper>
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -223,5 +225,6 @@ export default function EOITracker() {
         </div>
       )}
     </div>
+    </RTLWrapper>
   );
 }

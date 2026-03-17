@@ -456,6 +456,12 @@ export function NavigationSidebar() {
       { title: "Deals", url: "/realestate/deals", icon: Handshake },
       { title: "EOI Tracker", url: "/realestate/eoi", icon: FileCheck },
       { title: "Road Shows", url: "/realestate/road-shows", icon: MapPin },
+      { title: "Calculator", url: "/realestate/calculator", icon: Calculator },
+      { title: "Market Intel", url: "/realestate/market", icon: TrendingUp },
+      { title: "Deal Advisor", url: "/realestate/advisor", icon: Brain },
+      { title: "Knowledge Base", url: "/realestate/knowledge", icon: BookOpen },
+      { title: "Region Settings", url: "/realestate/regions", icon: Globe },
+      { title: "AI Pricing", url: "/realestate/pricing", icon: Sparkles },
     ],
   };
 

@@ -100,6 +100,12 @@ const ViewingCalendar = lazy(() => import("./pages/realestate/ViewingCalendar"))
 const DealPipeline = lazy(() => import("./pages/realestate/DealPipeline"));
 const EOITracker = lazy(() => import("./pages/realestate/EOITracker"));
 const RoadShowManager = lazy(() => import("./pages/realestate/RoadShowManager"));
+const InvestmentCalculator = lazy(() => import("./pages/realestate/InvestmentCalculator"));
+const MarketIntelligence = lazy(() => import("./pages/realestate/MarketIntelligence"));
+const RegionSettings = lazy(() => import("./pages/realestate/RegionSettings"));
+const DealAdvisor = lazy(() => import("./pages/realestate/DealAdvisor"));
+const REKnowledgeBase = lazy(() => import("./pages/realestate/KnowledgeBase"));
+const PricePrediction = lazy(() => import("./pages/realestate/PricePrediction"));
 
 // Estimation Module
 const EstimationProjects = lazy(() => import("./pages/estimation/ProjectsDashboard"));
@@ -790,6 +796,12 @@ const App = () => (
                   <Route path="/realestate/deals" element={<LazyPage><DealPipeline /></LazyPage>} />
                   <Route path="/realestate/eoi" element={<LazyPage><EOITracker /></LazyPage>} />
                   <Route path="/realestate/road-shows" element={<LazyPage><RoadShowManager /></LazyPage>} />
+                  <Route path="/realestate/calculator" element={<LazyPage><InvestmentCalculator /></LazyPage>} />
+                  <Route path="/realestate/market" element={<LazyPage><MarketIntelligence /></LazyPage>} />
+                  <Route path="/realestate/regions" element={<LazyPage><RegionSettings /></LazyPage>} />
+                  <Route path="/realestate/advisor" element={<LazyPage><DealAdvisor /></LazyPage>} />
+                  <Route path="/realestate/knowledge" element={<LazyPage><REKnowledgeBase /></LazyPage>} />
+                  <Route path="/realestate/pricing" element={<LazyPage><PricePrediction /></LazyPage>} />
 
                   {/* Communications Module */}
                   <Route path="/communications" element={<Navigate to="/communications/voice-ai" replace />} />

@@ -55,13 +55,20 @@ export interface ExportData {
 
 const TRADE_COLORS: Record<string, [number, number, number]> = {
   tile: [66, 133, 244],
+  flooring: [66, 133, 244],
   epoxy: [234, 67, 53],
   stone: [251, 188, 4],
   concrete_coating: [52, 168, 83],
   terrazzo: [153, 102, 204],
   carpet: [255, 152, 0],
   lvt: [0, 172, 193],
+  resilient: [0, 172, 193],
   hardwood: [121, 85, 72],
+  wood: [121, 85, 72],
+  wallcovering: [156, 39, 176],
+  paint: [33, 150, 243],
+  base: [96, 125, 139],
+  accessory: [120, 144, 156],
   default: [158, 158, 158],
 };
 
@@ -82,41 +89,81 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-// ── 1. Quantities XLSX ──────────────────────────────────────────────
+// ── 1. Quantities XLSX (14-column Cava format) ─────────────────────
 
 export function exportQuantitiesXlsx(data: ExportData, filename?: string) {
   const wb = XLSX.utils.book_new();
+  const title = `${new Date().toLocaleDateString()}-${data.project_name}-Takeoff - Proposal`;
 
+  // 14-column headers matching Cava Pflugerville format
+  const headers = [
+    "Floor", "Area", "Item Name", "Trade", "Description",
+    "Vendor", "VendorSku", "Unit", "Qty", "Labor",
+    "Taxable", "Net Area", "Waste Add-on", "Extra Info",
+  ];
+
+  // Flatten all groups into one sheet sorted by trade
+  const dataRows: (string | number)[][] = [];
+  for (const group of data.groups) {
+    for (const item of group.items) {
+      const wastePct = item.waste_factor_pct || 0;
+      dataRows.push([
+        "1", // Floor (default 1 if not available)
+        `${item.room_name || ""} ${item.room_number || ""}`.trim() || "Unknown",
+        item.material_name || item.material_tag || "",
+        (item.trade || group.trade || "").replace(/_/g, " "),
+        (item.surface_type || "").toUpperCase(),
+        "", // Vendor
+        "", // VendorSku
+        item.unit_of_measure || "SF",
+        item.total_quantity_with_waste || 0,
+        "Yes",
+        (item.trade || group.trade) === "accessory" ? "No" : "Yes",
+        item.net_area_sqft || 0,
+        wastePct > 1 ? wastePct / 100 : wastePct, // Normalize to decimal
+        item.piece_count ? `${item.piece_count} pcs` : "",
+      ]);
+    }
+  }
+
+  const wsData = [
+    [title],    // Row 1: title
+    [],         // Row 2: blank
+    headers,    // Row 3: headers
+    ...dataRows // Row 4+: data
+  ];
+
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+  // Column widths
+  ws["!cols"] = [
+    { wch: 6 },  { wch: 22 }, { wch: 35 }, { wch: 14 }, { wch: 12 },
+    { wch: 10 }, { wch: 10 }, { wch: 6 },  { wch: 10 }, { wch: 6 },
+    { wch: 8 },  { wch: 10 }, { wch: 12 }, { wch: 18 },
+  ];
+
+  XLSX.utils.book_append_sheet(wb, ws, "Quantities");
+
+  // Also add per-trade sheets for detailed view
   for (const group of data.groups) {
     const rows = group.items.map((item) => ({
       Room: item.room_name || "",
       "Room #": item.room_number || "",
       Surface: item.surface_type || "",
-      Material: item.material_tag || item.material_name || "",
-      "Net Area (SF)": item.net_area_sqft || 0,
+      Material: item.material_name || item.material_tag || "",
+      "Net Area": item.net_area_sqft || 0,
       "Waste %": item.waste_factor_pct || 0,
       "Total Qty": item.total_quantity_with_waste || 0,
-      "Linear Ft": item.linear_ft || 0,
-      Pieces: item.piece_count || 0,
       UOM: item.unit_of_measure || "SF",
       "Unit Price": item.unit_price || 0,
       "Material Cost": item.total_material_cost || 0,
       "Labor Rate": item.labor_rate_per_unit || 0,
       "Labor Cost": item.total_labor_cost || 0,
     }));
-
-    const ws = XLSX.utils.json_to_sheet(rows);
-
-    // Set column widths
-    ws["!cols"] = [
-      { wch: 18 }, { wch: 8 }, { wch: 12 }, { wch: 20 },
-      { wch: 12 }, { wch: 8 }, { wch: 12 }, { wch: 10 },
-      { wch: 8 }, { wch: 6 }, { wch: 10 }, { wch: 14 },
-      { wch: 10 }, { wch: 12 },
-    ];
-
+    if (rows.length === 0) continue;
+    const tradeWs = XLSX.utils.json_to_sheet(rows);
     const sheetName = group.trade.substring(0, 31).replace(/[/\\?*[\]]/g, "_");
-    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    XLSX.utils.book_append_sheet(wb, tradeWs, sheetName);
   }
 
   const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });

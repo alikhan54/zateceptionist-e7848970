@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useRealEstateViewings, REViewing } from "@/hooks/useRealEstateViewings";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar, Clock, Plus, Eye, ThumbsUp, ThumbsDown, AlertCircle } from "lucide-react";
+import { RTLWrapper } from "@/components/realestate/RTLWrapper";
 
 const statusColors: Record<string, string> = {
   scheduled: "bg-blue-100 text-blue-800",
@@ -75,6 +76,7 @@ export default function ViewingCalendar() {
   }, {});
 
   return (
+    <RTLWrapper>
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -167,5 +169,6 @@ export default function ViewingCalendar() {
         </DialogContent>
       </Dialog>
     </div>
+    </RTLWrapper>
   );
 }

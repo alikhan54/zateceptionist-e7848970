@@ -90,43 +90,98 @@ export default function ProjectDetail() {
       const result = await exportEstimationData(id, exportType, tenantId || "marhama-group");
       const respData = (result as any)?.data || result;
 
-      // Build ExportData from webhook response
+      if (respData?.success === false) throw new Error(respData.error || "Export failed");
+
+      // Transform backend response → ExportData groups
+      // Backend returns trades:{trade_name:[items]} or items:[] depending on format
+      let groups: ExportData["groups"] = respData.groups || [];
+      if (groups.length === 0 && respData.trades) {
+        // quantities_xlsx format: { trades: { flooring: [{floor,area,item_name,...}], ... } }
+        groups = Object.entries(respData.trades).map(([trade, items]: [string, any[]]) => ({
+          trade,
+          items: items.map((row: any) => ({
+            room_name: row.area || row.room_name || "",
+            room_number: row.room_number || "",
+            surface_type: row.description || row.surface || "",
+            material_tag: row.material_tag || "",
+            material_name: row.item_name || row.material_name || "",
+            net_area_sqft: parseFloat(row.net_area || row.net_area_sqft || 0),
+            waste_factor_pct: typeof row.waste_addon === "number" ? row.waste_addon * 100 : parseFloat(row.waste_pct || row.waste_factor_pct || 0),
+            total_quantity_with_waste: parseFloat(row.qty || row.quantity || row.total_qty || 0),
+            unit_of_measure: row.unit || "SF",
+            unit_price: parseFloat(row.unit_price || 0),
+            total_material_cost: parseFloat(row.material_cost || row.total_cost || 0),
+            labor_rate_per_unit: parseFloat(row.labor_rate || 0),
+            total_labor_cost: parseFloat(row.labor_cost || 0),
+            trade: row.trade || trade,
+          })),
+        }));
+      }
+      if (groups.length === 0 && respData.items) {
+        // color_coded/csv format: { items: [{room_name,trade,...}] }
+        const byTrade: Record<string, any[]> = {};
+        for (const item of respData.items) {
+          const t = item.trade || "other";
+          if (!byTrade[t]) byTrade[t] = [];
+          byTrade[t].push(item);
+        }
+        groups = Object.entries(byTrade).map(([trade, items]) => ({
+          trade,
+          items: items.map((row: any) => ({
+            room_name: row.room_name || row.room || "",
+            surface_type: row.surface_type || row.surface || "",
+            material_tag: row.material_tag || "",
+            material_name: row.material_name || row.material || "",
+            net_area_sqft: parseFloat(row.net_area || row.net_area_sqft || 0),
+            waste_factor_pct: parseFloat(row.waste_pct || row.waste_factor_pct || 0),
+            total_quantity_with_waste: parseFloat(row.total_quantity || row.total_qty || 0),
+            unit_of_measure: row.unit || "SF",
+            unit_price: parseFloat(row.unit_price || 0),
+            total_material_cost: parseFloat(row.total_cost || row.material_cost || 0),
+            total_labor_cost: parseFloat(row.labor_cost || 0),
+            trade: row.trade || trade,
+          })),
+        }));
+      }
+
       const exportData: ExportData = {
         project_name: project.project_name,
         project_number: project.project_number || undefined,
         client_name: project.client_name,
         columns: respData.columns || [],
-        groups: respData.groups || [],
-        totals: respData.totals || undefined,
+        groups,
+        totals: respData.totals || {
+          subtotal: parseFloat(respData.grand_total || 0),
+          grand_total: parseFloat(respData.grand_total || 0),
+        },
         qualification: respData.qualification || {
-          assumptions: project.assumptions,
-          exclusions: project.exclusions,
-          notes: project.qualification_notes,
+          assumptions: Array.isArray(respData.assumptions) ? respData.assumptions.join("\n") : (project.assumptions || ""),
+          exclusions: Array.isArray(respData.exclusions) ? respData.exclusions.join("\n") : (project.exclusions || ""),
+          notes: project.qualification_notes || "",
         },
       };
 
-      // Route to correct export function
       switch (exportType) {
         case "quantities_xlsx":
-          exportQuantitiesXlsx(exportData);
+          exportQuantitiesXlsx(exportData, `${project.project_number || "EST"}-Quantities.xlsx`);
           break;
         case "cost_sheet":
-          exportCostSheetXlsx(exportData);
+          exportCostSheetXlsx(exportData, `${project.project_number || "EST"}-CostSheet.xlsx`);
           break;
         case "qualification":
-          exportQualificationPdf(exportData);
+          exportQualificationPdf(exportData, `${project.project_number || "EST"}-Qualification.pdf`);
           break;
         case "color_coded":
-          exportColorCodedPdf(exportData);
+          exportColorCodedPdf(exportData, `${project.project_number || "EST"}-ColorCoded.pdf`);
           break;
         case "csv":
-          exportCsv(exportData);
+          exportCsv(exportData, `${project.project_number || "EST"}-Export.csv`);
           break;
       }
       toast.success(`Exported ${exportType.replace(/_/g, " ")} successfully`);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Export failed:", err);
-      toast.error("Export failed. Check console for details.");
+      toast.error(err.message || "Export failed. Check console for details.");
     } finally {
       setExportLoading(null);
     }

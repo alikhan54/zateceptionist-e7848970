@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useRealEstateDeals } from "@/hooks/useRealEstateDeals";
 import { Handshake, DollarSign, FileCheck, AlertCircle, CheckCircle2, Clock } from "lucide-react";
+import { RTLWrapper } from "@/components/realestate/RTLWrapper";
 
 const formatAED = (amount: number) => `AED ${amount.toLocaleString()}`;
 
@@ -45,6 +46,7 @@ export default function DealPipeline() {
   };
 
   return (
+    <RTLWrapper>
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Deal Pipeline</h1>
@@ -141,5 +143,6 @@ export default function DealPipeline() {
         </div>
       )}
     </div>
+    </RTLWrapper>
   );
 }
