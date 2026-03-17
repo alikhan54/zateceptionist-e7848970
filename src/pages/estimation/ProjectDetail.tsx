@@ -209,32 +209,43 @@ export default function ProjectDetail() {
       const result = await processVisionPdf(id, fileUrl, pdfFile.name, estimationMode, tenantId);
       const data = (result as any)?.data || result;
 
-      // 4. Handle response
-      if (data?.success === false && data?.error === "TIMEOUT") {
-        // Webhook timed out but backend may still be processing
+      // 4. Handle response — check for timeout or network errors that need polling
+      const isTimeout = data?.error === "TIMEOUT" || result?.error === "TIMEOUT";
+      const isNetworkError = (data?.success === false || result?.success === false) &&
+        (String(data?.error || result?.error || "").match(/fetch|network|abort|TIMEOUT/i));
+
+      if (isTimeout || isNetworkError) {
+        // Webhook timed out or network dropped — backend may still be processing
         // The bidset record was created before Gemini started — poll it
-        setPdfStatusMsg("Still processing... polling for results...");
-        const completed = await pollVisionStatus(id, tenantId);
-        if (completed) {
-          setPdfProgress(100);
-          setPdfStatusMsg("Complete!");
-          toast.success("Vision AI analysis complete! Refreshing...");
-          setTimeout(() => window.location.reload(), 1500);
-          return;
-        }
-      } else if (data?.error === "TIMEOUT" || result?.error === "TIMEOUT") {
-        // Top-level timeout from callWebhookWithTimeout
-        setPdfStatusMsg("Still processing... polling for results...");
-        const completed = await pollVisionStatus(id, tenantId);
-        if (completed) {
-          setPdfProgress(100);
-          setPdfStatusMsg("Complete!");
-          toast.success("Vision AI analysis complete! Refreshing...");
-          setTimeout(() => window.location.reload(), 1500);
-          return;
+        setPdfStatusMsg("Processing large PDF... checking status...");
+        setPdfProgress(60);
+        try {
+          const completed = await pollVisionStatus(id, tenantId);
+          if (completed) {
+            setPdfProgress(100);
+            setPdfStatusMsg("Complete!");
+            toast.success("Vision AI analysis complete! Refreshing...");
+            setTimeout(() => window.location.reload(), 1500);
+            return;
+          }
+        } catch (pollErr: any) {
+          throw new Error(pollErr.message || "Vision analysis timed out. Check the project later.");
         }
       } else if (data?.success === false) {
-        throw new Error(data.error || "Vision processing failed");
+        // Network errors ("Failed to fetch") — file already uploaded, backend may still be processing
+        const errMsg = data.error || "Vision processing failed";
+        if (errMsg.includes("fetch") || errMsg.includes("network") || errMsg.includes("ECONNRESET")) {
+          setPdfStatusMsg("Connection interrupted — polling for results...");
+          const completed = await pollVisionStatus(id, tenantId);
+          if (completed) {
+            setPdfProgress(100);
+            setPdfStatusMsg("Complete!");
+            toast.success("Vision AI analysis complete! Refreshing...");
+            setTimeout(() => window.location.reload(), 1500);
+            return;
+          }
+        }
+        throw new Error(errMsg);
       } else {
         // Direct success
         setPdfProgress(100);
@@ -244,6 +255,20 @@ export default function ProjectDetail() {
       }
     } catch (err: any) {
       console.error("PDF vision failed:", err);
+      // Last resort: if file was already uploaded (progress >= 50), try polling before giving up
+      if (pdfProgress >= 50) {
+        try {
+          setPdfStatusMsg("Checking if analysis completed...");
+          const completed = await pollVisionStatus(id, tenantId);
+          if (completed) {
+            setPdfProgress(100);
+            setPdfStatusMsg("Complete!");
+            toast.success("Vision AI analysis complete! Refreshing...");
+            setTimeout(() => window.location.reload(), 1500);
+            return;
+          }
+        } catch (_pollErr) { /* polling failed too — show original error */ }
+      }
       setPdfError(err.message || "PDF processing failed");
       toast.error(err.message || "PDF processing failed");
     } finally {
