@@ -323,25 +323,29 @@ export default function EmailHub() {
             ) : (
               <div className="divide-y">
                 {filteredSent.map((email: any) => (
-                  <div key={email.id} className="flex items-center gap-4 py-3 px-2 hover:bg-muted/50 rounded-lg">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-500/10">
-                      <Mail className="h-5 w-5 text-blue-500" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium truncate">
-                          {email.email_subject || "(No Subject)"}
-                        </p>
-                        {statusBadge(email.status)}
-                      </div>
-                      <p className="text-xs text-muted-foreground truncate">
-                        To: {email.recipient_identifier || email.email_to || "Unknown"}
-                      </p>
-                    </div>
-                    <div className="text-xs text-muted-foreground whitespace-nowrap">
-                      {email.sent_at ? formatSmartDate(email.sent_at) : email.created_at ? formatSmartDate(email.created_at) : "—"}
-                    </div>
-                  </div>
+                  <div
+                    key={email.id}
+                    className="flex items-center gap-4 py-3 px-2 hover:bg-muted/50 rounded-lg cursor-pointer"
+                    onClick={() => { setSelectedEmail(email); setDetailOpen(true); }}
+                  >
+                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-500/10">
+                       <Mail className="h-5 w-5 text-blue-500" />
+                     </div>
+                     <div className="flex-1 min-w-0">
+                       <div className="flex items-center gap-2">
+                         <p className="text-sm font-medium truncate">
+                           {email.email_subject || "(No Subject)"}
+                         </p>
+                         {statusBadge(email.status)}
+                       </div>
+                       <p className="text-xs text-muted-foreground truncate">
+                         To: {email.recipient_identifier || email.email_to || "Unknown"}
+                       </p>
+                     </div>
+                     <div className="text-xs text-muted-foreground whitespace-nowrap">
+                       {email.sent_at ? formatSmartDate(email.sent_at) : email.created_at ? formatSmartDate(email.created_at) : "—"}
+                     </div>
+                   </div>
                 ))}
               </div>
             )}
