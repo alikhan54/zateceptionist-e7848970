@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Video, Film, Clock, CheckCircle, Sparkles, Copy, Download, RefreshCw, Image, Trash2, Target, Eye, Heart, Zap, Users, Play, Presentation } from 'lucide-react';
+import { Plus, Video, Film, Clock, CheckCircle, Sparkles, Copy, Download, RefreshCw, Image, Trash2, Target, Eye, Heart, Zap, Users, Play, Presentation, Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import VideoPlayer from '@/components/video/VideoPlayer';
 
@@ -508,6 +508,8 @@ show(0);
                       <h3 className="font-semibold truncate">{project.title}</h3>
                       <Badge variant="outline" className="text-xs">{vt.emoji} {vt.label}</Badge>
                       {project.ai_generated && <Badge variant="outline" className="text-xs"><Sparkles className="h-3 w-3 mr-1" /> AI</Badge>}
+                      {project.render_status === 'complete' && <Badge className="bg-green-600 text-white text-xs">🎬 MP4</Badge>}
+                      {project.render_status === 'rendering' && <Badge className="bg-yellow-600 text-white text-xs animate-pulse">⏳ Rendering</Badge>}
                     </div>
                     {project.description && <p className="text-sm text-muted-foreground truncate mt-1">{project.description}</p>}
                     <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
@@ -607,14 +609,62 @@ show(0);
             </TabsContent>
 
             <TabsContent value="actions" className="space-y-3">
+              {/* Render Status Badge */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {detailProject?.render_status === 'complete' && detailProject?.video_url && (
+                  <Badge className="bg-green-600 text-white">✅ Video Ready</Badge>
+                )}
+                {detailProject?.render_status === 'rendering' && (
+                  <Badge className="bg-yellow-600 text-white animate-pulse"><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Rendering...</Badge>
+                )}
+                {detailProject?.render_status === 'failed' && (
+                  <Badge className="bg-red-600 text-white">❌ Render Failed</Badge>
+                )}
+                {(!detailProject?.render_status || detailProject?.render_status === 'none') && detailProject?.status === 'script_ready' && (
+                  <Badge className="bg-blue-600 text-white">📝 Script Ready (No Video Yet)</Badge>
+                )}
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <Button
                   className="marketing-gradient text-white col-span-2"
-                  disabled={getScenes(detailProject).length === 0}
+                  disabled={getScenes(detailProject).length === 0 && !detailProject?.video_url}
                   onClick={() => setIsPlayerOpen(true)}
                 >
                   <Play className="h-4 w-4 mr-2" /> Preview Video
                 </Button>
+
+                {/* Render Video button — for projects with script but no video */}
+                {detailProject?.status !== 'draft' && detailProject?.render_status !== 'complete' && detailProject?.render_status !== 'rendering' && (
+                  <Button
+                    variant="outline"
+                    className="col-span-2 border-purple-300 text-purple-700 hover:bg-purple-50"
+                    onClick={() => {
+                      if (!tenantConfig?.id || !detailProject) return;
+                      callWebhook(WEBHOOKS.VIDEO_GENERATE, {
+                        project_id: detailProject.id,
+                        title: detailProject.title,
+                        description: detailProject.description || '',
+                        video_type: detailProject.video_type || 'short_form',
+                        company_name: tenantConfig?.company_name || 'Your Company',
+                        industry: (tenantConfig as any)?.industry || 'technology',
+                      }, tenantConfig.id);
+                      toast({ title: '🎬 Rendering Video', description: 'Your video is being rendered. This takes 60-90 seconds. The page will auto-refresh.' });
+                    }}
+                  >
+                    <Film className="h-4 w-4 mr-2" /> Render Video (MP4)
+                  </Button>
+                )}
+
+                {/* Download MP4 button */}
+                {detailProject?.video_url && (
+                  <a href={detailProject.video_url} download target="_blank" rel="noopener noreferrer" className="col-span-2">
+                    <Button variant="outline" className="w-full border-green-300 text-green-700 hover:bg-green-50">
+                      <Download className="h-4 w-4 mr-2" /> Download MP4
+                    </Button>
+                  </a>
+                )}
+
                 <Button variant="outline" disabled={generatingScriptId === detailProject?.id}
                   onClick={() => { if (detailProject) generateScript(detailProject); }}>
                   <RefreshCw className="h-4 w-4 mr-2" /> Regenerate Script
@@ -652,22 +702,42 @@ show(0);
       {/* Video Player Dialog */}
       <Dialog open={isPlayerOpen} onOpenChange={setIsPlayerOpen}>
         <DialogContent className="max-w-5xl p-0 bg-black border-none overflow-hidden [&>button]:text-white [&>button]:hover:bg-white/20">
-          <VideoPlayer
-            scenes={getScenes(detailProject).map((s: any, i: number) => ({
-              scene_number: s.scene_number || i + 1,
-              description: s.description || s.visual_description || '',
-              dialogue: s.dialogue || s.voiceover_text || '',
-              visual_notes: s.visual_notes || s.visual_description || '',
-              duration_seconds: s.duration_seconds || 5,
-              image_url: s.image_url || null,
-              voice: s.voice || null,
-              text_overlay: s.text_overlay || '',
-              image_source: s.image_source || 'unknown',
-            }))}
-            title={detailProject?.title || ''}
-            aspectRatio={detailProject?.aspect_ratio || '16:9'}
-            onClose={() => setIsPlayerOpen(false)}
-          />
+          {detailProject?.video_url && detailProject?.render_status === 'complete' ? (
+            /* Native MP4 player for rendered videos */
+            <div className="w-full max-h-[85vh] bg-black flex items-center justify-center p-2">
+              <video
+                controls
+                autoPlay
+                className="w-full max-h-[80vh] object-contain rounded-lg"
+                src={detailProject.video_url}
+              >
+                Your browser does not support the video tag.
+              </video>
+            </div>
+          ) : getScenes(detailProject).length > 0 ? (
+            /* Slideshow fallback for scenes without rendered video */
+            <VideoPlayer
+              scenes={getScenes(detailProject).map((s: any, i: number) => ({
+                scene_number: s.scene_number || i + 1,
+                description: s.description || s.visual_description || '',
+                dialogue: s.dialogue || s.voiceover_text || '',
+                visual_notes: s.visual_notes || s.visual_description || '',
+                duration_seconds: s.duration_seconds || 5,
+                image_url: s.image_url || null,
+                voice: s.voice || null,
+                text_overlay: s.text_overlay || '',
+                image_source: s.image_source || 'unknown',
+              }))}
+              title={detailProject?.title || ''}
+              aspectRatio={detailProject?.aspect_ratio || '16:9'}
+              onClose={() => setIsPlayerOpen(false)}
+            />
+          ) : (
+            /* No content */
+            <div className="flex items-center justify-center h-64 text-white/60">
+              <p>No video content available. Generate a script first.</p>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
