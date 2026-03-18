@@ -355,6 +355,69 @@ export default function EmailHub() {
 
       {activeTab === "campaigns" && <EmailCampaigns />}
 
+      {/* Email Detail Sheet */}
+      <Sheet open={detailOpen} onOpenChange={setDetailOpen}>
+        <SheetContent className="sm:max-w-[540px] overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Email Details</SheetTitle>
+          </SheetHeader>
+          {selectedEmail && (
+            <div className="space-y-4 pt-4">
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Subject</p>
+                  <p className="text-sm font-semibold mt-1">{selectedEmail.email_subject || "(No Subject)"}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">From</p>
+                    <p className="text-sm mt-1">{tenantConfig?.smtp_from_email || tenantId || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">To</p>
+                    <p className="text-sm mt-1">{selectedEmail.recipient_identifier || (selectedEmail.email_to || []).join(", ") || "Unknown"}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Date</p>
+                    <p className="text-sm mt-1">
+                      {selectedEmail.sent_at
+                        ? new Date(selectedEmail.sent_at).toLocaleString()
+                        : selectedEmail.created_at
+                        ? new Date(selectedEmail.created_at).toLocaleString()
+                        : "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Status</p>
+                    <div className="mt-1">{statusBadge(selectedEmail.status)}</div>
+                  </div>
+                </div>
+              </div>
+
+              {selectedEmail.status === "failed" && selectedEmail.failed_reason && (
+                <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3">
+                  <p className="text-xs font-medium text-destructive uppercase tracking-wide mb-1">Error</p>
+                  <p className="text-sm text-destructive/90 whitespace-pre-wrap">{selectedEmail.failed_reason}</p>
+                </div>
+              )}
+
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Body</p>
+                <div className="rounded-md border bg-muted/30 p-4 text-sm">
+                  {selectedEmail.content && (selectedEmail.content.includes("<") && selectedEmail.content.includes(">")) ? (
+                    <div dangerouslySetInnerHTML={{ __html: selectedEmail.content }} />
+                  ) : (
+                    <p className="whitespace-pre-wrap">{selectedEmail.content || "(No content)"}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+
       {activeTab === "settings" && (
         <Card>
           <CardHeader>

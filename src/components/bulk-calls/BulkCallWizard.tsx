@@ -106,8 +106,8 @@ export function BulkCallWizard({ open, onClose }: { open: boolean; onClose: () =
         return;
       }
       toast({ title: "Campaign created", description: `${validContacts.length} contacts added.` });
-      if (autoStart && result.data?.campaign_id) {
-        await startCampaign.mutateAsync(result.data.campaign_id);
+      if (autoStart && (result.data as any)?.campaign_id) {
+        await startCampaign.mutateAsync((result.data as any).campaign_id);
         toast({ title: "Campaign started", description: "Calls will begin shortly." });
       }
       resetForm();
