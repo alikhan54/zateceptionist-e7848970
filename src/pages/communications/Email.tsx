@@ -26,7 +26,9 @@ import {
   XCircle,
   Settings2,
   ArrowUpRight,
+  Megaphone,
 } from "lucide-react";
+import { EmailCampaigns } from "@/components/email-campaigns/EmailCampaigns";
 import { useToast } from "@/hooks/use-toast";
 import { formatSmartDate } from "@/lib/utils";
 
@@ -34,7 +36,7 @@ export default function EmailHub() {
   const { tenantId, tenantConfig } = useTenant();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"sent" | "compose" | "settings">("sent");
+  const [activeTab, setActiveTab] = useState<"sent" | "compose" | "settings" | "campaigns">("sent");
   const [search, setSearch] = useState("");
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeData, setComposeData] = useState({
@@ -255,6 +257,7 @@ export default function EmailHub() {
         <nav className="flex gap-1 -mb-px">
           {[
             { key: "sent" as const, label: "Sent Emails", icon: Send },
+            { key: "campaigns" as const, label: "Campaigns", icon: Megaphone },
             { key: "settings" as const, label: "SMTP Settings", icon: Settings2 },
           ].map((tab) => {
             const Icon = tab.icon;
@@ -336,6 +339,8 @@ export default function EmailHub() {
           </CardContent>
         </Card>
       )}
+
+      {activeTab === "campaigns" && <EmailCampaigns />}
 
       {activeTab === "settings" && (
         <Card>

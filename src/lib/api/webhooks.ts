@@ -117,6 +117,18 @@ export const WEBHOOKS = {
   ESTIMATION_ACTION: "/estimation-action",
   ESTIMATION_AI: "/estimation-ai",
   ESTIMATION_VAPI_TOOLS: "/vapi-estimation-tools",
+
+  // Bulk Voice Calls (Phase 14)
+  BULK_CALL_CREATE: "/bulk-call/create-campaign",
+  BULK_CALL_START: "/bulk-call/start-campaign",
+  BULK_CALL_PAUSE: "/bulk-call/pause-campaign",
+  BULK_CALL_STATUS: "/bulk-call/get-status",
+
+  // Manual Email Campaigns (Phase 14)
+  MANUAL_EMAIL_CREATE: "/manual-email/create-campaign",
+  MANUAL_EMAIL_START: "/manual-email/start-campaign",
+  MANUAL_EMAIL_PAUSE: "/manual-email/pause-campaign",
+  MANUAL_EMAIL_STATUS: "/manual-email/get-status",
 } as const;
 
 export type WebhookEndpoint = (typeof WEBHOOKS)[keyof typeof WEBHOOKS];

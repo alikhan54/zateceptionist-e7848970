@@ -25,7 +25,9 @@ import {
   Loader2,
   Delete,
   X,
+  Upload,
 } from "lucide-react";
+import { BulkCallCampaigns } from "@/components/bulk-calls/BulkCallCampaigns";
 
 const DIAL_PAD = [
   ["1", "2", "3"],
@@ -46,6 +48,7 @@ export default function VoiceCallCenter() {
   const [dialNumber, setDialNumber] = useState("");
   const [isDialing, setIsDialing] = useState(false);
   const [showDialPad, setShowDialPad] = useState(false);
+  const [activeTab, setActiveTab] = useState<"callcenter" | "bulk">("callcenter");
 
   const vapiConfigured =
     !!tenantConfig?.vapi_api_key && !!tenantConfig?.vapi_assistant_id;
@@ -201,6 +204,30 @@ export default function VoiceCallCenter() {
 
   return (
     <div className="space-y-6">
+      {/* Tab Navigation */}
+      <div className="border-b">
+        <nav className="flex gap-1 -mb-px">
+          {[
+            { key: "callcenter" as const, label: "Call Center", icon: Headphones },
+            { key: "bulk" as const, label: "Bulk Campaigns", icon: Upload },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.key;
+            return (
+              <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+                className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                  isActive ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30"
+                }`}>
+                <Icon className="h-4 w-4" />{tab.label}
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+
+      {activeTab === "bulk" && <BulkCallCampaigns />}
+
+      {activeTab === "callcenter" && <>
       {/* Live Status Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -460,6 +487,7 @@ export default function VoiceCallCenter() {
           )}
         </CardContent>
       </Card>
+      </>}
     </div>
   );
 }
