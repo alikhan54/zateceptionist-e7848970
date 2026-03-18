@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Sparkles, TrendingUp, TrendingDown, Minus, Clock, Target, DollarSign, BarChart3, Loader2 } from "lucide-react";
 import { RTLWrapper } from "@/components/realestate/RTLWrapper";
-import { useTenant } from "@/components/TenantContext";
+import { useTenant } from "@/contexts/TenantContext";
 import { callWebhook } from "@/integrations/supabase/client";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
