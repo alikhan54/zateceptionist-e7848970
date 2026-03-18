@@ -51,6 +51,8 @@ export default function EmailHub() {
     subject: "",
     body: "",
   });
+  const [selectedEmail, setSelectedEmail] = useState<any>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
 
   // Query sent emails from outbound_messages (SLUG tenant_id)
   const { data: sentEmails = [], isLoading: sentLoading, refetch: refetchSent } = useQuery({
