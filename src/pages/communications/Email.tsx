@@ -15,6 +15,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
   Mail,
   Plus,
   Inbox,
@@ -27,6 +33,7 @@ import {
   Settings2,
   ArrowUpRight,
   Megaphone,
+  X,
 } from "lucide-react";
 import { EmailCampaigns } from "@/components/email-campaigns/EmailCampaigns";
 import { useToast } from "@/hooks/use-toast";
