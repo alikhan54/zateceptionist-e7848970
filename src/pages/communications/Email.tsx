@@ -15,6 +15,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
   Mail,
   Plus,
   Inbox,
@@ -27,6 +33,7 @@ import {
   Settings2,
   ArrowUpRight,
   Megaphone,
+  X,
 } from "lucide-react";
 import { EmailCampaigns } from "@/components/email-campaigns/EmailCampaigns";
 import { useToast } from "@/hooks/use-toast";
@@ -44,6 +51,8 @@ export default function EmailHub() {
     subject: "",
     body: "",
   });
+  const [selectedEmail, setSelectedEmail] = useState<any>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
 
   // Query sent emails from outbound_messages (SLUG tenant_id)
   const { data: sentEmails = [], isLoading: sentLoading, refetch: refetchSent } = useQuery({
@@ -314,25 +323,29 @@ export default function EmailHub() {
             ) : (
               <div className="divide-y">
                 {filteredSent.map((email: any) => (
-                  <div key={email.id} className="flex items-center gap-4 py-3 px-2 hover:bg-muted/50 rounded-lg">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-500/10">
-                      <Mail className="h-5 w-5 text-blue-500" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium truncate">
-                          {email.email_subject || "(No Subject)"}
-                        </p>
-                        {statusBadge(email.status)}
-                      </div>
-                      <p className="text-xs text-muted-foreground truncate">
-                        To: {email.recipient_identifier || email.email_to || "Unknown"}
-                      </p>
-                    </div>
-                    <div className="text-xs text-muted-foreground whitespace-nowrap">
-                      {email.sent_at ? formatSmartDate(email.sent_at) : email.created_at ? formatSmartDate(email.created_at) : "—"}
-                    </div>
-                  </div>
+                  <div
+                    key={email.id}
+                    className="flex items-center gap-4 py-3 px-2 hover:bg-muted/50 rounded-lg cursor-pointer"
+                    onClick={() => { setSelectedEmail(email); setDetailOpen(true); }}
+                  >
+                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-500/10">
+                       <Mail className="h-5 w-5 text-blue-500" />
+                     </div>
+                     <div className="flex-1 min-w-0">
+                       <div className="flex items-center gap-2">
+                         <p className="text-sm font-medium truncate">
+                           {email.email_subject || "(No Subject)"}
+                         </p>
+                         {statusBadge(email.status)}
+                       </div>
+                       <p className="text-xs text-muted-foreground truncate">
+                         To: {email.recipient_identifier || email.email_to || "Unknown"}
+                       </p>
+                     </div>
+                     <div className="text-xs text-muted-foreground whitespace-nowrap">
+                       {email.sent_at ? formatSmartDate(email.sent_at) : email.created_at ? formatSmartDate(email.created_at) : "—"}
+                     </div>
+                   </div>
                 ))}
               </div>
             )}
@@ -341,6 +354,69 @@ export default function EmailHub() {
       )}
 
       {activeTab === "campaigns" && <EmailCampaigns />}
+
+      {/* Email Detail Sheet */}
+      <Sheet open={detailOpen} onOpenChange={setDetailOpen}>
+        <SheetContent className="sm:max-w-[540px] overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Email Details</SheetTitle>
+          </SheetHeader>
+          {selectedEmail && (
+            <div className="space-y-4 pt-4">
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Subject</p>
+                  <p className="text-sm font-semibold mt-1">{selectedEmail.email_subject || "(No Subject)"}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">From</p>
+                    <p className="text-sm mt-1">{tenantConfig?.smtp_from_email || tenantId || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">To</p>
+                    <p className="text-sm mt-1">{selectedEmail.recipient_identifier || (selectedEmail.email_to || []).join(", ") || "Unknown"}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Date</p>
+                    <p className="text-sm mt-1">
+                      {selectedEmail.sent_at
+                        ? new Date(selectedEmail.sent_at).toLocaleString()
+                        : selectedEmail.created_at
+                        ? new Date(selectedEmail.created_at).toLocaleString()
+                        : "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Status</p>
+                    <div className="mt-1">{statusBadge(selectedEmail.status)}</div>
+                  </div>
+                </div>
+              </div>
+
+              {selectedEmail.status === "failed" && selectedEmail.failed_reason && (
+                <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3">
+                  <p className="text-xs font-medium text-destructive uppercase tracking-wide mb-1">Error</p>
+                  <p className="text-sm text-destructive/90 whitespace-pre-wrap">{selectedEmail.failed_reason}</p>
+                </div>
+              )}
+
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Body</p>
+                <div className="rounded-md border bg-muted/30 p-4 text-sm">
+                  {selectedEmail.content && (selectedEmail.content.includes("<") && selectedEmail.content.includes(">")) ? (
+                    <div dangerouslySetInnerHTML={{ __html: selectedEmail.content }} />
+                  ) : (
+                    <p className="whitespace-pre-wrap">{selectedEmail.content || "(No content)"}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
 
       {activeTab === "settings" && (
         <Card>

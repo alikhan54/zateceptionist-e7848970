@@ -120,8 +120,8 @@ export function EmailCampaignWizard({ open, onClose }: { open: boolean; onClose:
         return;
       }
       toast({ title: "Campaign created", description: `${validRecipients.length} recipients added.` });
-      if (autoStart && result.data?.campaign_id) {
-        const startResult = await startCampaign.mutateAsync(result.data.campaign_id);
+      if (autoStart && (result.data as any)?.campaign_id) {
+        const startResult = await startCampaign.mutateAsync((result.data as any).campaign_id);
         if (startResult.success) {
           toast({ title: "Campaign sending", description: "Emails will be sent shortly." });
         } else if (startResult.error === "no_email_provider") {
