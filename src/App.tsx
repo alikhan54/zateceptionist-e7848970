@@ -54,6 +54,8 @@ const CompetitorAnalysis = lazy(() => import("./pages/marketing/CompetitorAnalys
 const AdsManager = lazy(() => import("./pages/marketing/AdsManager"));
 const ContentCalendar = lazy(() => import("./pages/marketing/ContentCalendar"));
 const BrandVoice = lazy(() => import("./pages/marketing/BrandVoice"));
+const EmailTemplates = lazy(() => import("./pages/marketing/EmailTemplates"));
+const SEODashboard = lazy(() => import("./pages/marketing/SEODashboard"));
 
 // HR Module
 const HRDashboardOverview = lazy(() => import("./pages/hr/Dashboard"));
@@ -533,6 +535,22 @@ const App = () => (
                     element={
                       <LazyPage>
                         <BrandVoice />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/marketing/templates"
+                    element={
+                      <LazyPage>
+                        <EmailTemplates />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/marketing/seo"
+                    element={
+                      <LazyPage>
+                        <SEODashboard />
                       </LazyPage>
                     }
                   />

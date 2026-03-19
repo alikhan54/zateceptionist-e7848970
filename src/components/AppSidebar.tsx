@@ -72,6 +72,7 @@ import {
   TrendingDown,
   // CalendarDays already imported above
   Palette,
+  Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -119,6 +120,8 @@ const marketingNavItems = [
   { title: "Ads Manager", url: "/marketing/ads", icon: Target },
   { title: "Content Calendar", url: "/marketing/calendar", icon: CalendarDays },
   { title: "Brand Voice", url: "/marketing/brand-voice", icon: Palette },
+  { title: "Email Templates", url: "/marketing/templates", icon: Layers },
+  { title: "SEO Dashboard", url: "/marketing/seo", icon: Search },
 ];
 
 // ========================================
