@@ -338,6 +338,7 @@ export function NavigationSidebar() {
       { title: "Sales Analytics", url: "/sales/analytics", icon: BarChart3 },
       { title: "Forecasting", url: "/sales/forecast", icon: LineChart },
       { title: "LTV:CAC", url: "/sales/ltv-cac", icon: TrendingUp },
+      { title: "Email Warmup", url: "/sales/email-warmup", icon: Shield },
     ],
   };
 
