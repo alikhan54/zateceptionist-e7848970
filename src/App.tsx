@@ -109,7 +109,7 @@ const RegionSettings = lazy(() => import("./pages/realestate/RegionSettings"));
 const DealAdvisor = lazy(() => import("./pages/realestate/DealAdvisor"));
 const REKnowledgeBase = lazy(() => import("./pages/realestate/KnowledgeBase"));
 const PricePrediction = lazy(() => import("./pages/realestate/PricePrediction"));
-const CrossBorderAdvisor = lazy(() => import("./pages/realestate/CrossBorderAdvisor"));
+// CrossBorderAdvisor removed - module not found
 
 // Estimation Module
 const EstimationProjects = lazy(() => import("./pages/estimation/ProjectsDashboard"));
