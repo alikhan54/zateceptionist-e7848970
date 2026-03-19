@@ -70,6 +70,8 @@ import {
   Eye,
   Lightbulb,
   TrendingDown,
+  CalendarDays,
+  Palette,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -115,6 +117,8 @@ const marketingNavItems = [
   { title: "Video Projects", url: "/marketing/videos", icon: Zap },
   { title: "Competitor Intel", url: "/marketing/competitors", icon: Eye },
   { title: "Ads Manager", url: "/marketing/ads", icon: Target },
+  { title: "Content Calendar", url: "/marketing/calendar", icon: CalendarDays },
+  { title: "Brand Voice", url: "/marketing/brand-voice", icon: Palette },
 ];
 
 // ========================================

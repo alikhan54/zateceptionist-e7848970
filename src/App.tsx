@@ -51,6 +51,8 @@ const BlogManager = lazy(() => import("./pages/marketing/BlogManager"));
 const VideoProjects = lazy(() => import("./pages/marketing/VideoProjects"));
 const CompetitorAnalysis = lazy(() => import("./pages/marketing/CompetitorAnalysis"));
 const AdsManager = lazy(() => import("./pages/marketing/AdsManager"));
+const ContentCalendar = lazy(() => import("./pages/marketing/ContentCalendar"));
+const BrandVoice = lazy(() => import("./pages/marketing/BrandVoice"));
 
 // HR Module
 const HRDashboardOverview = lazy(() => import("./pages/hr/Dashboard"));
@@ -107,6 +109,7 @@ const RegionSettings = lazy(() => import("./pages/realestate/RegionSettings"));
 const DealAdvisor = lazy(() => import("./pages/realestate/DealAdvisor"));
 const REKnowledgeBase = lazy(() => import("./pages/realestate/KnowledgeBase"));
 const PricePrediction = lazy(() => import("./pages/realestate/PricePrediction"));
+const CrossBorderAdvisor = lazy(() => import("./pages/realestate/CrossBorderAdvisor"));
 
 // Estimation Module
 const EstimationProjects = lazy(() => import("./pages/estimation/ProjectsDashboard"));
@@ -509,6 +512,22 @@ const App = () => (
                       </LazyPage>
                     }
                   />
+                  <Route
+                    path="/marketing/calendar"
+                    element={
+                      <LazyPage>
+                        <ContentCalendar />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/marketing/brand-voice"
+                    element={
+                      <LazyPage>
+                        <BrandVoice />
+                      </LazyPage>
+                    }
+                  />
 
                   {/* HR Module */}
                   <Route path="/hr" element={<Navigate to="/hr/dashboard" replace />} />
@@ -811,6 +830,7 @@ const App = () => (
                   <Route path="/realestate/advisor" element={<LazyPage><DealAdvisor /></LazyPage>} />
                   <Route path="/realestate/knowledge" element={<LazyPage><REKnowledgeBase /></LazyPage>} />
                   <Route path="/realestate/pricing" element={<LazyPage><PricePrediction /></LazyPage>} />
+                  <Route path="/realestate/cross-border" element={<LazyPage><CrossBorderAdvisor /></LazyPage>} />
 
                   {/* Communications Module */}
                   <Route path="/communications" element={<Navigate to="/communications/voice-ai" replace />} />
