@@ -36,6 +36,7 @@ const SalesAnalytics = lazy(() => import("./pages/sales/Analytics"));
 const Forecasting = lazy(() => import("./pages/sales/Forecast"));
 const LtvCac = lazy(() => import("./pages/sales/LtvCac"));
 const EmailWarmup = lazy(() => import("./pages/sales/EmailWarmup"));
+const TriggerEvents = lazy(() => import("./pages/sales/TriggerEvents"));
 
 // Marketing Module
 const MarketingHub = lazy(() => import("./pages/MarketingEngine"));
