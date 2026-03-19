@@ -830,7 +830,7 @@ const App = () => (
                   <Route path="/realestate/advisor" element={<LazyPage><DealAdvisor /></LazyPage>} />
                   <Route path="/realestate/knowledge" element={<LazyPage><REKnowledgeBase /></LazyPage>} />
                   <Route path="/realestate/pricing" element={<LazyPage><PricePrediction /></LazyPage>} />
-                  <Route path="/realestate/cross-border" element={<LazyPage><CrossBorderAdvisor /></LazyPage>} />
+                  {/* CrossBorderAdvisor route removed - module not found */}
 
                   {/* Communications Module */}
                   <Route path="/communications" element={<Navigate to="/communications/voice-ai" replace />} />
