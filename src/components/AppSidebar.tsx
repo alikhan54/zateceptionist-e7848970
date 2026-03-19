@@ -70,7 +70,7 @@ import {
   Eye,
   Lightbulb,
   TrendingDown,
-  CalendarDays,
+  // CalendarDays already imported above
   Palette,
 } from "lucide-react";
 import { cn } from "@/lib/utils";

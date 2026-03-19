@@ -36,6 +36,7 @@ const SalesAnalytics = lazy(() => import("./pages/sales/Analytics"));
 const Forecasting = lazy(() => import("./pages/sales/Forecast"));
 const LtvCac = lazy(() => import("./pages/sales/LtvCac"));
 const EmailWarmup = lazy(() => import("./pages/sales/EmailWarmup"));
+const TriggerEvents = lazy(() => import("./pages/sales/TriggerEvents"));
 
 // Marketing Module
 const MarketingHub = lazy(() => import("./pages/MarketingEngine"));
@@ -109,7 +110,7 @@ const RegionSettings = lazy(() => import("./pages/realestate/RegionSettings"));
 const DealAdvisor = lazy(() => import("./pages/realestate/DealAdvisor"));
 const REKnowledgeBase = lazy(() => import("./pages/realestate/KnowledgeBase"));
 const PricePrediction = lazy(() => import("./pages/realestate/PricePrediction"));
-const CrossBorderAdvisor = lazy(() => import("./pages/realestate/CrossBorderAdvisor"));
+// CrossBorderAdvisor removed - module not found
 
 // Estimation Module
 const EstimationProjects = lazy(() => import("./pages/estimation/ProjectsDashboard"));
@@ -406,8 +407,15 @@ const App = () => (
                       </LazyPage>
                     }
                   />
+                  <Route
+                    path="/sales/trigger-events"
+                    element={
+                      <LazyPage>
+                        <TriggerEvents />
+                      </LazyPage>
+                    }
+                  />
 
-                  {/* Marketing Module */}
                   <Route
                     path="/marketing"
                     element={
@@ -830,7 +838,7 @@ const App = () => (
                   <Route path="/realestate/advisor" element={<LazyPage><DealAdvisor /></LazyPage>} />
                   <Route path="/realestate/knowledge" element={<LazyPage><REKnowledgeBase /></LazyPage>} />
                   <Route path="/realestate/pricing" element={<LazyPage><PricePrediction /></LazyPage>} />
-                  <Route path="/realestate/cross-border" element={<LazyPage><CrossBorderAdvisor /></LazyPage>} />
+                  {/* CrossBorderAdvisor route removed - module not found */}
 
                   {/* Communications Module */}
                   <Route path="/communications" element={<Navigate to="/communications/voice-ai" replace />} />

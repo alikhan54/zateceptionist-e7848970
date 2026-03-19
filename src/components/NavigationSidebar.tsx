@@ -339,6 +339,7 @@ export function NavigationSidebar() {
       { title: "Forecasting", url: "/sales/forecast", icon: LineChart },
       { title: "LTV:CAC", url: "/sales/ltv-cac", icon: TrendingUp },
       { title: "Email Warmup", url: "/sales/email-warmup", icon: Shield },
+      { title: "Trigger Events", url: "/sales/trigger-events", icon: Zap },
     ],
   };
 
