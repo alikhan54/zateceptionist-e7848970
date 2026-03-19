@@ -407,8 +407,15 @@ const App = () => (
                       </LazyPage>
                     }
                   />
+                  <Route
+                    path="/sales/trigger-events"
+                    element={
+                      <LazyPage>
+                        <TriggerEvents />
+                      </LazyPage>
+                    }
+                  />
 
-                  {/* Marketing Module */}
                   <Route
                     path="/marketing"
                     element={
