@@ -395,6 +395,14 @@ const App = () => (
                       </LazyPage>
                     }
                   />
+                  <Route
+                    path="/sales/email-warmup"
+                    element={
+                      <LazyPage>
+                        <EmailWarmup />
+                      </LazyPage>
+                    }
+                  />
 
                   {/* Marketing Module */}
                   <Route
