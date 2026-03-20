@@ -76,6 +76,7 @@ import {
   Eye,
   Video,
   Brain,
+  BrainCircuit,
   ChefHat,
   CalendarCheck,
   UtensilsCrossed,
@@ -341,6 +342,7 @@ export function NavigationSidebar() {
       { title: "Email Warmup", url: "/sales/email-warmup", icon: Shield },
       { title: "Trigger Events", url: "/sales/trigger-events", icon: Zap },
       { title: "Website Intent", url: "/sales/website-visitors", icon: Eye },
+      { title: "AI Scoring", url: "/sales/predictive-scoring", icon: BrainCircuit },
     ],
   };
 
