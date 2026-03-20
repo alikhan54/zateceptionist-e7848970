@@ -37,6 +37,7 @@ export const WEBHOOKS = {
   AIDA_CLASSIFY: "/marketing/aida-classify",
   AD_INTELLIGENCE: "/marketing/ad-intelligence",
   REPURPOSE_CONTENT: "/marketing/repurpose-content",
+  SEO_ANALYZE: "/seo-analyze",
 
   // HR
   EMPLOYEE_ONBOARDING: "/hr/employee-onboarding",
