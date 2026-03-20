@@ -418,6 +418,14 @@ const App = () => (
                       </LazyPage>
                     }
                   />
+                  <Route
+                    path="/sales/website-visitors"
+                    element={
+                      <LazyPage>
+                        <WebsiteVisitors />
+                      </LazyPage>
+                    }
+                  />
 
                   <Route
                     path="/marketing"

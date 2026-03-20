@@ -340,6 +340,7 @@ export function NavigationSidebar() {
       { title: "LTV:CAC", url: "/sales/ltv-cac", icon: TrendingUp },
       { title: "Email Warmup", url: "/sales/email-warmup", icon: Shield },
       { title: "Trigger Events", url: "/sales/trigger-events", icon: Zap },
+      { title: "Website Intent", url: "/sales/website-visitors", icon: Eye },
     ],
   };
 
