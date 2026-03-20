@@ -76,6 +76,7 @@ import {
   Eye,
   Video,
   Brain,
+  BrainCircuit,
   ChefHat,
   CalendarCheck,
   UtensilsCrossed,
