@@ -427,6 +427,14 @@ const App = () => (
                       </LazyPage>
                     }
                   />
+                  <Route
+                    path="/sales/predictive-scoring"
+                    element={
+                      <LazyPage>
+                        <PredictiveScoring />
+                      </LazyPage>
+                    }
+                  />
 
                   <Route
                     path="/marketing"
