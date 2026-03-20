@@ -38,6 +38,7 @@ const LtvCac = lazy(() => import("./pages/sales/LtvCac"));
 const EmailWarmup = lazy(() => import("./pages/sales/EmailWarmup"));
 const TriggerEvents = lazy(() => import("./pages/sales/TriggerEvents"));
 const WebsiteVisitors = lazy(() => import("./pages/sales/WebsiteVisitors"));
+const PredictiveScoring = lazy(() => import("./pages/sales/PredictiveScoring"));
 
 // Marketing Module
 const MarketingHub = lazy(() => import("./pages/MarketingEngine"));
