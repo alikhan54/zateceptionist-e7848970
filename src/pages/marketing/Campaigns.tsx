@@ -64,6 +64,7 @@ import {
   Layers,
   Zap,
   RefreshCw,
+  Recycle,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -72,6 +73,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { RepurposeDialog } from "@/components/marketing/RepurposeDialog";
 
 // Types
 interface Campaign {
@@ -181,6 +183,7 @@ export default function MarketingCampaigns() {
   });
 
   const [isGenerating, setIsGenerating] = useState(false);
+  const [repurposeCampaign, setRepurposeCampaign] = useState<Campaign | null>(null);
 
   const getTypeIcon = (type: Campaign["type"]) => {
     const icons = {
@@ -822,6 +825,10 @@ export default function MarketingCampaigns() {
                               <Copy className="h-4 w-4 mr-2" />
                               Duplicate
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setRepurposeCampaign(campaign)}>
+                              <Recycle className="h-4 w-4 mr-2" />
+                              Repurpose
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             {campaign.status === "active" && (
                               <DropdownMenuItem onClick={() => handlePauseCampaign(campaign)}>
@@ -1010,6 +1017,16 @@ export default function MarketingCampaigns() {
           )}
         </SheetContent>
       </Sheet>
+
+      {repurposeCampaign && (
+        <RepurposeDialog
+          open={!!repurposeCampaign}
+          onOpenChange={(v) => { if (!v) setRepurposeCampaign(null); }}
+          sourceType="email_campaign"
+          sourceId={repurposeCampaign.id}
+          sourceTitle={repurposeCampaign.name || "Campaign"}
+        />
+      )}
     </div>
   );
 }

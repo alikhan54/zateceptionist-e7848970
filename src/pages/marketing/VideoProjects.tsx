@@ -13,7 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Video, Film, Clock, CheckCircle, Sparkles, Copy, Download, RefreshCw, Image, Trash2, Target, Eye, Heart, Zap, Users, Play, Presentation, Loader2 } from 'lucide-react';
+import { Plus, Video, Film, Clock, CheckCircle, Sparkles, Copy, Download, RefreshCw, Image, Trash2, Target, Eye, Heart, Zap, Users, Play, Presentation, Loader2, Recycle } from 'lucide-react';
+import { RepurposeDialog } from '@/components/marketing/RepurposeDialog';
 import { formatDistanceToNow } from 'date-fns';
 import VideoPlayer from '@/components/video/VideoPlayer';
 
@@ -48,6 +49,7 @@ export default function VideoProjects() {
   const [isClassifying, setIsClassifying] = useState(false);
   const [pageTab, setPageTab] = useState('projects');
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
+  const [repurposeProject, setRepurposeProject] = useState<any>(null);
 
   const { data: aidaAudiences = [], refetch: refetchAida } = useQuery({
     queryKey: ['aida_audiences', tenantConfig?.id],
@@ -526,6 +528,10 @@ show(0);
                         ? <><Clock className="h-3 w-3 mr-1 animate-spin" /> Generating...</>
                         : <><Sparkles className="h-3 w-3 mr-1" /> AI Script</>}
                     </Button>
+                    <Button size="sm" variant="ghost" title="Repurpose"
+                      onClick={(e) => { e.stopPropagation(); setRepurposeProject(project); }}>
+                      <Recycle className="h-3 w-3" />
+                    </Button>
                     <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive"
                       onClick={(e) => { e.stopPropagation(); if (confirm('Delete this video project?')) deleteProject.mutate(project.id); }}>
                       <Trash2 className="h-4 w-4" />
@@ -776,6 +782,16 @@ show(0);
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {repurposeProject && (
+        <RepurposeDialog
+          open={!!repurposeProject}
+          onOpenChange={(v) => { if (!v) setRepurposeProject(null); }}
+          sourceType="video_project"
+          sourceId={repurposeProject.id}
+          sourceTitle={repurposeProject.title || "Video Project"}
+        />
+      )}
     </div>
   );
 }

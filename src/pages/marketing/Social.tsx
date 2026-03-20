@@ -32,6 +32,8 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { Recycle } from "lucide-react";
+import { RepurposeDialog } from "@/components/marketing/RepurposeDialog";
 
 const bestPostingTimes = [
   { platform: "instagram", times: ["9:00 AM", "12:00 PM", "7:00 PM"], bestDay: "Wednesday" },
@@ -156,6 +158,7 @@ export default function SocialCommander() {
   const [activeTab, setActiveTab] = useState("overview");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [publishCooldown, setPublishCooldown] = useState(false);
+  const [repurposePost, setRepurposePost] = useState<any>(null);
 
   // Activity log query
   const tenantUuid = tenantConfig?.id || null;
@@ -451,6 +454,7 @@ export default function SocialCommander() {
                             <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                             <DropdownMenuContent>
                               <DropdownMenuItem onClick={() => { navigator.clipboard.writeText(post.post_text); toast({ title: "Copied!" }); }}><Copy className="h-4 w-4 mr-2" /> Copy Text</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setRepurposePost(post)}><Recycle className="h-4 w-4 mr-2" /> Repurpose</DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem className="text-destructive" onClick={() => handleDeletePost(post.id)}><Trash2 className="h-4 w-4 mr-2" /> Delete</DropdownMenuItem>
                             </DropdownMenuContent>
@@ -793,6 +797,16 @@ export default function SocialCommander() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {repurposePost && (
+        <RepurposeDialog
+          open={!!repurposePost}
+          onOpenChange={(v) => { if (!v) setRepurposePost(null); }}
+          sourceType="social_post"
+          sourceId={repurposePost.id}
+          sourceTitle={repurposePost.post_text?.substring(0, 60) || "Social Post"}
+        />
+      )}
     </div>
   );
 }

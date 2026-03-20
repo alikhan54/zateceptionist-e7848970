@@ -96,6 +96,7 @@ import {
   Home,
   Handshake,
   MapPin,
+  Ear,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -364,6 +365,8 @@ export function NavigationSidebar() {
       { title: "Video Projects", url: "/marketing/videos", icon: Video },
       { title: "Competitor Intel", url: "/marketing/competitors", icon: Eye },
       { title: "Ads Manager", url: "/marketing/ads", icon: Target },
+      { title: "Social Listening", url: "/marketing/social-listening", icon: Ear },
+      { title: "Playbooks", url: "/marketing/playbooks", icon: BookOpen },
     ],
   };
 
@@ -467,6 +470,7 @@ export function NavigationSidebar() {
       { title: "Knowledge Base", url: "/realestate/knowledge", icon: BookOpen },
       { title: "Region Settings", url: "/realestate/regions", icon: Globe },
       { title: "AI Pricing", url: "/realestate/pricing", icon: Sparkles },
+      { title: "Cross-Border", url: "/realestate/cross-border", icon: Globe },
     ],
   };
 
