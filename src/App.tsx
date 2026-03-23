@@ -40,7 +40,7 @@ const TriggerEvents = lazy(() => import("./pages/sales/TriggerEvents"));
 const WebsiteVisitors = lazy(() => import("./pages/sales/WebsiteVisitors"));
 const PredictiveScoring = lazy(() => import("./pages/sales/PredictiveScoring"));
 const ReplyRouting = lazy(() => import("./pages/sales/ReplyRouting"));
-
+const Deliverability = lazy(() => import("./pages/sales/Deliverability"));
 // Marketing Module
 const MarketingHub = lazy(() => import("./pages/MarketingEngine"));
 const ContentStudio = lazy(() => import("./pages/marketing/ContentStudio"));
