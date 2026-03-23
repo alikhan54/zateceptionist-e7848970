@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import SendingAccountsTab from '@/components/settings/SendingAccountsTab';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant, IndustryType } from '@/contexts/TenantContext';
@@ -455,6 +456,10 @@ export default function SettingsPage() {
           <TabsTrigger value="meeting" className="gap-2">
             <Calendar className="h-4 w-4" />
             Meeting Scheduler
+          </TabsTrigger>
+          <TabsTrigger value="sending-accounts" className="gap-2">
+            <Send className="h-4 w-4" />
+            Sending Accounts
           </TabsTrigger>
         </TabsList>
 
@@ -1381,6 +1386,9 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Sending Accounts Tab */}
+        <SendingAccountsTab tenantId={tenantId} />
       </Tabs>
     </div>
   );
