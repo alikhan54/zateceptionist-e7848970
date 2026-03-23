@@ -44,6 +44,7 @@ export default function VideoProjects() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [videoType, setVideoType] = useState('short_form');
+  const [videoTier, setVideoTier] = useState('standard');
   const [generatingScriptId, setGeneratingScriptId] = useState<string | null>(null);
   const [detailProject, setDetailProject] = useState<any>(null);
   const [isClassifying, setIsClassifying] = useState(false);
@@ -640,6 +641,22 @@ show(0);
                   <Play className="h-4 w-4 mr-2" /> Preview Video
                 </Button>
 
+                {/* Video Quality Tier Selector */}
+                {detailProject?.status !== 'draft' && detailProject?.render_status !== 'complete' && detailProject?.render_status !== 'rendering' && (
+                  <div className="col-span-2">
+                    <Select value={videoTier} onValueChange={setVideoTier}>
+                      <SelectTrigger className="mb-2">
+                        <SelectValue placeholder="Select video quality" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="free">Free — Stock photos + slideshow</SelectItem>
+                        <SelectItem value="standard">Standard — AI-generated images</SelectItem>
+                        <SelectItem value="premium" disabled>Premium — AI video clips (coming soon)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
                 {/* Render Video button — for projects with script but no video */}
                 {detailProject?.status !== 'draft' && detailProject?.render_status !== 'complete' && detailProject?.render_status !== 'rendering' && (
                   <Button
@@ -647,18 +664,27 @@ show(0);
                     className="col-span-2 border-purple-300 text-purple-700 hover:bg-purple-50"
                     onClick={() => {
                       if (!tenantConfig?.id || !detailProject) return;
-                      callWebhook(WEBHOOKS.VIDEO_GENERATE, {
-                        project_id: detailProject.id,
-                        title: detailProject.title,
-                        description: detailProject.description || '',
-                        video_type: detailProject.video_type || 'short_form',
-                        company_name: tenantConfig?.company_name || 'Your Company',
-                        industry: (tenantConfig as any)?.industry || 'technology',
-                      }, tenantConfig.id);
-                      toast({ title: '🎬 Rendering Video', description: 'Your video is being rendered. This takes 60-90 seconds. The page will auto-refresh.' });
+                      if (videoTier === 'free') {
+                        callWebhook(WEBHOOKS.VIDEO_GENERATE, {
+                          project_id: detailProject.id,
+                          title: detailProject.title,
+                          description: detailProject.description || '',
+                          video_type: detailProject.video_type || 'short_form',
+                          company_name: tenantConfig?.company_name || 'Your Company',
+                          industry: (tenantConfig as any)?.industry || 'technology',
+                        }, tenantConfig.id);
+                        toast({ title: 'Rendering Video', description: 'Free tier: Stock photos + slideshow. 60-90 seconds.' });
+                      } else {
+                        callWebhook(WEBHOOKS.AI_VIDEO_GENERATE, {
+                          project_id: detailProject.id,
+                          tier: videoTier,
+                          aspect_ratio: '9:16',
+                        }, tenantConfig.id);
+                        toast({ title: 'Generating AI Video', description: 'Standard tier: AI-generated images. This may take 2-3 minutes.' });
+                      }
                     }}
                   >
-                    <Film className="h-4 w-4 mr-2" /> Render Video (MP4)
+                    <Film className="h-4 w-4 mr-2" /> {videoTier === 'free' ? 'Render Video (MP4)' : 'Generate AI Video'}
                   </Button>
                 )}
 
