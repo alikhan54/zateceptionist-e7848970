@@ -157,6 +157,97 @@ export default function SettingsPage() {
     response_style: 'balanced',
   });
 
+  // Meeting Scheduler state
+  const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const HOURS = Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`);
+  const DURATIONS = [
+    { value: '15', label: '15 minutes' },
+    { value: '30', label: '30 minutes' },
+    { value: '45', label: '45 minutes' },
+    { value: '60', label: '60 minutes' },
+  ];
+  const MEETING_TIMEZONES = [
+    'UTC', 'America/New_York', 'America/Chicago', 'America/Denver',
+    'America/Los_Angeles', 'Europe/London', 'Europe/Paris', 'Asia/Dubai',
+    'Asia/Karachi', 'Asia/Kolkata', 'Asia/Tokyo', 'Australia/Sydney',
+  ];
+
+  const queryClient = useQueryClient();
+  const [meetingForm, setMeetingForm] = useState({
+    title: '',
+    duration: '30',
+    booking_url: '',
+    available_days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+    start_hour: '09:00',
+    end_hour: '17:00',
+    timezone: tenantConfig?.timezone || 'UTC',
+    auto_send: true,
+  });
+
+  const { data: meetingLink, isLoading: meetingLoading } = useQuery({
+    queryKey: ['meeting_links', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return null;
+      const { data } = await supabase
+        .from('meeting_links' as any)
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+      return data as any;
+    },
+    enabled: !!tenantId,
+  });
+
+  useEffect(() => {
+    if (meetingLink) {
+      setMeetingForm({
+        title: meetingLink.title || '',
+        duration: String(meetingLink.duration || 30),
+        booking_url: meetingLink.booking_url || '',
+        available_days: meetingLink.available_days || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+        start_hour: meetingLink.start_hour || '09:00',
+        end_hour: meetingLink.end_hour || '17:00',
+        timezone: meetingLink.timezone || 'UTC',
+        auto_send: meetingLink.auto_send ?? true,
+      });
+    }
+  }, [meetingLink]);
+
+  const meetingSave = useMutation({
+    mutationFn: async () => {
+      const payload = {
+        tenant_id: tenantId,
+        title: meetingForm.title,
+        duration: parseInt(meetingForm.duration),
+        booking_url: meetingForm.booking_url,
+        available_days: meetingForm.available_days,
+        start_hour: meetingForm.start_hour,
+        end_hour: meetingForm.end_hour,
+        timezone: meetingForm.timezone,
+        auto_send: meetingForm.auto_send,
+      };
+      if (meetingLink?.id) {
+        const { error } = await supabase
+          .from('meeting_links' as any)
+          .update(payload as any)
+          .eq('id', meetingLink.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('meeting_links' as any)
+          .insert(payload as any);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['meeting_links'] });
+      toast({ title: 'Saved', description: 'Meeting scheduler settings saved' });
+    },
+    onError: () => {
+      toast({ title: 'Error', description: 'Failed to save meeting settings', variant: 'destructive' });
+    },
+  });
+
   // Channels state
   const [channels, setChannels] = useState<Channel[]>([
     {
