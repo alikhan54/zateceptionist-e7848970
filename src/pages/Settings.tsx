@@ -1385,6 +1385,9 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Sending Accounts Tab */}
+        <SendingAccountsTab tenantId={tenantId} />
       </Tabs>
     </div>
   );
