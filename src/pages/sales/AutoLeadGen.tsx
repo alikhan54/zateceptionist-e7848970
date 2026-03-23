@@ -1226,6 +1226,13 @@ export default function LeadDiscovery() {
             >
               <Linkedin className="h-4 w-4" /> LinkedIn (Premium)
             </Button>
+            <Button
+              variant={b2bSubTab === "linkedin-co" ? "default" : "outline"}
+              onClick={() => setB2bSubTab("linkedin-co")}
+              className="gap-2"
+            >
+              <Building2 className="h-4 w-4" /> LinkedIn Companies
+            </Button>
           </div>
 
           {/* Quick Search (Free) */}
