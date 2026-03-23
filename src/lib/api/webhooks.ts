@@ -127,6 +127,11 @@ export const WEBHOOKS = {
   BULK_CALL_PAUSE: "/bulk-call/pause-campaign",
   BULK_CALL_STATUS: "/bulk-call/get-status",
 
+  // ABM & Growth (Phase 18E)
+  ABM_RESEARCH: "/abm-research",
+  LEAD_MAGNET_SUBMIT: "/lead-magnet-submit",
+  REQUEST_REFERRAL: "/request-referral",
+
   // Manual Email Campaigns (Phase 14)
   MANUAL_EMAIL_CREATE: "/manual-email/create-campaign",
   MANUAL_EMAIL_START: "/manual-email/start-campaign",

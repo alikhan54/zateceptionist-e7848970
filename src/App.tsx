@@ -41,6 +41,10 @@ const WebsiteVisitors = lazy(() => import("./pages/sales/WebsiteVisitors"));
 const PredictiveScoring = lazy(() => import("./pages/sales/PredictiveScoring"));
 const ReplyRouting = lazy(() => import("./pages/sales/ReplyRouting"));
 const Deliverability = lazy(() => import("./pages/sales/Deliverability"));
+const TargetAccounts = lazy(() => import("./pages/sales/TargetAccounts"));
+const LeadMagnets = lazy(() => import("./pages/sales/LeadMagnets"));
+const ReferralsPage = lazy(() => import("./pages/sales/Referrals"));
+const LeadMagnetPage = lazy(() => import("./pages/public/LeadMagnetPage"));
 // Marketing Module
 const MarketingHub = lazy(() => import("./pages/MarketingEngine"));
 const ContentStudio = lazy(() => import("./pages/marketing/ContentStudio"));
@@ -263,6 +267,14 @@ const App = () => (
                     </LazyPage>
                   }
                 />
+                <Route
+                  path="/lm/:slug"
+                  element={
+                    <LazyPage>
+                      <LeadMagnetPage />
+                    </LazyPage>
+                  }
+                />
 
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
@@ -453,6 +465,30 @@ const App = () => (
                     element={
                       <LazyPage>
                         <Deliverability />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/sales/target-accounts"
+                    element={
+                      <LazyPage>
+                        <TargetAccounts />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/sales/referrals"
+                    element={
+                      <LazyPage>
+                        <ReferralsPage />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/marketing/lead-magnets"
+                    element={
+                      <LazyPage>
+                        <LeadMagnets />
                       </LazyPage>
                     }
                   />

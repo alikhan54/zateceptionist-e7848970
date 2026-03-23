@@ -100,6 +100,8 @@ import {
   Palette,
   Search,
   ShieldCheck,
+  Crosshair,
+  Magnet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -349,6 +351,8 @@ export function NavigationSidebar() {
       { title: "AI Scoring", url: "/sales/predictive-scoring", icon: BrainCircuit },
       { title: "Reply Rules", url: "/sales/reply-routing", icon: GitBranch },
       { title: "Deliverability", url: "/sales/deliverability", icon: ShieldCheck },
+      { title: "Target Accounts", url: "/sales/target-accounts", icon: Crosshair },
+      { title: "Referrals", url: "/sales/referrals", icon: UserPlus },
     ],
   };
 
@@ -376,6 +380,7 @@ export function NavigationSidebar() {
       { title: "SEO Dashboard", url: "/marketing/seo", icon: Search },
       { title: "Social Listening", url: "/marketing/social-listening", icon: Ear },
       { title: "Playbooks", url: "/marketing/playbooks", icon: BookOpen },
+      { title: "Lead Magnets", url: "/marketing/lead-magnets", icon: Magnet },
     ],
   };
 
