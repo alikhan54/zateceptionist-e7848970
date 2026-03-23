@@ -76,6 +76,8 @@ const HRDocumentsPage = lazy(() => import("./pages/hr/Documents"));
 const HRReportsPage = lazy(() => import("./pages/hr/Reports"));
 const HRAIAssistantPage = lazy(() => import("./pages/hr/AIAssistant"));
 const CompliancePage = lazy(() => import("./pages/hr/Compliance"));
+const ShiftsPage = lazy(() => import("./pages/hr/Shifts"));
+const EmployeeProfilePage = lazy(() => import("./pages/hr/EmployeeProfile"));
 
 // Operations Module
 const Inventory = lazy(() => import("./pages/operations/Inventory"));
@@ -610,6 +612,14 @@ const App = () => (
                     }
                   />
                   <Route
+                    path="/hr/employees/:id"
+                    element={
+                      <LazyPage>
+                        <EmployeeProfilePage />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
                     path="/hr/attendance"
                     element={
                       <LazyPage>
@@ -702,6 +712,14 @@ const App = () => (
                     element={
                       <LazyPage>
                         <HRAIAssistantPage />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/hr/shifts"
+                    element={
+                      <LazyPage>
+                        <ShiftsPage />
                       </LazyPage>
                     }
                   />
