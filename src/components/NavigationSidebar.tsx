@@ -99,6 +99,7 @@ import {
   Ear,
   Palette,
   Search,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -347,6 +348,7 @@ export function NavigationSidebar() {
       { title: "Website Intent", url: "/sales/website-visitors", icon: Eye },
       { title: "AI Scoring", url: "/sales/predictive-scoring", icon: BrainCircuit },
       { title: "Reply Rules", url: "/sales/reply-routing", icon: GitBranch },
+      { title: "Deliverability", url: "/sales/deliverability", icon: ShieldCheck },
     ],
   };
 
