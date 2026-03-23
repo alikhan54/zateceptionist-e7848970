@@ -452,6 +452,10 @@ export default function SettingsPage() {
             <CreditCard className="h-4 w-4" />
             Billing
           </TabsTrigger>
+          <TabsTrigger value="meeting" className="gap-2">
+            <Calendar className="h-4 w-4" />
+            Meeting Scheduler
+          </TabsTrigger>
         </TabsList>
 
         {/* Business Profile Tab */}
