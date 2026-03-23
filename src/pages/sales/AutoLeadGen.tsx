@@ -238,6 +238,54 @@ export default function LeadDiscovery() {
     maxResults: 25,
   });
 
+  // B2B LinkedIn Company Discovery form
+  const [liCoForm, setLiCoForm] = useState({
+    industry: "",
+    location: "",
+    keywords: "",
+    maxResults: 15,
+  });
+  const [liCoResults, setLiCoResults] = useState<any[]>([]);
+  const [liCoSearching, setLiCoSearching] = useState(false);
+  const [liCoSummary, setLiCoSummary] = useState<{ found: number; saved: number; duplicates: number } | null>(null);
+
+  const handleLinkedInCoSearch = async () => {
+    if (!liCoForm.industry && !liCoForm.location) {
+      toast({ title: "Missing fields", description: "Please select an industry or enter a location", variant: "destructive" });
+      return;
+    }
+    setLiCoSearching(true);
+    setLiCoResults([]);
+    setLiCoSummary(null);
+    try {
+      const res = await fetch("https://webhooks.zatesystems.com/webhook/linkedin-discovery", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tenant_id: tenantConfig?.id,
+          industry: liCoForm.industry,
+          location: liCoForm.location,
+          keywords: liCoForm.keywords,
+          max_results: liCoForm.maxResults,
+        }),
+      });
+      const data = await res.json();
+      const results = data?.results || data?.companies || data?.data || [];
+      setLiCoResults(Array.isArray(results) ? results : []);
+      setLiCoSummary({
+        found: data?.total_found ?? results.length,
+        saved: data?.saved_to_pipeline ?? 0,
+        duplicates: data?.duplicates_skipped ?? 0,
+      });
+      toast({ title: "Search complete", description: `Found ${results.length} companies` });
+    } catch (err) {
+      console.error("LinkedIn company search error:", err);
+      toast({ title: "Search failed", description: "Could not reach LinkedIn discovery endpoint", variant: "destructive" });
+    } finally {
+      setLiCoSearching(false);
+    }
+  };
+
   // ============================================================
   // FIX: Auto Lead Gen settings STATE DECLARATION (was missing!)
   // This MUST come BEFORE the useEffect that uses it
