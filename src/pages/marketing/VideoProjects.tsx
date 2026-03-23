@@ -675,7 +675,7 @@ show(0);
                         }, tenantConfig.id);
                         toast({ title: 'Rendering Video', description: 'Free tier: Stock photos + slideshow. 60-90 seconds.' });
                       } else {
-                        callWebhook(WEBHOOKS.AI_VIDEO_GENERATE, {
+                        callWebhook(WEBHOOKS.VIDEO_GENERATE, {
                           project_id: detailProject.id,
                           tier: videoTier,
                           aspect_ratio: '9:16',
