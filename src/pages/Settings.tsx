@@ -456,6 +456,10 @@ export default function SettingsPage() {
             <Calendar className="h-4 w-4" />
             Meeting Scheduler
           </TabsTrigger>
+          <TabsTrigger value="sending-accounts" className="gap-2">
+            <Send className="h-4 w-4" />
+            Sending Accounts
+          </TabsTrigger>
         </TabsList>
 
         {/* Business Profile Tab */}
