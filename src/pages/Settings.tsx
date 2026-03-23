@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import SendingAccountsTab from '@/components/settings/SendingAccountsTab';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant, IndustryType } from '@/contexts/TenantContext';
