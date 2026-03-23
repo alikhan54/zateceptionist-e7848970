@@ -244,6 +244,72 @@ export default function MarketingHub() {
     enabled: !!tenantConfig?.id,
   });
 
+  // ─── Intelligence Alerts ───
+  const { data: intelligence = [] } = useQuery({
+    queryKey: ['hub-intelligence', tenantConfig?.id],
+    queryFn: async () => {
+      if (!tenantConfig?.id) return [];
+      const tid = tenantConfig.id;
+      const alerts: { type: string; severity: string; message: string; action?: string; link?: string }[] = [];
+
+      // Negative mentions needing response
+      const { count: negCount } = await supabase.from('social_mentions' as any)
+        .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', tid).eq('sentiment', 'negative').eq('requires_response', true).eq('responded', false);
+      if ((negCount || 0) > 0) {
+        alerts.push({ type: 'reputation', severity: 'critical', message: `${negCount} negative mention${(negCount || 0) > 1 ? 's' : ''} need your response`, action: 'Respond now', link: '/marketing/social-listening' });
+      }
+
+      // No brand voice configured
+      const { data: bv } = await supabase.from('brand_voice_profiles' as any).select('id').eq('tenant_id', tid).limit(1);
+      if (!bv || bv.length === 0) {
+        alerts.push({ type: 'setup', severity: 'info', message: 'Brand voice not configured — AI content is generic', action: 'Set up', link: '/marketing/brand-voice' });
+      }
+
+      // Unrendered videos
+      const { count: unrendered } = await supabase.from('video_projects' as any)
+        .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', tid).eq('status', 'script_ready')
+        .or('render_status.is.null,render_status.eq.none,render_status.eq.failed');
+      if ((unrendered || 0) > 0) {
+        alerts.push({ type: 'content', severity: 'info', message: `${unrendered} video${(unrendered || 0) > 1 ? 's' : ''} have scripts but no rendered MP4`, action: 'Render', link: '/marketing/videos' });
+      }
+
+      // Templates available but no campaigns
+      const { count: tplCount } = await supabase.from('email_template_library' as any).select('id', { count: 'exact', head: true });
+      if ((tplCount || 0) > 0 && activeCampaigns === 0) {
+        alerts.push({ type: 'setup', severity: 'info', message: `${tplCount} email templates available — create your first campaign`, action: 'Browse', link: '/marketing/templates' });
+      }
+
+      return alerts;
+    },
+    enabled: !!tenantConfig?.id,
+    refetchInterval: 300000,
+  });
+
+  // ─── Extended Metrics ───
+  const { data: extMetrics } = useQuery({
+    queryKey: ['hub-ext-metrics', tenantConfig?.id],
+    queryFn: async () => {
+      if (!tenantConfig?.id) return null;
+      const tid = tenantConfig.id;
+      const [videos, mentions, competitors] = await Promise.all([
+        supabase.from('video_projects' as any).select('id', { count: 'exact', head: true }).eq('tenant_id', tid).eq('render_status', 'complete'),
+        supabase.from('social_mentions' as any).select('id, sentiment', { count: 'exact' }).eq('tenant_id', tid).gte('discovered_at', new Date(Date.now() - 7 * 86400000).toISOString()),
+        supabase.from('competitor_tracking' as any).select('id', { count: 'exact', head: true }).eq('tenant_id', tid),
+      ]);
+      const mentionData = mentions.data || [];
+      return {
+        videos: videos.count || 0,
+        mentionsTotal: mentions.count || 0,
+        mentionsPositive: mentionData.filter((m: any) => m.sentiment === 'positive').length,
+        mentionsNegative: mentionData.filter((m: any) => m.sentiment === 'negative').length,
+        competitors: competitors.count || 0,
+      };
+    },
+    enabled: !!tenantConfig?.id,
+  });
+
   const isLoading = l1 || l2 || l3 || l4 || l5;
 
   const metrics = [
@@ -348,6 +414,65 @@ export default function MarketingHub() {
                 </div>
               ))}
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ═══ EXTENDED METRICS ROW ═══ */}
+      {extMetrics && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-pink-500/10"><Target className="h-5 w-5 text-pink-500" /></div>
+              <div><p className="text-2xl font-bold">{extMetrics.videos}</p><p className="text-xs text-muted-foreground">Videos Rendered</p></div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-amber-500/10"><TrendingUp className="h-5 w-5 text-amber-500" /></div>
+              <div>
+                <p className="text-2xl font-bold">{extMetrics.mentionsTotal}</p>
+                <p className="text-xs text-muted-foreground">Brand Mentions (7d)</p>
+                {extMetrics.mentionsTotal > 0 && <p className="text-[10px]"><span className="text-green-500">{extMetrics.mentionsPositive} pos</span> · <span className="text-red-500">{extMetrics.mentionsNegative} neg</span></p>}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-red-500/10"><Target className="h-5 w-5 text-red-500" /></div>
+              <div><p className="text-2xl font-bold">{extMetrics.competitors}</p><p className="text-xs text-muted-foreground">Competitors Tracked</p></div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-cyan-500/10"><Zap className="h-5 w-5 text-cyan-500" /></div>
+              <div><p className="text-2xl font-bold">{(blogCount || 0) + (extMetrics.videos || 0)}</p><p className="text-xs text-muted-foreground">Total Content</p></div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ═══ INTELLIGENCE ALERTS ═══ */}
+      {intelligence.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Brain className="h-5 w-5 text-amber-500" /> Marketing Intelligence
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {intelligence.map((alert: any, i: number) => (
+              <div key={i} className={`flex items-center gap-3 p-3 rounded-lg ${
+                alert.severity === 'critical' ? 'bg-red-500/10 border border-red-500/20' :
+                alert.severity === 'warning' ? 'bg-yellow-500/10 border border-yellow-500/20' :
+                'bg-blue-500/10 border border-blue-500/20'
+              }`}>
+                <p className="text-sm flex-1">{alert.message}</p>
+                {alert.action && alert.link && (
+                  <Button size="sm" variant="outline" onClick={() => navigate(alert.link)}>{alert.action}</Button>
+                )}
+              </div>
+            ))}
           </CardContent>
         </Card>
       )}

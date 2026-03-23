@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { useTenant } from "@/contexts/TenantContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BookOpen, Clock, Search, ChevronRight, Rocket, CheckCircle2 } from "lucide-react";
+import { BookOpen, Clock, Search, ChevronRight, Rocket, CheckCircle2, Loader2, XCircle, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const INDUSTRIES = [
@@ -48,10 +49,13 @@ const actionTypeIcons: Record<string, string> = {
 
 export default function Playbooks() {
   const { toast } = useToast();
+  const { tenantConfig } = useTenant();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [industry, setIndustry] = useState("all");
   const [category, setCategory] = useState("all");
   const [selectedPlaybook, setSelectedPlaybook] = useState<any>(null);
+  const [activationResults, setActivationResults] = useState<any[] | null>(null);
 
   const { data: playbooks = [], isLoading } = useQuery({
     queryKey: ["marketing_playbooks"],
@@ -62,6 +66,100 @@ export default function Playbooks() {
         .eq("is_active", true)
         .order("industry", { ascending: true });
       return data || [];
+    },
+  });
+
+  const activatePlaybook = useMutation({
+    mutationFn: async (playbook: any) => {
+      if (!tenantConfig?.id) throw new Error("No tenant configured");
+      const steps = playbook.steps || [];
+      const created: { type: string; title: string; success: boolean; error?: string }[] = [];
+
+      for (const step of steps) {
+        const actionType = step.action_type;
+        const stepTitle = step.title || actionType;
+        try {
+          if (actionType === "create_sequence") {
+            await supabase.from("sequences" as any).insert({
+              tenant_id: tenantConfig.id,
+              name: `[Playbook] ${stepTitle}`,
+              description: step.description || `Auto-created from playbook: ${playbook.name}`,
+              industry: playbook.industry,
+              temperature: "WARM",
+              steps: step.action_config?.steps || [],
+              is_active: false,
+            });
+            created.push({ type: "Sequence", title: stepTitle, success: true });
+          } else if (actionType === "create_campaign") {
+            await supabase.from("campaigns" as any).insert({
+              tenant_id: tenantConfig.id,
+              name: `[Playbook] ${stepTitle}`,
+              description: step.description || `Auto-created from playbook: ${playbook.name}`,
+              status: "draft",
+              campaign_type: step.action_config?.campaign_type || "email",
+            });
+            created.push({ type: "Campaign", title: stepTitle, success: true });
+          } else if (actionType === "create_content" || actionType === "create_social_posts") {
+            await supabase.from("social_posts" as any).insert({
+              tenant_id: tenantConfig.id,
+              post_text: step.description || `[Playbook] ${stepTitle}`,
+              platform: step.action_config?.platform || "instagram",
+              status: "draft",
+              hashtags: [],
+              mentions: [],
+              media_urls: [],
+              likes_count: 0,
+              comments_count: 0,
+              shares_count: 0,
+              impressions: 0,
+              reach: 0,
+              clicks: 0,
+              engagement_rate: 0,
+            });
+            created.push({ type: "Social Post", title: stepTitle, success: true });
+          } else if (actionType === "create_landing_page") {
+            await supabase.from("landing_pages" as any).insert({
+              tenant_id: tenantConfig.id,
+              name: `[Playbook] ${stepTitle}`,
+              slug: stepTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 50),
+              html_content: `<h1>${stepTitle}</h1><p>${step.description || ""}</p>`,
+              status: "draft",
+              template_type: "playbook",
+            });
+            created.push({ type: "Landing Page", title: stepTitle, success: true });
+          } else {
+            // Any other action_type -> calendar reminder
+            await supabase.from("smart_tasks" as any).insert({
+              tenant_id: tenantConfig.id,
+              title: `[Playbook] ${stepTitle}`,
+              description: step.description || `From playbook: ${playbook.name}`,
+              status: "pending",
+              priority: "medium",
+              source: "playbook",
+            });
+            created.push({ type: "Task", title: stepTitle, success: true });
+          }
+        } catch (err: any) {
+          created.push({ type: actionTypeIcons[actionType] || actionType, title: stepTitle, success: false, error: err.message });
+        }
+      }
+
+      // Update usage_count
+      await supabase
+        .from("marketing_playbooks" as any)
+        .update({ usage_count: (playbook.usage_count || 0) + 1 })
+        .eq("id", playbook.id);
+
+      return created;
+    },
+    onSuccess: (results) => {
+      setActivationResults(results);
+      const successCount = results.filter((r) => r.success).length;
+      toast({ title: "Playbook Activated!", description: `Created ${successCount} draft item(s)` });
+      queryClient.invalidateQueries({ queryKey: ["marketing_playbooks"] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Activation Failed", description: error.message, variant: "destructive" });
     },
   });
 
@@ -153,7 +251,7 @@ export default function Playbooks() {
       )}
 
       {/* Detail Dialog */}
-      <Dialog open={!!selectedPlaybook} onOpenChange={v => { if (!v) setSelectedPlaybook(null); }}>
+      <Dialog open={!!selectedPlaybook} onOpenChange={v => { if (!v) { setSelectedPlaybook(null); setActivationResults(null); } }}>
         <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
           {selectedPlaybook && (
             <>
@@ -196,11 +294,26 @@ export default function Playbooks() {
                 ))}
               </div>
 
-              <Button className="w-full mt-4" onClick={() => {
-                toast({ title: "Coming Soon", description: "Playbook activation will be available in a future update." });
-              }}>
-                <Rocket className="h-4 w-4 mr-2" /> Activate Playbook
-              </Button>
+              {activationResults ? (
+                <div className="mt-4 space-y-2">
+                  <h4 className="font-semibold text-sm">Activation Results</h4>
+                  {activationResults.map((r, i) => (
+                    <div key={i} className="flex items-center gap-2 p-2 rounded border text-sm">
+                      {r.success ? <CheckCircle className="h-4 w-4 text-green-500 shrink-0" /> : <XCircle className="h-4 w-4 text-destructive shrink-0" />}
+                      <span className="font-medium">{r.type}:</span>
+                      <span className="text-muted-foreground truncate">{r.title}</span>
+                      {r.error && <span className="text-xs text-destructive ml-auto">{r.error}</span>}
+                    </div>
+                  ))}
+                  <Button variant="outline" className="w-full mt-2" onClick={() => { setActivationResults(null); setSelectedPlaybook(null); }}>
+                    Done
+                  </Button>
+                </div>
+              ) : (
+                <Button className="w-full mt-4" disabled={activatePlaybook.isPending} onClick={() => activatePlaybook.mutate(selectedPlaybook)}>
+                  {activatePlaybook.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Activating...</> : <><Rocket className="h-4 w-4 mr-2" /> Activate Playbook</>}
+                </Button>
+              )}
             </>
           )}
         </DialogContent>

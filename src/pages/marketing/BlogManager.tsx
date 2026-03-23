@@ -14,7 +14,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, FileText, Eye, Sparkles, Clock, CheckCircle, PenTool, RotateCw, RefreshCw, Copy, Download, ExternalLink, Layout, Info } from "lucide-react";
+import { Plus, FileText, Eye, Sparkles, Clock, CheckCircle, PenTool, RotateCw, RefreshCw, Copy, Download, ExternalLink, Layout, Info, Palette } from "lucide-react";
+import { useBrandVoice } from "@/hooks/useBrandVoice";
+import { RepurposeDialog } from "@/components/marketing/RepurposeDialog";
 import { formatDistanceToNow } from "date-fns";
 import { useNavigate } from "react-router-dom";
 
@@ -26,7 +28,9 @@ export default function BlogManager() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { brandPrompt, hasBrandVoice } = useBrandVoice();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [repurposePost, setRepurposePost] = useState<any>(null);
   const [title, setTitle] = useState("");
   const [keyword, setKeyword] = useState("");
   const [excerpt, setExcerpt] = useState("");
@@ -94,6 +98,7 @@ export default function BlogManager() {
         type: 'blog',
         tone: 'professional',
         length: 'long',
+        brand_voice: brandPrompt,
       }, tenantConfig?.id || '');
 
       if (result.success) {
@@ -254,9 +259,16 @@ export default function BlogManager() {
       </div>
 
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Blog Manager</h1>
-          <p className="text-muted-foreground">AI-powered blog content generation &amp; distribution</p>
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-2xl font-bold">Blog Manager</h1>
+            <p className="text-muted-foreground">AI-powered blog content generation &amp; distribution</p>
+          </div>
+          {hasBrandVoice && (
+            <Badge variant="outline" className="text-green-600 border-green-600">
+              <Palette className="h-3 w-3 mr-1" />Brand Voice Active
+            </Badge>
+          )}
         </div>
         <Button onClick={() => setIsCreateOpen(true)} className="marketing-gradient text-white">
           <Plus className="h-4 w-4 mr-2" /> New Blog Post
@@ -381,6 +393,11 @@ export default function BlogManager() {
                         ? <><Clock className="h-3 w-3 mr-1 animate-spin" /></>
                         : <><Layout className="h-3 w-3 mr-1" /> Landing Page</>}
                     </Button>
+
+                    {/* Repurpose Dialog */}
+                    <Button variant="outline" size="sm" onClick={() => setRepurposePost(post)}>
+                      Repurpose
+                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -439,6 +456,17 @@ export default function BlogManager() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Repurpose Dialog (shared component) */}
+      {repurposePost && (
+        <RepurposeDialog
+          open={!!repurposePost}
+          onOpenChange={(open) => !open && setRepurposePost(null)}
+          sourceType="blog_post"
+          sourceId={repurposePost.id}
+          sourceTitle={repurposePost.title || "Blog Post"}
+        />
+      )}
 
       {/* Create Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>

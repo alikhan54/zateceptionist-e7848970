@@ -14,6 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { callWebhook } from '@/lib/api/webhooks';
 import { WEBHOOKS, supabase } from '@/integrations/supabase/client';
+import { useBrandVoice } from '@/hooks/useBrandVoice';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Sparkles,
@@ -36,7 +37,8 @@ import {
   TrendingUp,
   Eye,
   Zap,
-  RotateCw
+  RotateCw,
+  Palette
 } from 'lucide-react';
 
 type ContentType = 'social_media' | 'email' | 'blog' | 'whatsapp' | 'ad_copy' | 'social' | 'video' | 'sms' | 'ad';
@@ -74,6 +76,7 @@ const languages = [
 export default function ContentStudio() {
   const { tenantId, tenantConfig, isLoading: tenantLoading } = useTenant();
   const { toast } = useToast();
+  const { brandPrompt, hasBrandVoice } = useBrandVoice();
   const { content, isLoading: contentLoading, createContent, deleteContent, stats: contentStats } = useMarketingContent();
   const { trends, highRelevanceTrends, refreshTrends, isLoading: trendsLoading } = useTrendInsights({ minScore: 5, limit: 10 });
 
@@ -188,7 +191,7 @@ export default function ContentStudio() {
     }
     setIsGenerating(true);
     try {
-      const result = await callWebhook(WEBHOOKS.GENERATE_CONTENT, { content_type: contentType, topic, tone, language, industry: tenantConfig?.industry }, tenantId);
+      const result = await callWebhook(WEBHOOKS.GENERATE_CONTENT, { content_type: contentType, topic, tone, language, industry: tenantConfig?.industry, brand_voice: brandPrompt }, tenantId);
       if (result.success && result.data) {
         const content = (result.data as any)?.content;
         if (content) {
@@ -261,6 +264,11 @@ export default function ContentStudio() {
           <Badge variant="outline" className="gap-1"><FileText className="h-3 w-3" />{contentStats.total} items</Badge>
           <Badge variant="outline" className="gap-1"><Sparkles className="h-3 w-3" />{contentStats.aiGenerated} AI</Badge>
           <Badge variant="outline" className="gap-1"><Eye className="h-3 w-3" />{contentStats.totalViews} views</Badge>
+          {hasBrandVoice && (
+            <Badge variant="outline" className="text-green-600 border-green-600">
+              <Palette className="h-3 w-3 mr-1" />Brand Voice Active
+            </Badge>
+          )}
         </div>
       </div>
 
