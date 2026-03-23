@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { useTenant, IndustryType } from '@/contexts/TenantContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -153,6 +155,97 @@ export default function SettingsPage() {
     greeting_message: 'Hello! How can I assist you today?',
     enabled_languages: ['en'],
     response_style: 'balanced',
+  });
+
+  // Meeting Scheduler state
+  const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const HOURS = Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`);
+  const DURATIONS = [
+    { value: '15', label: '15 minutes' },
+    { value: '30', label: '30 minutes' },
+    { value: '45', label: '45 minutes' },
+    { value: '60', label: '60 minutes' },
+  ];
+  const MEETING_TIMEZONES = [
+    'UTC', 'America/New_York', 'America/Chicago', 'America/Denver',
+    'America/Los_Angeles', 'Europe/London', 'Europe/Paris', 'Asia/Dubai',
+    'Asia/Karachi', 'Asia/Kolkata', 'Asia/Tokyo', 'Australia/Sydney',
+  ];
+
+  const queryClient = useQueryClient();
+  const [meetingForm, setMeetingForm] = useState({
+    title: '',
+    duration: '30',
+    booking_url: '',
+    available_days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+    start_hour: '09:00',
+    end_hour: '17:00',
+    timezone: tenantConfig?.timezone || 'UTC',
+    auto_send: true,
+  });
+
+  const { data: meetingLink, isLoading: meetingLoading } = useQuery({
+    queryKey: ['meeting_links', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return null;
+      const { data } = await supabase
+        .from('meeting_links' as any)
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+      return data as any;
+    },
+    enabled: !!tenantId,
+  });
+
+  useEffect(() => {
+    if (meetingLink) {
+      setMeetingForm({
+        title: meetingLink.title || '',
+        duration: String(meetingLink.duration || 30),
+        booking_url: meetingLink.booking_url || '',
+        available_days: meetingLink.available_days || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+        start_hour: meetingLink.start_hour || '09:00',
+        end_hour: meetingLink.end_hour || '17:00',
+        timezone: meetingLink.timezone || 'UTC',
+        auto_send: meetingLink.auto_send ?? true,
+      });
+    }
+  }, [meetingLink]);
+
+  const meetingSave = useMutation({
+    mutationFn: async () => {
+      const payload = {
+        tenant_id: tenantId,
+        title: meetingForm.title,
+        duration: parseInt(meetingForm.duration),
+        booking_url: meetingForm.booking_url,
+        available_days: meetingForm.available_days,
+        start_hour: meetingForm.start_hour,
+        end_hour: meetingForm.end_hour,
+        timezone: meetingForm.timezone,
+        auto_send: meetingForm.auto_send,
+      };
+      if (meetingLink?.id) {
+        const { error } = await supabase
+          .from('meeting_links' as any)
+          .update(payload as any)
+          .eq('id', meetingLink.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('meeting_links' as any)
+          .insert(payload as any);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['meeting_links'] });
+      toast({ title: 'Saved', description: 'Meeting scheduler settings saved' });
+    },
+    onError: () => {
+      toast({ title: 'Error', description: 'Failed to save meeting settings', variant: 'destructive' });
+    },
   });
 
   // Channels state
@@ -358,6 +451,10 @@ export default function SettingsPage() {
           <TabsTrigger value="billing" className="gap-2">
             <CreditCard className="h-4 w-4" />
             Billing
+          </TabsTrigger>
+          <TabsTrigger value="meeting" className="gap-2">
+            <Calendar className="h-4 w-4" />
+            Meeting Scheduler
           </TabsTrigger>
         </TabsList>
 
@@ -1136,6 +1233,151 @@ export default function SettingsPage() {
                   ))}
                 </TableBody>
               </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Meeting Scheduler Tab */}
+        <TabsContent value="meeting" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                Meeting Scheduler
+              </CardTitle>
+              <CardDescription>
+                Configure your booking link so AI can schedule meetings automatically
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="space-y-2">
+                <Label>Meeting Title</Label>
+                <Input
+                  placeholder="e.g., Discovery Call, Product Demo"
+                  value={meetingForm.title}
+                  onChange={(e) => setMeetingForm({ ...meetingForm, title: e.target.value })}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Duration</Label>
+                  <Select
+                    value={meetingForm.duration}
+                    onValueChange={(v) => setMeetingForm({ ...meetingForm, duration: v })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {DURATIONS.map(d => (
+                        <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Timezone</Label>
+                  <Select
+                    value={meetingForm.timezone}
+                    onValueChange={(v) => setMeetingForm({ ...meetingForm, timezone: v })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {MEETING_TIMEZONES.map(tz => (
+                        <SelectItem key={tz} value={tz}>{tz.replace(/_/g, ' ')}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Booking URL</Label>
+                <Input
+                  placeholder="Paste your Calendly or Cal.com link"
+                  value={meetingForm.booking_url}
+                  onChange={(e) => setMeetingForm({ ...meetingForm, booking_url: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Don't have a booking link? Create a free account at{' '}
+                  <a href="https://calendly.com" target="_blank" rel="noopener noreferrer" className="underline text-primary">calendly.com</a>
+                  {' '}or{' '}
+                  <a href="https://cal.com" target="_blank" rel="noopener noreferrer" className="underline text-primary">cal.com</a>
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Available Days</Label>
+                <div className="flex flex-wrap gap-3">
+                  {DAYS.map(day => (
+                    <label key={day} className="flex items-center gap-2 cursor-pointer">
+                      <Checkbox
+                        checked={meetingForm.available_days.includes(day)}
+                        onCheckedChange={(checked) => {
+                          setMeetingForm(prev => ({
+                            ...prev,
+                            available_days: checked
+                              ? [...prev.available_days, day]
+                              : prev.available_days.filter(d => d !== day),
+                          }));
+                        }}
+                      />
+                      <span className="text-sm">{day}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Start Hour</Label>
+                  <Select
+                    value={meetingForm.start_hour}
+                    onValueChange={(v) => setMeetingForm({ ...meetingForm, start_hour: v })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {HOURS.map(h => (
+                        <SelectItem key={h} value={h}>{h}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>End Hour</Label>
+                  <Select
+                    value={meetingForm.end_hour}
+                    onValueChange={(v) => setMeetingForm({ ...meetingForm, end_hour: v })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {HOURS.map(h => (
+                        <SelectItem key={h} value={h}>{h}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div>
+                  <Label>Auto-send on booking intent</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Automatically share this link when AI detects booking intent
+                  </p>
+                </div>
+                <Switch
+                  checked={meetingForm.auto_send}
+                  onCheckedChange={(v) => setMeetingForm({ ...meetingForm, auto_send: v })}
+                />
+              </div>
+
+              <Button
+                onClick={() => meetingSave.mutate()}
+                disabled={meetingSave.isPending || !meetingForm.title}
+                className="w-full"
+              >
+                {meetingSave.isPending ? 'Saving...' : 'Save Meeting Settings'}
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
