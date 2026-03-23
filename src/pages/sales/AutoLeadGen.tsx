@@ -238,6 +238,54 @@ export default function LeadDiscovery() {
     maxResults: 25,
   });
 
+  // B2B LinkedIn Company Discovery form
+  const [liCoForm, setLiCoForm] = useState({
+    industry: "",
+    location: "",
+    keywords: "",
+    maxResults: 15,
+  });
+  const [liCoResults, setLiCoResults] = useState<any[]>([]);
+  const [liCoSearching, setLiCoSearching] = useState(false);
+  const [liCoSummary, setLiCoSummary] = useState<{ found: number; saved: number; duplicates: number } | null>(null);
+
+  const handleLinkedInCoSearch = async () => {
+    if (!liCoForm.industry && !liCoForm.location) {
+      toast({ title: "Missing fields", description: "Please select an industry or enter a location", variant: "destructive" });
+      return;
+    }
+    setLiCoSearching(true);
+    setLiCoResults([]);
+    setLiCoSummary(null);
+    try {
+      const res = await fetch("https://webhooks.zatesystems.com/webhook/linkedin-discovery", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tenant_id: tenantConfig?.id,
+          industry: liCoForm.industry,
+          location: liCoForm.location,
+          keywords: liCoForm.keywords,
+          max_results: liCoForm.maxResults,
+        }),
+      });
+      const data = await res.json();
+      const results = data?.results || data?.companies || data?.data || [];
+      setLiCoResults(Array.isArray(results) ? results : []);
+      setLiCoSummary({
+        found: data?.total_found ?? results.length,
+        saved: data?.saved_to_pipeline ?? 0,
+        duplicates: data?.duplicates_skipped ?? 0,
+      });
+      toast({ title: "Search complete", description: `Found ${results.length} companies` });
+    } catch (err) {
+      console.error("LinkedIn company search error:", err);
+      toast({ title: "Search failed", description: "Could not reach LinkedIn discovery endpoint", variant: "destructive" });
+    } finally {
+      setLiCoSearching(false);
+    }
+  };
+
   // ============================================================
   // FIX: Auto Lead Gen settings STATE DECLARATION (was missing!)
   // This MUST come BEFORE the useEffect that uses it
@@ -1178,6 +1226,13 @@ export default function LeadDiscovery() {
             >
               <Linkedin className="h-4 w-4" /> LinkedIn (Premium)
             </Button>
+            <Button
+              variant={b2bSubTab === "linkedin-co" ? "default" : "outline"}
+              onClick={() => setB2bSubTab("linkedin-co")}
+              className="gap-2"
+            >
+              <Building2 className="h-4 w-4" /> LinkedIn Companies
+            </Button>
           </div>
 
           {/* Quick Search (Free) */}
@@ -1572,6 +1627,153 @@ export default function LeadDiscovery() {
                   </Button>
                 </CardContent>
               </Card>
+            </div>
+          )}
+
+          {/* LinkedIn Company Discovery */}
+          {b2bSubTab === "linkedin-co" && (
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building2 className="h-5 w-5 text-[#0077B5]" /> LinkedIn Company Discovery
+                  </CardTitle>
+                  <CardDescription>Find companies on LinkedIn by industry and location</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Industry</Label>
+                      <Select
+                        value={liCoForm.industry}
+                        onValueChange={(v) => setLiCoForm({ ...liCoForm, industry: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select industry" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {INDUSTRIES.map((ind) => (
+                            <SelectItem key={ind.id} value={ind.id}>
+                              {ind.icon} {ind.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Location</Label>
+                      <Input
+                        placeholder="e.g., Dubai, New York, London"
+                        value={liCoForm.location}
+                        onChange={(e) => setLiCoForm({ ...liCoForm, location: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Keywords (optional)</Label>
+                    <Input
+                      placeholder="e.g., SaaS, fintech, AI"
+                      value={liCoForm.keywords}
+                      onChange={(e) => setLiCoForm({ ...liCoForm, keywords: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Max Results: {liCoForm.maxResults}</Label>
+                    <Slider
+                      value={[liCoForm.maxResults]}
+                      onValueChange={([v]) => setLiCoForm({ ...liCoForm, maxResults: v })}
+                      min={5}
+                      max={30}
+                      step={1}
+                    />
+                  </div>
+
+                  <Button
+                    onClick={handleLinkedInCoSearch}
+                    disabled={liCoSearching || (!liCoForm.industry && !liCoForm.location)}
+                    className="w-full bg-[#0077B5] hover:bg-[#005885]"
+                    size="lg"
+                  >
+                    {liCoSearching ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Searching LinkedIn...
+                      </>
+                    ) : (
+                      <>
+                        <Linkedin className="h-4 w-4 mr-2" /> Search LinkedIn
+                      </>
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Summary */}
+              {liCoSummary && (
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-6 text-sm">
+                      <span>Found <strong>{liCoSummary.found}</strong> companies</span>
+                      <span className="text-green-600">{liCoSummary.saved} saved to pipeline</span>
+                      <span className="text-muted-foreground">{liCoSummary.duplicates} duplicates skipped</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Results */}
+              {liCoResults.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {liCoResults.map((co: any, i: number) => (
+                    <Card key={co.id || i}>
+                      <CardContent className="pt-6 space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h3 className="font-semibold text-base">{co.company_name || co.name || "Unknown"}</h3>
+                            {co.employee_count && (
+                              <p className="text-xs text-muted-foreground">{co.employee_count} employees</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {co.score != null && (
+                              <Badge variant="outline" className="text-xs">{co.score}</Badge>
+                            )}
+                            {co.grade && (
+                              <Badge
+                                className={cn(
+                                  "text-xs",
+                                  co.grade === "A" && "bg-green-500/15 text-green-600",
+                                  co.grade === "B" && "bg-blue-500/15 text-blue-600",
+                                  co.grade === "C" && "bg-yellow-500/15 text-yellow-600",
+                                  co.grade === "D" && "bg-red-500/15 text-red-600",
+                                )}
+                              >
+                                {co.grade}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        {(co.description || co.summary) && (
+                          <p className="text-sm text-muted-foreground line-clamp-2">
+                            {co.description || co.summary}
+                          </p>
+                        )}
+                        {(co.linkedin_url || co.url) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-2"
+                            onClick={() => window.open(co.linkedin_url || co.url, "_blank")}
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" /> View on LinkedIn
+                          </Button>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </TabsContent>
