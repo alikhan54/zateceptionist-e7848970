@@ -39,6 +39,7 @@ const EmailWarmup = lazy(() => import("./pages/sales/EmailWarmup"));
 const TriggerEvents = lazy(() => import("./pages/sales/TriggerEvents"));
 const WebsiteVisitors = lazy(() => import("./pages/sales/WebsiteVisitors"));
 const PredictiveScoring = lazy(() => import("./pages/sales/PredictiveScoring"));
+const ReplyRouting = lazy(() => import("./pages/sales/ReplyRouting"));
 
 // Marketing Module
 const MarketingHub = lazy(() => import("./pages/MarketingEngine"));
@@ -436,6 +437,14 @@ const App = () => (
                     element={
                       <LazyPage>
                         <PredictiveScoring />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/sales/reply-routing"
+                    element={
+                      <LazyPage>
+                        <ReplyRouting />
                       </LazyPage>
                     }
                   />

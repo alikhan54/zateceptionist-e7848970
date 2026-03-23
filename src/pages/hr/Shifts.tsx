@@ -2,7 +2,37 @@ import { useState, useMemo } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useTenant } from '@/contexts/TenantContext';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
-import { useShifts, Shift } from '@/hooks/useHR';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+
+export interface Shift {
+  id: string;
+  employee_id: string;
+  employee_name: string;
+  department_name?: string;
+  date: string;
+  shift_type: string;
+  start_time?: string;
+  end_time?: string;
+  status: string;
+}
+
+function useShifts(weekStart: string) {
+  const { tenantId } = useTenant();
+  return useQuery<Shift[]>({
+    queryKey: ['shifts', tenantId, weekStart],
+    queryFn: async () => {
+      if (!tenantId) return [];
+      const { data } = await supabase
+        .from('shifts' as any)
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .gte('date', weekStart);
+      return (data || []) as Shift[];
+    },
+    enabled: !!tenantId,
+  });
+}
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
