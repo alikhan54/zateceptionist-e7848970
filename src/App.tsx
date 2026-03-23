@@ -439,6 +439,14 @@ const App = () => (
                       </LazyPage>
                     }
                   />
+                  <Route
+                    path="/sales/reply-routing"
+                    element={
+                      <LazyPage>
+                        <ReplyRouting />
+                      </LazyPage>
+                    }
+                  />
 
                   <Route
                     path="/marketing"

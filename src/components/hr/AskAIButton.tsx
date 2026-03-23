@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 
 interface AskAIButtonProps {
   context?: string;
+  message?: string;
   label?: string;
   className?: string;
 }
