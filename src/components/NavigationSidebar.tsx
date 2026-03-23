@@ -347,6 +347,7 @@ export function NavigationSidebar() {
       { title: "Website Intent", url: "/sales/website-visitors", icon: Eye },
       { title: "AI Scoring", url: "/sales/predictive-scoring", icon: BrainCircuit },
       { title: "Reply Rules", url: "/sales/reply-routing", icon: GitBranch },
+      { title: "Deliverability", url: "/sales/deliverability", icon: ShieldCheck },
     ],
   };
 
