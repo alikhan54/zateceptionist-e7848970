@@ -1,6 +1,12 @@
 // Subscription tier definitions for the 420 System
 // Used by: useBilling hook, pricing pages, usage enforcement
 
+export const PADDLE_CONFIG = {
+  sellerId: 305903,
+  clientToken: 'live_fdcdef31bcd76a6b57e659b3592',
+  environment: 'production' as const,
+};
+
 export type SubscriptionTierId = 'free_trial' | 'starter' | 'professional' | 'enterprise';
 
 export interface TierLimits {
@@ -55,7 +61,7 @@ export const SUBSCRIPTION_TIERS: Record<SubscriptionTierId, SubscriptionTier> = 
     name: 'Starter',
     price: 99,
     period: 'month',
-    paddle_price_id: 'pri_PLACEHOLDER_STARTER', // Replace after Paddle approval
+    paddle_price_id: 'pri_01kmfdgmnj3wkg5m4bqs2mvj0x',
     limits: {
       messages_per_month: 1000,
       leads_per_month: 100,
@@ -80,7 +86,7 @@ export const SUBSCRIPTION_TIERS: Record<SubscriptionTierId, SubscriptionTier> = 
     name: 'Professional',
     price: 499,
     period: 'month',
-    paddle_price_id: 'pri_PLACEHOLDER_PROFESSIONAL',
+    paddle_price_id: 'pri_01kmfdhqmtvbj0c7x88t5jnqy0',
     popular: true,
     limits: {
       messages_per_month: 5000,
@@ -106,7 +112,7 @@ export const SUBSCRIPTION_TIERS: Record<SubscriptionTierId, SubscriptionTier> = 
     name: 'Enterprise',
     price: 1499,
     period: 'month',
-    paddle_price_id: 'pri_PLACEHOLDER_ENTERPRISE',
+    paddle_price_id: 'pri_01kmfdj6f31sdn7ddvm44xq106',
     limits: {
       messages_per_month: 20000,
       leads_per_month: 2000,

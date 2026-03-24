@@ -2,75 +2,31 @@ import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { SUBSCRIPTION_TIERS } from "@/lib/pricing";
 
-const plans = [
-  {
-    name: "Free Trial",
-    price: "$0",
-    period: "2 days",
-    description: "Try before you buy",
-    features: [
-      "50 messages",
-      "10 leads",
-      "1 channel",
-      "Basic AI features",
-      "Email support",
-    ],
-    cta: "Start Free Trial",
-    popular: false,
-  },
-  {
-    name: "Starter",
-    price: "$99",
-    period: "per month",
-    description: "For small businesses",
-    features: [
-      "1,000 messages/month",
-      "100 leads/month",
-      "3 channels",
-      "30 voice minutes",
-      "AI lead scoring",
-      "Email support",
-    ],
-    cta: "Get Started",
-    popular: false,
-  },
-  {
-    name: "Professional",
-    price: "$499",
-    period: "per month",
-    description: "For growing teams",
-    features: [
-      "5,000 messages/month",
-      "500 leads/month",
-      "All channels",
-      "150 voice minutes",
-      "Advanced AI features",
-      "Priority support",
-      "Custom integrations",
-    ],
-    cta: "Get Started",
-    popular: true,
-  },
-  {
-    name: "Enterprise",
-    price: "$1,499",
-    period: "per month",
-    description: "For large organizations",
-    features: [
-      "20,000 messages/month",
-      "2,000 leads/month",
-      "Unlimited channels",
-      "500 voice minutes",
-      "White-label branding",
-      "Dedicated account manager",
-      "Custom SLA",
-      "24/7 priority support",
-    ],
-    cta: "Contact Sales",
-    popular: false,
-  },
-];
+const descriptions: Record<string, string> = {
+  free_trial: "Try before you buy",
+  starter: "For small businesses",
+  professional: "For growing teams",
+  enterprise: "For large organizations",
+};
+
+const ctas: Record<string, string> = {
+  free_trial: "Start Free Trial",
+  starter: "Get Started",
+  professional: "Get Started",
+  enterprise: "Contact Sales",
+};
+
+const plans = Object.values(SUBSCRIPTION_TIERS).map(tier => ({
+  name: tier.name,
+  price: tier.price === 0 ? "$0" : `$${tier.price.toLocaleString()}`,
+  period: tier.price === 0 ? tier.period : "per month",
+  description: descriptions[tier.id] || "",
+  features: tier.features,
+  cta: ctas[tier.id] || "Get Started",
+  popular: tier.popular || false,
+}));
 
 export default function Pricing() {
   return (

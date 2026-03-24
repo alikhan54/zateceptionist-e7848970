@@ -1,5 +1,7 @@
-// Paddle integration — placeholder until Paddle account is approved
-// Replaces Stripe for payment processing (better for international/Payoneer)
+// Paddle Billing integration for 420 System
+// Live credentials — Paddle account approved
+
+import { PADDLE_CONFIG, SUBSCRIPTION_TIERS, type SubscriptionTierId } from './pricing';
 
 declare global {
   interface Window {
@@ -22,51 +24,55 @@ declare global {
   }
 }
 
-// TODO: Replace with actual Paddle seller ID after approval
-export const PADDLE_SELLER_ID = 'PLACEHOLDER';
-export const PADDLE_ENV: 'sandbox' | 'production' = 'sandbox';
-
 let paddleInitialized = false;
 
-export const initPaddle = async (): Promise<void> => {
-  if (paddleInitialized || typeof window === 'undefined') return;
+export const initPaddle = async (): Promise<boolean> => {
+  if (paddleInitialized && window.Paddle) return true;
+  if (typeof window === 'undefined') return false;
 
-  // Load Paddle.js script
-  if (!window.Paddle) {
+  return new Promise((resolve) => {
+    if (window.Paddle) {
+      window.Paddle.Initialize({
+        token: PADDLE_CONFIG.clientToken,
+        eventCallback: handlePaddleEvent,
+      });
+      paddleInitialized = true;
+      resolve(true);
+      return;
+    }
+
     const script = document.createElement('script');
     script.src = 'https://cdn.paddle.com/paddle/v2/paddle.js';
     script.async = true;
+    script.onload = () => {
+      window.Paddle?.Initialize({
+        token: PADDLE_CONFIG.clientToken,
+        eventCallback: handlePaddleEvent,
+      });
+      paddleInitialized = true;
+      resolve(true);
+    };
+    script.onerror = () => resolve(false);
     document.head.appendChild(script);
-
-    await new Promise<void>((resolve) => {
-      script.onload = () => resolve();
-    });
-  }
-
-  // Initialize — uncomment when Paddle account is approved
-  // window.Paddle?.Environment.set(PADDLE_ENV);
-  // window.Paddle?.Initialize({
-  //   token: 'PADDLE_CLIENT_TOKEN', // Replace with actual client-side token
-  //   eventCallback: handlePaddleEvent,
-  // });
-
-  paddleInitialized = true;
+  });
 };
 
 export const openCheckout = async (
-  priceId: string,
+  tier: SubscriptionTierId,
   tenantId: string,
   email: string,
 ): Promise<void> => {
-  if (!window.Paddle) {
-    console.warn('Paddle not initialized — account pending approval');
-    // For now, show a message that billing is being set up
-    alert('Payment processing is being configured. Please contact support.');
+  const tierConfig = SUBSCRIPTION_TIERS[tier];
+  if (!tierConfig?.paddle_price_id) return;
+
+  const ready = await initPaddle();
+  if (!ready || !window.Paddle) {
+    console.error('Paddle failed to initialize');
     return;
   }
 
   window.Paddle.Checkout.open({
-    items: [{ priceId, quantity: 1 }],
+    items: [{ priceId: tierConfig.paddle_price_id, quantity: 1 }],
     customer: { email },
     customData: { tenant_id: tenantId },
     settings: {
@@ -77,8 +83,6 @@ export const openCheckout = async (
   });
 };
 
-// Handle Paddle events (subscription lifecycle)
 const handlePaddleEvent = (event: unknown) => {
   console.log('[Paddle] Event:', event);
-  // Events are also sent to /webhook/billing/paddle-webhook via server-side webhooks
 };
