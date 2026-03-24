@@ -2,17 +2,22 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useTenant } from '@/contexts/TenantContext';
 import { callWebhook } from '@/lib/api/webhooks';
+import { SUBSCRIPTION_TIERS, getTier, type SubscriptionTierId } from '@/lib/pricing';
 
 export interface Subscription {
   id: string;
   tenant_id: string;
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
-  plan_id: 'free' | 'starter' | 'professional' | 'enterprise';
+  paddle_subscription_id: string | null;
+  paddle_customer_id: string | null;
+  plan_id: string;
   plan_name: string;
-  status: 'active' | 'trialing' | 'past_due' | 'canceled' | 'unpaid';
+  subscription_tier: string | null;
+  status: 'active' | 'trialing' | 'past_due' | 'canceled' | 'cancelled' | 'unpaid';
   current_period_end: string | null;
   trial_end: string | null;
+  trial_ends_at: string | null;
   cancel_at_period_end: boolean;
   monthly_price: number;
   features: {
@@ -34,70 +39,34 @@ export interface BillingHistoryItem {
   created_at: string;
 }
 
-export const PLANS = [
-  {
-    id: 'free',
-    name: 'Free',
-    price: 0,
-    description: 'Get started with basic features',
-    features: [
-      'Up to 3 team members',
-      '1,000 API calls/month',
-      '1 GB storage',
-      'Basic AI features',
-      'Email support',
-    ],
-    limits: { users: 3, api_calls: 1000, storage_gb: 1, voice_minutes: 5 },
+export interface UsageCheckResult {
+  allowed: boolean;
+  current: number;
+  limit: number;
+  remaining: number;
+  tier: string;
+  usage_type: string;
+}
+
+// New pricing tiers (Paddle-based, replaces old Stripe PLANS)
+export const PLANS = Object.values(SUBSCRIPTION_TIERS).map(tier => ({
+  id: tier.id,
+  name: tier.name,
+  price: tier.price,
+  description: tier.id === 'free_trial' ? 'Try before you buy'
+    : tier.id === 'starter' ? 'Perfect for small businesses'
+    : tier.id === 'professional' ? 'Scale your operations'
+    : 'Full power with white-label',
+  features: tier.features,
+  limits: {
+    users: tier.limits.team_members,
+    api_calls: tier.limits.ai_calls_per_day * 30,
+    storage_gb: Math.round(tier.limits.storage_mb / 1000),
+    voice_minutes: tier.limits.voice_minutes,
   },
-  {
-    id: 'starter',
-    name: 'Starter',
-    price: 199,
-    description: 'Perfect for small businesses',
-    features: [
-      'Up to 5 team members',
-      '5,000 API calls/month',
-      '5 GB storage',
-      '100 voice minutes',
-      'WhatsApp integration',
-      'Priority email support',
-    ],
-    limits: { users: 5, api_calls: 5000, storage_gb: 5, voice_minutes: 100 },
-  },
-  {
-    id: 'professional',
-    name: 'Professional',
-    price: 499,
-    description: 'Scale your operations',
-    features: [
-      'Up to 15 team members',
-      '25,000 API calls/month',
-      '25 GB storage',
-      '500 voice minutes',
-      'All integrations',
-      'AI insights & reports',
-      'Phone support',
-    ],
-    limits: { users: 15, api_calls: 25000, storage_gb: 25, voice_minutes: 500 },
-  },
-  {
-    id: 'enterprise',
-    name: 'Enterprise',
-    price: 1999,
-    description: 'Full power with white-label',
-    features: [
-      'Unlimited team members',
-      'Unlimited API calls',
-      '100 GB storage',
-      '2,000 voice minutes',
-      'White-label branding',
-      'Custom integrations',
-      'Dedicated account manager',
-      '24/7 priority support',
-    ],
-    limits: { users: -1, api_calls: -1, storage_gb: 100, voice_minutes: 2000 },
-  },
-];
+  popular: tier.popular || false,
+  paddle_price_id: tier.paddle_price_id,
+}));
 
 export function useBilling() {
   const { tenantId } = useTenant();
@@ -176,6 +145,55 @@ export function useBilling() {
     },
   });
 
+  // Usage tracking
+  const { data: usageData } = useQuery({
+    queryKey: ['usage', tenantId],
+    queryFn: async () => {
+      const periodStart = new Date();
+      periodStart.setDate(1);
+      periodStart.setHours(0, 0, 0, 0);
+      const { data, error } = await supabase
+        .from('usage_records')
+        .select('usage_type, quantity')
+        .eq('tenant_id', tenantId)
+        .gte('period_start', periodStart.toISOString().split('T')[0]);
+      if (error) return {};
+      const usageMap: Record<string, number> = {};
+      data?.forEach(r => { usageMap[r.usage_type] = r.quantity; });
+      return usageMap;
+    },
+    enabled: !!tenantId,
+  });
+
+  const checkLimit = async (usageType: string, amount = 1): Promise<UsageCheckResult> => {
+    try {
+      const response = await callWebhook(
+        '/billing/check-usage',
+        { tenant_id: tenantId, usage_type: usageType, amount },
+        tenantId || '',
+      );
+      return response.data as UsageCheckResult;
+    } catch {
+      return { allowed: true, current: 0, limit: 999999, remaining: 999999, tier: 'unknown', usage_type: usageType };
+    }
+  };
+
+  const incrementUsage = async (usageType: string, amount = 1) => {
+    try {
+      const response = await callWebhook(
+        '/billing/increment-usage',
+        { tenant_id: tenantId, usage_type: usageType, amount },
+        tenantId || '',
+      );
+      queryClient.invalidateQueries({ queryKey: ['usage', tenantId] });
+      return response.data;
+    } catch {
+      return { success: false, error: 'Failed to record usage' };
+    }
+  };
+
+  const currentTierId = (subscription?.subscription_tier || subscription?.plan_id || 'free_trial') as SubscriptionTierId;
+  const currentTier = getTier(currentTierId);
   const currentPlan = PLANS.find(p => p.id === subscription?.plan_id) || PLANS[0];
 
   return {
@@ -183,8 +201,16 @@ export function useBilling() {
     billingHistory: billingHistory ?? [],
     isLoading: subscriptionLoading || historyLoading,
     currentPlan,
+    currentTier,
+    currentTierId,
     plans: PLANS,
+    tiers: SUBSCRIPTION_TIERS,
+    usage: usageData || {},
     createCheckoutSession,
     createCustomerPortal,
+    checkLimit,
+    incrementUsage,
+    isFreeTrial: currentTierId === 'free_trial',
+    isPaid: ['starter', 'professional', 'enterprise'].includes(currentTierId),
   };
 }
