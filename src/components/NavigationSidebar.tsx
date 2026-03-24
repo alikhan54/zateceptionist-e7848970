@@ -353,6 +353,10 @@ export function NavigationSidebar() {
       { title: "Deliverability", url: "/sales/deliverability", icon: ShieldCheck },
       { title: "Target Accounts", url: "/sales/target-accounts", icon: Crosshair },
       { title: "Referrals", url: "/sales/referrals", icon: UserPlus },
+      { title: "Company Intel", url: "/sales/company-intel", icon: Building2 },
+      { title: "Doc Tracking", url: "/sales/doc-tracking", icon: FileCheck },
+      { title: "Templates", url: "/sales/sequence-templates", icon: Layers },
+      { title: "Send Time", url: "/sales/send-time", icon: Clock },
     ],
   };
 
@@ -381,6 +385,8 @@ export function NavigationSidebar() {
       { title: "Social Listening", url: "/marketing/social-listening", icon: Ear },
       { title: "Playbooks", url: "/marketing/playbooks", icon: BookOpen },
       { title: "Lead Magnets", url: "/marketing/lead-magnets", icon: Magnet },
+      { title: "Voice Marketing", url: "/marketing/voice", icon: Phone },
+      { title: "Autonomous Mode", url: "/marketing/autonomous", icon: Zap },
     ],
   };
 

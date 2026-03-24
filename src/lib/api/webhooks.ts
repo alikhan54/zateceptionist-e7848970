@@ -38,6 +38,7 @@ export const WEBHOOKS = {
   AIDA_CLASSIFY: "/marketing/aida-classify",
   AD_INTELLIGENCE: "/marketing/ad-intelligence",
   REPURPOSE_CONTENT: "/marketing/repurpose-content",
+  VOICE_CALL: "/marketing/voice-call",
   SEO_ANALYZE: "/seo-analyze",
 
   // HR
@@ -131,6 +132,10 @@ export const WEBHOOKS = {
   ABM_RESEARCH: "/abm-research",
   LEAD_MAGNET_SUBMIT: "/lead-magnet-submit",
   REQUEST_REFERRAL: "/request-referral",
+
+  // Advanced Intelligence (Phase 18F)
+  RESEARCH_COMPANY: "/research-company",
+  CREATE_TRACKING_LINK: "/create-tracking-link",
 
   // Manual Email Campaigns (Phase 14)
   MANUAL_EMAIL_CREATE: "/manual-email/create-campaign",

@@ -45,6 +45,10 @@ const TargetAccounts = lazy(() => import("./pages/sales/TargetAccounts"));
 const LeadMagnets = lazy(() => import("./pages/sales/LeadMagnets"));
 const ReferralsPage = lazy(() => import("./pages/sales/Referrals"));
 const LeadMagnetPage = lazy(() => import("./pages/public/LeadMagnetPage"));
+const CompanyIntelligence = lazy(() => import("./pages/sales/CompanyIntelligence"));
+const DocumentTracking = lazy(() => import("./pages/sales/DocumentTracking"));
+const SequenceTemplates = lazy(() => import("./pages/sales/SequenceTemplates"));
+const SendTimeInsights = lazy(() => import("./pages/sales/SendTimeInsights"));
 // Marketing Module
 const MarketingHub = lazy(() => import("./pages/MarketingEngine"));
 const ContentStudio = lazy(() => import("./pages/marketing/ContentStudio"));
@@ -65,6 +69,8 @@ const EmailTemplates = lazy(() => import("./pages/marketing/EmailTemplates"));
 const SEODashboard = lazy(() => import("./pages/marketing/SEODashboard"));
 const SocialListening = lazy(() => import("./pages/marketing/SocialListening"));
 const Playbooks = lazy(() => import("./pages/marketing/Playbooks"));
+const VoiceMarketing = lazy(() => import("./pages/marketing/VoiceMarketing"));
+const AutonomousMarketing = lazy(() => import("./pages/marketing/AutonomousMarketing"));
 
 // HR Module
 const HRDashboardOverview = lazy(() => import("./pages/hr/Dashboard"));
@@ -492,6 +498,22 @@ const App = () => (
                       </LazyPage>
                     }
                   />
+                  <Route
+                    path="/sales/company-intel"
+                    element={<LazyPage><CompanyIntelligence /></LazyPage>}
+                  />
+                  <Route
+                    path="/sales/doc-tracking"
+                    element={<LazyPage><DocumentTracking /></LazyPage>}
+                  />
+                  <Route
+                    path="/sales/sequence-templates"
+                    element={<LazyPage><SequenceTemplates /></LazyPage>}
+                  />
+                  <Route
+                    path="/sales/send-time"
+                    element={<LazyPage><SendTimeInsights /></LazyPage>}
+                  />
 
                   <Route
                     path="/marketing"
@@ -642,6 +664,22 @@ const App = () => (
                     element={
                       <LazyPage>
                         <Playbooks />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/marketing/voice"
+                    element={
+                      <LazyPage>
+                        <VoiceMarketing />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/marketing/autonomous"
+                    element={
+                      <LazyPage>
+                        <AutonomousMarketing />
                       </LazyPage>
                     }
                   />
