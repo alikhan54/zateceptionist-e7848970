@@ -192,6 +192,10 @@ const OmegaCommandCenter = lazy(() => import("./pages/OmegaCommandCenter"));
 // Public Pages
 const PublicBlog = lazy(() => import("./pages/public/PublicBlog"));
 const PublicLandingPage = lazy(() => import("./pages/public/PublicLandingPage"));
+const Pricing = lazy(() => import("./pages/public/Pricing"));
+const Terms = lazy(() => import("./pages/public/Terms"));
+const Privacy = lazy(() => import("./pages/public/Privacy"));
+const Refund = lazy(() => import("./pages/public/Refund"));
 
 // Other
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -278,6 +282,39 @@ const App = () => (
                   element={
                     <LazyPage>
                       <LeadMagnetPage />
+                    </LazyPage>
+                  }
+                />
+                {/* Legal & pricing pages (public, no auth) */}
+                <Route
+                  path="/pricing"
+                  element={
+                    <LazyPage>
+                      <Pricing />
+                    </LazyPage>
+                  }
+                />
+                <Route
+                  path="/terms"
+                  element={
+                    <LazyPage>
+                      <Terms />
+                    </LazyPage>
+                  }
+                />
+                <Route
+                  path="/privacy"
+                  element={
+                    <LazyPage>
+                      <Privacy />
+                    </LazyPage>
+                  }
+                />
+                <Route
+                  path="/refund"
+                  element={
+                    <LazyPage>
+                      <Refund />
                     </LazyPage>
                   }
                 />
