@@ -162,6 +162,18 @@ export default function MarketingCampaigns() {
     enabled: !!tenantUuid,
   });
 
+  // A/B Tests — show badges on campaigns with active tests
+  const { data: abTests = [] } = useQuery({
+    queryKey: ["ab-tests-active", tenantConfig?.id],
+    queryFn: async () => {
+      if (!tenantConfig?.id) return [];
+      const { data } = await supabase.from("ab_tests" as any).select("id, name, status, variant_a")
+        .eq("tenant_id", tenantConfig.id).eq("status", "active");
+      return data || [];
+    },
+    enabled: !!tenantConfig?.id,
+  });
+
   // State
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState(1);

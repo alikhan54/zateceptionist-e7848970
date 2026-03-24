@@ -310,6 +310,21 @@ export default function MarketingHub() {
     enabled: !!tenantConfig?.id,
   });
 
+  // ML-scored hot leads
+  const { data: hotLeads = [] } = useQuery({
+    queryKey: ["hot-leads", tenantConfig?.id],
+    queryFn: async () => {
+      if (!tenantConfig?.id) return [];
+      const { data } = await supabase.from("lead_score_predictions" as any)
+        .select("lead_name, lead_company, combined_score, grade, hidden_gem, false_positive")
+        .eq("tenant_id", tenantConfig.id)
+        .order("combined_score", { ascending: false })
+        .limit(5);
+      return data || [];
+    },
+    enabled: !!tenantConfig?.id,
+  });
+
   const isLoading = l1 || l2 || l3 || l4 || l5;
 
   const metrics = [
@@ -605,6 +620,35 @@ export default function MarketingHub() {
           </CardContent>
         </Card>
       </div>
+
+      {/* PREDICTIONS */}
+      {hotLeads.length > 0 && (
+        <Card className="mt-4">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-green-500" /> Top Leads (ML Scored)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {hotLeads.map((lead: any, i: number) => (
+                <div key={i} className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <Badge className={
+                      lead.grade === 'A' ? 'bg-green-600' :
+                      lead.grade === 'B' ? 'bg-blue-600' :
+                      lead.grade === 'C' ? 'bg-yellow-600' : 'bg-red-600'
+                    }>{lead.grade}</Badge>
+                    <span>{lead.lead_name || 'Unknown'}</span>
+                    {lead.hidden_gem && <Badge variant="outline" className="text-green-500 text-xs">Hidden Gem</Badge>}
+                  </div>
+                  <span className="font-mono text-xs">{lead.combined_score}/100</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

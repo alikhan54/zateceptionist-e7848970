@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Video, Film, Clock, CheckCircle, Sparkles, Copy, Download, RefreshCw, Image, Trash2, Target, Eye, Heart, Zap, Users, Play, Presentation, Loader2, Recycle } from 'lucide-react';
 import { RepurposeDialog } from '@/components/marketing/RepurposeDialog';
+import { syncToCalendar } from '@/utils/calendarSync';
 import { formatDistanceToNow } from 'date-fns';
 import VideoPlayer from '@/components/video/VideoPlayer';
 
@@ -674,6 +675,15 @@ show(0);
                           industry: (tenantConfig as any)?.industry || 'technology',
                         }, tenantConfig.id);
                         toast({ title: 'Rendering Video', description: 'Free tier: Stock photos + slideshow. 60-90 seconds.' });
+                        syncToCalendar({
+                          tenantId: tenantConfig?.id || '',
+                          title: detailProject?.title || 'Video',
+                          contentType: 'video',
+                          status: 'published',
+                          publishedAt: new Date().toISOString(),
+                          platform: 'video',
+                          contentId: detailProject?.id,
+                        });
                       } else {
                         callWebhook(WEBHOOKS.VIDEO_GENERATE, {
                           project_id: detailProject.id,
@@ -681,6 +691,15 @@ show(0);
                           aspect_ratio: '9:16',
                         }, tenantConfig.id);
                         toast({ title: 'Generating AI Video', description: 'Standard tier: AI-generated images. This may take 2-3 minutes.' });
+                        syncToCalendar({
+                          tenantId: tenantConfig?.id || '',
+                          title: detailProject?.title || 'Video',
+                          contentType: 'video',
+                          status: 'published',
+                          publishedAt: new Date().toISOString(),
+                          platform: 'video',
+                          contentId: detailProject?.id,
+                        });
                       }
                     }}
                   >

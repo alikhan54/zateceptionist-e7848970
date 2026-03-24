@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Recycle } from "lucide-react";
 import { RepurposeDialog } from "@/components/marketing/RepurposeDialog";
+import { syncToCalendar } from "@/utils/calendarSync";
 
 const bestPostingTimes = [
   { platform: "instagram", times: ["9:00 AM", "12:00 PM", "7:00 PM"], bestDay: "Wednesday" },
@@ -290,6 +291,19 @@ export default function SocialCommander() {
         setTimeout(() => setPublishCooldown(false), 5000);
         toast({ title: "📤 Post Queued!", description: `Posting to ${selectedPlatforms.join(", ")} now. Status will update to "Published" with a direct link within 1-2 minutes.` });
         logSystemEvent({ tenantId: tenantConfig?.id || '', eventType: 'social_post_published', sourceModule: 'marketing', eventData: { platforms: selectedPlatforms, scheduled: false } });
+        // Calendar sync for each platform
+        for (const plat of selectedPlatforms) {
+          syncToCalendar({
+            tenantId: tenantConfig?.id || '',
+            title: postContent?.substring(0, 100) || 'Social Post',
+            contentType: 'social_post',
+            status: 'published',
+            publishedAt: new Date().toISOString(),
+            platform: plat,
+            contentId: undefined,
+            contentPreview: postContent,
+          });
+        }
       } else {
         toast({ title: "Post Scheduled", description: `Scheduled for ${format(scheduleDate, "PPP")} at ${scheduleTime}` });
       }

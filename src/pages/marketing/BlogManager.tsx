@@ -17,6 +17,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, FileText, Eye, Sparkles, Clock, CheckCircle, PenTool, RotateCw, RefreshCw, Copy, Download, ExternalLink, Layout, Info, Palette } from "lucide-react";
 import { useBrandVoice } from "@/hooks/useBrandVoice";
 import { RepurposeDialog } from "@/components/marketing/RepurposeDialog";
+import { SEOScoreWidget } from "@/components/marketing/SEOScoreWidget";
+import { syncToCalendar } from "@/utils/calendarSync";
 import { formatDistanceToNow } from "date-fns";
 import { useNavigate } from "react-router-dom";
 
@@ -116,6 +118,30 @@ export default function BlogManager() {
         queryClient.invalidateQueries({ queryKey: ["blog_posts"] });
         toast({ title: "✅ Blog Content Generated!" });
         logSystemEvent({ tenantId: tenantConfig?.id || '', eventType: 'blog_generated', sourceModule: 'marketing', eventData: { blog_title: post.title, blog_id: post.id } });
+
+        // Auto-repurpose on publish — fire-and-forget
+        callWebhook(WEBHOOKS.REPURPOSE_CONTENT, {
+          tenant_id: tenantConfig?.id,
+          source_type: "blog_post",
+          source_id: post.id,
+          target_types: ["social_post", "email_campaign"],
+        }, tenantConfig?.id || '').then((result: any) => {
+          const created = result?.data?.total_created || result?.total_created || 0;
+          if (created > 0) {
+            toast({ title: "Auto-Repurposed!", description: `Created ${created} content drafts from your blog post.` });
+          }
+        }).catch(() => console.log("Auto-repurpose failed — can retry manually"));
+
+        // Calendar sync on publish
+        syncToCalendar({
+          tenantId: tenantConfig?.id || '',
+          title: post.title || 'Blog Post',
+          contentType: 'blog_post',
+          status: 'published',
+          publishedAt: new Date().toISOString(),
+          platform: 'blog',
+          contentId: post.id,
+        });
       } else {
         toast({ title: "Generation Failed", description: result.error || "Could not generate", variant: "destructive" });
       }
@@ -429,6 +455,7 @@ export default function BlogManager() {
           </div>
           <div className="border rounded-lg p-6 overflow-auto max-h-[55vh] prose prose-sm dark:prose-invert"
             dangerouslySetInnerHTML={{ __html: previewPost?.content_html || '<p>No content</p>' }} />
+          {previewPost?.id && <SEOScoreWidget contentType="blog_post" contentId={previewPost.id} />}
         </DialogContent>
       </Dialog>
 
