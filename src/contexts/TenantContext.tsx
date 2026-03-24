@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 
-export type IndustryType = "healthcare" | "healthcare_clinic" | "real_estate" | "restaurant" | "salon" | "banking_collections" | "construction_estimation" | "technology" | "general";
+export type IndustryType = "healthcare" | "healthcare_clinic" | "healthcare_staffing" | "real_estate" | "restaurant" | "salon" | "banking_collections" | "construction_estimation" | "technology" | "legal" | "fitness" | "education" | "automotive" | "professional" | "retail" | "general";
 
 export interface TenantConfig {
   id: string;
@@ -104,7 +104,7 @@ export interface TenantConfig {
 }
 
 // Industry-specific vocabulary translations
-const industryVocabulary: Record<IndustryType, Record<string, string>> = {
+const industryVocabulary: Partial<Record<IndustryType, Record<string, string>>> & { general: Record<string, string> } = {
   healthcare: {
     customer: "Patient",
     customers: "Patients",
@@ -203,6 +203,20 @@ const industryVocabulary: Record<IndustryType, Record<string, string>> = {
     lead: "Project Lead",
     leads: "Project Leads",
   },
+  healthcare_staffing: {
+    customer: "Facility",
+    customers: "Facilities",
+    appointment: "Shift",
+    appointments: "Shifts",
+    product: "Placement",
+    products: "Placements",
+    staff: "Worker",
+    staffs: "Workers",
+    deal: "Contract",
+    deals: "Contracts",
+    lead: "Prospect",
+    leads: "Prospects",
+  },
   technology: {
     customer: "Client",
     customers: "Clients",
@@ -234,7 +248,7 @@ const industryVocabulary: Record<IndustryType, Record<string, string>> = {
 };
 
 // Industry-specific deal stages
-const industryDealStages: Record<IndustryType, string[]> = {
+const industryDealStages: Partial<Record<IndustryType, string[]>> & { general: string[] } = {
   healthcare: [
     "Inquiry",
     "Consultation Booked",
@@ -288,6 +302,17 @@ const industryDealStages: Record<IndustryType, string[]> = {
     "Awarded",
     "Lost",
   ],
+  healthcare_staffing: [
+    "Lead",
+    "Contacted",
+    "Qualified",
+    "Needs Assessment",
+    "Proposal Sent",
+    "Negotiation",
+    "Contract Signed",
+    "Active Client",
+    "Lost",
+  ],
   technology: [
     "Discovery",
     "Qualified",
@@ -323,6 +348,7 @@ interface TenantContextType {
   isSalon: boolean;
   isBankingCollections: boolean;
   isConstructionEstimation: boolean;
+  isHealthcareStaffing: boolean;
   refreshConfig: () => Promise<void>;
 }
 
@@ -509,8 +535,11 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   }, [industry, tenantConfig?.vocabulary]);
 
   const getDealStages = useCallback((): string[] => {
+    if (tenantConfig?.pipeline_stages && Array.isArray(tenantConfig.pipeline_stages) && tenantConfig.pipeline_stages.length > 0) {
+      return tenantConfig.pipeline_stages;
+    }
     return industryDealStages[industry] || industryDealStages.general;
-  }, [industry]);
+  }, [industry, tenantConfig?.pipeline_stages]);
 
   const isHealthcare = industry === "healthcare";
   const isHealthcareClinic = industry === "healthcare_clinic" || industry === "healthcare";
@@ -519,6 +548,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const isSalon = industry === "salon";
   const isBankingCollections = industry === "banking_collections" || (industry as string) === "finance";
   const isConstructionEstimation = industry === "construction_estimation" || (industry as string) === "construction";
+  const isHealthcareStaffing = industry === "healthcare_staffing";
 
   useEffect(() => {
     fetchTenantConfig();
@@ -546,6 +576,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         isSalon,
         isBankingCollections,
         isConstructionEstimation,
+        isHealthcareStaffing,
         refreshConfig: fetchTenantConfig,
       }}
     >
