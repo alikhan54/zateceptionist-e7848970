@@ -2,11 +2,42 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- TODO: Set the document title to the name of your application -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5" />
     <title>Zate AI Suite</title>
     <meta name="description" content="End to End agentic Ai business suite">
     <meta name="author" content="Lovable" />
+
+    <!-- PWA meta tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#0a0a0f" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+    <link rel="apple-touch-icon" href="/icons/icon-192.svg">
+
+    <!-- Prevent stale SW cache during rapid iteration -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
+    <!-- Emergency service worker reset: visit ?reset-sw=true to nuke all caches -->
+    <script>
+      if (window.location.search.includes('reset-sw=true')) {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function(regs) {
+            for (var i = 0; i < regs.length; i++) { regs[i].unregister(); }
+            if ('caches' in window) {
+              caches.keys().then(function(names) {
+                for (var j = 0; j < names.length; j++) { caches.delete(names[j]); }
+              });
+            }
+            window.location.href = window.location.pathname;
+          });
+        } else {
+          window.location.href = window.location.pathname;
+        }
+      }
+    </script>
 
     <!-- TODO: Update og:title to match your application name -->
     
