@@ -133,7 +133,7 @@ interface NavSection {
 const STAFF_RESTRICTED_SECTIONS = ["Sales AI", "Marketing AI", "HR AI", "Operations", "Analytics & AI"];
 
 export function NavigationSidebar() {
-  const { state } = useSidebar();
+  const { state, setOpenMobile, isMobile } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
   const navigate = useNavigate();
@@ -188,6 +188,13 @@ export function NavigationSidebar() {
     });
     setOpenSections(newOpenSections);
   }, [location.pathname]);
+
+  // Auto-close sidebar Sheet on mobile when route changes
+  useEffect(() => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  }, [location.pathname, isMobile, setOpenMobile]);
 
   const toggleSection = (key: string) => {
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));

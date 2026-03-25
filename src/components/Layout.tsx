@@ -113,15 +113,6 @@ export default function Layout() {
         </SidebarProvider>
         {/* BottomTabBar OUTSIDE SidebarProvider — zero context dependency */}
         <BottomTabBar />
-        {/* TEMPORARY DEBUG — REMOVE AFTER MOBILE FIX CONFIRMED */}
-        <div style={{
-          position: 'fixed', bottom: 64, left: 0, right: 0,
-          height: '30px', backgroundColor: '#ff0000', color: '#fff',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '12px', fontWeight: 'bold', zIndex: 999999,
-        }}>
-          DEBUG: LAYOUT MOUNTED
-        </div>
       </>
     </MobileErrorBoundary>
   );
