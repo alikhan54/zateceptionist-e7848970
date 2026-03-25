@@ -772,7 +772,12 @@ export default function ProjectDetail() {
                         <td className="p-3 text-right">{r.length_ft && r.width_ft ? `${r.length_ft}' x ${r.width_ft}'` : "—"}</td>
                         <td className="p-3 text-right">{r.area_sqft?.toLocaleString() || "—"}</td>
                         <td className="p-3 text-right">{r.perimeter_lf?.toLocaleString() || "—"}</td>
-                        <td className="p-3"><Badge variant={r.verified ? "default" : "outline"}>{r.verified ? "Verified" : "Draft"}</Badge></td>
+                        <td className="p-3">
+                          <Badge variant={r.measured_by === 'vision_ai' ? "default" : r.measured_by === 'estimated' ? "secondary" : "outline"}
+                            className={r.measured_by === 'vision_ai' ? 'bg-green-600' : r.measured_by === 'estimated' ? 'bg-yellow-600 text-white' : ''}>
+                            {r.measured_by === 'vision_ai' ? 'Measured' : r.measured_by === 'estimated' ? 'Estimated' : r.verified ? 'Verified' : 'Draft'}
+                          </Badge>
+                        </td>
                       </tr>
                     ))}
                     {rooms.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No rooms added yet.</td></tr>}
