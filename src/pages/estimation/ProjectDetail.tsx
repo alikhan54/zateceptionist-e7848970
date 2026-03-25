@@ -1118,6 +1118,38 @@ export default function ProjectDetail() {
             </CardContent>
           </Card>
 
+          {/* Accuracy Score */}
+          {(project as any)?.ai_confidence_score > 0 && (
+            <Card className="p-4">
+              <div className="flex items-center gap-4">
+                <div className={`text-3xl font-bold ${
+                  (project as any).ai_confidence_score >= 90 ? 'text-green-500' :
+                  (project as any).ai_confidence_score >= 70 ? 'text-yellow-500' : 'text-red-500'
+                }`}>
+                  {(project as any).ai_confidence_score}/100
+                </div>
+                <div>
+                  <p className="font-semibold">Accuracy Score</p>
+                  <p className="text-xs text-muted-foreground">AI cross-checked materials, units, waste factors, quantities, and duplicates</p>
+                </div>
+                <Button variant="outline" size="sm" className="ml-auto" onClick={async () => {
+                  if (!id || !tenantId) return;
+                  toast.info("Running accuracy check...");
+                  try {
+                    const { estimationAction } = await import("@/lib/api/estimationApi");
+                    const res = await fetch(`https://webhooks.zatesystems.com/webhook/estimation-accuracy-check`, {
+                      method: 'POST', headers: {'Content-Type':'application/json'},
+                      body: JSON.stringify({tenant_id: tenantId, project_id: id})
+                    });
+                    const data = await res.json();
+                    if (data.success) toast.success(`Accuracy: ${data.score}/100 — ${data.auto_fixed} auto-fixed, ${data.issues_found} issues`);
+                    else toast.error(data.error || "Check failed");
+                  } catch (e: any) { toast.error(e.message); }
+                }}><CheckCircle className="mr-1 h-3 w-3" /> Re-check</Button>
+              </div>
+            </Card>
+          )}
+
           {/* Status Bar */}
           <Card className="p-4">
             <div className="flex items-center justify-between">
