@@ -17,6 +17,7 @@ import {
   Film, Play, Plus, Download, Clock, Layers, Smartphone, Monitor,
   Square, Image as ImageIcon, RefreshCw, Loader2, CheckCircle, XCircle,
   Sparkles, BarChart3, Zap, Eye, Instagram, Youtube, Share2, Music, Type,
+  PenLine, LayoutTemplate, Linkedin,
 } from "lucide-react";
 
 const PLATFORM_PRESETS = [
@@ -65,6 +66,17 @@ const FORMAT_ICONS: Record<string, typeof Smartphone> = {
   "9:16": Smartphone, "16:9": Monitor, "1:1": Square, "4:5": ImageIcon,
 };
 
+const PLATFORM_CONFIGS: Record<string, { format: string; min: number; max: number; def: number; label: string }> = {
+  instagram_reel: { format: "9:16", min: 10, max: 60, def: 15, label: "Instagram Reel" },
+  tiktok: { format: "9:16", min: 10, max: 60, def: 15, label: "TikTok" },
+  youtube_short: { format: "9:16", min: 15, max: 60, def: 30, label: "YouTube Short" },
+  youtube: { format: "16:9", min: 30, max: 300, def: 60, label: "YouTube" },
+  instagram_post: { format: "1:1", min: 10, max: 30, def: 15, label: "Instagram Post" },
+  instagram_story: { format: "9:16", min: 5, max: 15, def: 10, label: "Story" },
+  facebook_ad: { format: "4:5", min: 10, max: 30, def: 15, label: "Facebook Ad" },
+  linkedin: { format: "16:9", min: 15, max: 120, def: 30, label: "LinkedIn" },
+};
+
 const STATUS_COLORS: Record<string, string> = {
   queued: "bg-gray-500", generating_images: "bg-blue-500 animate-pulse",
   generating_audio: "bg-purple-500 animate-pulse", assembling: "bg-orange-500 animate-pulse",
@@ -88,6 +100,12 @@ export default function VideoStudio() {
   const [sceneEdits, setSceneEdits] = useState<any[]>([]);
   const [musicMood, setMusicMood] = useState("none");
   const [templateFilter, setTemplateFilter] = useState("all");
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiPlatform, setAiPlatform] = useState("instagram_reel");
+  const [aiDuration, setAiDuration] = useState(15);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationStep, setGenerationStep] = useState("");
+  const [dialogTab, setDialogTab] = useState<"ai" | "scratch" | "template">("ai");
 
   const tid = tenantConfig?.id;
 
@@ -242,6 +260,98 @@ export default function VideoStudio() {
     });
   };
 
+  // === AI GENERATION ===
+
+  const generateVideoAI = async () => {
+    if (!aiPrompt.trim() || !tid) return;
+    setIsGenerating(true);
+    const platform = PLATFORM_CONFIGS[aiPlatform] || PLATFORM_CONFIGS.instagram_reel;
+    const sceneCount = Math.max(2, Math.min(8, Math.ceil(aiDuration / 5)));
+
+    try {
+      setGenerationStep("Loading brand voice...");
+      let brandVoice = "";
+      try {
+        const { data: bv } = await supabase.from("brand_voice_profiles" as any)
+          .select("generated_system_prompt, brand_name, tone").eq("tenant_id", tid).single();
+        if (bv) brandVoice = bv.generated_system_prompt || `Brand: ${bv.brand_name || "Professional"}`;
+      } catch {}
+
+      setGenerationStep("AI is writing your video script...");
+      const resp = await fetch("https://webhooks.zatesystems.com/webhook/video/auto-create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tenant_id: tid,
+          trigger_type: "manual_prompt",
+          source_data: {
+            prompt: aiPrompt,
+            platform: aiPlatform,
+            format: platform.format,
+            duration_seconds: aiDuration,
+            scene_count: sceneCount,
+            brand_voice: brandVoice,
+          },
+        }),
+      });
+      const result = await resp.json();
+
+      if (result?.success && result?.project_id) {
+        setGenerationStep("Video project created!");
+        queryClient.invalidateQueries({ queryKey: ["video-projects-studio"] });
+        toast({ title: "AI Video Created!", description: `${result.scenes || sceneCount} scenes generated.` });
+        setShowCreateDialog(false);
+        setActiveTab("projects");
+      } else {
+        // Fallback: create locally
+        setGenerationStep("Creating scenes locally...");
+        const scenes = generateScenesLocally(aiPrompt, sceneCount);
+        const { data: project } = await supabase.from("video_projects" as any).insert({
+          tenant_id: tid,
+          title: aiPrompt.substring(0, 100),
+          video_type: platform.format === "16:9" ? "long_form" : "short_form",
+          status: "script_ready",
+          scenes: scenes,
+          voice_style: selectedVoice,
+        }).select().single();
+        if (project) {
+          queryClient.invalidateQueries({ queryKey: ["video-projects-studio"] });
+          toast({ title: "Video Created!", description: `${scenes.length} scenes ready.` });
+          setShowCreateDialog(false);
+          setActiveTab("projects");
+        }
+      }
+    } catch (err) {
+      toast({ title: "Generation Failed", description: String(err), variant: "destructive" });
+    }
+    setIsGenerating(false);
+    setGenerationStep("");
+  };
+
+  const generateScenesLocally = (prompt: string, count: number) => {
+    const dur = Math.ceil(aiDuration / count);
+    const roles = ["hook", "problem", "solution", "benefit", "social_proof", "cta", "detail", "closing"];
+    const voTemplates = [
+      "Discover {t}.", "The challenge: {t}.", "Here is how {t} changes everything.",
+      "The result: {t} delivers.", "Trusted by thousands.", "Start your {t} journey today.",
+      "Feature highlight: {t}.", "Do not miss out on {t}.",
+    ];
+    return Array.from({ length: count }, (_, i) => ({
+      scene_number: i + 1,
+      visual_description: `${prompt}, ${roles[i % roles.length]} scene, professional cinematic quality`,
+      voiceover_text: voTemplates[i % voTemplates.length].replace("{t}", prompt.substring(0, 50)),
+      duration_s: dur,
+      transition: i === 0 || i === count - 1 ? "fade" : "dissolve",
+      overlay_text: i === count - 1 ? "LEARN MORE" : "",
+    }));
+  };
+
+  const handleOpenCreate = (mode: "ai" | "scratch" | "template") => {
+    setDialogTab(mode);
+    if (mode === "scratch") handleCreateFromScratch();
+    else setShowCreateDialog(true);
+  };
+
   // === RENDER ===
 
   return (
@@ -255,14 +365,9 @@ export default function VideoStudio() {
           </h1>
           <p className="text-muted-foreground mt-1">AI-powered video production with local GPU inference</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleCreateFromScratch}>
-            <Plus className="h-4 w-4 mr-2" /> From Scratch
-          </Button>
-          <Button onClick={() => { setActiveTab("templates"); }}>
-            <Sparkles className="h-4 w-4 mr-2" /> Use Template
-          </Button>
-        </div>
+        <Button size="lg" onClick={() => handleOpenCreate("ai")}>
+          <Sparkles className="h-5 w-5 mr-2" /> Create Video
+        </Button>
       </div>
 
       {/* Platform Presets */}
@@ -572,111 +677,209 @@ export default function VideoStudio() {
         </TabsContent>
       </Tabs>
 
-      {/* CREATE DIALOG */}
+      {/* CREATE DIALOG — 3 MODES */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              {createMode === "template" ? `New Video from: ${selectedTemplate?.name}` : "New Video from Scratch"}
-            </DialogTitle>
+            <DialogTitle>Create New Video</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <div>
-              <Label>Video Title</Label>
-              <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="My awesome video..." />
-            </div>
+          <Tabs value={dialogTab} onValueChange={(v) => setDialogTab(v as any)}>
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="ai" className="gap-1"><Sparkles className="h-3 w-3" /> AI Generate</TabsTrigger>
+              <TabsTrigger value="scratch" className="gap-1"><PenLine className="h-3 w-3" /> From Scratch</TabsTrigger>
+              <TabsTrigger value="template" className="gap-1"><LayoutTemplate className="h-3 w-3" /> Template</TabsTrigger>
+            </TabsList>
 
-            <div className="grid grid-cols-3 gap-4">
+            {/* === AI GENERATE TAB === */}
+            <TabsContent value="ai" className="space-y-4 mt-4">
               <div>
-                <Label>Format</Label>
-                <Select value={selectedFormat} onValueChange={setSelectedFormat}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="9:16">9:16 (Vertical)</SelectItem>
-                    <SelectItem value="16:9">16:9 (Horizontal)</SelectItem>
-                    <SelectItem value="1:1">1:1 (Square)</SelectItem>
-                    <SelectItem value="4:5">4:5 (Portrait)</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label>What video do you want to create?</Label>
+                <Textarea
+                  placeholder="Example: Create a 15-second Instagram Reel showcasing our premium BBQ restaurant. Show the sizzling grill, happy customers, and cozy ambiance. End with a reservation CTA."
+                  value={aiPrompt} onChange={(e) => setAiPrompt(e.target.value)}
+                  rows={4} className="mt-1"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Describe your video in natural language. AI will generate scenes, visuals, and voiceover.</p>
               </div>
-              <div>
-                <Label>Voice (12 Languages)</Label>
-                <Select value={selectedVoice} onValueChange={setSelectedVoice}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {VOICE_OPTIONS.map((v) => (
-                      <SelectItem key={v.value} value={v.value}>{v.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Quality</Label>
-                <Select value={videoTier} onValueChange={setVideoTier}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="free">Free (Stock Photos)</SelectItem>
-                    <SelectItem value="standard">Standard (AI Images)</SelectItem>
-                    <SelectItem value="premium">Premium (AI Video)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
 
-            {/* Music Mood */}
-            <div>
-              <Label className="flex items-center gap-1"><Music className="h-3.5 w-3.5" /> Background Music</Label>
-              <Select value={musicMood} onValueChange={setMusicMood}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {MUSIC_MOODS.map((m) => (
-                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+              <div>
+                <Label>Platform</Label>
+                <div className="grid grid-cols-4 gap-2 mt-1">
+                  {Object.entries(PLATFORM_CONFIGS).map(([key, cfg]) => (
+                    <button key={key} onClick={() => { setAiPlatform(key); setAiDuration(cfg.def); }}
+                      className={`p-2 rounded-lg border text-center text-xs transition-colors ${aiPlatform === key ? "border-primary bg-primary/10 text-primary font-medium" : "border-border hover:border-primary/50"}`}>
+                      <div>{cfg.label}</div>
+                      <div className="text-muted-foreground">{cfg.format}</div>
+                    </button>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
+                </div>
+              </div>
 
-            {/* Scene Preview */}
-            <div className="space-y-2">
-              <Label>Scenes ({sceneEdits.length})</Label>
-              {sceneEdits.map((s: any, i: number) => (
-                <Card key={i} className="p-3">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <p className="text-xs font-medium mb-1">Scene {i + 1} Visual</p>
-                      <Textarea className="text-xs" rows={2}
-                        value={s.visual_prompt || ""}
-                        onChange={(e) => {
-                          const u = [...sceneEdits];
-                          u[i] = { ...u[i], visual_prompt: e.target.value };
-                          setSceneEdits(u);
-                        }}
-                        placeholder="Visual description..."
-                      />
+              <div>
+                <div className="flex items-center justify-between">
+                  <Label>Duration</Label>
+                  <span className="text-sm font-mono">{aiDuration}s ({Math.ceil(aiDuration / 5)} scenes)</span>
+                </div>
+                <input type="range" className="w-full mt-1"
+                  min={PLATFORM_CONFIGS[aiPlatform]?.min || 10}
+                  max={PLATFORM_CONFIGS[aiPlatform]?.max || 60}
+                  step={5} value={aiDuration}
+                  onChange={(e) => setAiDuration(Number(e.target.value))}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Voice</Label>
+                  <Select value={selectedVoice} onValueChange={setSelectedVoice}>
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {VOICE_OPTIONS.map((v) => (<SelectItem key={v.value} value={v.value}>{v.label}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Quality</Label>
+                  <Select value={videoTier} onValueChange={setVideoTier}>
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="free">Free (Stock)</SelectItem>
+                      <SelectItem value="standard">Standard (AI)</SelectItem>
+                      <SelectItem value="premium">Premium</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <Button onClick={generateVideoAI} disabled={isGenerating || !aiPrompt.trim()} className="w-full h-12 text-lg" size="lg">
+                {isGenerating ? (<><Loader2 className="h-5 w-5 mr-2 animate-spin" />{generationStep || "Generating..."}</>) : (<><Sparkles className="h-5 w-5 mr-2" />Generate Video with AI</>)}
+              </Button>
+
+              {!isGenerating && (
+                <div className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-3 space-y-1">
+                  <p className="font-medium">AI will automatically:</p>
+                  <p>→ Generate {Math.ceil(aiDuration / 5)} scenes with visual descriptions</p>
+                  <p>→ Write voiceover narration for each scene</p>
+                  <p>→ Apply your brand voice (if configured)</p>
+                  <p>→ Create the project ready for one-click render</p>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* === FROM SCRATCH TAB === */}
+            <TabsContent value="scratch" className="space-y-4 mt-4">
+              <div>
+                <Label>Video Title</Label>
+                <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="My awesome video..." />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <Label className="text-xs">Format</Label>
+                  <Select value={selectedFormat} onValueChange={setSelectedFormat}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="9:16">9:16 Vertical</SelectItem>
+                      <SelectItem value="16:9">16:9 Horizontal</SelectItem>
+                      <SelectItem value="1:1">1:1 Square</SelectItem>
+                      <SelectItem value="4:5">4:5 Portrait</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Voice</Label>
+                  <Select value={selectedVoice} onValueChange={setSelectedVoice}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {VOICE_OPTIONS.map((v) => (<SelectItem key={v.value} value={v.value}>{v.label}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Music</Label>
+                  <Select value={musicMood} onValueChange={setMusicMood}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {MUSIC_MOODS.map((m) => (<SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Scenes ({sceneEdits.length})</Label>
+                {sceneEdits.map((s: any, i: number) => (
+                  <Card key={i} className="p-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <p className="text-xs font-medium mb-1">Scene {i + 1} Visual</p>
+                        <Textarea className="text-xs" rows={2} value={s.visual_prompt || ""} placeholder="Visual..."
+                          onChange={(e) => { const u = [...sceneEdits]; u[i] = { ...u[i], visual_prompt: e.target.value }; setSceneEdits(u); }} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium mb-1">Voiceover</p>
+                        <Textarea className="text-xs" rows={2} value={s.voiceover || ""} placeholder="Narration..."
+                          onChange={(e) => { const u = [...sceneEdits]; u[i] = { ...u[i], voiceover: e.target.value }; setSceneEdits(u); }} />
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs font-medium mb-1">Voiceover</p>
-                      <Textarea className="text-xs" rows={2}
-                        value={s.voiceover || ""}
-                        onChange={(e) => {
-                          const u = [...sceneEdits];
-                          u[i] = { ...u[i], voiceover: e.target.value };
-                          setSceneEdits(u);
-                        }}
-                        placeholder="Narration..."
-                      />
-                    </div>
+                  </Card>
+                ))}
+                <Button variant="outline" size="sm" onClick={() => setSceneEdits([...sceneEdits, { scene_number: sceneEdits.length + 1, duration_s: 5, visual_prompt: "", voiceover: "", transition: "fade" }])}>
+                  <Plus className="h-3 w-3 mr-1" /> Add Scene
+                </Button>
+              </div>
+              <Button className="w-full" onClick={handleCreateProject} disabled={createProject.isPending || !newTitle.trim()}>
+                {createProject.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
+                Create Video Project
+              </Button>
+            </TabsContent>
+
+            {/* === FROM TEMPLATE TAB === */}
+            <TabsContent value="template" className="space-y-4 mt-4">
+              {selectedTemplate ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-medium">Template: {selectedTemplate.name}</h3>
+                    <Button variant="ghost" size="sm" onClick={() => setSelectedTemplate(null)}>Change</Button>
                   </div>
-                </Card>
-              ))}
-            </div>
-
-            <Button className="w-full" onClick={handleCreateProject} disabled={createProject.isPending || !newTitle.trim()}>
-              {createProject.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
-              Create Video Project
-            </Button>
-          </div>
+                  <div>
+                    <Label>Video Title</Label>
+                    <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Video title..." />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Scenes ({sceneEdits.length})</Label>
+                    {sceneEdits.map((s: any, i: number) => (
+                      <Card key={i} className="p-3">
+                        <div className="grid grid-cols-2 gap-2">
+                          <Textarea className="text-xs" rows={2} value={s.visual_prompt || s.visual_description || ""} placeholder="Visual..."
+                            onChange={(e) => { const u = [...sceneEdits]; u[i] = { ...u[i], visual_prompt: e.target.value }; setSceneEdits(u); }} />
+                          <Textarea className="text-xs" rows={2} value={s.voiceover || s.voiceover_text || ""} placeholder="Narration..."
+                            onChange={(e) => { const u = [...sceneEdits]; u[i] = { ...u[i], voiceover: e.target.value }; setSceneEdits(u); }} />
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                  <Button className="w-full" onClick={handleCreateProject} disabled={createProject.isPending || !newTitle.trim()}>
+                    {createProject.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Zap className="h-4 w-4 mr-2" />}
+                    Create from Template
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3 max-h-[50vh] overflow-y-auto">
+                  {templates.map((t: any) => (
+                    <button key={t.id} onClick={() => handleUseTemplate(t)}
+                      className="p-3 border rounded-lg text-left hover:border-primary/50 transition-colors">
+                      <p className="font-medium text-sm">{t.name}</p>
+                      <p className="text-xs text-muted-foreground line-clamp-1">{t.description}</p>
+                      <div className="flex gap-1 mt-2">
+                        <Badge variant="outline" className="text-xs">{t.aspect_ratio}</Badge>
+                        <Badge variant="outline" className="text-xs">{t.default_duration_seconds}s</Badge>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
     </div>
