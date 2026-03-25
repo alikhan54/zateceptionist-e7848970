@@ -26,8 +26,8 @@ import { useToast } from "@/hooks/use-toast";
 
 const AGENTS = [
   { codename: "NEXUS", role: "Operations Supervisor", phase: "P20 — Active", icon: Brain, live: true },
-  { codename: "ORACLE", role: "Demand Forecasting", phase: "P21", icon: TrendingUp, live: false },
-  { codename: "STOCKMASTER", role: "Inventory Management", phase: "P21", icon: Package, live: false },
+  { codename: "ORACLE", role: "Demand Forecasting", phase: "P21 — Active", icon: TrendingUp, live: true },
+  { codename: "STOCKMASTER", role: "Inventory Management", phase: "P21 — Active", icon: Package, live: true },
   { codename: "SOURCER", role: "Vendor Discovery", phase: "P22", icon: Users, live: false },
   { codename: "BUYER", role: "Purchase Orders", phase: "P22", icon: ShoppingCart, live: false },
   { codename: "DIPLOMAT", role: "Vendor Relations", phase: "P22", icon: Users, live: false },
@@ -96,6 +96,72 @@ export default function AiIntelligence() {
     refetchInterval: 30000,
   });
 
+  // Fetch inventory items
+  const { data: inventory = [] } = useQuery({
+    queryKey: ["ops-inventory", tenantSlug, industry],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ops_inventory_items")
+        .select("*")
+        .eq("tenant_id", tenantSlug)
+        .eq("industry", industry)
+        .eq("is_active", true)
+        .order("category");
+      if (error) throw error;
+      return data || [];
+    },
+    refetchInterval: 30000,
+  });
+
+  // Fetch demand forecasts
+  const { data: forecasts = [], refetch: refetchForecasts } = useQuery({
+    queryKey: ["ops-forecasts", tenantSlug, industry],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ops_demand_forecasts")
+        .select("*")
+        .eq("tenant_id", tenantSlug)
+        .eq("industry", industry)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return data || [];
+    },
+    refetchInterval: 60000,
+  });
+
+  const [forecastLoading, setForecastLoading] = useState(false);
+
+  const runForecast = async () => {
+    setForecastLoading(true);
+    try {
+      const r = await fetch(
+        "https://webhooks.zatesystems.com/webhook/ops/dispatch",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tenant_slug: tenantSlug,
+            tenant_id: tenantId,
+            industry,
+            region: "uae",
+            goal: "forecast_all_items",
+            mode: "auto",
+          }),
+        }
+      );
+      const data = await r.json();
+      if (data.success) {
+        toast({ title: "Forecast running", description: "ORACLE is generating forecasts..." });
+        setTimeout(() => refetchForecasts(), 5000);
+      }
+    } catch (e) {
+      toast({ title: "Forecast failed", description: String(e), variant: "destructive" });
+    } finally {
+      setForecastLoading(false);
+    }
+  };
+
   // Fetch industry configs
   const { data: configs = [] } = useQuery({
     queryKey: ["ops-configs", tenantSlug],
@@ -163,7 +229,7 @@ export default function AiIntelligence() {
           Powered by OpsNexus — 12-agent autonomous operations system
         </p>
         <Badge variant="outline" className="mt-2 bg-blue-50 text-blue-700 border-blue-200">
-          Phase 20 Active — Foundation
+          Phase 21 Active — ORACLE + STOCKMASTER
         </Badge>
       </div>
 
@@ -354,6 +420,157 @@ export default function AiIntelligence() {
               </div>
             </CardContent>
           </Card>
+        )}
+      </div>
+      {/* Inventory Status */}
+      <div>
+        <h2 className="font-semibold mb-3 text-lg flex items-center gap-2">
+          <Package className="w-5 h-5" /> Inventory Status
+        </h2>
+        {inventory.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No inventory items for {industry}. Seed items to enable ORACLE forecasting.
+          </p>
+        ) : (
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 border-b">
+                    <tr>
+                      <th className="text-left px-4 py-2 font-medium">SKU</th>
+                      <th className="text-left px-4 py-2 font-medium">Name</th>
+                      <th className="text-left px-4 py-2 font-medium">Stock</th>
+                      <th className="text-left px-4 py-2 font-medium">Reorder At</th>
+                      <th className="text-left px-4 py-2 font-medium">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {inventory.map((item: Record<string, unknown>) => {
+                      const current = Number(item.current_stock) || 0;
+                      const reorder = Number(item.reorder_point) || 0;
+                      const max = Number(item.max_stock) || 1;
+                      const pct = current / max;
+                      const status =
+                        current <= 0
+                          ? "OUT"
+                          : current <= reorder
+                            ? "CRITICAL"
+                            : current <= reorder * 1.5
+                              ? "LOW"
+                              : "OK";
+                      const sColor = {
+                        OUT: "bg-red-200 text-red-900",
+                        CRITICAL: "bg-red-100 text-red-800",
+                        LOW: "bg-amber-100 text-amber-800",
+                        OK: "bg-green-100 text-green-800",
+                      }[status];
+                      const barColor = {
+                        OUT: "bg-red-500",
+                        CRITICAL: "bg-red-500",
+                        LOW: "bg-amber-500",
+                        OK: "bg-green-500",
+                      }[status];
+                      return (
+                        <tr key={item.id as string} className="border-b last:border-0 hover:bg-muted/30">
+                          <td className="px-4 py-2 font-mono text-xs">{item.sku as string}</td>
+                          <td className="px-4 py-2">
+                            {item.name as string}
+                            {item.is_perishable && (
+                              <span className="ml-1 text-[10px] text-orange-600">perishable</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2">
+                            <span className="font-medium">{current}</span>{" "}
+                            <span className="text-muted-foreground text-xs">{item.unit as string}</span>
+                            <div className="w-16 bg-gray-200 rounded h-1 mt-1">
+                              <div
+                                className={`h-1 rounded ${barColor}`}
+                                style={{ width: `${Math.min(100, pct * 100)}%` }}
+                              />
+                            </div>
+                          </td>
+                          <td className="px-4 py-2 text-muted-foreground">
+                            {reorder} {item.unit as string}
+                          </td>
+                          <td className="px-4 py-2">
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${sColor}`}>
+                              {status}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Demand Forecasts — ORACLE */}
+      <div>
+        <div className="flex justify-between items-center mb-3">
+          <h2 className="font-semibold text-lg flex items-center gap-2">
+            <TrendingUp className="w-5 h-5" /> Demand Forecasts — ORACLE
+          </h2>
+          <Button onClick={runForecast} disabled={forecastLoading} size="sm" variant="outline">
+            {forecastLoading ? (
+              <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+            ) : (
+              <TrendingUp className="w-4 h-4 mr-1" />
+            )}
+            Run Forecast
+          </Button>
+        </div>
+        {forecasts.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No forecasts yet. Click Run Forecast to generate.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {forecasts.slice(0, 6).map((f: Record<string, unknown>) => {
+              const conf = Number(f.confidence_score) || 0;
+              const signals = (f.signals || {}) as Record<string, unknown>;
+              return (
+                <Card key={f.id as string}>
+                  <CardContent className="pt-4">
+                    <div className="font-medium text-sm">{f.item_name as string}</div>
+                    <div className="text-2xl font-bold mt-1">
+                      {Number(f.predicted_quantity)?.toFixed(0)}
+                      <span className="text-sm font-normal text-muted-foreground ml-1">
+                        units / {f.horizon_days as number}d
+                      </span>
+                    </div>
+                    <div className="mt-2">
+                      <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                        <span>Confidence</span>
+                        <span>{(conf * 100).toFixed(0)}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded h-1.5">
+                        <div
+                          className="h-1.5 rounded bg-blue-500"
+                          style={{ width: `${conf * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                    {f.narrative && (
+                      <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
+                        {f.narrative as string}
+                      </p>
+                    )}
+                    {signals.stock_gap && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <AlertTriangle className="w-3 h-3 text-red-500" />
+                        <span className="text-xs text-red-600 font-medium">Stock gap predicted</span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         )}
       </div>
     </div>
