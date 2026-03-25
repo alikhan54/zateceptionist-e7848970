@@ -90,6 +90,9 @@ const HRAIAssistantPage = lazy(() => import("./pages/hr/AIAssistant"));
 const CompliancePage = lazy(() => import("./pages/hr/Compliance"));
 const ShiftsPage = lazy(() => import("./pages/hr/Shifts"));
 const EmployeeProfilePage = lazy(() => import("./pages/hr/EmployeeProfile"));
+const AIAgentsPage = lazy(() => import("./pages/hr/AIAgents"));
+const AIAgentHirePage = lazy(() => import("./pages/hr/AIAgentHire"));
+const AIAgentProfilePage = lazy(() => import("./pages/hr/AIAgentProfile"));
 
 // Operations Module
 const Inventory = lazy(() => import("./pages/operations/Inventory"));
@@ -100,6 +103,7 @@ const Invoices = lazy(() => import("./pages/operations/Invoices"));
 const KitchenDisplay = lazy(() => import("./pages/operations/KitchenDisplay"));
 const MenuEditor = lazy(() => import("./pages/operations/MenuEditor"));
 const Reservations = lazy(() => import("./pages/operations/Reservations"));
+const AiIntelligence = lazy(() => import("./pages/operations/AiIntelligence"));
 
 // Collections Module
 const CollectionsDashboard = lazy(() => import("./pages/collections/CollectionsDashboard"));
@@ -880,6 +884,31 @@ const App = () => (
                     }
                   />
 
+                  <Route
+                    path="/hr/ai-agents"
+                    element={
+                      <LazyPage>
+                        <AIAgentsPage />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/hr/ai-agents/hire"
+                    element={
+                      <LazyPage>
+                        <AIAgentHirePage />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/hr/ai-agents/:id"
+                    element={
+                      <LazyPage>
+                        <AIAgentProfilePage />
+                      </LazyPage>
+                    }
+                  />
+
                   {/* Operations Module */}
                   <Route path="/operations" element={<Navigate to="/operations/inventory" replace />} />
                   <Route
@@ -943,6 +972,14 @@ const App = () => (
                     element={
                       <LazyPage>
                         <Reservations />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/operations/ai-intelligence"
+                    element={
+                      <LazyPage>
+                        <AiIntelligence />
                       </LazyPage>
                     }
                   />

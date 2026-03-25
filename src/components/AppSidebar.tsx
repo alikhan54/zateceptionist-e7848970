@@ -143,6 +143,7 @@ const hrNavItems = [
   { title: "Documents", url: "/hr/documents", icon: FileText },
   { title: "Reports", url: "/hr/reports", icon: BarChart3 },
   { title: "AI Assistant", url: "/hr/ai-assistant", icon: Bot },
+  { title: "AI Workforce", url: "/hr/ai-agents", icon: Bot },
 ];
 
 // ========================================
@@ -154,6 +155,7 @@ const operationsNavItems = [
   { title: "Vendors", url: "/operations/vendors", icon: Truck },
   { title: "Expenses", url: "/operations/expenses", icon: Receipt },
   { title: "Invoices", url: "/operations/invoices", icon: FileCheck },
+  { title: "AI Intelligence", url: "/operations/ai-intelligence", icon: Brain },
 ];
 
 // ========================================
