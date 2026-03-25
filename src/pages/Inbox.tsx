@@ -122,6 +122,7 @@ import { format, isToday, isYesterday, addHours, setMinutes, setHours } from "da
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ArrowLeft } from "lucide-react";
+import { SuggestedResponses } from "@/components/inbox/SuggestedResponses";
 
 // ============================================
 // WEBHOOK CONFIG
@@ -1796,6 +1797,15 @@ export default function Inbox() {
                         </div>
                       )}
                     </ScrollArea>
+
+                    {/* AI Suggested Responses */}
+                    {selectedConversationId && (
+                      <SuggestedResponses
+                        conversationId={selectedConversationId}
+                        tenantId={tenantId!}
+                        onSelectSuggestion={(text) => setMessageInput(text)}
+                      />
+                    )}
 
                     {/* ISSUE 5 & 6 FIX: Message Input with visible send button */}
                     <div className="p-4 border-t bg-card shrink-0">
