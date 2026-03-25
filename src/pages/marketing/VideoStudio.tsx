@@ -16,7 +16,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   Film, Play, Plus, Download, Clock, Layers, Smartphone, Monitor,
   Square, Image as ImageIcon, RefreshCw, Loader2, CheckCircle, XCircle,
-  Sparkles, BarChart3, Zap, Eye, Instagram, Youtube,
+  Sparkles, BarChart3, Zap, Eye, Instagram, Youtube, Share2, Music, Type,
 } from "lucide-react";
 
 const PLATFORM_PRESETS = [
@@ -26,6 +26,39 @@ const PLATFORM_PRESETS = [
   { name: "YouTube Short", format: "9:16", duration: 30, icon: Youtube },
   { name: "Instagram Post", format: "1:1", duration: 15, icon: Square },
   { name: "Facebook Ad", format: "4:5", duration: 15, icon: Monitor },
+];
+
+const VOICE_OPTIONS = [
+  { value: "en-US-AriaNeural", label: "English (US) - Aria" },
+  { value: "en-US-GuyNeural", label: "English (US) - Guy" },
+  { value: "en-GB-SoniaNeural", label: "English (UK) - Sonia" },
+  { value: "ar-AE-FatimaNeural", label: "Arabic (UAE) - Fatima" },
+  { value: "ar-SA-ZariyahNeural", label: "Arabic (SA) - Zariyah" },
+  { value: "ur-PK-UzmaNeural", label: "Urdu - Uzma" },
+  { value: "hi-IN-SwaraNeural", label: "Hindi - Swara" },
+  { value: "fr-FR-DeniseNeural", label: "French - Denise" },
+  { value: "es-ES-ElviraNeural", label: "Spanish - Elvira" },
+  { value: "de-DE-KatjaNeural", label: "German - Katja" },
+  { value: "zh-CN-XiaoxiaoNeural", label: "Chinese - Xiaoxiao" },
+  { value: "ja-JP-NanamiNeural", label: "Japanese - Nanami" },
+];
+
+const MUSIC_MOODS = [
+  { value: "none", label: "No Music" },
+  { value: "upbeat", label: "Upbeat & Energetic" },
+  { value: "corporate", label: "Corporate & Professional" },
+  { value: "emotional", label: "Emotional & Inspiring" },
+  { value: "energetic", label: "High Energy" },
+  { value: "calm", label: "Calm & Ambient" },
+];
+
+const TRANSITIONS = [
+  { value: "fade", label: "Fade" },
+  { value: "slideleft", label: "Slide Left" },
+  { value: "slideright", label: "Slide Right" },
+  { value: "wiperight", label: "Wipe Right" },
+  { value: "dissolve", label: "Dissolve" },
+  { value: "smoothleft", label: "Smooth Left" },
 ];
 
 const FORMAT_ICONS: Record<string, typeof Smartphone> = {
@@ -53,6 +86,7 @@ export default function VideoStudio() {
   const [videoTier, setVideoTier] = useState("standard");
   const [selectedVoice, setSelectedVoice] = useState("en-US-AriaNeural");
   const [sceneEdits, setSceneEdits] = useState<any[]>([]);
+  const [musicMood, setMusicMood] = useState("none");
   const [templateFilter, setTemplateFilter] = useState("all");
 
   const tid = tenantConfig?.id;
@@ -354,7 +388,7 @@ export default function VideoStudio() {
                           placeholder="Narration text for this scene..."
                           rows={3} className="text-sm"
                         />
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <Label className="text-xs">Duration:</Label>
                           <Input type="number" className="w-16 h-7 text-xs" min={2} max={30}
                             value={scene.duration_s || 5}
@@ -364,7 +398,31 @@ export default function VideoStudio() {
                               setSceneEdits(updated);
                             }}
                           />
-                          <span className="text-xs text-muted-foreground">seconds</span>
+                          <span className="text-xs text-muted-foreground">sec</span>
+                          <Select value={scene.transition || "fade"} onValueChange={(v) => {
+                            const updated = [...sceneEdits];
+                            updated[i] = { ...updated[i], transition: v };
+                            setSceneEdits(updated);
+                          }}>
+                            <SelectTrigger className="h-7 w-28 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {TRANSITIONS.map((t) => (
+                                <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="mt-2">
+                          <Input
+                            placeholder="On-screen text overlay (optional)"
+                            className="text-xs h-7"
+                            value={scene.overlay_text || ""}
+                            onChange={(e) => {
+                              const updated = [...sceneEdits];
+                              updated[i] = { ...updated[i], overlay_text: e.target.value };
+                              setSceneEdits(updated);
+                            }}
+                          />
                         </div>
                       </div>
                     </CardContent>
@@ -543,14 +601,13 @@ export default function VideoStudio() {
                 </Select>
               </div>
               <div>
-                <Label>Voice</Label>
+                <Label>Voice (12 Languages)</Label>
                 <Select value={selectedVoice} onValueChange={setSelectedVoice}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="en-US-AriaNeural">Aria (Female)</SelectItem>
-                    <SelectItem value="en-US-GuyNeural">Guy (Male)</SelectItem>
-                    <SelectItem value="en-US-JennyNeural">Jenny (Female)</SelectItem>
-                    <SelectItem value="en-GB-SoniaNeural">Sonia (British)</SelectItem>
+                    {VOICE_OPTIONS.map((v) => (
+                      <SelectItem key={v.value} value={v.value}>{v.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -565,6 +622,19 @@ export default function VideoStudio() {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            {/* Music Mood */}
+            <div>
+              <Label className="flex items-center gap-1"><Music className="h-3.5 w-3.5" /> Background Music</Label>
+              <Select value={musicMood} onValueChange={setMusicMood}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {MUSIC_MOODS.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Scene Preview */}
