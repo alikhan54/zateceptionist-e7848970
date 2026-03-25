@@ -12,45 +12,30 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
 import {
   Film, Play, Plus, Download, Clock, Layers, Smartphone, Monitor,
-  Square, Image as ImageIcon, RefreshCw, Loader2, CheckCircle, XCircle,
-  Sparkles, BarChart3, Zap, Eye, Instagram, Youtube, Share2, Music, Type,
-  PenLine, LayoutTemplate, Linkedin,
+  Square, Image as ImageIcon, RefreshCw, Loader2, Sparkles, BarChart3,
+  Zap, Instagram, Youtube, Share2, Music, Trash2, Wand2, Mic, ArrowLeft,
+  FileText, Shield, Send, Bot,
 } from "lucide-react";
 
-const PLATFORM_PRESETS = [
-  { name: "Instagram Reel", format: "9:16", duration: 15, icon: Instagram },
-  { name: "TikTok", format: "9:16", duration: 15, icon: Smartphone },
-  { name: "YouTube", format: "16:9", duration: 60, icon: Youtube },
-  { name: "YouTube Short", format: "9:16", duration: 30, icon: Youtube },
-  { name: "Instagram Post", format: "1:1", duration: 15, icon: Square },
-  { name: "Facebook Ad", format: "4:5", duration: 15, icon: Monitor },
-];
+// ============================================================
+// CONSTANTS
+// ============================================================
 
 const VOICE_OPTIONS = [
-  { value: "en-US-AriaNeural", label: "English (US) - Aria" },
-  { value: "en-US-GuyNeural", label: "English (US) - Guy" },
-  { value: "en-GB-SoniaNeural", label: "English (UK) - Sonia" },
-  { value: "ar-AE-FatimaNeural", label: "Arabic (UAE) - Fatima" },
-  { value: "ar-SA-ZariyahNeural", label: "Arabic (SA) - Zariyah" },
-  { value: "ur-PK-UzmaNeural", label: "Urdu - Uzma" },
-  { value: "hi-IN-SwaraNeural", label: "Hindi - Swara" },
-  { value: "fr-FR-DeniseNeural", label: "French - Denise" },
-  { value: "es-ES-ElviraNeural", label: "Spanish - Elvira" },
-  { value: "de-DE-KatjaNeural", label: "German - Katja" },
-  { value: "zh-CN-XiaoxiaoNeural", label: "Chinese - Xiaoxiao" },
-  { value: "ja-JP-NanamiNeural", label: "Japanese - Nanami" },
-];
-
-const MUSIC_MOODS = [
-  { value: "none", label: "No Music" },
-  { value: "upbeat", label: "Upbeat & Energetic" },
-  { value: "corporate", label: "Corporate & Professional" },
-  { value: "emotional", label: "Emotional & Inspiring" },
-  { value: "energetic", label: "High Energy" },
-  { value: "calm", label: "Calm & Ambient" },
+  { value: "en-US-AriaNeural", label: "Aria (EN-US)" },
+  { value: "en-US-GuyNeural", label: "Guy (EN-US)" },
+  { value: "en-GB-SoniaNeural", label: "Sonia (EN-UK)" },
+  { value: "ar-AE-FatimaNeural", label: "Fatima (AR)" },
+  { value: "ar-SA-ZariyahNeural", label: "Zariyah (AR)" },
+  { value: "ur-PK-UzmaNeural", label: "Uzma (UR)" },
+  { value: "hi-IN-SwaraNeural", label: "Swara (HI)" },
+  { value: "fr-FR-DeniseNeural", label: "Denise (FR)" },
+  { value: "es-ES-ElviraNeural", label: "Elvira (ES)" },
+  { value: "de-DE-KatjaNeural", label: "Katja (DE)" },
+  { value: "zh-CN-XiaoxiaoNeural", label: "Xiaoxiao (ZH)" },
+  { value: "ja-JP-NanamiNeural", label: "Nanami (JA)" },
 ];
 
 const TRANSITIONS = [
@@ -59,57 +44,77 @@ const TRANSITIONS = [
   { value: "slideright", label: "Slide Right" },
   { value: "wiperight", label: "Wipe Right" },
   { value: "dissolve", label: "Dissolve" },
-  { value: "smoothleft", label: "Smooth Left" },
+  { value: "smoothleft", label: "Smooth" },
 ];
 
-const FORMAT_ICONS: Record<string, typeof Smartphone> = {
-  "9:16": Smartphone, "16:9": Monitor, "1:1": Square, "4:5": ImageIcon,
-};
-
-const PLATFORM_CONFIGS: Record<string, { format: string; min: number; max: number; def: number; label: string }> = {
-  instagram_reel: { format: "9:16", min: 10, max: 60, def: 15, label: "Instagram Reel" },
+const PLATFORMS: Record<string, { format: string; min: number; max: number; def: number; label: string }> = {
+  instagram_reel: { format: "9:16", min: 10, max: 60, def: 15, label: "Reel" },
   tiktok: { format: "9:16", min: 10, max: 60, def: 15, label: "TikTok" },
-  youtube_short: { format: "9:16", min: 15, max: 60, def: 30, label: "YouTube Short" },
+  youtube_short: { format: "9:16", min: 15, max: 60, def: 30, label: "YT Short" },
   youtube: { format: "16:9", min: 30, max: 300, def: 60, label: "YouTube" },
-  instagram_post: { format: "1:1", min: 10, max: 30, def: 15, label: "Instagram Post" },
-  instagram_story: { format: "9:16", min: 5, max: 15, def: 10, label: "Story" },
-  facebook_ad: { format: "4:5", min: 10, max: 30, def: 15, label: "Facebook Ad" },
+  instagram_post: { format: "1:1", min: 10, max: 30, def: 15, label: "IG Post" },
+  story: { format: "9:16", min: 5, max: 15, def: 10, label: "Story" },
+  facebook_ad: { format: "4:5", min: 10, max: 30, def: 15, label: "FB Ad" },
   linkedin: { format: "16:9", min: 15, max: 120, def: 30, label: "LinkedIn" },
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  queued: "bg-gray-500", generating_images: "bg-blue-500 animate-pulse",
-  generating_audio: "bg-purple-500 animate-pulse", assembling: "bg-orange-500 animate-pulse",
-  complete: "bg-green-500", failed: "bg-red-500", draft: "bg-gray-400",
-  script_ready: "bg-yellow-500", rendering: "bg-blue-500 animate-pulse",
+const TEMPLATE_COLORS: Record<string, string> = {
+  social_short: "from-pink-600 to-purple-600",
+  ad_commercial: "from-orange-600 to-red-600",
+  tutorial: "from-blue-600 to-cyan-600",
+  explainer: "from-green-600 to-teal-600",
+  testimonial: "from-yellow-600 to-orange-600",
+  product_demo: "from-indigo-600 to-purple-600",
+  blog_recap: "from-violet-600 to-pink-600",
+  announcement: "from-emerald-600 to-green-600",
 };
+
+const STATUS_LABELS: Record<string, { label: string; color: string }> = {
+  draft: { label: "Draft", color: "bg-gray-500" },
+  script_ready: { label: "Script Ready", color: "bg-yellow-500" },
+  queued: { label: "Queued", color: "bg-gray-500" },
+  generating_images: { label: "Creating visuals...", color: "bg-blue-500 animate-pulse" },
+  generating_audio: { label: "Recording audio...", color: "bg-purple-500 animate-pulse" },
+  assembling: { label: "Assembling...", color: "bg-orange-500 animate-pulse" },
+  rendering: { label: "Rendering...", color: "bg-blue-500 animate-pulse" },
+  complete: { label: "Complete", color: "bg-green-500" },
+  failed: { label: "Failed", color: "bg-red-500" },
+};
+
+// ============================================================
+// COMPONENT
+// ============================================================
 
 export default function VideoStudio() {
   const { tenantConfig } = useTenant();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState("templates");
-  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
+  const qc = useQueryClient();
+  const tid = tenantConfig?.id;
+
+  // UI state
+  const [tab, setTab] = useState("templates");
   const [selectedProject, setSelectedProject] = useState<any>(null);
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [createMode, setCreateMode] = useState<"template" | "scratch">("template");
-  const [newTitle, setNewTitle] = useState("");
-  const [selectedFormat, setSelectedFormat] = useState("9:16");
-  const [videoTier, setVideoTier] = useState("standard");
-  const [selectedVoice, setSelectedVoice] = useState("en-US-AriaNeural");
+  const [selectedScene, setSelectedScene] = useState(0);
   const [sceneEdits, setSceneEdits] = useState<any[]>([]);
-  const [musicMood, setMusicMood] = useState("none");
+  const [showCreate, setShowCreate] = useState(false);
   const [templateFilter, setTemplateFilter] = useState("all");
+
+  // AI prompt bar state
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiPlatform, setAiPlatform] = useState("instagram_reel");
   const [aiDuration, setAiDuration] = useState(15);
+  const [selectedVoice, setSelectedVoice] = useState("en-US-AriaNeural");
+  const [videoTier, setVideoTier] = useState("standard");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generationStep, setGenerationStep] = useState("");
-  const [dialogTab, setDialogTab] = useState<"ai" | "scratch" | "template">("ai");
+  const [genStep, setGenStep] = useState("");
 
-  const tid = tenantConfig?.id;
+  // Create dialog state
+  const [newTitle, setNewTitle] = useState("");
+  const [createFormat, setCreateFormat] = useState("9:16");
 
-  // === QUERIES ===
+  // ============================================================
+  // QUERIES
+  // ============================================================
 
   const { data: templates = [] } = useQuery({
     queryKey: ["video-templates"],
@@ -131,7 +136,7 @@ export default function VideoStudio() {
     enabled: !!tid,
   });
 
-  const { data: renderJobs = [], refetch: refetchJobs } = useQuery({
+  const { data: renderJobs = [] } = useQuery({
     queryKey: ["video-render-queue", tid],
     queryFn: async () => {
       if (!tid) return [];
@@ -143,55 +148,45 @@ export default function VideoStudio() {
     refetchInterval: 5000,
   });
 
-  // === MUTATIONS ===
+  // ============================================================
+  // MUTATIONS
+  // ============================================================
 
   const createProject = useMutation({
-    mutationFn: async (params: { title: string; scenes: any[]; format: string; voice: string; templateId?: string }) => {
+    mutationFn: async (p: { title: string; scenes: any[]; format: string; templateId?: string }) => {
       const { data, error } = await supabase.from("video_projects" as any).insert({
-        tenant_id: tid,
-        title: params.title,
-        video_type: params.format === "9:16" ? "short_form" : "long_form",
-        aspect_ratio: params.format,
-        voice_style: params.voice,
-        template_id: params.templateId || null,
-        status: "draft",
-        scenes: params.scenes,
+        tenant_id: tid, title: p.title,
+        video_type: p.format === "9:16" ? "short_form" : "long_form",
+        aspect_ratio: p.format, voice_style: selectedVoice,
+        template_id: p.templateId || null, status: "draft", scenes: p.scenes,
       }).select().single();
       if (error) throw error;
       return data;
     },
     onSuccess: (data) => {
-      toast({ title: "Project Created!", description: "Edit scenes and render when ready." });
-      queryClient.invalidateQueries({ queryKey: ["video-projects-studio"] });
-      setSelectedProject(data);
-      setShowCreateDialog(false);
-      setActiveTab("projects");
+      toast({ title: "Project Created!" });
+      refreshProjects();
+      openProject(data);
+      setShowCreate(false);
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  const updateProject = useMutation({
-    mutationFn: async (params: { id: string; scenes: any[] }) => {
+  const updateScenes = useMutation({
+    mutationFn: async (p: { id: string; scenes: any[] }) => {
       const { error } = await supabase.from("video_projects" as any)
-        .update({ scenes: params.scenes, updated_at: new Date().toISOString() })
-        .eq("id", params.id);
+        .update({ scenes: p.scenes, updated_at: new Date().toISOString() }).eq("id", p.id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      toast({ title: "Scenes saved!" });
-      queryClient.invalidateQueries({ queryKey: ["video-projects-studio"] });
-    },
+    onSuccess: () => toast({ title: "Scenes saved!" }),
   });
 
   const startRender = useMutation({
     mutationFn: async (project: any) => {
       const scenes = typeof project.scenes === "string" ? JSON.parse(project.scenes) : project.scenes || [];
       const resp = await fetch("http://localhost:8125/render-full", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tenant_id: tid,
-          project_id: project.id,
+          tenant_id: tid, project_id: project.id,
           scenes: scenes.map((s: any, i: number) => ({
             visual_description: s.visual_prompt || s.visual_description || s.description || `Scene ${i + 1}`,
             voiceover_text: s.voiceover || s.voiceover_text || s.narration || "",
@@ -204,384 +199,451 @@ export default function VideoStudio() {
     },
     onSuccess: (data) => {
       if (data.job_id) {
-        toast({ title: "Render Started!", description: `Job queued. Check Render Queue tab.` });
-        setActiveTab("queue");
-        refetchJobs();
+        toast({ title: "Render Started!", description: "Check Queue tab for progress." });
+        setTab("queue");
       }
     },
-    onError: () => toast({ title: "Render Failed", variant: "destructive" }),
   });
 
-  // === HELPERS ===
+  // ============================================================
+  // HELPERS
+  // ============================================================
 
-  const parseScenes = (t: any): any[] => {
+  const refreshProjects = () => {
+    setTimeout(() => {
+      qc.invalidateQueries({ queryKey: ["video-projects-studio"] });
+      qc.refetchQueries({ queryKey: ["video-projects-studio", tid] });
+    }, 1500);
+  };
+
+  const parseScenes = (item: any): any[] => {
     try {
-      const s = t.scene_structure || t.scenes;
+      const s = item.scene_structure || item.scenes;
       return typeof s === "string" ? JSON.parse(s) : (s || []);
     } catch { return []; }
   };
 
-  const filteredTemplates = templates.filter((t: any) =>
-    templateFilter === "all" || t.template_type === templateFilter
-  );
-
-  const templateTypes = [...new Set(templates.map((t: any) => t.template_type))];
-
-  const handleUseTemplate = (template: any) => {
-    setSelectedTemplate(template);
-    setCreateMode("template");
-    setNewTitle(`${template.name} — ${new Date().toLocaleDateString()}`);
-    setSelectedFormat(template.aspect_ratio || "9:16");
-    setSceneEdits(parseScenes(template));
-    setShowCreateDialog(true);
+  const openProject = (p: any) => {
+    setSelectedProject(p);
+    setSceneEdits(parseScenes(p));
+    setSelectedScene(0);
+    setTab("projects");
   };
 
-  const handleCreateFromScratch = () => {
-    setSelectedTemplate(null);
-    setCreateMode("scratch");
-    setNewTitle("");
-    setSelectedFormat("9:16");
-    setSceneEdits([
-      { scene_number: 1, duration_s: 5, visual_prompt: "", voiceover: "", transition: "fade" },
-      { scene_number: 2, duration_s: 5, visual_prompt: "", voiceover: "", transition: "slide" },
-      { scene_number: 3, duration_s: 5, visual_prompt: "", voiceover: "", transition: "fade" },
-    ]);
-    setShowCreateDialog(true);
+  const updateScene = (idx: number, patch: any) => {
+    const updated = [...sceneEdits];
+    updated[idx] = { ...updated[idx], ...patch };
+    setSceneEdits(updated);
   };
 
-  const handleCreateProject = () => {
-    if (!newTitle.trim()) return;
-    createProject.mutate({
-      title: newTitle,
-      scenes: sceneEdits,
-      format: selectedFormat,
-      voice: selectedVoice,
-      templateId: selectedTemplate?.id,
-    });
+  const addScene = () => {
+    setSceneEdits([...sceneEdits, {
+      scene_number: sceneEdits.length + 1, duration_s: 5,
+      visual_prompt: "", voiceover: "", transition: "fade",
+    }]);
   };
 
-  // === AI GENERATION ===
+  const removeScene = (idx: number) => {
+    if (sceneEdits.length <= 1) return;
+    setSceneEdits(sceneEdits.filter((_, i) => i !== idx));
+    if (selectedScene >= sceneEdits.length - 1) setSelectedScene(Math.max(0, sceneEdits.length - 2));
+  };
+
+  // ============================================================
+  // AI GENERATION
+  // ============================================================
 
   const generateVideoAI = async () => {
     if (!aiPrompt.trim() || !tid) return;
     setIsGenerating(true);
-    const platform = PLATFORM_CONFIGS[aiPlatform] || PLATFORM_CONFIGS.instagram_reel;
+    const platform = PLATFORMS[aiPlatform] || PLATFORMS.instagram_reel;
     const sceneCount = Math.max(2, Math.min(8, Math.ceil(aiDuration / 5)));
 
     try {
-      setGenerationStep("Loading brand voice...");
+      setGenStep("Loading brand voice...");
       let brandVoice = "";
       try {
         const { data: bv } = await supabase.from("brand_voice_profiles" as any)
-          .select("generated_system_prompt, brand_name, tone").eq("tenant_id", tid).single();
-        if (bv) brandVoice = bv.generated_system_prompt || `Brand: ${bv.brand_name || "Professional"}`;
+          .select("generated_system_prompt, brand_name").eq("tenant_id", tid).single();
+        if (bv) brandVoice = bv.generated_system_prompt || bv.brand_name || "";
       } catch {}
 
-      setGenerationStep("AI is writing your video script...");
+      setGenStep("AI is writing your video script...");
       const resp = await fetch("https://webhooks.zatesystems.com/webhook/video/auto-create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tenant_id: tid,
-          trigger_type: "manual_prompt",
+          tenant_id: tid, trigger_type: "manual_prompt",
           source_data: {
-            prompt: aiPrompt,
-            platform: aiPlatform,
-            format: platform.format,
-            duration_seconds: aiDuration,
-            scene_count: sceneCount,
-            brand_voice: brandVoice,
+            prompt: aiPrompt, platform: aiPlatform, format: platform.format,
+            duration_seconds: aiDuration, scene_count: sceneCount, brand_voice: brandVoice,
           },
         }),
       });
       const result = await resp.json();
 
       if (result?.success && result?.project_id) {
-        setGenerationStep("Video project created!");
-        queryClient.invalidateQueries({ queryKey: ["video-projects-studio"] });
         toast({ title: "AI Video Created!", description: `${result.scenes || sceneCount} scenes generated.` });
-        setShowCreateDialog(false);
-        setActiveTab("projects");
+        setTab("projects");
+        refreshProjects();
+        setAiPrompt("");
       } else {
-        // Fallback: create locally
-        setGenerationStep("Creating scenes locally...");
-        const scenes = generateScenesLocally(aiPrompt, sceneCount);
+        setGenStep("Creating locally...");
+        const scenes = buildFallbackScenes(aiPrompt, sceneCount);
         const { data: project } = await supabase.from("video_projects" as any).insert({
-          tenant_id: tid,
-          title: aiPrompt.substring(0, 100),
+          tenant_id: tid, title: aiPrompt.substring(0, 100),
           video_type: platform.format === "16:9" ? "long_form" : "short_form",
-          status: "script_ready",
-          scenes: scenes,
-          voice_style: selectedVoice,
+          status: "script_ready", scenes: scenes, voice_style: selectedVoice,
         }).select().single();
         if (project) {
-          queryClient.invalidateQueries({ queryKey: ["video-projects-studio"] });
-          toast({ title: "Video Created!", description: `${scenes.length} scenes ready.` });
-          setShowCreateDialog(false);
-          setActiveTab("projects");
+          toast({ title: "Video Created!" });
+          refreshProjects();
+          setTab("projects");
+          setAiPrompt("");
         }
       }
     } catch (err) {
       toast({ title: "Generation Failed", description: String(err), variant: "destructive" });
     }
     setIsGenerating(false);
-    setGenerationStep("");
+    setGenStep("");
   };
 
-  const generateScenesLocally = (prompt: string, count: number) => {
+  const buildFallbackScenes = (prompt: string, count: number) => {
     const dur = Math.ceil(aiDuration / count);
-    const roles = ["hook", "problem", "solution", "benefit", "social_proof", "cta", "detail", "closing"];
-    const voTemplates = [
-      "Discover {t}.", "The challenge: {t}.", "Here is how {t} changes everything.",
-      "The result: {t} delivers.", "Trusted by thousands.", "Start your {t} journey today.",
-      "Feature highlight: {t}.", "Do not miss out on {t}.",
-    ];
+    const roles = ["hook", "problem", "solution", "benefit", "proof", "cta"];
+    const vos = ["Discover this.", "The challenge.", "The solution.", "The result.", "Join thousands.", "Start today."];
     return Array.from({ length: count }, (_, i) => ({
       scene_number: i + 1,
-      visual_description: `${prompt}, ${roles[i % roles.length]} scene, professional cinematic quality`,
-      voiceover_text: voTemplates[i % voTemplates.length].replace("{t}", prompt.substring(0, 50)),
+      visual_description: `${prompt}, ${roles[i % roles.length]} scene, professional cinematic`,
+      voiceover_text: vos[i % vos.length],
       duration_s: dur,
       transition: i === 0 || i === count - 1 ? "fade" : "dissolve",
-      overlay_text: i === count - 1 ? "LEARN MORE" : "",
     }));
   };
 
-  const handleOpenCreate = (mode: "ai" | "scratch" | "template") => {
-    setDialogTab(mode);
-    if (mode === "scratch") handleCreateFromScratch();
-    else setShowCreateDialog(true);
+  const triggerAutoCreate = async (triggerType: string, sourceData: any) => {
+    try {
+      const resp = await fetch("https://webhooks.zatesystems.com/webhook/video/auto-create", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tenant_id: tid, trigger_type: triggerType, source_data: sourceData }),
+      });
+      const result = await resp.json();
+      if (result?.success) {
+        toast({ title: "Video Auto-Created!", description: `${result.scenes} scenes from ${triggerType.replace(/_/g, " ")}` });
+        refreshProjects();
+        setTab("projects");
+      }
+    } catch {}
   };
 
-  // === RENDER ===
+  // Stats
+  const stats = {
+    total: projects.length,
+    rendered: projects.filter((p: any) => p.render_status === "complete").length,
+    aiGenerated: projects.filter((p: any) => p.ai_generated).length,
+    scriptReady: projects.filter((p: any) => p.status === "script_ready").length,
+  };
+
+  const filteredTemplates = templates.filter((t: any) => templateFilter === "all" || t.template_type === templateFilter);
+  const templateTypes = [...new Set(templates.map((t: any) => t.template_type))] as string[];
+
+  // ============================================================
+  // RENDER
+  // ============================================================
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
+    <div className="p-6 space-y-5 max-w-7xl mx-auto">
+
+      {/* HEADER */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
-            <Film className="h-8 w-8 text-purple-500" />
-            Video Studio
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Film className="h-6 w-6 text-purple-500" /> Video Studio
           </h1>
-          <p className="text-muted-foreground mt-1">AI-powered video production with local GPU inference</p>
+          <p className="text-sm text-muted-foreground">AI-powered video production &middot; Local GPU &middot; $0/month</p>
         </div>
-        <Button size="lg" onClick={() => handleOpenCreate("ai")}>
-          <Sparkles className="h-5 w-5 mr-2" /> Create Video
+        <Button onClick={() => { setNewTitle(""); setCreateFormat("9:16"); setSceneEdits([{ scene_number: 1, duration_s: 5, visual_prompt: "", voiceover: "", transition: "fade" }, { scene_number: 2, duration_s: 5, visual_prompt: "", voiceover: "", transition: "dissolve" }, { scene_number: 3, duration_s: 5, visual_prompt: "", voiceover: "", transition: "fade" }]); setShowCreate(true); }} variant="outline" size="sm">
+          <Plus className="h-4 w-4 mr-1" /> From Scratch
         </Button>
       </div>
 
-      {/* Platform Presets */}
-      <div className="flex gap-2 flex-wrap">
-        {PLATFORM_PRESETS.map((p) => {
-          const Icon = p.icon;
-          return (
-            <Button key={p.name} variant="outline" size="sm" className="gap-1.5"
-              onClick={() => { setSelectedFormat(p.format); handleCreateFromScratch(); }}>
-              <Icon className="h-3.5 w-3.5" /> {p.name}
+      {/* HERO: AI PROMPT BAR */}
+      <div className="rounded-xl bg-gradient-to-r from-purple-500/20 via-pink-500/20 to-orange-500/20 p-[1px]">
+        <div className="rounded-xl bg-card p-4 space-y-3">
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Sparkles className="absolute left-3 top-3 h-5 w-5 text-purple-400" />
+              <Textarea
+                placeholder="Describe your video... e.g., 'Create a 15-second Instagram Reel showcasing our premium BBQ restaurant'"
+                value={aiPrompt} onChange={(e) => setAiPrompt(e.target.value)}
+                className="pl-10 min-h-[60px] resize-none text-sm border-none bg-muted/30 focus:bg-muted/50"
+                rows={2}
+              />
+            </div>
+            <Button onClick={generateVideoAI} disabled={isGenerating || !aiPrompt.trim()}
+              className="h-auto px-5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700" size="lg">
+              {isGenerating ? (
+                <div className="flex flex-col items-center gap-1">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span className="text-[10px] max-w-[60px] text-center leading-tight">{genStep || "..."}</span>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-0.5">
+                  <Wand2 className="h-5 w-5" />
+                  <span className="text-[10px]">Generate</span>
+                </div>
+              )}
             </Button>
-          );
-        })}
+          </div>
+
+          {/* Platform pills + settings */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {Object.entries(PLATFORMS).map(([key, cfg]) => (
+              <button key={key} onClick={() => { setAiPlatform(key); setAiDuration(cfg.def); }}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all ${
+                  aiPlatform === key ? "bg-purple-600 text-white shadow-sm" : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                }`}>
+                {cfg.label}
+              </button>
+            ))}
+            <span className="text-muted-foreground/30 mx-0.5">|</span>
+            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-muted/50 text-[11px]">
+              <Clock className="h-3 w-3 text-muted-foreground" />
+              <select value={aiDuration} onChange={(e) => setAiDuration(Number(e.target.value))}
+                className="bg-transparent font-medium border-none outline-none cursor-pointer text-[11px]">
+                {[5,10,15,20,30,45,60,90].map(d => <option key={d} value={d}>{d}s</option>)}
+              </select>
+            </div>
+            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-muted/50 text-[11px]">
+              <Mic className="h-3 w-3 text-muted-foreground" />
+              <select value={selectedVoice} onChange={(e) => setSelectedVoice(e.target.value)}
+                className="bg-transparent font-medium border-none outline-none cursor-pointer text-[11px] max-w-[90px]">
+                {VOICE_OPTIONS.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
+              </select>
+            </div>
+            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-muted/50 text-[11px]">
+              <Layers className="h-3 w-3 text-muted-foreground" />
+              <select value={videoTier} onChange={(e) => setVideoTier(e.target.value)}
+                className="bg-transparent font-medium border-none outline-none cursor-pointer text-[11px]">
+                <option value="free">Free</option>
+                <option value="standard">Standard</option>
+                <option value="premium">Premium</option>
+              </select>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-4 w-full max-w-lg">
-          <TabsTrigger value="templates"><Layers className="h-4 w-4 mr-1" /> Templates</TabsTrigger>
-          <TabsTrigger value="projects"><Film className="h-4 w-4 mr-1" /> Projects</TabsTrigger>
-          <TabsTrigger value="queue"><RefreshCw className="h-4 w-4 mr-1" /> Queue</TabsTrigger>
-          <TabsTrigger value="analytics"><BarChart3 className="h-4 w-4 mr-1" /> Stats</TabsTrigger>
+      {/* QUICK AGENTIC ACTIONS */}
+      <div className="flex gap-2">
+        <Button variant="outline" size="sm" className="text-xs" onClick={() => triggerAutoCreate("blog_published", { title: "Latest blog post" })}>
+          <FileText className="h-3 w-3 mr-1" /> Blog &rarr; Video
+        </Button>
+        <Button variant="outline" size="sm" className="text-xs" onClick={() => triggerAutoCreate("competitor_ad_detected", { competitor_name: "Competitor", ad_message: "Their ad" })}>
+          <Shield className="h-3 w-3 mr-1" /> Counter Ad
+        </Button>
+        <Button variant="outline" size="sm" className="text-xs" onClick={() => triggerAutoCreate("campaign_created", { name: "Campaign", message: "Content", type: "promotional" })}>
+          <Send className="h-3 w-3 mr-1" /> Campaign &rarr; Video
+        </Button>
+      </div>
+
+      {/* TABS */}
+      <Tabs value={tab} onValueChange={(v) => { setTab(v); if (v !== "projects") setSelectedProject(null); }}>
+        <TabsList className="grid grid-cols-4 w-full max-w-md">
+          <TabsTrigger value="templates"><Layers className="h-3.5 w-3.5 mr-1" /> Templates</TabsTrigger>
+          <TabsTrigger value="projects"><Film className="h-3.5 w-3.5 mr-1" /> Projects</TabsTrigger>
+          <TabsTrigger value="queue"><RefreshCw className="h-3.5 w-3.5 mr-1" /> Queue</TabsTrigger>
+          <TabsTrigger value="analytics"><BarChart3 className="h-3.5 w-3.5 mr-1" /> Stats</TabsTrigger>
         </TabsList>
 
         {/* TEMPLATES TAB */}
-        <TabsContent value="templates" className="space-y-4">
-          <div className="flex gap-2 flex-wrap">
-            <Button size="sm" variant={templateFilter === "all" ? "default" : "outline"}
-              onClick={() => setTemplateFilter("all")}>All ({templates.length})</Button>
-            {templateTypes.map((type: any) => (
-              <Button key={type} size="sm" variant={templateFilter === type ? "default" : "outline"}
-                onClick={() => setTemplateFilter(type)}>
+        <TabsContent value="templates" className="space-y-4 mt-4">
+          <div className="flex gap-1.5 flex-wrap">
+            <button onClick={() => setTemplateFilter("all")}
+              className={`px-3 py-1 rounded-full text-xs font-medium ${templateFilter === "all" ? "bg-foreground text-background" : "bg-muted/50 hover:bg-muted"}`}>
+              All ({templates.length})
+            </button>
+            {templateTypes.map((type) => (
+              <button key={type} onClick={() => setTemplateFilter(type)}
+                className={`px-3 py-1 rounded-full text-xs font-medium capitalize ${templateFilter === type ? "bg-foreground text-background" : "bg-muted/50 hover:bg-muted"}`}>
                 {type.replace(/_/g, " ")}
-              </Button>
+              </button>
             ))}
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             {filteredTemplates.map((t: any) => {
               const scenes = parseScenes(t);
-              const FormatIcon = FORMAT_ICONS[t.aspect_ratio] || Smartphone;
+              const gradient = TEMPLATE_COLORS[t.template_type] || "from-gray-600 to-gray-700";
               return (
-                <Card key={t.id} className="hover:border-purple-500/50 transition-colors cursor-pointer"
-                  onClick={() => handleUseTemplate(t)}>
-                  <CardContent className="pt-4 space-y-3">
-                    <div className="h-24 bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-lg flex items-center justify-center">
-                      <Play className="h-8 w-8 text-purple-500 opacity-50" />
+                <div key={t.id} className="group rounded-xl overflow-hidden border bg-card hover:border-purple-500/50 transition-all cursor-pointer"
+                  onClick={() => { setNewTitle(`${t.name} - ${new Date().toLocaleDateString()}`); setCreateFormat(t.aspect_ratio || "9:16"); setSceneEdits(scenes); setShowCreate(true); }}>
+                  <div className={`h-20 bg-gradient-to-br ${gradient} flex items-center justify-center relative`}>
+                    <Film className="h-8 w-8 text-white/40" />
+                    <Badge className="absolute top-2 right-2 bg-black/50 text-white border-none text-[10px]">{t.aspect_ratio || "9:16"}</Badge>
+                  </div>
+                  <div className="p-3 space-y-1.5">
+                    <h3 className="font-semibold text-sm">{t.name}</h3>
+                    <p className="text-[11px] text-muted-foreground line-clamp-2">{t.description}</p>
+                    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 capitalize">{t.template_type?.replace(/_/g, " ")}</Badge>
+                      <span>{t.default_duration_seconds || 15}s</span>
+                      <span>&middot;</span>
+                      <span>{scenes.length} scenes</span>
                     </div>
-                    <div>
-                      <h3 className="font-medium text-sm">{t.name}</h3>
-                      <p className="text-xs text-muted-foreground line-clamp-2">{t.description}</p>
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Badge variant="outline" className="text-xs gap-1">
-                        <FormatIcon className="h-3 w-3" /> {t.aspect_ratio}
-                      </Badge>
-                      <Badge variant="outline" className="text-xs gap-1">
-                        <Clock className="h-3 w-3" /> {t.default_duration_seconds}s
-                      </Badge>
-                      <Badge variant="secondary" className="text-xs">{scenes.length} scenes</Badge>
-                    </div>
-                    <Button size="sm" className="w-full" onClick={(e) => { e.stopPropagation(); handleUseTemplate(t); }}>
-                      <Zap className="h-3 w-3 mr-1" /> Use Template
-                    </Button>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               );
             })}
+            {filteredTemplates.length === 0 && (
+              <div className="col-span-full text-center py-12 text-muted-foreground">
+                <Layers className="h-10 w-10 mx-auto mb-2 opacity-20" />
+                <p className="text-sm">No templates found</p>
+              </div>
+            )}
           </div>
         </TabsContent>
 
         {/* PROJECTS TAB */}
-        <TabsContent value="projects" className="space-y-4">
+        <TabsContent value="projects" className="mt-4">
           {selectedProject ? (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <div>
-                  <Button variant="ghost" size="sm" onClick={() => setSelectedProject(null)}>← Back</Button>
-                  <h2 className="text-xl font-bold mt-2">{selectedProject.title}</h2>
-                  <div className="flex gap-2 mt-1">
-                    <Badge className={STATUS_COLORS[selectedProject.status] || "bg-gray-500"}>{selectedProject.status}</Badge>
-                    <Badge variant="outline">{selectedProject.aspect_ratio || "9:16"}</Badge>
+                <div className="flex items-center gap-3">
+                  <Button variant="ghost" size="sm" onClick={() => setSelectedProject(null)}><ArrowLeft className="h-4 w-4" /></Button>
+                  <div>
+                    <h2 className="font-bold">{selectedProject.title}</h2>
+                    <div className="flex gap-1.5 mt-0.5">
+                      <Badge className={STATUS_LABELS[selectedProject.status]?.color || "bg-gray-500"}>
+                        {STATUS_LABELS[selectedProject.status]?.label || selectedProject.status}
+                      </Badge>
+                      <Badge variant="outline" className="text-[10px]">{selectedProject.aspect_ratio || "9:16"}</Badge>
+                      {selectedProject.ai_generated && <Badge variant="outline" className="text-[10px] text-purple-500 border-purple-500/30">AI</Badge>}
+                    </div>
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => updateProject.mutate({ id: selectedProject.id, scenes: sceneEdits })}>
-                    Save Scenes
-                  </Button>
-                  <Button onClick={() => startRender.mutate(selectedProject)} disabled={startRender.isPending}>
-                    {startRender.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
-                    Render Video
+                  <Button size="sm" variant="outline" onClick={() => updateScenes.mutate({ id: selectedProject.id, scenes: sceneEdits })}>Save</Button>
+                  <Button size="sm" onClick={() => startRender.mutate({ ...selectedProject, scenes: sceneEdits })} disabled={startRender.isPending}
+                    className="bg-gradient-to-r from-purple-600 to-pink-600">
+                    {startRender.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Play className="h-4 w-4 mr-1" /> Render</>}
                   </Button>
                 </div>
               </div>
 
-              {/* Scene Editor */}
-              <div className="space-y-3">
-                {sceneEdits.map((scene: any, i: number) => (
-                  <Card key={i}>
-                    <CardContent className="pt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-xs font-medium">Scene {i + 1} — Visual Description</Label>
-                        <Textarea
-                          value={scene.visual_prompt || scene.visual_description || ""}
-                          onChange={(e) => {
-                            const updated = [...sceneEdits];
-                            updated[i] = { ...updated[i], visual_prompt: e.target.value };
-                            setSceneEdits(updated);
-                          }}
-                          placeholder="Describe the visual for AI image generation..."
-                          rows={3} className="text-sm"
-                        />
+              {/* Scene editor split */}
+              <div className="grid grid-cols-5 gap-4">
+                <div className="col-span-2 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-muted-foreground">Scenes ({sceneEdits.length})</span>
+                    <Button size="sm" variant="ghost" onClick={addScene}><Plus className="h-3 w-3" /></Button>
+                  </div>
+                  {sceneEdits.map((scene: any, i: number) => (
+                    <div key={i} onClick={() => setSelectedScene(i)}
+                      className={`rounded-lg border p-2.5 cursor-pointer transition-all text-xs ${
+                        selectedScene === i ? "border-purple-500 bg-purple-500/5" : "hover:border-muted-foreground/30"
+                      }`}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-medium">Scene {i + 1}</span>
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">{scene.duration_s || 5}s</Badge>
                       </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs font-medium">Voiceover Text</Label>
-                        <Textarea
-                          value={scene.voiceover || scene.voiceover_text || ""}
-                          onChange={(e) => {
-                            const updated = [...sceneEdits];
-                            updated[i] = { ...updated[i], voiceover: e.target.value };
-                            setSceneEdits(updated);
-                          }}
-                          placeholder="Narration text for this scene..."
-                          rows={3} className="text-sm"
-                        />
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Label className="text-xs">Duration:</Label>
-                          <Input type="number" className="w-16 h-7 text-xs" min={2} max={30}
-                            value={scene.duration_s || 5}
-                            onChange={(e) => {
-                              const updated = [...sceneEdits];
-                              updated[i] = { ...updated[i], duration_s: parseInt(e.target.value) || 5 };
-                              setSceneEdits(updated);
-                            }}
-                          />
-                          <span className="text-xs text-muted-foreground">sec</span>
-                          <Select value={scene.transition || "fade"} onValueChange={(v) => {
-                            const updated = [...sceneEdits];
-                            updated[i] = { ...updated[i], transition: v };
-                            setSceneEdits(updated);
-                          }}>
-                            <SelectTrigger className="h-7 w-28 text-xs"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              {TRANSITIONS.map((t) => (
-                                <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                              ))}
-                            </SelectContent>
+                      <p className="text-muted-foreground line-clamp-2">{scene.visual_prompt || scene.visual_description || "No description"}</p>
+                      {(scene.voiceover || scene.voiceover_text) && (
+                        <p className="text-purple-400 mt-0.5 line-clamp-1 text-[10px]">{scene.voiceover || scene.voiceover_text}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="col-span-3 space-y-3">
+                  {sceneEdits[selectedScene] && (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-semibold text-sm">Scene {selectedScene + 1}</h3>
+                        <Button size="sm" variant="ghost" className="text-red-500 h-7" onClick={() => removeScene(selectedScene)}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Visual Description</Label>
+                        <Textarea className="mt-1 text-sm" rows={3}
+                          value={sceneEdits[selectedScene].visual_prompt || sceneEdits[selectedScene].visual_description || ""}
+                          onChange={(e) => updateScene(selectedScene, { visual_prompt: e.target.value, visual_description: e.target.value })}
+                          placeholder="Describe what the viewer sees..." />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Voiceover</Label>
+                        <Textarea className="mt-1 text-sm" rows={2}
+                          value={sceneEdits[selectedScene].voiceover || sceneEdits[selectedScene].voiceover_text || ""}
+                          onChange={(e) => updateScene(selectedScene, { voiceover: e.target.value, voiceover_text: e.target.value })}
+                          placeholder="Narration text..." />
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <Label className="text-[10px]">Duration</Label>
+                          <Select value={String(sceneEdits[selectedScene].duration_s || 5)}
+                            onValueChange={(v) => updateScene(selectedScene, { duration_s: Number(v) })}>
+                            <SelectTrigger className="h-8 text-xs mt-0.5"><SelectValue /></SelectTrigger>
+                            <SelectContent>{[3,4,5,6,7,8,10,12,15].map(d => <SelectItem key={d} value={String(d)}>{d}s</SelectItem>)}</SelectContent>
                           </Select>
                         </div>
-                        <div className="mt-2">
-                          <Input
-                            placeholder="On-screen text overlay (optional)"
-                            className="text-xs h-7"
-                            value={scene.overlay_text || ""}
-                            onChange={(e) => {
-                              const updated = [...sceneEdits];
-                              updated[i] = { ...updated[i], overlay_text: e.target.value };
-                              setSceneEdits(updated);
-                            }}
-                          />
+                        <div>
+                          <Label className="text-[10px]">Transition</Label>
+                          <Select value={sceneEdits[selectedScene].transition || "fade"}
+                            onValueChange={(v) => updateScene(selectedScene, { transition: v })}>
+                            <SelectTrigger className="h-8 text-xs mt-0.5"><SelectValue /></SelectTrigger>
+                            <SelectContent>{TRANSITIONS.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label className="text-[10px]">Overlay</Label>
+                          <Input className="h-8 text-xs mt-0.5"
+                            value={sceneEdits[selectedScene].overlay_text || ""}
+                            onChange={(e) => updateScene(selectedScene, { overlay_text: e.target.value })}
+                            placeholder="Text..." />
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-                <Button variant="outline" onClick={() => setSceneEdits([...sceneEdits, {
-                  scene_number: sceneEdits.length + 1, duration_s: 5,
-                  visual_prompt: "", voiceover: "", transition: "fade"
-                }])}>
-                  <Plus className="h-4 w-4 mr-1" /> Add Scene
-                </Button>
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* Timeline */}
-              <Card>
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-1 h-8">
-                    {sceneEdits.map((s: any, i: number) => {
-                      const totalDur = sceneEdits.reduce((sum: number, sc: any) => sum + (sc.duration_s || 5), 0);
-                      const pct = ((s.duration_s || 5) / totalDur) * 100;
-                      const colors = ["bg-purple-500", "bg-blue-500", "bg-green-500", "bg-orange-500", "bg-pink-500", "bg-cyan-500", "bg-yellow-500"];
-                      return (
-                        <div key={i} className={`${colors[i % colors.length]} rounded h-full flex items-center justify-center text-white text-xs font-medium`}
-                          style={{ width: `${pct}%`, minWidth: "30px" }}>
-                          S{i + 1}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1 text-center">
-                    Total: {sceneEdits.reduce((sum: number, s: any) => sum + (s.duration_s || 5), 0)}s — {sceneEdits.length} scenes
-                  </p>
-                </CardContent>
-              </Card>
+              <div className="p-3 rounded-lg bg-muted/30 border">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[10px] font-medium text-muted-foreground">Timeline</span>
+                  <span className="text-[10px] text-muted-foreground">{sceneEdits.reduce((s: number, sc: any) => s + (sc.duration_s || 5), 0)}s total</span>
+                </div>
+                <div className="flex gap-0.5 h-6">
+                  {sceneEdits.map((s: any, i: number) => {
+                    const colors = ["bg-purple-600","bg-pink-600","bg-blue-600","bg-orange-600","bg-green-600","bg-cyan-600","bg-yellow-600","bg-red-600"];
+                    return (
+                      <div key={i} onClick={() => setSelectedScene(i)}
+                        className={`${colors[i%colors.length]} rounded cursor-pointer flex items-center justify-center text-white text-[10px] font-medium transition-all ${selectedScene===i?"ring-2 ring-white":"opacity-80 hover:opacity-100"}`}
+                        style={{ flex: s.duration_s || 5 }}>{i+1}</div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {projects.map((p: any) => {
                 const scenes = parseScenes(p);
+                const st = STATUS_LABELS[p.status] || { label: p.status, color: "bg-gray-500" };
                 return (
-                  <Card key={p.id} className="hover:border-purple-500/50 cursor-pointer"
-                    onClick={() => { setSelectedProject(p); setSceneEdits(scenes); }}>
+                  <Card key={p.id} className="hover:border-purple-500/50 cursor-pointer transition-all" onClick={() => openProject(p)}>
                     <CardContent className="pt-4 space-y-2">
                       <div className="flex items-center justify-between">
                         <h3 className="font-medium text-sm line-clamp-1">{p.title || "Untitled"}</h3>
-                        <Badge className={STATUS_COLORS[p.status] || "bg-gray-500"} >{p.status}</Badge>
+                        <Badge className={`${st.color} text-[10px]`}>{st.label}</Badge>
                       </div>
-                      <div className="flex gap-2">
-                        <Badge variant="outline" className="text-xs">{p.aspect_ratio || "9:16"}</Badge>
-                        <Badge variant="outline" className="text-xs">{scenes.length} scenes</Badge>
-                        {p.render_status === "complete" && <Badge className="bg-green-500 text-xs">Rendered</Badge>}
+                      <div className="flex gap-1.5">
+                        <Badge variant="outline" className="text-[10px]">{p.aspect_ratio || "9:16"}</Badge>
+                        <Badge variant="outline" className="text-[10px]">{scenes.length} scenes</Badge>
+                        {p.ai_generated && <Badge variant="outline" className="text-[10px] text-purple-500">AI</Badge>}
                       </div>
                       {p.video_url && (
-                        <Button size="sm" variant="outline" className="w-full mt-2" asChild>
+                        <Button size="sm" variant="outline" className="w-full text-xs" asChild>
                           <a href={p.video_url} target="_blank" rel="noopener"><Download className="h-3 w-3 mr-1" /> Download</a>
                         </Button>
                       )}
@@ -590,9 +652,10 @@ export default function VideoStudio() {
                 );
               })}
               {projects.length === 0 && (
-                <div className="col-span-full text-center py-12 text-muted-foreground">
-                  <Film className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                  <p>No video projects yet. Start from a template or create from scratch.</p>
+                <div className="col-span-full text-center py-16 text-muted-foreground">
+                  <Film className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                  <p className="font-medium">No video projects yet</p>
+                  <p className="text-sm">Use the AI prompt bar above or pick a template</p>
                 </div>
               )}
             </div>
@@ -600,286 +663,152 @@ export default function VideoStudio() {
         </TabsContent>
 
         {/* RENDER QUEUE TAB */}
-        <TabsContent value="queue" className="space-y-4">
+        <TabsContent value="queue" className="space-y-3 mt-4">
           {renderJobs.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <RefreshCw className="h-12 w-12 mx-auto mb-3 opacity-30" />
-              <p>No render jobs. Start by rendering a video project.</p>
+            <div className="text-center py-16 text-muted-foreground">
+              <Film className="h-12 w-12 mx-auto mb-3 opacity-20" />
+              <p className="font-medium">No renders yet</p>
+              <p className="text-sm">Create and render a video to see progress here</p>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {renderJobs.map((job: any) => (
-                <Card key={job.id}>
-                  <CardContent className="pt-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-3 h-3 rounded-full ${STATUS_COLORS[job.status] || "bg-gray-500"}`} />
-                        <div>
-                          <p className="font-medium text-sm">{job.title || `Render ${job.id?.slice(0, 8)}`}</p>
-                          <p className="text-xs text-muted-foreground">{job.status?.replace(/_/g, " ")} — {job.current_step || "queued"}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {job.format && <Badge variant="outline" className="text-xs">{job.format}</Badge>}
-                        {job.status === "complete" && job.result_url && (
-                          <Button size="sm" variant="outline" asChild>
-                            <a href={job.result_url} target="_blank" rel="noopener"><Download className="h-3 w-3 mr-1" /> Download</a>
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    {job.status !== "complete" && job.status !== "failed" && (
-                      <Progress value={job.progress || (job.scenes_complete / Math.max(job.scenes_total, 1)) * 100} className="mt-2 h-2" />
-                    )}
-                    {job.status === "failed" && job.error && (
-                      <p className="text-xs text-red-500 mt-2">{job.error}</p>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+          ) : renderJobs.map((job: any) => {
+            const st = STATUS_LABELS[job.status] || { label: job.status || "unknown", color: "bg-gray-500" };
+            const progress = job.scenes_total ? (job.scenes_complete / job.scenes_total) * 100 : 0;
+            return (
+              <div key={job.id} className="rounded-lg border p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <h4 className="font-medium text-sm">{job.title || `Render ${job.id?.slice(0,8)}`}</h4>
+                    <p className="text-[11px] text-muted-foreground">{job.format} &middot; {job.tier||"standard"}</p>
+                  </div>
+                  <Badge className={st.color}>{st.label}</Badge>
+                </div>
+                {job.status !== "complete" && job.status !== "failed" && (
+                  <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-purple-600 to-pink-600 transition-all duration-500" style={{ width: `${progress}%` }} />
+                  </div>
+                )}
+                {job.status === "complete" && job.result_url && (
+                  <div className="mt-2 flex gap-2">
+                    <Button size="sm" className="text-xs" asChild><a href={job.result_url} target="_blank" rel="noopener"><Play className="h-3 w-3 mr-1" /> Watch</a></Button>
+                    <Button size="sm" variant="outline" className="text-xs" asChild><a href={job.result_url} download><Download className="h-3 w-3 mr-1" /> Download</a></Button>
+                  </div>
+                )}
+                {job.status === "failed" && job.error && <p className="text-xs text-red-500 mt-2">{job.error}</p>}
+              </div>
+            );
+          })}
         </TabsContent>
 
         {/* ANALYTICS TAB */}
-        <TabsContent value="analytics" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card><CardContent className="pt-6 text-center">
-              <p className="text-3xl font-bold">{projects.length}</p>
-              <p className="text-sm text-muted-foreground">Total Projects</p>
+        <TabsContent value="analytics" className="space-y-4 mt-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Card><CardContent className="pt-5 text-center">
+              <p className="text-2xl font-bold">{stats.total}</p>
+              <p className="text-xs text-muted-foreground">Total Projects</p>
             </CardContent></Card>
-            <Card><CardContent className="pt-6 text-center">
-              <p className="text-3xl font-bold">{projects.filter((p: any) => p.render_status === "complete").length}</p>
-              <p className="text-sm text-muted-foreground">Videos Rendered</p>
+            <Card><CardContent className="pt-5 text-center">
+              <p className="text-2xl font-bold">{stats.rendered}</p>
+              <p className="text-xs text-muted-foreground">Rendered</p>
             </CardContent></Card>
-            <Card><CardContent className="pt-6 text-center">
-              <p className="text-3xl font-bold">{templates.length}</p>
-              <p className="text-sm text-muted-foreground">Templates Available</p>
+            <Card><CardContent className="pt-5 text-center">
+              <p className="text-2xl font-bold text-purple-500">{stats.aiGenerated}</p>
+              <p className="text-xs text-muted-foreground">AI Generated</p>
             </CardContent></Card>
-            <Card><CardContent className="pt-6 text-center">
-              <p className="text-3xl font-bold">{renderJobs.filter((j: any) => j.status !== "complete" && j.status !== "failed").length}</p>
-              <p className="text-sm text-muted-foreground">Active Renders</p>
+            <Card><CardContent className="pt-5 text-center">
+              <p className="text-2xl font-bold text-yellow-500">{stats.scriptReady}</p>
+              <p className="text-xs text-muted-foreground">Ready to Render</p>
             </CardContent></Card>
           </div>
+
           <Card>
-            <CardHeader><CardTitle className="text-sm">Most Used Templates</CardTitle></CardHeader>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2"><Bot className="h-4 w-4 text-purple-500" /> AI Activity</CardTitle>
+            </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                {templates.slice(0, 5).map((t: any) => (
-                  <div key={t.id} className="flex items-center justify-between text-sm">
-                    <span>{t.name}</span>
-                    <Badge variant="outline">{t.usage_count || 0} uses</Badge>
-                  </div>
-                ))}
-              </div>
+              {projects.filter((p: any) => p.ai_generated).length === 0 ? (
+                <p className="text-xs text-muted-foreground">No AI-generated videos yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {projects.filter((p: any) => p.ai_generated).slice(0,5).map((p: any) => (
+                    <div key={p.id} className="flex items-center justify-between py-1.5 border-b last:border-0">
+                      <div>
+                        <p className="text-sm font-medium">{p.title}</p>
+                        <p className="text-[10px] text-muted-foreground">{p.source_type?.replace(/_/g," ")||"manual"} &middot; {new Date(p.created_at).toLocaleDateString()}</p>
+                      </div>
+                      <Badge className={STATUS_LABELS[p.status]?.color||"bg-gray-500"} variant="outline">{STATUS_LABELS[p.status]?.label||p.status}</Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm">Top Templates</CardTitle></CardHeader>
+            <CardContent>
+              {templates.slice(0,5).map((t: any) => (
+                <div key={t.id} className="flex items-center justify-between py-1.5 text-sm">
+                  <span>{t.name}</span>
+                  <Badge variant="outline" className="text-[10px]">{t.usage_count||0} uses</Badge>
+                </div>
+              ))}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
 
-      {/* CREATE DIALOG — 3 MODES */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Create New Video</DialogTitle>
-          </DialogHeader>
-
-          <Tabs value={dialogTab} onValueChange={(v) => setDialogTab(v as any)}>
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="ai" className="gap-1"><Sparkles className="h-3 w-3" /> AI Generate</TabsTrigger>
-              <TabsTrigger value="scratch" className="gap-1"><PenLine className="h-3 w-3" /> From Scratch</TabsTrigger>
-              <TabsTrigger value="template" className="gap-1"><LayoutTemplate className="h-3 w-3" /> Template</TabsTrigger>
-            </TabsList>
-
-            {/* === AI GENERATE TAB === */}
-            <TabsContent value="ai" className="space-y-4 mt-4">
+      {/* FROM SCRATCH DIALOG */}
+      <Dialog open={showCreate} onOpenChange={setShowCreate}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>New Video</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs">Title</Label>
+              <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Video title..." className="mt-1" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label>What video do you want to create?</Label>
-                <Textarea
-                  placeholder="Example: Create a 15-second Instagram Reel showcasing our premium BBQ restaurant. Show the sizzling grill, happy customers, and cozy ambiance. End with a reservation CTA."
-                  value={aiPrompt} onChange={(e) => setAiPrompt(e.target.value)}
-                  rows={4} className="mt-1"
-                />
-                <p className="text-xs text-muted-foreground mt-1">Describe your video in natural language. AI will generate scenes, visuals, and voiceover.</p>
+                <Label className="text-xs">Format</Label>
+                <Select value={createFormat} onValueChange={setCreateFormat}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="9:16">9:16 Vertical</SelectItem>
+                    <SelectItem value="16:9">16:9 Horizontal</SelectItem>
+                    <SelectItem value="1:1">1:1 Square</SelectItem>
+                    <SelectItem value="4:5">4:5 Portrait</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-
               <div>
-                <Label>Platform</Label>
-                <div className="grid grid-cols-4 gap-2 mt-1">
-                  {Object.entries(PLATFORM_CONFIGS).map(([key, cfg]) => (
-                    <button key={key} onClick={() => { setAiPlatform(key); setAiDuration(cfg.def); }}
-                      className={`p-2 rounded-lg border text-center text-xs transition-colors ${aiPlatform === key ? "border-primary bg-primary/10 text-primary font-medium" : "border-border hover:border-primary/50"}`}>
-                      <div>{cfg.label}</div>
-                      <div className="text-muted-foreground">{cfg.format}</div>
-                    </button>
-                  ))}
-                </div>
+                <Label className="text-xs">Voice</Label>
+                <Select value={selectedVoice} onValueChange={setSelectedVoice}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>{VOICE_OPTIONS.map(v => <SelectItem key={v.value} value={v.value}>{v.label}</SelectItem>)}</SelectContent>
+                </Select>
               </div>
-
-              <div>
-                <div className="flex items-center justify-between">
-                  <Label>Duration</Label>
-                  <span className="text-sm font-mono">{aiDuration}s ({Math.ceil(aiDuration / 5)} scenes)</span>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Scenes ({sceneEdits.length})</Label>
+              {sceneEdits.map((s: any, i: number) => (
+                <div key={i} className="border rounded p-2 grid grid-cols-2 gap-2">
+                  <Textarea className="text-xs" rows={2} value={s.visual_prompt||""} placeholder={`Scene ${i+1} visual...`}
+                    onChange={(e) => { const u=[...sceneEdits]; u[i]={...u[i],visual_prompt:e.target.value}; setSceneEdits(u); }} />
+                  <Textarea className="text-xs" rows={2} value={s.voiceover||""} placeholder="Narration..."
+                    onChange={(e) => { const u=[...sceneEdits]; u[i]={...u[i],voiceover:e.target.value}; setSceneEdits(u); }} />
                 </div>
-                <input type="range" className="w-full mt-1"
-                  min={PLATFORM_CONFIGS[aiPlatform]?.min || 10}
-                  max={PLATFORM_CONFIGS[aiPlatform]?.max || 60}
-                  step={5} value={aiDuration}
-                  onChange={(e) => setAiDuration(Number(e.target.value))}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs">Voice</Label>
-                  <Select value={selectedVoice} onValueChange={setSelectedVoice}>
-                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {VOICE_OPTIONS.map((v) => (<SelectItem key={v.value} value={v.value}>{v.label}</SelectItem>))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-xs">Quality</Label>
-                  <Select value={videoTier} onValueChange={setVideoTier}>
-                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="free">Free (Stock)</SelectItem>
-                      <SelectItem value="standard">Standard (AI)</SelectItem>
-                      <SelectItem value="premium">Premium</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <Button onClick={generateVideoAI} disabled={isGenerating || !aiPrompt.trim()} className="w-full h-12 text-lg" size="lg">
-                {isGenerating ? (<><Loader2 className="h-5 w-5 mr-2 animate-spin" />{generationStep || "Generating..."}</>) : (<><Sparkles className="h-5 w-5 mr-2" />Generate Video with AI</>)}
+              ))}
+              <Button variant="outline" size="sm" className="text-xs" onClick={() => setSceneEdits([...sceneEdits, { scene_number: sceneEdits.length+1, duration_s: 5, visual_prompt: "", voiceover: "", transition: "fade" }])}>
+                <Plus className="h-3 w-3 mr-1" /> Add Scene
               </Button>
-
-              {!isGenerating && (
-                <div className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-3 space-y-1">
-                  <p className="font-medium">AI will automatically:</p>
-                  <p>→ Generate {Math.ceil(aiDuration / 5)} scenes with visual descriptions</p>
-                  <p>→ Write voiceover narration for each scene</p>
-                  <p>→ Apply your brand voice (if configured)</p>
-                  <p>→ Create the project ready for one-click render</p>
-                </div>
-              )}
-            </TabsContent>
-
-            {/* === FROM SCRATCH TAB === */}
-            <TabsContent value="scratch" className="space-y-4 mt-4">
-              <div>
-                <Label>Video Title</Label>
-                <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="My awesome video..." />
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <Label className="text-xs">Format</Label>
-                  <Select value={selectedFormat} onValueChange={setSelectedFormat}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="9:16">9:16 Vertical</SelectItem>
-                      <SelectItem value="16:9">16:9 Horizontal</SelectItem>
-                      <SelectItem value="1:1">1:1 Square</SelectItem>
-                      <SelectItem value="4:5">4:5 Portrait</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-xs">Voice</Label>
-                  <Select value={selectedVoice} onValueChange={setSelectedVoice}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {VOICE_OPTIONS.map((v) => (<SelectItem key={v.value} value={v.value}>{v.label}</SelectItem>))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-xs">Music</Label>
-                  <Select value={musicMood} onValueChange={setMusicMood}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {MUSIC_MOODS.map((m) => (<SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Scenes ({sceneEdits.length})</Label>
-                {sceneEdits.map((s: any, i: number) => (
-                  <Card key={i} className="p-3">
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <p className="text-xs font-medium mb-1">Scene {i + 1} Visual</p>
-                        <Textarea className="text-xs" rows={2} value={s.visual_prompt || ""} placeholder="Visual..."
-                          onChange={(e) => { const u = [...sceneEdits]; u[i] = { ...u[i], visual_prompt: e.target.value }; setSceneEdits(u); }} />
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium mb-1">Voiceover</p>
-                        <Textarea className="text-xs" rows={2} value={s.voiceover || ""} placeholder="Narration..."
-                          onChange={(e) => { const u = [...sceneEdits]; u[i] = { ...u[i], voiceover: e.target.value }; setSceneEdits(u); }} />
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-                <Button variant="outline" size="sm" onClick={() => setSceneEdits([...sceneEdits, { scene_number: sceneEdits.length + 1, duration_s: 5, visual_prompt: "", voiceover: "", transition: "fade" }])}>
-                  <Plus className="h-3 w-3 mr-1" /> Add Scene
-                </Button>
-              </div>
-              <Button className="w-full" onClick={handleCreateProject} disabled={createProject.isPending || !newTitle.trim()}>
-                {createProject.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
-                Create Video Project
-              </Button>
-            </TabsContent>
-
-            {/* === FROM TEMPLATE TAB === */}
-            <TabsContent value="template" className="space-y-4 mt-4">
-              {selectedTemplate ? (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-medium">Template: {selectedTemplate.name}</h3>
-                    <Button variant="ghost" size="sm" onClick={() => setSelectedTemplate(null)}>Change</Button>
-                  </div>
-                  <div>
-                    <Label>Video Title</Label>
-                    <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Video title..." />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Scenes ({sceneEdits.length})</Label>
-                    {sceneEdits.map((s: any, i: number) => (
-                      <Card key={i} className="p-3">
-                        <div className="grid grid-cols-2 gap-2">
-                          <Textarea className="text-xs" rows={2} value={s.visual_prompt || s.visual_description || ""} placeholder="Visual..."
-                            onChange={(e) => { const u = [...sceneEdits]; u[i] = { ...u[i], visual_prompt: e.target.value }; setSceneEdits(u); }} />
-                          <Textarea className="text-xs" rows={2} value={s.voiceover || s.voiceover_text || ""} placeholder="Narration..."
-                            onChange={(e) => { const u = [...sceneEdits]; u[i] = { ...u[i], voiceover: e.target.value }; setSceneEdits(u); }} />
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                  <Button className="w-full" onClick={handleCreateProject} disabled={createProject.isPending || !newTitle.trim()}>
-                    {createProject.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Zap className="h-4 w-4 mr-2" />}
-                    Create from Template
-                  </Button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-3 max-h-[50vh] overflow-y-auto">
-                  {templates.map((t: any) => (
-                    <button key={t.id} onClick={() => handleUseTemplate(t)}
-                      className="p-3 border rounded-lg text-left hover:border-primary/50 transition-colors">
-                      <p className="font-medium text-sm">{t.name}</p>
-                      <p className="text-xs text-muted-foreground line-clamp-1">{t.description}</p>
-                      <div className="flex gap-1 mt-2">
-                        <Badge variant="outline" className="text-xs">{t.aspect_ratio}</Badge>
-                        <Badge variant="outline" className="text-xs">{t.default_duration_seconds}s</Badge>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
+            </div>
+            <Button className="w-full" onClick={() => {
+              if (!newTitle.trim()) return;
+              createProject.mutate({ title: newTitle, scenes: sceneEdits, format: createFormat });
+            }} disabled={createProject.isPending || !newTitle.trim()}>
+              {createProject.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
+              Create Project
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
