@@ -124,6 +124,7 @@ export const WEBHOOKS = {
   ESTIMATION_ACTION: "/estimation-action",
   ESTIMATION_AI: "/estimation-ai",
   ESTIMATION_VAPI_TOOLS: "/vapi-estimation-tools",
+  ESTIMATION_LEARNING: "/estimation-learning",
 
   // Bulk Voice Calls (Phase 14)
   BULK_CALL_CREATE: "/bulk-call/create-campaign",

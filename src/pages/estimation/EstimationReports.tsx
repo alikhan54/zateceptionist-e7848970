@@ -3,12 +3,23 @@ import { Badge } from "@/components/ui/badge";
 import { useEstimationProjects } from "@/hooks/useEstimationProjects";
 import { useEstimationTeam } from "@/hooks/useEstimationTeam";
 import { useEstimationRFIs } from "@/hooks/useEstimationRFIs";
-import { TrendingUp, DollarSign, Clock, BarChart3, Users, HelpCircle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { getLearningStats } from "@/lib/api/estimationApi";
+import { useTenant } from "@/contexts/TenantContext";
+import { TrendingUp, DollarSign, Clock, BarChart3, Users, HelpCircle, Brain } from "lucide-react";
 
 export default function EstimationReports() {
   const { projects, stats: projectStats } = useEstimationProjects();
   const { stats: teamStats } = useEstimationTeam();
   const { stats: rfiStats } = useEstimationRFIs();
+  const { tenantId } = useTenant();
+  const { data: learningRaw } = useQuery({
+    queryKey: ["estimation-learning-stats", tenantId],
+    queryFn: () => getLearningStats(tenantId || ""),
+    enabled: !!tenantId,
+    staleTime: 5 * 60 * 1000,
+  });
+  const learning = (learningRaw as any)?.data || (learningRaw as any) || {};
 
   const awarded = projects.filter(p => p.status === "awarded");
   const lost = projects.filter(p => p.status === "lost");
@@ -48,7 +59,7 @@ export default function EstimationReports() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Win Rate</CardTitle>
@@ -87,6 +98,18 @@ export default function EstimationReports() {
           <CardContent>
             <div className="text-2xl font-bold">{rfiStats.openRFIs}</div>
             <p className="text-xs text-muted-foreground">{rfiStats.totalRFIs} total</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">AI Learning</CardTitle>
+            <Brain className="h-4 w-4 text-purple-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{learning.total_room_types || 0}</div>
+            <p className="text-xs text-muted-foreground">
+              {learning.total_samples || 0} samples learned
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -188,6 +211,51 @@ export default function EstimationReports() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Learning Intelligence */}
+      {learning.top_rooms && learning.top_rooms.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Brain className="h-5 w-5 text-purple-500" /> Learning Intelligence
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              AI has learned from {learning.total_samples || 0} data points across {learning.total_room_types || 0} room types.
+              {learning.avg_accuracy != null && <> Average accuracy: <span className="font-medium">{learning.avg_accuracy}/100</span></>}
+            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="p-2 text-left font-medium">Room Type</th>
+                    <th className="p-2 text-left font-medium">Building</th>
+                    <th className="p-2 text-right font-medium">Avg Area (SF)</th>
+                    <th className="p-2 text-right font-medium">Samples</th>
+                    <th className="p-2 text-right font-medium">Confidence</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(learning.top_rooms || []).slice(0, 10).map((r: any, i: number) => (
+                    <tr key={i} className="border-b">
+                      <td className="p-2 capitalize">{(r.room_type || "").replace(/_/g, " ").toLowerCase()}</td>
+                      <td className="p-2 capitalize">{(r.building_type || "").replace(/_/g, " ")}</td>
+                      <td className="p-2 text-right font-medium">{r.avg_area}</td>
+                      <td className="p-2 text-right">{r.samples}</td>
+                      <td className="p-2 text-right">
+                        <Badge variant={r.confidence >= 0.7 ? "default" : "secondary"}>
+                          {Math.round((r.confidence || 0) * 100)}%
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

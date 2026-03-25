@@ -22,6 +22,11 @@ export type EstimationAIAction =
   | "review_estimate"
   | "generate_qualification";
 
+export type EstimationLearningAction =
+  | "capture_project_data"
+  | "get_learning_insights"
+  | "apply_learning";
+
 // ── Core Estimation Action ─────────────────────────────────────────
 
 /**
@@ -254,4 +259,18 @@ export async function generateQualification(
     project_id: projectId,
     tenant_id: tenantId,
   }, tenantId);
+}
+
+// ── Learning Engine (Phase H4) ────────────────────────────────────
+
+export async function estimationLearning<T = unknown>(
+  action: EstimationLearningAction,
+  data: Record<string, unknown>,
+  tenantId: string,
+): Promise<WebhookResponse<T>> {
+  return callWebhook<T>(WEBHOOKS.ESTIMATION_LEARNING, { action, ...data }, tenantId);
+}
+
+export async function getLearningStats(tenantId: string) {
+  return estimationLearning("apply_learning", {}, tenantId);
 }
