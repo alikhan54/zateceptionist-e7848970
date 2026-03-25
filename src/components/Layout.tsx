@@ -7,6 +7,8 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { OnboardingFlow } from "@/components/global/OnboardingFlow";
 import { SkipLink } from "@/components/shared/AccessibleComponents";
 import { OmegaFloatingChat } from "@/components/OmegaFloatingChat";
+import { BottomTabBar } from "@/components/mobile/BottomTabBar";
+import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { Loader2 } from "lucide-react";
 
 export default function Layout() {
@@ -40,19 +42,33 @@ export default function Layout() {
     : {};
 
   return (
-    <SidebarProvider>
-      <SkipLink />
-      <div className="min-h-screen flex w-full" style={tenantStyle}>
-        <NavigationSidebar />
-        <main id="main-content" className="flex-1 flex flex-col min-w-0">
-          <Header />
-          <div className="flex-1 p-6 overflow-auto">
-            <Outlet />
-          </div>
-        </main>
+    <>
+      <SidebarProvider>
+        <SkipLink />
+        <div className="min-h-screen flex w-full overflow-x-hidden max-w-[100vw]" style={tenantStyle}>
+          <NavigationSidebar />
+          <main id="main-content" className="flex-1 flex flex-col min-w-0">
+            <Header />
+            <div className="flex-1 p-4 md:p-6 overflow-auto" style={{ paddingBottom: '80px' }}>
+              <Outlet />
+            </div>
+          </main>
+        </div>
+        <InstallPrompt />
+        <OnboardingFlow />
+        <OmegaFloatingChat />
+      </SidebarProvider>
+      {/* BottomTabBar OUTSIDE SidebarProvider — zero context dependency */}
+      <BottomTabBar />
+      {/* TEMPORARY DEBUG — REMOVE AFTER MOBILE FIX CONFIRMED */}
+      <div style={{
+        position: 'fixed', bottom: 64, left: 0, right: 0,
+        height: '30px', backgroundColor: '#ff0000', color: '#fff',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: '12px', fontWeight: 'bold', zIndex: 999999,
+      }}>
+        DEBUG: LAYOUT MOUNTED
       </div>
-      <OnboardingFlow />
-      <OmegaFloatingChat />
-    </SidebarProvider>
+    </>
   );
 }
