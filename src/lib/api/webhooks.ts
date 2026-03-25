@@ -114,6 +114,9 @@ export const WEBHOOKS = {
   BILLING_CREATE_CHECKOUT: "/billing/create-checkout",
   BILLING_CUSTOMER_PORTAL: "/billing/customer-portal",
 
+  // Billing — Paddle webhook (registered in Paddle dashboard)
+  PADDLE_WEBHOOK: "/billing/paddle-webhook",
+
   // OAuth — channel connections
   OAUTH_EXCHANGE_TOKEN: "/oauth/exchange-token",
 

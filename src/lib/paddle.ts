@@ -83,6 +83,19 @@ export const openCheckout = async (
   });
 };
 
-const handlePaddleEvent = (event: unknown) => {
+const handlePaddleEvent = (event: any) => {
   console.log('[Paddle] Event:', event);
+
+  // Handle checkout completion on client side
+  if (event?.name === 'checkout.completed' || event?.type === 'checkout.completed') {
+    // Paddle webhook will handle DB updates server-side
+    // Redirect to success page after short delay for webhook to process
+    setTimeout(() => {
+      window.location.href = '/settings/billing?success=true';
+    }, 2000);
+  }
+
+  if (event?.name === 'checkout.closed' || event?.type === 'checkout.closed') {
+    console.log('[Paddle] Checkout closed by user');
+  }
 };

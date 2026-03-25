@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useSubscription, SUBSCRIPTION_TIERS, SubscriptionTier } from "@/contexts/SubscriptionContext";
 import { useTenant } from "@/contexts/TenantContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { openCheckout } from "@/lib/paddle";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +42,7 @@ import { cn } from "@/lib/utils";
 export default function BillingSettings() {
   const { tier, tierConfig, limits, usage, allTiers, refreshUsage, isLoadingUsage } = useSubscription();
   const { tenantId } = useTenant();
+  const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -89,22 +92,32 @@ export default function BillingSettings() {
     setUpgradingPlan(planId);
 
     try {
-      // For now, just update the tenant_config
-      // In production, this would redirect to Stripe checkout
-      const { error } = await supabase
-        .from("tenant_config")
-        .update({ subscription_tier: planId })
-        .eq("tenant_id", tenantId);
+      const planConfig = SUBSCRIPTION_TIERS[planId];
 
-      if (error) throw error;
+      // For paid tiers, open Paddle checkout overlay
+      if (planConfig.price > 0) {
+        await openCheckout(
+          planId as any,
+          tenantId,
+          user?.email || '',
+        );
+        // Paddle overlay is now open — user completes payment there
+        // On success, Paddle webhook updates the DB and user returns to ?success=true
+      } else {
+        // Free tier / downgrade — update directly
+        const { error } = await supabase
+          .from("tenant_config")
+          .update({ subscription_tier: planId })
+          .eq("tenant_id", tenantId);
 
-      toast({
-        title: "Plan updated!",
-        description: `You're now on the ${SUBSCRIPTION_TIERS[planId].name} plan.`,
-      });
+        if (error) throw error;
 
-      // Refresh the page to reload subscription context
-      window.location.reload();
+        toast({
+          title: "Plan updated!",
+          description: `You're now on the ${planConfig.name} plan.`,
+        });
+        window.location.reload();
+      }
     } catch (error: any) {
       toast({
         title: "Upgrade failed",
