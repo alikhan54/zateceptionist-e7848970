@@ -1,0 +1,12 @@
+﻿{
+  "globalRules": [
+    "This is the 420 System frontend - a multi-tenant AI business automation platform by Zate Systems",
+    "Use React + TypeScript + Tailwind CSS + Shadcn UI",
+    "All Supabase queries MUST filter by tenant_id",
+    "Use .maybeSingle() never .single() for optional lookups",
+    "Supabase anon key requires RLS policies - queries may return zero rows without them",
+    "Tenant ID format: some tables use SLUG (zateceptionist), others use UUID - always check",
+    "Backend webhooks are at https://webhooks.zatesystems.com/webhook/",
+    "Do NOT use localStorage or sessionStorage - use React state instead"
+  ]
+}

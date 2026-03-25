@@ -116,6 +116,8 @@ import {
 } from "lucide-react";
 import { format, isToday, isYesterday, addHours, setMinutes, setHours } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { ArrowLeft } from "lucide-react";
 
 // ============================================
 // WEBHOOK CONFIG
@@ -334,6 +336,8 @@ export default function Inbox() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showDetailsPanel, setShowDetailsPanel] = useState(true);
+  const isMobile = useIsMobile();
+  const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
   const [isMuted, setIsMuted] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [messageInput, setMessageInput] = useState("");
@@ -1061,8 +1065,9 @@ export default function Inbox() {
       setSelectedConversationId(id);
       const conv = conversations.find((c) => c.id === id);
       if (conv?.unread_count > 0) markAsReadMutation.mutate(id);
+      if (isMobile) setMobileView('detail');
     },
-    [conversations, markAsReadMutation],
+    [conversations, markAsReadMutation, isMobile],
   );
 
   // ISSUE 6 FIX: Handle send message
@@ -1277,8 +1282,8 @@ export default function Inbox() {
 
         <div className="flex-1 flex overflow-hidden">
           {/* SIDEBAR */}
-          {!isCollapsed && (
-            <aside className="w-80 border-r flex flex-col bg-card shrink-0">
+          {!isCollapsed && (!isMobile || mobileView === 'list') && (
+            <aside className={cn("border-r flex flex-col bg-card shrink-0", isMobile ? "w-full" : "w-80")}>
               <div className="p-3 space-y-3 border-b">
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -1489,12 +1494,24 @@ export default function Inbox() {
           )}
 
           {/* CHAT AREA */}
+          {(!isMobile || mobileView === 'detail') && (
           <main className="flex-1 flex flex-col min-w-0 bg-background">
             {selectedConversation ? (
               <>
                 {/* Chat Header */}
                 <div className="h-14 border-b px-4 flex items-center justify-between bg-card shrink-0">
                   <div className="flex items-center gap-3">
+                    {isMobile && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="shrink-0 mr-1"
+                        onClick={() => setMobileView('list')}
+                        aria-label="Back to conversations"
+                      >
+                        <ArrowLeft className="h-5 w-5" />
+                      </Button>
+                    )}
                     <Avatar className="h-10 w-10">
                       <AvatarFallback className="bg-primary/10 text-primary">
                         {getInitials(selectedConversation)}
@@ -1708,8 +1725,8 @@ export default function Inbox() {
                     </div>
                   </div>
 
-                  {/* Details Panel */}
-                  {showDetailsPanel && (
+                  {/* Details Panel - hidden on mobile */}
+                  {showDetailsPanel && !isMobile && (
                     <aside className="w-72 border-l bg-card p-4 overflow-y-auto shrink-0">
                       <div className="text-center mb-4">
                         <Avatar className="h-16 w-16 mx-auto mb-2">
@@ -1831,6 +1848,7 @@ export default function Inbox() {
               </div>
             )}
           </main>
+          )}
         </div>
 
         {/* ============================================ */}

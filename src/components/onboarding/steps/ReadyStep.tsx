@@ -49,35 +49,54 @@ export default function ReadyStep({ data, updateData }: ReadyStepProps) {
     setTrainingStatus({ ...status });
 
     try {
-      // Build comprehensive training payload
-      const payload = {
+      // Build training payload (OBT.2 expects tenant_id + modules)
+      const trainPayload = {
         tenant_id: tenantId,
-        business_context: {
-          company: {
-            name: data.companyData.company_name,
-            industry: data.companyData.industry,
-            description: data.companyData.description,
+        modules: ['sales', 'marketing', 'communication', 'voice', 'hr'],
+      };
+
+      // Build completion payload matching OBC.2 ENHANCED expected format:
+      // { tenant_id, company: {...}, ai_config: {...}, channels: {...}, subscription: {...} }
+      const enabledChannels = Object.entries(data.channels)
+        .filter(([, enabled]) => enabled)
+        .map(([ch]) => ch);
+      const completePayload = {
+        tenant_id: tenantId,
+        company: {
+          name: data.companyData.company_name,
+          industry: data.companyData.industry,
+          description: data.companyData.description,
+          contact: {
+            phone: data.companyData.contact?.phone || '',
+            email: data.companyData.contact?.email || '',
           },
-          products_services: data.companyData.services.map(s => ({ name: s })),
-          brand_voice: {
-            tone: data.aiConfig.personality,
-            ai_name: data.aiConfig.name,
-            ai_role: data.aiConfig.role,
-            greeting: data.aiConfig.greeting,
-          },
-          contact: data.companyData.contact,
-          social_links: data.companyData.social_links,
-          business_hours: {
-            opening: data.aiConfig.workingHoursStart,
-            closing: data.aiConfig.workingHoursEnd,
-            timezone: data.aiConfig.timezone,
-          },
-          knowledge_text: data.knowledgeText,
-          uploaded_files_count: data.uploadedFiles.filter(f => f.success).length,
+          social_links: data.companyData.social_links || {},
+          logo_url: data.companyData.logo_url || '',
         },
-        train_modules: ['sales', 'marketing', 'communication', 'voice', 'hr'],
-        channels: data.channels,
-        selected_plan: data.selectedPlan,
+        ai_config: {
+          ai_name: data.aiConfig.name || 'Zate',
+          ai_role: data.aiConfig.role || 'AI Receptionist',
+          ai_greeting: data.aiConfig.greeting || 'Hello! How can I help you today?',
+          ai_personality: data.aiConfig.personality || 'friendly',
+          ai_tone: data.aiConfig.personality || 'friendly',
+          timezone: data.aiConfig.timezone || 'America/New_York',
+          opening_time: data.aiConfig.workingHoursStart || '09:00',
+          closing_time: data.aiConfig.workingHoursEnd || '17:00',
+        },
+        channels: {
+          has_whatsapp: data.channels.whatsapp || false,
+          has_voice: data.channels.voiceAI || false,
+          has_email: data.channels.email || false,
+          has_instagram: data.channels.instagram || false,
+          has_facebook: data.channels.facebook || false,
+          has_webchat: data.channels.webChat || false,
+        },
+        subscription: {
+          plan: data.selectedPlan || 'free',
+          status: 'active',
+        },
+        enable_voice: data.channels.voiceAI || false,
+        automation_mode: 'full',
       };
 
       // Simulate per-module training progress
@@ -91,17 +110,17 @@ export default function ReadyStep({ data, updateData }: ReadyStepProps) {
         setTrainingStatus({ ...status });
       }
 
-      // Call the actual training webhook
+      // Call the training webhook (OBT chain: compiles knowledge from business_profiles/services)
       await callWebhook(
         WEBHOOKS.TRAIN_AI_KNOWLEDGE,
-        payload,
+        trainPayload,
         tenantId || ''
       );
 
-      // Mark onboarding as complete
+      // Mark onboarding as complete + save ALL config (OBC chain: saves to tenant_config)
       await callWebhook(
         WEBHOOKS.ONBOARDING_COMPLETE,
-        { tenant_id: tenantId },
+        completePayload,
         tenantId || ''
       );
 

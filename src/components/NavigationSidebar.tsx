@@ -102,6 +102,7 @@ import {
   ShieldCheck,
   Crosshair,
   Magnet,
+  Film,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -375,6 +376,7 @@ export function NavigationSidebar() {
       { title: "A/B Testing", url: "/marketing/ab-testing", icon: GitBranch },
       { title: "Marketing Sequences", url: "/marketing/sequences", icon: Layers },
       { title: "Blog Manager", url: "/marketing/blogs", icon: FileText },
+      { title: "Video Studio", url: "/marketing/video-studio", icon: Film },
       { title: "Video Projects", url: "/marketing/videos", icon: Video },
       { title: "Competitor Intel", url: "/marketing/competitors", icon: Eye },
       { title: "Ads Manager", url: "/marketing/ads", icon: Target },

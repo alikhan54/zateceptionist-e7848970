@@ -326,14 +326,53 @@
 }
 
 /* Responsive utilities */
-@media (max-width: 640px) {
+@media (max-width: 767px) {
   .hide-on-mobile {
     display: none !important;
   }
 }
 
-@media (min-width: 641px) {
+@media (min-width: 768px) {
   .show-on-mobile {
     display: none !important;
   }
+}
+
+/* Prevent 300ms tap delay */
+html {
+  touch-action: manipulation;
+}
+
+/* Mobile-specific fixes */
+@media (max-width: 767px) {
+  html, body {
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Prevent flex children from overflowing */
+  .flex-1 {
+    min-width: 0;
+  }
+
+  /* Tables scroll horizontally */
+  table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Remove tap highlight on interactive elements */
+  button, a, [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Safe area utilities for notched phones */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
 }

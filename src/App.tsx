@@ -71,6 +71,7 @@ const SocialListening = lazy(() => import("./pages/marketing/SocialListening"));
 const Playbooks = lazy(() => import("./pages/marketing/Playbooks"));
 const VoiceMarketing = lazy(() => import("./pages/marketing/VoiceMarketing"));
 const AutonomousMarketing = lazy(() => import("./pages/marketing/AutonomousMarketing"));
+const VideoStudio = lazy(() => import("./pages/marketing/VideoStudio"));
 
 // HR Module
 const HRDashboardOverview = lazy(() => import("./pages/hr/Dashboard"));
@@ -717,6 +718,15 @@ const App = () => (
                     element={
                       <LazyPage>
                         <AutonomousMarketing />
+                      </LazyPage>
+                    }
+                  />
+
+                  <Route
+                    path="/marketing/video-studio"
+                    element={
+                      <LazyPage>
+                        <VideoStudio />
                       </LazyPage>
                     }
                   />

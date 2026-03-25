@@ -1,0 +1,79 @@
+/* RTL Support for Real Estate Pages Only
+   This file is imported ONLY by RTLWrapper component
+   Zero impact on non-RE pages */
+
+/* Arabic font — loaded from Google Fonts CDN */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap');
+
+/* RTL mode class — only applied when region has rtl_support=true */
+.rtl-mode {
+  direction: rtl;
+  text-align: right;
+}
+
+/* Font for Arabic text */
+.font-arabic {
+  font-family: 'Noto Sans Arabic', 'Segoe UI', 'Tahoma', sans-serif;
+}
+
+/* RTL-specific spacing fixes for shadcn components */
+.rtl-mode .gap-2 { gap: 0.5rem; }
+.rtl-mode .gap-4 { gap: 1rem; }
+
+/* Fix icon alignment in RTL */
+.rtl-mode .lucide {
+  margin-left: 0.5rem;
+  margin-right: 0;
+}
+
+/* Fix table alignment */
+.rtl-mode table {
+  direction: rtl;
+}
+
+.rtl-mode th, .rtl-mode td {
+  text-align: right;
+}
+
+/* Fix badge alignment */
+.rtl-mode .badge {
+  margin-left: 0.25rem;
+  margin-right: 0;
+}
+
+/* Fix input alignment */
+.rtl-mode input, .rtl-mode textarea, .rtl-mode select {
+  text-align: right;
+  direction: rtl;
+}
+
+/* Number inputs stay LTR (prices, phone numbers) */
+.rtl-mode input[type="number"],
+.rtl-mode input[type="tel"],
+.rtl-mode .ltr-numbers {
+  direction: ltr;
+  text-align: left;
+}
+
+/* Fix flex row direction */
+.rtl-mode .flex-row-reverse-rtl {
+  flex-direction: row-reverse;
+}
+
+/* Bilingual label support */
+.rtl-mode .bilingual-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.rtl-mode .bilingual-label .label-en {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  direction: ltr;
+}
+
+.rtl-mode .bilingual-label .label-ar {
+  font-size: 0.875rem;
+  font-weight: 500;
+}

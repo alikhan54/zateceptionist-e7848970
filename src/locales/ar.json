@@ -1,0 +1,103 @@
+{
+  "realestate": {
+    "dashboard": "لوحة القيادة",
+    "properties": "العقارات",
+    "listings": "القوائم",
+    "clients": "العملاء",
+    "viewings": "المعاينات",
+    "deals": "الصفقات",
+    "eoi": "تعبير عن الاهتمام",
+    "roadShows": "المعارض العقارية",
+    "calculator": "حاسبة الاستثمار",
+    "marketIntel": "ذكاء السوق",
+    "dealAdvisor": "مستشار الصفقات",
+    "knowledgeBase": "قاعدة المعرفة",
+    "regionSettings": "إعدادات المنطقة",
+
+    "property": {
+      "type": "نوع العقار",
+      "apartment": "شقة",
+      "villa": "فيلا",
+      "townhouse": "تاون هاوس",
+      "penthouse": "بنتهاوس",
+      "studio": "استوديو",
+      "commercial": "تجاري",
+      "land": "أرض",
+      "office": "مكتب"
+    },
+
+    "deal": {
+      "stage": "مرحلة الصفقة",
+      "lead": "عميل محتمل",
+      "contacted": "تم التواصل",
+      "qualified": "مؤهل",
+      "viewingScheduled": "موعد معاينة",
+      "viewingDone": "تمت المعاينة",
+      "offerMade": "عرض مقدم",
+      "negotiation": "تفاوض",
+      "mouSigning": "توقيع مذكرة التفاهم",
+      "depositReceived": "تم استلام العربون",
+      "nocApplied": "طلب شهادة عدم ممانعة",
+      "nocReceived": "تم استلام شهادة عدم ممانعة",
+      "dldTransfer": "نقل الملكية في دائرة الأراضي",
+      "completed": "مكتمل"
+    },
+
+    "metrics": {
+      "grossYield": "العائد الإجمالي",
+      "netYield": "العائد الصافي",
+      "pricePerSqft": "السعر لكل قدم مربع",
+      "serviceCharge": "رسوم الخدمة",
+      "transferFee": "رسوم التحويل",
+      "commission": "العمولة",
+      "vat": "ضريبة القيمة المضافة"
+    },
+
+    "locations": {
+      "downtownDubai": "وسط مدينة دبي",
+      "dubaiMarina": "مرسى دبي",
+      "palmJumeirah": "نخلة جميرا",
+      "jbr": "الممشى في جي بي آر",
+      "businessBay": "الخليج التجاري",
+      "dubaiHills": "تلال دبي",
+      "jvc": "قرية جميرا الدائرية",
+      "difc": "مركز دبي المالي العالمي",
+      "creekHarbour": "خور دبي",
+      "arabianRanches": "المرابع العربية"
+    },
+
+    "actions": {
+      "search": "بحث",
+      "filter": "تصفية",
+      "sort": "ترتيب",
+      "export": "تصدير",
+      "addNew": "إضافة جديد",
+      "edit": "تعديل",
+      "delete": "حذف",
+      "save": "حفظ",
+      "cancel": "إلغاء",
+      "scheduleViewing": "جدولة معاينة",
+      "submitOffer": "تقديم عرض",
+      "calculate": "احسب",
+      "publish": "نشر"
+    },
+
+    "status": {
+      "available": "متاح",
+      "reserved": "محجوز",
+      "sold": "مباع",
+      "rented": "مؤجر",
+      "offMarket": "خارج السوق",
+      "scheduled": "مجدول",
+      "completed": "مكتمل",
+      "cancelled": "ملغى",
+      "pending": "معلق"
+    },
+
+    "goldenVisa": {
+      "eligible": "مؤهل للإقامة الذهبية",
+      "minimum": "الحد الأدنى للاستثمار",
+      "duration": "مدة التأشيرة"
+    }
+  }
+}

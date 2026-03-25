@@ -910,3 +910,320 @@ export function useHRReports() {
 
   return { fetchReport };
 }
+
+// ═══════════════════════════════════════════════════════════
+// SHIFTS — Computed from employees + attendance data
+// ═══════════════════════════════════════════════════════════
+
+export interface Shift {
+  id: string;
+  employee_id: string;
+  employee_name: string;
+  department_name?: string;
+  date: string;
+  shift_type: 'morning' | 'afternoon' | 'night' | 'off';
+  start_time: string;
+  end_time: string;
+  status: 'scheduled' | 'checked_in' | 'completed' | 'absent';
+}
+
+export function useShifts(weekStart: string) {
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
+
+  return useQuery({
+    queryKey: ["shifts", tenantUuid, weekStart],
+    queryFn: async () => {
+      if (!tenantUuid) return [];
+
+      // Get active employees
+      const { data: employees } = await supabase
+        .from("hr_employees")
+        .select("id, first_name, last_name, full_name, department_name, employment_type")
+        .eq("tenant_id", tenantUuid)
+        .eq("employment_status", "active");
+
+      if (!employees?.length) return [];
+
+      // Get attendance for the week (7 days from weekStart)
+      const start = new Date(weekStart);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 6);
+      const endStr = end.toISOString().split("T")[0];
+
+      const { data: attendance } = await supabase
+        .from("hr_attendance")
+        .select("employee_id, work_date, check_in_time, check_out_time, status")
+        .eq("tenant_id", tenantUuid)
+        .gte("work_date", weekStart)
+        .lte("work_date", endStr);
+
+      const attendanceMap = new Map<string, any>();
+      (attendance || []).forEach((a: any) => {
+        attendanceMap.set(`${a.employee_id}_${a.work_date}`, a);
+      });
+
+      // Build shift grid: each employee × each day of the week
+      const shifts: Shift[] = [];
+      for (const emp of employees) {
+        for (let d = 0; d < 7; d++) {
+          const date = new Date(start);
+          date.setDate(date.getDate() + d);
+          const dateStr = date.toISOString().split("T")[0];
+          const dayOfWeek = date.getDay(); // 0=Sun, 6=Sat
+          const isWeekend = dayOfWeek === 5 || dayOfWeek === 6; // Fri+Sat for UAE
+
+          const att = attendanceMap.get(`${emp.id}_${dateStr}`);
+          const name = emp.full_name || `${emp.first_name} ${emp.last_name}`;
+
+          let shift_type: Shift['shift_type'] = isWeekend ? 'off' : 'morning';
+          let start_time = '09:00';
+          let end_time = '18:00';
+          let status: Shift['status'] = 'scheduled';
+
+          if (att) {
+            if (att.status === 'absent') {
+              status = 'absent';
+            } else if (att.check_out_time) {
+              status = 'completed';
+            } else if (att.check_in_time) {
+              status = 'checked_in';
+            }
+            if (att.check_in_time) start_time = att.check_in_time.substring(0, 5);
+            if (att.check_out_time) end_time = att.check_out_time.substring(0, 5);
+          }
+
+          if (isWeekend) {
+            start_time = '-';
+            end_time = '-';
+            status = 'scheduled';
+          }
+
+          shifts.push({
+            id: `${emp.id}_${dateStr}`,
+            employee_id: emp.id,
+            employee_name: name,
+            department_name: emp.department_name,
+            date: dateStr,
+            shift_type,
+            start_time,
+            end_time,
+            status,
+          });
+        }
+      }
+      return shifts;
+    },
+    enabled: !!tenantUuid,
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// ATTRITION RISK — Computed from employee tenure + leave patterns
+// ═══════════════════════════════════════════════════════════
+
+export interface AttritionRisk {
+  employee_id: string;
+  employee_name: string;
+  department: string;
+  risk_level: 'high' | 'medium' | 'low';
+  risk_score: number;
+  factors: string[];
+}
+
+export function useAttritionRisk() {
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
+
+  return useQuery({
+    queryKey: ["attrition-risk", tenantUuid],
+    queryFn: async () => {
+      if (!tenantUuid) return { employees: [] as AttritionRisk[], summary: { high: 0, medium: 0, low: 0 } };
+
+      const { data: employees } = await supabase
+        .from("hr_employees")
+        .select("id, first_name, last_name, full_name, department_name, date_of_joining, employment_status, salary, employment_type")
+        .eq("tenant_id", tenantUuid)
+        .eq("employment_status", "active");
+
+      const { data: leaveRequests } = await supabase
+        .from("hr_leave_requests")
+        .select("employee_id, leave_type, status, created_at")
+        .eq("tenant_id", tenantUuid)
+        .gte("created_at", new Date(Date.now() - 90 * 86400000).toISOString());
+
+      const emps = employees || [];
+      const leaves = leaveRequests || [];
+      const now = Date.now();
+
+      const leaveCountByEmp = new Map<string, number>();
+      leaves.forEach((l: any) => {
+        leaveCountByEmp.set(l.employee_id, (leaveCountByEmp.get(l.employee_id) || 0) + 1);
+      });
+
+      const risks: AttritionRisk[] = emps.map((emp: any) => {
+        const factors: string[] = [];
+        let score = 0;
+
+        // Tenure factor: 1-2 years = medium risk, <1 year = high risk for turnover
+        if (emp.date_of_joining) {
+          const tenureMonths = Math.floor((now - new Date(emp.date_of_joining).getTime()) / (30 * 86400000));
+          if (tenureMonths <= 6) { score += 15; factors.push('New hire (<6 months)'); }
+          else if (tenureMonths > 24 && tenureMonths <= 36) { score += 10; factors.push('2-3 year tenure (common exit window)'); }
+        }
+
+        // Leave frequency
+        const leaveCount = leaveCountByEmp.get(emp.id) || 0;
+        if (leaveCount >= 5) { score += 25; factors.push(`${leaveCount} leave requests in 90 days`); }
+        else if (leaveCount >= 3) { score += 15; factors.push(`${leaveCount} leave requests in 90 days`); }
+
+        // No salary data = possible dissatisfaction signal
+        if (!emp.salary || emp.salary === 0) { score += 10; factors.push('No salary on record'); }
+
+        // Part-time/contract = higher natural turnover
+        if (emp.employment_type === 'Contract') { score += 20; factors.push('Contract employee'); }
+        else if (emp.employment_type === 'Intern') { score += 25; factors.push('Intern role'); }
+
+        const risk_level = score >= 40 ? 'high' : score >= 20 ? 'medium' : 'low';
+        const name = emp.full_name || `${emp.first_name} ${emp.last_name}`;
+
+        return { employee_id: emp.id, employee_name: name, department: emp.department_name || 'Unassigned', risk_level, risk_score: Math.min(score, 100), factors };
+      });
+
+      const summary = {
+        high: risks.filter(r => r.risk_level === 'high').length,
+        medium: risks.filter(r => r.risk_level === 'medium').length,
+        low: risks.filter(r => r.risk_level === 'low').length,
+      };
+
+      return { employees: risks.sort((a, b) => b.risk_score - a.risk_score), summary };
+    },
+    enabled: !!tenantUuid,
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// COMPENSATION OVERVIEW — Aggregated salary stats
+// ═══════════════════════════════════════════════════════════
+
+export interface CompensationStats {
+  totalPayroll: number;
+  avgSalary: number;
+  medianSalary: number;
+  currency: string;
+  byDepartment: { department: string; avg: number; count: number; total: number }[];
+  byType: { type: string; avg: number; count: number }[];
+}
+
+export function useCompensationOverview() {
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
+
+  return useQuery({
+    queryKey: ["compensation-overview", tenantUuid],
+    queryFn: async () => {
+      if (!tenantUuid) return null;
+
+      const { data: employees } = await supabase
+        .from("hr_employees")
+        .select("salary, salary_currency, department_name, employment_type, employment_status")
+        .eq("tenant_id", tenantUuid)
+        .eq("employment_status", "active");
+
+      const emps = (employees || []).filter((e: any) => e.salary && e.salary > 0);
+      if (emps.length === 0) return null;
+
+      const salaries = emps.map((e: any) => e.salary).sort((a: number, b: number) => a - b);
+      const totalPayroll = salaries.reduce((s: number, v: number) => s + v, 0);
+      const medianSalary = salaries.length % 2 === 0
+        ? (salaries[salaries.length / 2 - 1] + salaries[salaries.length / 2]) / 2
+        : salaries[Math.floor(salaries.length / 2)];
+
+      // Group by department
+      const deptMap = new Map<string, number[]>();
+      emps.forEach((e: any) => {
+        const dept = e.department_name || 'Unassigned';
+        if (!deptMap.has(dept)) deptMap.set(dept, []);
+        deptMap.get(dept)!.push(e.salary);
+      });
+      const byDepartment = Array.from(deptMap.entries()).map(([department, sals]) => ({
+        department,
+        avg: Math.round(sals.reduce((s, v) => s + v, 0) / sals.length),
+        count: sals.length,
+        total: sals.reduce((s, v) => s + v, 0),
+      })).sort((a, b) => b.total - a.total);
+
+      // Group by employment type
+      const typeMap = new Map<string, number[]>();
+      emps.forEach((e: any) => {
+        const type = e.employment_type || 'Full-time';
+        if (!typeMap.has(type)) typeMap.set(type, []);
+        typeMap.get(type)!.push(e.salary);
+      });
+      const byType = Array.from(typeMap.entries()).map(([type, sals]) => ({
+        type,
+        avg: Math.round(sals.reduce((s, v) => s + v, 0) / sals.length),
+        count: sals.length,
+      }));
+
+      return {
+        totalPayroll,
+        avgSalary: Math.round(totalPayroll / emps.length),
+        medianSalary: Math.round(medianSalary),
+        currency: emps[0]?.salary_currency || 'AED',
+        byDepartment,
+        byType,
+      } as CompensationStats;
+    },
+    enabled: !!tenantUuid,
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// SELF-SERVICE HOOKS — Employee sees own data, admin sees all
+// ═══════════════════════════════════════════════════════════
+
+export function useCurrentEmployee() {
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
+
+  return useQuery({
+    queryKey: ['current-employee', tenantUuid],
+    queryFn: async () => {
+      if (!tenantUuid) return null;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) return null;
+      const { data } = await supabase
+        .from('hr_employees')
+        .select('id, first_name, last_name, company_email, position, department, employment_status')
+        .eq('tenant_id', tenantUuid)
+        .eq('company_email', user.email)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!tenantUuid,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useUserRole() {
+  return useQuery({
+    queryKey: ['user-role'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return 'staff';
+      const { data } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      return (data?.role as string) || 'staff';
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
+export function useIsHRAdmin() {
+  const { data: role } = useUserRole();
+  return ['master_admin', 'admin', 'manager'].includes(role || '');
+}

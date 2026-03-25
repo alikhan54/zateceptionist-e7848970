@@ -149,6 +149,8 @@ export default function MarketIntelligence() {
         <CardContent className="p-0">
           {isLoading ? (
             <div className="p-8 text-center text-muted-foreground">Loading market data...</div>
+          ) : sorted.length === 0 ? (
+            <div className="p-8 text-center text-muted-foreground">No market data available. Data will appear after the market scraper runs.</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

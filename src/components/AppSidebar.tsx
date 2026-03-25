@@ -47,6 +47,7 @@ import {
   // HR icons
   Clock,
   CalendarDays,
+  CalendarClock,
   DollarSign,
   Network,
   Award,
@@ -131,6 +132,7 @@ const hrNavItems = [
   { title: "HR Dashboard", url: "/hr/dashboard", icon: Building2 },
   { title: "Employees", url: "/hr/employees", icon: Users },
   { title: "Attendance", url: "/hr/attendance", icon: Clock },
+  { title: "Shifts", url: "/hr/shifts", icon: CalendarClock },
   { title: "Leave", url: "/hr/leave", icon: CalendarDays },
   { title: "Payroll", url: "/hr/payroll", icon: DollarSign },
   { title: "Departments", url: "/hr/departments", icon: Network },

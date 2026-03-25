@@ -1,0 +1,63 @@
+{
+  "realestate": {
+    "dashboard": "ڈیش بورڈ",
+    "properties": "جائیدادیں",
+    "listings": "فہرستیں",
+    "clients": "کلائنٹس",
+    "viewings": "معائنے",
+    "deals": "سودے",
+    "eoi": "دلچسپی کا اظہار",
+    "roadShows": "رئیل اسٹیٹ نمائشیں",
+    "calculator": "سرمایہ کاری کیلکولیٹر",
+    "marketIntel": "مارکیٹ انٹیلیجنس",
+    "dealAdvisor": "ڈیل ایڈوائزر",
+    "knowledgeBase": "نالج بیس",
+    "regionSettings": "علاقائی ترتیبات",
+
+    "property": {
+      "type": "جائیداد کی قسم",
+      "apartment": "اپارٹمنٹ",
+      "villa": "ویلا",
+      "townhouse": "ٹاؤن ہاؤس",
+      "penthouse": "پینٹ ہاؤس",
+      "studio": "اسٹوڈیو",
+      "commercial": "تجارتی",
+      "land": "زمین",
+      "office": "دفتر"
+    },
+
+    "metrics": {
+      "grossYield": "مجموعی منافع",
+      "netYield": "خالص منافع",
+      "pricePerSqft": "فی مربع فٹ قیمت",
+      "serviceCharge": "سروس چارجز",
+      "transferFee": "ٹرانسفر فیس",
+      "commission": "کمیشن",
+      "vat": "ویلیو ایڈڈ ٹیکس"
+    },
+
+    "actions": {
+      "search": "تلاش",
+      "filter": "فلٹر",
+      "sort": "ترتیب",
+      "export": "ایکسپورٹ",
+      "addNew": "نیا شامل کریں",
+      "edit": "ترمیم",
+      "delete": "حذف",
+      "save": "محفوظ",
+      "cancel": "منسوخ",
+      "calculate": "حساب کریں"
+    },
+
+    "status": {
+      "available": "دستیاب",
+      "reserved": "محفوظ",
+      "sold": "فروخت شدہ",
+      "rented": "کرائے پر",
+      "scheduled": "شیڈول",
+      "completed": "مکمل",
+      "cancelled": "منسوخ",
+      "pending": "زیر التوا"
+    }
+  }
+}
