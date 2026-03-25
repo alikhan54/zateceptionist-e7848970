@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +20,7 @@ import { useTenant } from "@/contexts/TenantContext";
 import { exportEstimationData, analyzeBidsetText, aiQAReview, suggestMaterials, generateQualification, processVisionPdf, checkVisionStatus } from "@/lib/api/estimationApi";
 import { supabase } from "@/integrations/supabase/client";
 import { exportQuantitiesXlsx, exportCostSheetXlsx, exportQualificationPdf, exportColorCodedPdf, exportCsv, type ExportData } from "@/lib/estimation/exportUtils";
-import { ArrowLeft, Building2, Calendar, Users, DollarSign, Plus, Ruler, FileText, HelpCircle, History, Activity, Truck, Download, Bot, Loader2, CheckCircle, XCircle, Copy, Sparkles, AlertTriangle, AlertCircle, Upload } from "lucide-react";
+import { ArrowLeft, Building2, Calendar, Users, DollarSign, Plus, Ruler, FileText, HelpCircle, History, Activity, Truck, Download, Bot, Loader2, CheckCircle, XCircle, Copy, Sparkles, AlertTriangle, AlertCircle, Upload, Send, Zap, Package } from "lucide-react";
 import { toast } from "sonner";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -72,7 +72,29 @@ export default function ProjectDetail() {
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [pdfStatusMsg, setPdfStatusMsg] = useState("");
 
+  // One-click progress state
+  const [processingProgress, setProcessingProgress] = useState<any>(null);
+  const [isOneClickRunning, setIsOneClickRunning] = useState(false);
+
   const { tenantId } = useTenant();
+
+  // Poll ai_processing_progress while processing
+  useEffect(() => {
+    if (!isOneClickRunning || !id) return;
+    const interval = setInterval(async () => {
+      try {
+        const { data } = await supabase.from("estimation_projects").select("ai_processing_progress,ai_analysis_status").eq("id", id).single();
+        if (data?.ai_processing_progress) {
+          setProcessingProgress(data.ai_processing_progress);
+          if (data.ai_processing_progress.step === "complete" || data.ai_analysis_status === "completed") {
+            setIsOneClickRunning(false);
+            toast.success(`Estimate complete! ${data.ai_processing_progress.rooms_count || 0} rooms extracted.`);
+          }
+        }
+      } catch {}
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [isOneClickRunning, id]);
 
   // ── Estimation Mode ──────────────────────────────────────────────
   const estimationMode = (project?.estimation_mode as string) || "manual";
@@ -239,6 +261,8 @@ export default function ProjectDetail() {
       return;
     }
     setPdfUploading(true);
+    setIsOneClickRunning(true);
+    setProcessingProgress({ step: "upload", message: "Uploading PDF..." });
     setPdfProgress(10);
     setPdfError(null);
     setPdfStatusMsg("Uploading PDF...");
@@ -831,6 +855,16 @@ export default function ProjectDetail() {
                         {label}
                       </Button>
                     ))}
+                    <Button variant="default" size="sm" onClick={async () => {
+                      if (!id || !tenantId) return;
+                      const email = prompt("Enter client email address:");
+                      if (!email) return;
+                      try {
+                        const { estimationAction } = await import("@/lib/api/estimationApi");
+                        await estimationAction("send_to_client", { project_id: id, recipient_email: email }, tenantId);
+                        toast.success("Estimate sent to " + email);
+                      } catch (e: any) { toast.error(e.message || "Send failed"); }
+                    }}><Send className="mr-1 h-3 w-3" /> Send to Client</Button>
                   </div>
                 </CardContent>
               </Card>
@@ -1031,6 +1065,59 @@ export default function ProjectDetail() {
 
         {/* AI ANALYSIS TAB */}
         <TabsContent value="ai" className="space-y-4">
+          {/* One-Click Generate Complete Estimate */}
+          <Card className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
+            <CardContent className="py-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-bold flex items-center gap-2"><Zap className="h-5 w-5" /> Generate Complete Estimate</h3>
+                  <p className="text-blue-100 text-sm mt-1">Upload PDF &rarr; Extract rooms &rarr; QA Review &rarr; Qualification Letter &rarr; Ready to export</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  {isOneClickRunning ? (
+                    <div className="text-right">
+                      <div className="flex items-center gap-2"><Loader2 className="h-5 w-5 animate-spin" /> <span className="font-medium">{processingProgress?.message || "Processing..."}</span></div>
+                      <div className="text-xs text-blue-200 mt-1">Step: {processingProgress?.step || "starting"}</div>
+                    </div>
+                  ) : (
+                    <Button
+                      size="lg"
+                      variant="secondary"
+                      className="bg-white text-blue-700 hover:bg-blue-50 font-bold"
+                      onClick={() => { fileInputRef.current?.click(); }}
+                      disabled={estimationMode === "manual"}
+                    >
+                      <Upload className="mr-2 h-5 w-5" /> Upload PDF & Generate
+                    </Button>
+                  )}
+                </div>
+              </div>
+              {isOneClickRunning && processingProgress && (
+                <div className="mt-4 space-y-2">
+                  <div className="flex gap-1">
+                    {["vision", "qa", "qualification", "complete"].map((step, i) => {
+                      const current = processingProgress.step || "";
+                      const isDone = ["vision_complete","qa","qa_complete","qualification","qualification_complete","complete"].indexOf(current) >= ["vision_complete","qa","qa_complete","qualification","qualification_complete","complete"].indexOf(step === "vision" ? "vision_complete" : step === "qa" ? "qa_complete" : step === "qualification" ? "qualification_complete" : "complete");
+                      const isActive = current.startsWith(step);
+                      return (
+                        <div key={step} className={`flex-1 h-2 rounded-full ${isDone ? "bg-green-400" : isActive ? "bg-yellow-300 animate-pulse" : "bg-white/20"}`} />
+                      );
+                    })}
+                  </div>
+                  <div className="flex justify-between text-xs text-blue-200">
+                    <span>Vision</span><span>QA</span><span>Qualification</span><span>Complete</span>
+                  </div>
+                  {processingProgress.rooms_count != null && (
+                    <div className="text-sm text-blue-100 mt-1">
+                      {processingProgress.rooms_count} rooms | {processingProgress.takeoff_count || 0} items
+                      {processingProgress.qa_score != null && ` | QA: ${processingProgress.qa_score}/100`}
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Status Bar */}
           <Card className="p-4">
             <div className="flex items-center justify-between">
