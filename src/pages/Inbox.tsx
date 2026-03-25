@@ -54,6 +54,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -113,6 +116,7 @@ import {
   Music,
   Slack,
   MessageSquareMore,
+  Clock,
 } from "lucide-react";
 import { format, isToday, isYesterday, addHours, setMinutes, setHours } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -250,6 +254,12 @@ const DEFAULT_TEMPLATES = [
   },
 ];
 
+const SENTIMENT_EMOJI: Record<string, string> = {
+  positive: "\u{1F60A}",
+  neutral: "\u{1F610}",
+  negative: "\u{1F620}",
+};
+
 // ============================================
 // TYPES
 // ============================================
@@ -352,6 +362,9 @@ export default function Inbox() {
   const [showTransferDialog, setShowTransferDialog] = useState(false);
   const [showEscalateDialog, setShowEscalateDialog] = useState(false);
   const [showTemplateDialog, setShowTemplateDialog] = useState(false);
+  const [showCannedPicker, setShowCannedPicker] = useState(false);
+  const [cannedSearch, setCannedSearch] = useState("");
+  const [showSnoozeDialog, setShowSnoozeDialog] = useState(false);
   const [showComplianceDialog, setShowComplianceDialog] = useState(false);
   const [showEditContactDialog, setShowEditContactDialog] = useState(false);
 
@@ -483,6 +496,39 @@ export default function Inbox() {
       return (data || []) as StaffMember[];
     },
     enabled: !!tenantUuid,
+  });
+
+  // Canned responses query (for "/" picker)
+  const { data: cannedResponses = [] } = useQuery({
+    queryKey: ["canned-responses", tenantUuid],
+    queryFn: async () => {
+      if (!tenantUuid) return [];
+      const { data } = await supabase
+        .from("canned_responses")
+        .select("id, title, content, category, shortcut")
+        .eq("tenant_id", tenantUuid)
+        .eq("is_active", true)
+        .order("usage_count", { ascending: false });
+      return data || [];
+    },
+    enabled: !!tenantUuid,
+    staleTime: 60000,
+  });
+
+  // Conversation tags query
+  const { data: allTags = [] } = useQuery({
+    queryKey: ["conversation-tags", tenantUuid],
+    queryFn: async () => {
+      if (!tenantUuid) return [];
+      const { data } = await supabase
+        .from("conversation_tags")
+        .select("id, name, color")
+        .eq("tenant_id", tenantUuid)
+        .eq("is_active", true);
+      return data || [];
+    },
+    enabled: !!tenantUuid,
+    staleTime: 60000,
   });
 
   // Create staff map for quick lookup (ISSUE 4 FIX)
@@ -1482,6 +1528,21 @@ export default function Inbox() {
                                   → {assignedName.split(" ")[0]}
                                 </Badge>
                               )}
+                              {/* Tags display */}
+                              {conv.tags && Array.isArray(conv.tags) && conv.tags.slice(0, 2).map((tag: string, i: number) => (
+                                <Badge key={i} variant="secondary" className="text-[9px] h-3.5 px-1">
+                                  {tag}
+                                </Badge>
+                              ))}
+                              {conv.tags && conv.tags.length > 2 && (
+                                <span className="text-[9px] text-muted-foreground">+{conv.tags.length - 2}</span>
+                              )}
+                              {/* Sentiment indicator */}
+                              {conv.sentiment && (
+                                <span className="text-[10px]" title={`Sentiment: ${conv.sentiment}`}>
+                                  {SENTIMENT_EMOJI[conv.sentiment] || ""}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -1593,6 +1654,36 @@ export default function Inbox() {
                           <AlertTriangle className="h-4 w-4 mr-2" />
                           Escalate
                         </DropdownMenuItem>
+                        {/* Snooze submenu */}
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>
+                            <Clock className="h-4 w-4 mr-2" />
+                            Snooze
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent>
+                            {[
+                              { label: "1 hour", hours: 1 },
+                              { label: "3 hours", hours: 3 },
+                              { label: "Tomorrow 9am", hours: Math.max(1, Math.ceil((new Date(new Date().setHours(33, 0, 0, 0)).getTime() - Date.now()) / 3600000)) },
+                              { label: "Next week", hours: 168 },
+                            ].map((opt) => (
+                              <DropdownMenuItem
+                                key={opt.label}
+                                onClick={async () => {
+                                  const until = new Date(Date.now() + opt.hours * 3600000).toISOString();
+                                  await supabase
+                                    .from("conversations")
+                                    .update({ snoozed_until: until, status: "snoozed", updated_at: new Date().toISOString() })
+                                    .eq("id", selectedConversation.id);
+                                  refetchConversations();
+                                  toast.success(`Snoozed for ${opt.label}`);
+                                }}
+                              >
+                                {opt.label}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           onClick={() =>
@@ -1699,18 +1790,70 @@ export default function Inbox() {
                           </DropdownMenuContent>
                         </DropdownMenu>
                         <div className="flex-1 flex gap-2">
-                          <Textarea
-                            placeholder="Type a message..."
-                            className="min-h-[44px] max-h-32 resize-none flex-1"
-                            value={messageInput}
-                            onChange={(e) => setMessageInput(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" && !e.shiftKey) {
-                                e.preventDefault();
-                                handleSendMessage();
-                              }
-                            }}
-                          />
+                          <div className="relative flex-1">
+                            <Textarea
+                              placeholder='Type a message... (type "/" for templates)'
+                              className="min-h-[44px] max-h-32 resize-none w-full"
+                              value={messageInput}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setMessageInput(val);
+                                // Show canned response picker on "/" at start or after newline
+                                if (val === "/" || val.endsWith("\n/")) {
+                                  setShowCannedPicker(true);
+                                  setCannedSearch("");
+                                } else if (val.includes("/") && showCannedPicker) {
+                                  const slashIdx = val.lastIndexOf("/");
+                                  setCannedSearch(val.slice(slashIdx + 1).toLowerCase());
+                                } else if (!val.includes("/")) {
+                                  setShowCannedPicker(false);
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Escape" && showCannedPicker) {
+                                  setShowCannedPicker(false);
+                                  return;
+                                }
+                                if (e.key === "Enter" && !e.shiftKey && !showCannedPicker) {
+                                  e.preventDefault();
+                                  handleSendMessage();
+                                }
+                              }}
+                            />
+                            {/* Canned Response "/" Picker */}
+                            {showCannedPicker && (
+                              <div className="absolute bottom-full left-0 right-0 mb-1 bg-background border rounded-lg shadow-lg max-h-48 overflow-y-auto z-50">
+                                {(cannedResponses.length > 0 ? cannedResponses : DEFAULT_TEMPLATES.map(t => ({id: t.id, title: t.name, content: t.content, category: t.category, shortcut: ""}))).filter(
+                                  (cr: any) => !cannedSearch || cr.title?.toLowerCase().includes(cannedSearch) || cr.shortcut?.toLowerCase().includes(cannedSearch) || cr.category?.toLowerCase().includes(cannedSearch)
+                                ).slice(0, 8).map((cr: any) => (
+                                  <div
+                                    key={cr.id}
+                                    className="px-3 py-2 hover:bg-muted cursor-pointer flex items-center justify-between gap-2"
+                                    onClick={() => {
+                                      let content = cr.content;
+                                      if (selectedConversation) {
+                                        content = content.replace(/\{\{name\}\}/g, getDisplayName(selectedConversation));
+                                        content = content.replace(/\{\{customer_name\}\}/g, getDisplayName(selectedConversation));
+                                        content = content.replace(/\{\{business_name\}\}/g, tenantConfig?.company_name || "");
+                                      }
+                                      setMessageInput(content);
+                                      setShowCannedPicker(false);
+                                    }}
+                                  >
+                                    <div className="min-w-0">
+                                      <div className="text-sm font-medium truncate">{cr.title}</div>
+                                      <div className="text-xs text-muted-foreground truncate">{cr.content?.slice(0, 60)}...</div>
+                                    </div>
+                                    {cr.shortcut && <Badge variant="outline" className="text-[9px] shrink-0">/{cr.shortcut}</Badge>}
+                                    {cr.category && !cr.shortcut && <Badge variant="secondary" className="text-[9px] shrink-0">{cr.category}</Badge>}
+                                  </div>
+                                ))}
+                                {cannedResponses.length === 0 && (
+                                  <div className="px-3 py-2 text-xs text-muted-foreground">Using default templates. Add canned responses in Settings.</div>
+                                )}
+                              </div>
+                            )}
+                          </div>
                           {/* ISSUE 5 & 6 FIX: Visible send button outside textarea */}
                           <Button
                             size="icon"
