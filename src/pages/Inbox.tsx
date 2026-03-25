@@ -384,6 +384,7 @@ export default function Inbox() {
   const [appointmentNotes, setAppointmentNotes] = useState("");
   const [escalationReason, setEscalationReason] = useState("");
   const [transferReason, setTransferReason] = useState("");
+  const [isInternalNote, setIsInternalNote] = useState(false);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editEmail, setEditEmail] = useState("");
@@ -686,21 +687,22 @@ export default function Inbox() {
 
   // ISSUE 6 FIX: Send Message with proper error handling
   const sendMessageMutation = useMutation({
-    mutationFn: async ({ conversationId, content }: { conversationId: string; content: string }) => {
+    mutationFn: async ({ conversationId, content, internal = false }: { conversationId: string; content: string; internal?: boolean }) => {
       const conv = conversations.find((c) => c.id === conversationId);
       if (!conv) throw new Error("Conversation not found");
 
-      console.log("Sending message:", { conversationId, content, channel: conv.channel });
+      console.log("Sending message:", { conversationId, content, channel: conv.channel, internal });
 
       // Insert message
       const { error: msgError } = await supabase.from("messages").insert({
         conversation_id: conversationId,
         tenant_id: tenantUuid,
-        direction: "outbound",
+        direction: internal ? "internal" : "outbound",
         content,
         sender_type: "staff",
         channel: conv.channel,
-        status: "pending",
+        status: internal ? "internal" : "pending",
+        is_internal: internal,
         created_at: new Date().toISOString(),
       });
 
@@ -722,25 +724,28 @@ export default function Inbox() {
         })
         .eq("id", conversationId);
 
-      // Call webhook to actually send
-      await callWebhook(
-        "/send-message",
-        {
-          conversation_id: conversationId,
-          customer_id: conv.contact_id,
-          message: content,
-          channel: conv.channel,
-        },
-        tenantId!,
-      );
+      // Call webhook to actually send (skip for internal notes)
+      if (!internal) {
+        await callWebhook(
+          "/send-message",
+          {
+            conversation_id: conversationId,
+            customer_id: conv.contact_id,
+            message: content,
+            channel: conv.channel,
+          },
+          tenantId!,
+        );
+      }
 
-      return { success: true };
+      return { success: true, internal };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       setMessageInput("");
+      setIsInternalNote(false);
       refetchMessages();
       refetchConversations();
-      toast.success("Message sent!");
+      toast.success(data?.internal ? "Internal note added" : "Message sent!");
     },
     onError: (err: any) => {
       console.error("Send message error:", err);
@@ -1122,9 +1127,9 @@ export default function Inbox() {
       console.log("Cannot send: missing input or conversation");
       return;
     }
-    console.log("Sending message:", messageInput.trim());
-    sendMessageMutation.mutate({ conversationId: selectedConversationId, content: messageInput.trim() });
-  }, [messageInput, selectedConversationId, sendMessageMutation]);
+    console.log("Sending message:", messageInput.trim(), isInternalNote ? "(internal)" : "");
+    sendMessageMutation.mutate({ conversationId: selectedConversationId, content: messageInput.trim(), internal: isInternalNote });
+  }, [messageInput, selectedConversationId, sendMessageMutation, isInternalNote]);
 
   const handleToggleStar = useCallback((id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -1731,43 +1736,62 @@ export default function Inbox() {
                         </div>
                       ) : (
                         <div className="space-y-4">
-                        {messages.map((msg) => (
+                        {messages.map((msg: any) => {
+                          const isInternal = msg.is_internal || msg.direction === "internal";
+                          const isOutbound = msg.direction === "outbound" && !isInternal;
+                          return (
                             <div
                               key={msg.id}
-                              className={cn("flex", msg.direction === "outbound" ? "justify-end" : "justify-start")}
+                              className={cn(
+                                "flex",
+                                isInternal ? "justify-center" : isOutbound ? "justify-end" : "justify-start",
+                              )}
                             >
                               <div
                                 className={cn(
                                   "max-w-[70%] rounded-2xl px-4 py-2.5 shadow-sm",
-                                  msg.direction === "outbound"
-                                    ? "rounded-br-md"
-                                    : "bg-muted text-foreground rounded-bl-md border",
+                                  isInternal
+                                    ? "bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700 border-dashed rounded-lg max-w-[85%]"
+                                    : isOutbound
+                                      ? "rounded-br-md"
+                                      : "bg-muted text-foreground rounded-bl-md border",
                                 )}
-                                style={msg.direction === "outbound" ? { 
-                                  backgroundColor: '#ec4899', 
-                                  color: '#ffffff' 
-                                } : {}}
+                                style={isOutbound ? { backgroundColor: '#ec4899', color: '#ffffff' } : {}}
                               >
-                                <p 
-                                  className="text-sm whitespace-pre-wrap"
-                                  style={msg.direction === "outbound" ? { color: '#ffffff' } : {}}
+                                {isInternal && (
+                                  <div className="flex items-center gap-1 mb-1 text-[10px] text-yellow-700 dark:text-yellow-400 font-medium">
+                                    <StickyNote className="h-3 w-3" />
+                                    Internal Note
+                                  </div>
+                                )}
+                                <p
+                                  className={cn("text-sm whitespace-pre-wrap", isInternal && "text-yellow-900 dark:text-yellow-200")}
+                                  style={isOutbound ? { color: '#ffffff' } : {}}
                                 >
                                   {msg.content}
                                 </p>
                                 <div
                                   className={cn(
                                     "flex items-center gap-1.5 mt-1 text-[10px]",
-                                    msg.direction === "outbound" ? "justify-end" : "text-muted-foreground",
+                                    isOutbound ? "justify-end" : "text-muted-foreground",
                                   )}
-                                  style={msg.direction === "outbound" ? { color: 'rgba(255,255,255,0.8)' } : {}}
+                                  style={isOutbound ? { color: 'rgba(255,255,255,0.8)' } : {}}
                                 >
                                   {format(new Date(msg.created_at), "HH:mm")}
                                   {msg.sender_type === "ai" && <Bot className="h-3 w-3" />}
-                                  {msg.direction === "outbound" && <CheckCheck className="h-3 w-3" />}
+                                  {isOutbound && (
+                                    msg.read_at ? <CheckCheck className="h-3 w-3 text-blue-400" /> :
+                                    msg.delivered_at ? <CheckCheck className="h-3 w-3" /> :
+                                    msg.status === "sent" ? <Check className="h-3 w-3" /> :
+                                    msg.status === "failed" ? <AlertCircle className="h-3 w-3 text-red-400" /> :
+                                    <Check className="h-3 w-3 opacity-50" />
+                                  )}
+                                  {isInternal && <span className="text-yellow-600">staff</span>}
                                 </div>
                               </div>
                             </div>
-                          ))}
+                          );
+                        })}
                           <div ref={messagesEndRef} />
                         </div>
                       )}
@@ -1854,14 +1878,37 @@ export default function Inbox() {
                               </div>
                             )}
                           </div>
-                          {/* ISSUE 5 & 6 FIX: Visible send button outside textarea */}
+                          {/* Internal note toggle */}
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant={isInternalNote ? "default" : "ghost"}
+                                  size="icon"
+                                  className={cn("h-10 w-10 shrink-0", isInternalNote && "bg-yellow-500 hover:bg-yellow-600 text-white")}
+                                  onClick={() => setIsInternalNote(!isInternalNote)}
+                                >
+                                  <StickyNote className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {isInternalNote ? "Sending as internal note (team only)" : "Toggle internal note mode"}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          {/* Send button */}
                           <Button
                             size="icon"
-                            className="h-10 w-10 shrink-0 bg-primary hover:bg-primary/90"
+                            className={cn(
+                              "h-10 w-10 shrink-0",
+                              isInternalNote
+                                ? "bg-yellow-500 hover:bg-yellow-600"
+                                : "bg-primary hover:bg-primary/90"
+                            )}
                             onClick={handleSendMessage}
                             disabled={!messageInput.trim() || sendMessageMutation.isPending}
                           >
-                            <Send className="h-4 w-4" />
+                            {isInternalNote ? <StickyNote className="h-4 w-4" /> : <Send className="h-4 w-4" />}
                           </Button>
                         </div>
                       </div>
@@ -2395,14 +2442,17 @@ export default function Inbox() {
           </DialogContent>
         </Dialog>
 
-        {/* Template */}
+        {/* Template — queries canned_responses from DB with fallback */}
         <Dialog open={showTemplateDialog} onOpenChange={setShowTemplateDialog}>
           <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle>Message Templates</DialogTitle>
             </DialogHeader>
             <div className="py-4 grid gap-3 max-h-80 overflow-y-auto">
-              {DEFAULT_TEMPLATES.map((t) => (
+              {(cannedResponses.length > 0
+                ? cannedResponses.map((cr: any) => ({ id: cr.id, name: cr.title, content: cr.content, category: cr.category }))
+                : DEFAULT_TEMPLATES
+              ).map((t: any) => (
                 <Card
                   key={t.id}
                   className="cursor-pointer hover:shadow-md transition-shadow"
@@ -2421,6 +2471,9 @@ export default function Inbox() {
                   </CardContent>
                 </Card>
               ))}
+              {cannedResponses.length > 0 && (
+                <p className="text-xs text-center text-muted-foreground">{cannedResponses.length} templates from your library</p>
+              )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowTemplateDialog(false)}>
