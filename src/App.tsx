@@ -197,6 +197,8 @@ const Pricing = lazy(() => import("./pages/public/Pricing"));
 const Terms = lazy(() => import("./pages/public/Terms"));
 const Privacy = lazy(() => import("./pages/public/Privacy"));
 const Refund = lazy(() => import("./pages/public/Refund"));
+const Landing = lazy(() => import("./pages/public/Landing"));
+const Demo = lazy(() => import("./pages/public/Demo"));
 
 // Other
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -292,6 +294,22 @@ const App = () => (
                   element={
                     <LazyPage>
                       <Pricing />
+                    </LazyPage>
+                  }
+                />
+                <Route
+                  path="/landing"
+                  element={
+                    <LazyPage>
+                      <Landing />
+                    </LazyPage>
+                  }
+                />
+                <Route
+                  path="/demo"
+                  element={
+                    <LazyPage>
+                      <Demo />
                     </LazyPage>
                   }
                 />
