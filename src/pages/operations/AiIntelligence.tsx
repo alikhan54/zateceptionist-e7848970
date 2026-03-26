@@ -33,8 +33,8 @@ const AGENTS = [
   { codename: "DIPLOMAT", role: "Vendor Relations", phase: "P22 — Active", icon: Users, live: true },
   { codename: "FACTORY", role: "Production Planning", phase: "P23 — Active", icon: Zap, live: true },
   { codename: "SENTINEL", role: "Quality Control", phase: "P23 — Active", icon: CheckSquare, live: true },
-  { codename: "COURIER", role: "Logistics & Routing", phase: "P24", icon: Truck, live: false },
-  { codename: "OPTIMIZER", role: "Cost Intelligence", phase: "P24", icon: BarChart2, live: false },
+  { codename: "COURIER", role: "Logistics & Routing", phase: "P24 — Active", icon: Truck, live: true },
+  { codename: "OPTIMIZER", role: "Cost Intelligence", phase: "P24 — Active", icon: BarChart2, live: true },
   { codename: "TREASURER", role: "Budget Intelligence", phase: "P25", icon: DollarSign, live: false },
   { codename: "GUARDIAN", role: "Compliance", phase: "P25", icon: Shield, live: false },
 ];
@@ -196,6 +196,38 @@ export default function AiIntelligence() {
     refetchInterval: 30000,
   });
 
+  // Fetch shipments (Phase 24)
+  const { data: shipments = [] } = useQuery({
+    queryKey: ["ops-shipments", tenantSlug],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ops_shipments")
+        .select("*")
+        .eq("tenant_id", tenantSlug)
+        .order("created_at", { ascending: false })
+        .limit(10);
+      if (error) throw error;
+      return data || [];
+    },
+    refetchInterval: 30000,
+  });
+
+  // Fetch cost savings (Phase 24)
+  const { data: savings = [] } = useQuery({
+    queryKey: ["ops-savings", tenantSlug, industry],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ops_cost_savings")
+        .select("*")
+        .eq("tenant_id", tenantSlug)
+        .order("identified_at", { ascending: false })
+        .limit(10);
+      if (error) throw error;
+      return data || [];
+    },
+    refetchInterval: 60000,
+  });
+
   const [forecastLoading, setForecastLoading] = useState(false);
 
   const runForecast = async () => {
@@ -295,7 +327,7 @@ export default function AiIntelligence() {
           Powered by OpsNexus — 12-agent autonomous operations system
         </p>
         <Badge variant="outline" className="mt-2 bg-blue-50 text-blue-700 border-blue-200">
-          Phase 23 Active — Production + Quality
+          Phase 24 Active — Logistics + Cost Intelligence
         </Badge>
       </div>
 
@@ -898,6 +930,172 @@ export default function AiIntelligence() {
                             </td>
                             <td className="px-4 py-2 text-xs text-muted-foreground">
                               {timeAgo(r.inspected_at as string)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
+      </div>
+      {/* Shipments — COURIER (Phase 24) */}
+      <div>
+        <h2 className="font-semibold mb-3 text-lg flex items-center gap-2">
+          <Truck className="w-5 h-5" /> Shipments — COURIER
+        </h2>
+        {shipments.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No shipments yet. BUYER creates shipments when POs are sent.
+          </p>
+        ) : (
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 border-b">
+                    <tr>
+                      <th className="text-left px-4 py-2 font-medium">PO</th>
+                      <th className="text-left px-4 py-2 font-medium">Carrier</th>
+                      <th className="text-left px-4 py-2 font-medium">Status</th>
+                      <th className="text-left px-4 py-2 font-medium">ETA</th>
+                      <th className="text-left px-4 py-2 font-medium">Delay Risk</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {shipments.map((s: Record<string, unknown>) => {
+                      const delayPct = Number(s.delay_probability) * 100 || 0;
+                      const delayColor = delayPct > 70 ? "bg-red-500" : delayPct > 30 ? "bg-amber-500" : "bg-green-500";
+                      const shipStatusColor = {
+                        pending: "bg-gray-100 text-gray-600",
+                        picked_up: "bg-blue-100 text-blue-800",
+                        in_transit: "bg-indigo-100 text-indigo-800",
+                        out_for_delivery: "bg-amber-100 text-amber-800",
+                        delivered: "bg-green-100 text-green-800",
+                        returned: "bg-red-100 text-red-800",
+                        lost: "bg-red-200 text-red-900",
+                      }[s.status as string] || "bg-gray-100 text-gray-600";
+                      return (
+                        <tr key={s.id as string} className="border-b last:border-0 hover:bg-muted/30">
+                          <td className="px-4 py-2 font-mono text-xs">{(s.po_number as string) || "—"}</td>
+                          <td className="px-4 py-2">{s.carrier as string}</td>
+                          <td className="px-4 py-2">
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${shipStatusColor}`}>
+                              {s.status as string}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2 text-xs text-muted-foreground">
+                            {s.estimated_delivery ? (s.estimated_delivery as string).substring(0, 10) : "—"}
+                          </td>
+                          <td className="px-4 py-2">
+                            <div className="flex items-center gap-2">
+                              <div className="w-16 bg-gray-200 rounded h-1.5">
+                                <div className={`h-1.5 rounded ${delayColor}`}
+                                  style={{ width: `${Math.min(100, delayPct)}%` }} />
+                              </div>
+                              <span className="text-xs text-muted-foreground">{delayPct.toFixed(0)}%</span>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Cost Savings — OPTIMIZER (Phase 24) */}
+      <div>
+        <h2 className="font-semibold mb-3 text-lg flex items-center gap-2">
+          <BarChart2 className="w-5 h-5" /> Cost Savings — OPTIMIZER
+        </h2>
+        {savings.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No savings identified yet. OPTIMIZER analyses procurement patterns weekly.
+          </p>
+        ) : (
+          <>
+            <div className="grid grid-cols-3 gap-3 mb-3">
+              <Card>
+                <CardContent className="pt-3 pb-2 text-center">
+                  <div className="text-2xl font-bold">
+                    {savings.reduce((sum: number, s: Record<string, unknown>) =>
+                      sum + Number(s.estimated_saving || 0), 0).toFixed(0)}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Total Identified (AED)</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-3 pb-2 text-center">
+                  <div className="text-2xl font-bold text-green-600">
+                    {savings.filter((s: Record<string, unknown>) => s.status === "implemented")
+                      .reduce((sum: number, s: Record<string, unknown>) =>
+                        sum + Number(s.estimated_saving || 0), 0).toFixed(0)}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Implemented (AED)</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-3 pb-2 text-center">
+                  <div className="text-2xl font-bold">{savings.length}</div>
+                  <div className="text-xs text-muted-foreground">Opportunities</div>
+                </CardContent>
+              </Card>
+            </div>
+            <Card>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50 border-b">
+                      <tr>
+                        <th className="text-left px-4 py-2 font-medium">Category</th>
+                        <th className="text-left px-4 py-2 font-medium">Opportunity</th>
+                        <th className="text-left px-4 py-2 font-medium">Saving</th>
+                        <th className="text-left px-4 py-2 font-medium">Confidence</th>
+                        <th className="text-left px-4 py-2 font-medium">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {savings.map((s: Record<string, unknown>) => {
+                        const confColor = {
+                          high: "bg-green-100 text-green-800",
+                          medium: "bg-amber-100 text-amber-800",
+                          low: "bg-gray-100 text-gray-600",
+                        }[s.confidence as string] || "bg-gray-100 text-gray-600";
+                        const savStatusColor = {
+                          identified: "bg-gray-100 text-gray-600",
+                          approved: "bg-blue-100 text-blue-800",
+                          implemented: "bg-green-100 text-green-800",
+                          declined: "bg-red-100 text-red-800",
+                        }[s.status as string] || "bg-gray-100 text-gray-600";
+                        return (
+                          <tr key={s.id as string} className="border-b last:border-0 hover:bg-muted/30">
+                            <td className="px-4 py-2">
+                              <Badge variant="outline" className="text-[10px]">
+                                {(s.category as string)?.replace("_", " ")}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-2 max-w-xs truncate text-muted-foreground">
+                              {(s.opportunity as string)?.substring(0, 80)}
+                            </td>
+                            <td className="px-4 py-2 font-medium">
+                              {s.currency as string} {Number(s.estimated_saving)?.toFixed(0)}
+                            </td>
+                            <td className="px-4 py-2">
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${confColor}`}>
+                                {s.confidence as string}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2">
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${savStatusColor}`}>
+                                {s.status as string}
+                              </span>
                             </td>
                           </tr>
                         );
