@@ -37,6 +37,8 @@ import {
   PanelRightOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SLATimer } from './SLATimer';
+import { GitMerge, Download, FileText, FileJson } from 'lucide-react';
 
 interface Conversation {
   id: string;
@@ -47,6 +49,9 @@ interface Conversation {
   status: string;
   handler_type: string;
   tags?: string[];
+  sla_deadline?: string | null;
+  created_at?: string;
+  ticket_number?: string;
 }
 
 interface ConversationHeaderProps {
@@ -62,6 +67,8 @@ interface ConversationHeaderProps {
   onViewProfile: () => void;
   onBlockCustomer: () => void;
   onToggleDetails: () => void;
+  onMerge?: () => void;
+  onExport?: (format: 'json' | 'csv' | 'html') => void;
   isStarred?: boolean;
   showDetails?: boolean;
   staffList?: { id: string; name: string }[];
@@ -117,6 +124,8 @@ export function ConversationHeader({
   onViewProfile,
   onBlockCustomer,
   onToggleDetails,
+  onMerge,
+  onExport,
   isStarred = false,
   showDetails = true,
   staffList = [],
@@ -155,6 +164,7 @@ export function ConversationHeader({
               {conversation.customer_name || conversation.customer_phone || 'Unknown'}
             </span>
             {isStarred && <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />}
+            <SLATimer slaDeadline={conversation.sla_deadline} createdAt={conversation.created_at} />
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             {conversation.customer_phone && (
@@ -271,6 +281,36 @@ export function ConversationHeader({
               <Eye className="h-4 w-4 mr-2" />
               View Customer Profile
             </DropdownMenuItem>
+
+            {onMerge && (
+              <DropdownMenuItem onClick={onMerge}>
+                <GitMerge className="h-4 w-4 mr-2" />
+                Merge with...
+              </DropdownMenuItem>
+            )}
+
+            {onExport && (
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Download className="h-4 w-4 mr-2" />
+                  Export
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem onClick={() => onExport('html')}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export as PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onExport('csv')}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export as CSV
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onExport('json')}>
+                    <FileJson className="h-4 w-4 mr-2" />
+                    Export as JSON
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            )}
 
             <DropdownMenuSeparator />
 

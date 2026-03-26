@@ -123,6 +123,8 @@ import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ArrowLeft } from "lucide-react";
 import { SuggestedResponses } from "@/components/inbox/SuggestedResponses";
+import { ScheduleMessageButton } from "@/components/inbox/ScheduleMessageButton";
+import { MergeConversationDialog } from "@/components/inbox/MergeConversationDialog";
 
 // ============================================
 // WEBHOOK CONFIG
@@ -386,6 +388,7 @@ export default function Inbox() {
   const [escalationReason, setEscalationReason] = useState("");
   const [transferReason, setTransferReason] = useState("");
   const [isInternalNote, setIsInternalNote] = useState(false);
+  const [showMergeDialog, setShowMergeDialog] = useState(false);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editEmail, setEditEmail] = useState("");
@@ -1132,6 +1135,33 @@ export default function Inbox() {
     sendMessageMutation.mutate({ conversationId: selectedConversationId, content: messageInput.trim(), internal: isInternalNote });
   }, [messageInput, selectedConversationId, sendMessageMutation, isInternalNote]);
 
+  const handleExport = useCallback(async (format: 'json' | 'csv' | 'html') => {
+    if (!selectedConversationId || !tenantUuid) return;
+    try {
+      const resp = await fetch("https://webhooks.zatesystems.com/webhook/comm-export-conversation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversation_id: selectedConversationId, tenant_id: tenantUuid, format }),
+      });
+      const data = await resp.json();
+      if (format === 'html') {
+        const w = window.open('', '_blank');
+        if (w) { w.document.write(data.data); w.document.close(); }
+      } else if (format === 'csv') {
+        const blob = new Blob([data.data], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = data.filename || 'conversation.csv'; a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        const blob = new Blob([JSON.stringify(data.data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'conversation.json'; a.click();
+        URL.revokeObjectURL(url);
+      }
+      toast.success(`Exported as ${format.toUpperCase()}`);
+    } catch { toast.error("Export failed"); }
+  }, [selectedConversationId, tenantUuid]);
+
   const handleToggleStar = useCallback((id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setStarredConversations((prev) => {
@@ -1715,6 +1745,22 @@ export default function Inbox() {
                           <Shield className="h-4 w-4 mr-2" />
                           Compliance
                         </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => setShowMergeDialog(true)}>
+                          <Hash className="h-4 w-4 mr-2" />
+                          Merge with...
+                        </DropdownMenuItem>
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>
+                            <FileText className="h-4 w-4 mr-2" />
+                            Export
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent>
+                            <DropdownMenuItem onClick={() => handleExport('html')}>Export as PDF</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleExport('csv')}>Export as CSV</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleExport('json')}>Export as JSON</DropdownMenuItem>
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -1906,6 +1952,14 @@ export default function Inbox() {
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
+                          {/* Schedule message button */}
+                          <ScheduleMessageButton
+                            conversationId={selectedConversationId || ""}
+                            tenantId={tenantUuid || ""}
+                            messageInput={messageInput}
+                            channel={selectedConv?.channel || "email"}
+                            onScheduled={() => { setMessageInput(""); }}
+                          />
                           {/* Send button */}
                           <Button
                             size="icon"
@@ -2560,6 +2614,17 @@ export default function Inbox() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        {/* Merge Conversation Dialog */}
+        {selectedConversation && (
+          <MergeConversationDialog
+            open={showMergeDialog}
+            onOpenChange={setShowMergeDialog}
+            conversationId={selectedConversation.id}
+            tenantId={tenantUuid || ""}
+            ticketNumber={selectedConversation.ticket_number}
+            onMerged={() => { refetchConversations(); refetchMessages(); }}
+          />
+        )}
       </div>
     </TooltipProvider>
   );
