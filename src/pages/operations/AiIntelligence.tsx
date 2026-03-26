@@ -35,8 +35,8 @@ const AGENTS = [
   { codename: "SENTINEL", role: "Quality Control", phase: "P23 — Active", icon: CheckSquare, live: true },
   { codename: "COURIER", role: "Logistics & Routing", phase: "P24 — Active", icon: Truck, live: true },
   { codename: "OPTIMIZER", role: "Cost Intelligence", phase: "P24 — Active", icon: BarChart2, live: true },
-  { codename: "TREASURER", role: "Budget Intelligence", phase: "P25", icon: DollarSign, live: false },
-  { codename: "GUARDIAN", role: "Compliance", phase: "P25", icon: Shield, live: false },
+  { codename: "TREASURER", role: "Budget Intelligence", phase: "P25 — Active", icon: DollarSign, live: true },
+  { codename: "GUARDIAN", role: "Compliance", phase: "P25 — Active", icon: Shield, live: true },
 ];
 
 const AUTONOMY_MODES = [
@@ -228,6 +228,40 @@ export default function AiIntelligence() {
     refetchInterval: 60000,
   });
 
+  // Fetch budget status (Phase 25)
+  const { data: budgetStatus = [] } = useQuery({
+    queryKey: ["ops-budgets", tenantSlug, industry],
+    queryFn: async () => {
+      const now = new Date();
+      const { data, error } = await supabase
+        .from("ops_budgets")
+        .select("*")
+        .eq("tenant_id", tenantSlug)
+        .eq("industry", industry)
+        .eq("period_year", now.getFullYear())
+        .eq("period_month", now.getMonth() + 1);
+      if (error) throw error;
+      return data || [];
+    },
+    refetchInterval: 30000,
+  });
+
+  // Fetch compliance log (Phase 25)
+  const { data: complianceLogs = [] } = useQuery({
+    queryKey: ["ops-compliance", tenantSlug],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ops_compliance_log")
+        .select("*")
+        .eq("tenant_id", tenantSlug)
+        .order("checked_at", { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return data || [];
+    },
+    refetchInterval: 60000,
+  });
+
   const [forecastLoading, setForecastLoading] = useState(false);
 
   const runForecast = async () => {
@@ -327,7 +361,7 @@ export default function AiIntelligence() {
           Powered by OpsNexus — 12-agent autonomous operations system
         </p>
         <Badge variant="outline" className="mt-2 bg-blue-50 text-blue-700 border-blue-200">
-          Phase 24 Active — Logistics + Cost Intelligence
+          Phase 25 Active — All 12 Agents Online
         </Badge>
       </div>
 
@@ -1106,6 +1140,95 @@ export default function AiIntelligence() {
               </CardContent>
             </Card>
           </>
+        )}
+      </div>
+      {/* Budget Status — TREASURER (Phase 25) */}
+      <div>
+        <h2 className="font-semibold mb-3 text-lg flex items-center gap-2">
+          <DollarSign className="w-5 h-5" /> Budget Status — TREASURER
+        </h2>
+        {budgetStatus.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No budgets configured for current month.
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {budgetStatus.map((b: Record<string, unknown>) => {
+              const budgeted = Number(b.budgeted_amount) || 0;
+              const spent = Number(b.spent_amount) || 0;
+              const pct = budgeted > 0 ? (spent / budgeted) * 100 : 0;
+              const barColor = pct > 90 ? "bg-red-500" : pct > 70 ? "bg-amber-500" : "bg-green-500";
+              return (
+                <Card key={b.id as string}>
+                  <CardContent className="pt-3 pb-2">
+                    <div className="font-medium text-sm capitalize">{(b.category as string)?.replace("_", " ")}</div>
+                    <div className="text-lg font-bold mt-1">
+                      AED {spent.toFixed(0)} <span className="text-sm font-normal text-muted-foreground">/ {budgeted.toFixed(0)}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded h-2 mt-2">
+                      <div className={`h-2 rounded ${barColor}`} style={{ width: `${Math.min(100, pct)}%` }} />
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">{pct.toFixed(0)}% used</div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Compliance — GUARDIAN (Phase 25) */}
+      <div>
+        <h2 className="font-semibold mb-3 text-lg flex items-center gap-2">
+          <Shield className="w-5 h-5" /> Compliance Log — GUARDIAN
+        </h2>
+        {complianceLogs.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No compliance checks recorded yet. GUARDIAN screens every PO automatically.
+          </p>
+        ) : (
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 border-b">
+                    <tr>
+                      <th className="text-left px-4 py-2 font-medium">Region</th>
+                      <th className="text-left px-4 py-2 font-medium">Regulation</th>
+                      <th className="text-left px-4 py-2 font-medium">Entity</th>
+                      <th className="text-left px-4 py-2 font-medium">Result</th>
+                      <th className="text-left px-4 py-2 font-medium">Time</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {complianceLogs.map((l: Record<string, unknown>) => {
+                      const resultColor = {
+                        pass: "bg-green-100 text-green-800",
+                        warning: "bg-amber-100 text-amber-800",
+                        fail: "bg-red-100 text-red-800",
+                        requires_review: "bg-purple-100 text-purple-800",
+                      }[l.check_result as string] || "bg-gray-100 text-gray-600";
+                      return (
+                        <tr key={l.id as string} className="border-b last:border-0 hover:bg-muted/30">
+                          <td className="px-4 py-2 uppercase text-xs font-mono">{l.region as string}</td>
+                          <td className="px-4 py-2">{l.regulation as string}</td>
+                          <td className="px-4 py-2 text-muted-foreground text-xs">{l.entity_type as string}</td>
+                          <td className="px-4 py-2">
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${resultColor}`}>
+                              {l.check_result as string}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2 text-xs text-muted-foreground">
+                            {timeAgo(l.checked_at as string)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>
