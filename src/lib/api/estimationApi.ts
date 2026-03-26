@@ -274,3 +274,15 @@ export async function estimationLearning<T = unknown>(
 export async function getLearningStats(tenantId: string) {
   return estimationLearning("apply_learning", {}, tenantId);
 }
+
+// ── Cost Engine (Phase H5) ────────────────────────────────────────
+
+export async function calculateProjectCost(
+  projectId: string,
+  tenantId: string,
+) {
+  return callWebhook(WEBHOOKS.ESTIMATION_COST, {
+    action: "calculate_project_cost",
+    project_id: projectId,
+  }, tenantId);
+}
