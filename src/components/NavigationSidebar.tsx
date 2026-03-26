@@ -103,6 +103,7 @@ import {
   Crosshair,
   Magnet,
   Film,
+  CalendarClock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -117,6 +118,7 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
   badge?: number | string;
   translationKey?: string;
+  children?: NavItem[];
 }
 
 interface NavSection {
@@ -144,9 +146,15 @@ export function NavigationSidebar() {
 
   // Collapsible section states - auto-expand based on current route
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
   const isActive = (path: string) => location.pathname === path;
   const isInSection = (paths: string[]) => paths.some((p) => location.pathname.startsWith(p));
+  const isGroupActive = (item: NavItem) => {
+    if (isActive(item.url)) return true;
+    return item.children?.some((c) => isActive(c.url)) || false;
+  };
+  const toggleGroup = (url: string) => setOpenGroups((prev) => ({ ...prev, [url]: !prev[url] }));
 
   // Close sections when clicking outside
   useEffect(() => {
@@ -374,25 +382,33 @@ export function NavigationSidebar() {
     featureKey: "marketing_module",
     items: [
       { title: "Marketing Hub", url: "/marketing", icon: Megaphone },
-      { title: "Content Studio", url: "/marketing/content", icon: PenTool },
-      { title: "Campaign Central", url: "/marketing/campaigns", icon: Send },
-      { title: "Social Commander", url: "/marketing/social", icon: Share2 },
-      { title: "Email Builder", url: "/marketing/email", icon: Mail },
-      { title: "Landing Pages", url: "/marketing/landing", icon: Globe },
-      { title: "Marketing Analytics", url: "/marketing/analytics", icon: PieChart },
-      { title: "A/B Testing", url: "/marketing/ab-testing", icon: GitBranch },
-      { title: "Marketing Sequences", url: "/marketing/sequences", icon: Layers },
-      { title: "Blog Manager", url: "/marketing/blogs", icon: FileText },
-      { title: "Video AI", url: "/marketing/video-studio", icon: Film },
-      { title: "Competitor Intel", url: "/marketing/competitors", icon: Eye },
-      { title: "Ads Manager", url: "/marketing/ads", icon: Target },
-      { title: "Content Calendar", url: "/marketing/calendar", icon: CalendarDays },
-      { title: "Brand Voice", url: "/marketing/brand-voice", icon: Palette },
-      { title: "Email Templates", url: "/marketing/templates", icon: Layers },
-      { title: "SEO Dashboard", url: "/marketing/seo", icon: Search },
-      { title: "Social Listening", url: "/marketing/social-listening", icon: Ear },
-      { title: "Playbooks", url: "/marketing/playbooks", icon: BookOpen },
-      { title: "Lead Magnets", url: "/marketing/lead-magnets", icon: Magnet },
+      { title: "Content AI", url: "/marketing/content", icon: PenTool, children: [
+        { title: "Blog Manager", url: "/marketing/blogs", icon: FileText },
+        { title: "Landing Pages", url: "/marketing/landing", icon: Globe },
+        { title: "Lead Magnets", url: "/marketing/lead-magnets", icon: Magnet },
+      ]},
+      { title: "Social Commander", url: "/marketing/social", icon: Share2, children: [
+        { title: "Social Listening", url: "/marketing/social-listening", icon: Ear },
+      ]},
+      { title: "Video AI", url: "/marketing/video-studio", icon: Film, children: [
+        { title: "Video Projects", url: "/marketing/videos", icon: Video },
+      ]},
+      { title: "Campaign Central", url: "/marketing/campaigns", icon: Send, children: [
+        { title: "Ads Manager", url: "/marketing/ads", icon: Target },
+        { title: "A/B Testing", url: "/marketing/ab-testing", icon: GitBranch },
+        { title: "Sequences", url: "/marketing/sequences", icon: Layers },
+        { title: "Content Calendar", url: "/marketing/calendar", icon: CalendarDays },
+      ]},
+      { title: "Email Builder", url: "/marketing/email", icon: Mail, children: [
+        { title: "Email Templates", url: "/marketing/templates", icon: Layers },
+      ]},
+      { title: "Intelligence", url: "/marketing/analytics", icon: PieChart, children: [
+        { title: "Competitor Intel", url: "/marketing/competitors", icon: Eye },
+        { title: "SEO Dashboard", url: "/marketing/seo", icon: Search },
+      ]},
+      { title: "Brand Voice", url: "/marketing/brand-voice", icon: Palette, children: [
+        { title: "Playbooks", url: "/marketing/playbooks", icon: BookOpen },
+      ]},
       { title: "Voice Marketing", url: "/marketing/voice", icon: Phone },
       { title: "Autonomous Mode", url: "/marketing/autonomous", icon: Zap },
     ],
@@ -406,6 +422,7 @@ export function NavigationSidebar() {
       { title: "HR Dashboard", url: "/hr/dashboard", icon: Building2 },
       { title: translate("staffs"), url: "/hr/employees", icon: Users },
       { title: "Attendance", url: "/hr/attendance", icon: Clock },
+      { title: "Shifts", url: "/hr/shifts", icon: CalendarClock },
       { title: "Leave Management", url: "/hr/leave", icon: CalendarDays },
       { title: "Payroll", url: "/hr/payroll", icon: DollarSign },
       { title: "Departments", url: "/hr/departments", icon: Network },
@@ -416,6 +433,7 @@ export function NavigationSidebar() {
       { title: "Documents", url: "/hr/documents", icon: FileText },
       { title: "Reports", url: "/hr/reports", icon: BarChart3 },
       { title: "HR AI Assistant", url: "/hr/ai-assistant", icon: Bot },
+      { title: "AI Workforce", url: "/hr/ai-agents", icon: Bot },
     ],
   };
 
@@ -573,33 +591,73 @@ export function NavigationSidebar() {
     ? ({ "--sidebar-accent": tenantConfig.primary_color } as React.CSSProperties)
     : {};
 
-  const NavItemComponent = ({ item }: { item: NavItem }) => (
-    <SidebarMenuItem>
-      <SidebarMenuButton
-        onClick={() => navigate(item.url)}
-        className={cn(
-          "w-full justify-start gap-3 transition-all duration-200",
-          isActive(item.url) && "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
-        )}
-      >
-        <item.icon className="h-4 w-4 shrink-0" />
-        {!collapsed && (
-          <>
-            <span className="truncate flex-1">{item.title}</span>
-            {item.badge !== undefined && (
-              <Badge variant="secondary" className="ml-auto h-5 min-w-5 px-1.5 text-xs">
-                {item.badge}
-              </Badge>
-            )}
-            {isActive(item.url) && <ChevronRight className="h-4 w-4 ml-auto shrink-0" />}
-          </>
-        )}
-      </SidebarMenuButton>
-    </SidebarMenuItem>
-  );
+  const NavItemComponent = ({ item, indent = false }: { item: NavItem; indent?: boolean }) => {
+    if (item.children && item.children.length > 0 && !collapsed) {
+      const groupActive = isGroupActive(item);
+      const isOpen = openGroups[item.url] || groupActive;
+      return (
+        <>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={() => { navigate(item.url); toggleGroup(item.url); }}
+              className={cn(
+                "w-full justify-start gap-3 transition-all duration-200",
+                groupActive && "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
+              )}
+            >
+              <item.icon className="h-4 w-4 shrink-0" />
+              <span className="truncate flex-1">{item.title}</span>
+              <ChevronDown className={cn("h-3 w-3 shrink-0 transition-transform duration-200", isOpen && "rotate-180")} />
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          {isOpen && item.children.map((child) => (
+            <SidebarMenuItem key={child.url}>
+              <SidebarMenuButton
+                onClick={() => navigate(child.url)}
+                className={cn(
+                  "w-full justify-start gap-3 pl-8 transition-all duration-200 text-sm",
+                  isActive(child.url) && "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
+                )}
+              >
+                <child.icon className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate flex-1">{child.title}</span>
+                {isActive(child.url) && <ChevronRight className="h-3 w-3 ml-auto shrink-0" />}
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+        </>
+      );
+    }
+    return (
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          onClick={() => navigate(item.url)}
+          className={cn(
+            "w-full justify-start gap-3 transition-all duration-200",
+            indent && "pl-8 text-sm",
+            isActive(item.url) && "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
+          )}
+        >
+          <item.icon className={cn("shrink-0", indent ? "h-3.5 w-3.5" : "h-4 w-4")} />
+          {!collapsed && (
+            <>
+              <span className="truncate flex-1">{item.title}</span>
+              {item.badge !== undefined && (
+                <Badge variant="secondary" className="ml-auto h-5 min-w-5 px-1.5 text-xs">
+                  {item.badge}
+                </Badge>
+              )}
+              {isActive(item.url) && <ChevronRight className="h-4 w-4 ml-auto shrink-0" />}
+            </>
+          )}
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    );
+  };
 
   const CollapsibleSection = ({ section, sectionKey }: { section: NavSection; sectionKey: string }) => {
-    const isOpen = openSections[sectionKey] || isInSection(section.items.map((i) => i.url));
+    const allUrls = section.items.flatMap((i) => [i.url, ...(i.children?.map((c) => c.url) || [])]);
+    const isOpen = openSections[sectionKey] || isInSection(allUrls);
 
     if (collapsed) {
       return (
