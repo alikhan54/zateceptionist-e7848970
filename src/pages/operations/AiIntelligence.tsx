@@ -31,8 +31,8 @@ const AGENTS = [
   { codename: "SOURCER", role: "Vendor Discovery", phase: "P22 — Active", icon: Users, live: true },
   { codename: "BUYER", role: "Purchase Orders", phase: "P22 — Active", icon: ShoppingCart, live: true },
   { codename: "DIPLOMAT", role: "Vendor Relations", phase: "P22 — Active", icon: Users, live: true },
-  { codename: "FACTORY", role: "Production Planning", phase: "P23", icon: Zap, live: false },
-  { codename: "SENTINEL", role: "Quality Control", phase: "P23", icon: CheckSquare, live: false },
+  { codename: "FACTORY", role: "Production Planning", phase: "P23 — Active", icon: Zap, live: true },
+  { codename: "SENTINEL", role: "Quality Control", phase: "P23 — Active", icon: CheckSquare, live: true },
   { codename: "COURIER", role: "Logistics & Routing", phase: "P24", icon: Truck, live: false },
   { codename: "OPTIMIZER", role: "Cost Intelligence", phase: "P24", icon: BarChart2, live: false },
   { codename: "TREASURER", role: "Budget Intelligence", phase: "P25", icon: DollarSign, live: false },
@@ -163,6 +163,39 @@ export default function AiIntelligence() {
     refetchInterval: 30000,
   });
 
+  // Fetch production plans (Phase 23)
+  const { data: productionPlans = [] } = useQuery({
+    queryKey: ["ops-production-plans", tenantSlug, industry],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ops_production_plans")
+        .select("*")
+        .eq("tenant_id", tenantSlug)
+        .eq("industry", industry)
+        .order("plan_date", { ascending: false })
+        .limit(10);
+      if (error) throw error;
+      return data || [];
+    },
+    refetchInterval: 60000,
+  });
+
+  // Fetch QC results (Phase 23)
+  const { data: qcResults = [] } = useQuery({
+    queryKey: ["ops-qc-results", tenantSlug],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ops_qc_results")
+        .select("*")
+        .eq("tenant_id", tenantSlug)
+        .order("inspected_at", { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return data || [];
+    },
+    refetchInterval: 30000,
+  });
+
   const [forecastLoading, setForecastLoading] = useState(false);
 
   const runForecast = async () => {
@@ -262,7 +295,7 @@ export default function AiIntelligence() {
           Powered by OpsNexus — 12-agent autonomous operations system
         </p>
         <Badge variant="outline" className="mt-2 bg-blue-50 text-blue-700 border-blue-200">
-          Phase 22 Active — Procurement Pipeline
+          Phase 23 Active — Production + Quality
         </Badge>
       </div>
 
@@ -735,6 +768,146 @@ export default function AiIntelligence() {
               );
             })}
           </div>
+        )}
+      </div>
+
+      {/* Production Plans — FACTORY */}
+      <div>
+        <h2 className="font-semibold mb-3 text-lg flex items-center gap-2">
+          <Zap className="w-5 h-5" /> Production Plans — FACTORY
+        </h2>
+        {productionPlans.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No plans yet. FACTORY creates them daily from ORACLE forecasts.
+          </p>
+        ) : (
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 border-b">
+                    <tr>
+                      <th className="text-left px-4 py-2 font-medium">Date</th>
+                      <th className="text-left px-4 py-2 font-medium">Name</th>
+                      <th className="text-left px-4 py-2 font-medium">Status</th>
+                      <th className="text-left px-4 py-2 font-medium">Bottlenecks</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {productionPlans.slice(0, 5).map((p: Record<string, unknown>) => {
+                      const pStatus = p.status as string;
+                      const pColor = {
+                        draft: "bg-gray-100 text-gray-600", approved: "bg-blue-100 text-blue-800",
+                        in_progress: "bg-amber-100 text-amber-800", complete: "bg-green-100 text-green-800",
+                        cancelled: "bg-gray-100 text-gray-500",
+                      }[pStatus] || "bg-gray-100 text-gray-600";
+                      const bottlenecks = (p.bottlenecks as string[]) || [];
+                      return (
+                        <tr key={p.id as string} className="border-b last:border-0 hover:bg-muted/30">
+                          <td className="px-4 py-2 font-mono text-xs">{p.plan_date as string}</td>
+                          <td className="px-4 py-2">{(p.name as string)?.substring(0, 40)}</td>
+                          <td className="px-4 py-2">
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${pColor}`}>{pStatus}</span>
+                          </td>
+                          <td className="px-4 py-2 text-xs text-muted-foreground">
+                            {bottlenecks.length > 0
+                              ? <span className="text-amber-600">{bottlenecks.length} issue(s)</span>
+                              : <span className="text-green-600">None</span>}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Quality Control — SENTINEL */}
+      <div>
+        <h2 className="font-semibold mb-3 text-lg flex items-center gap-2">
+          <CheckSquare className="w-5 h-5" /> Quality Control — SENTINEL
+        </h2>
+        {qcResults.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No QC inspections yet. Submit via webhook or SENTINEL automation.
+          </p>
+        ) : (
+          <>
+            <div className="grid grid-cols-3 gap-3 mb-3">
+              <Card>
+                <CardContent className="pt-3 pb-2 text-center">
+                  <div className="text-2xl font-bold text-green-700">
+                    {qcResults.filter((r: Record<string, unknown>) => r.status === "pass").length}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Passed</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-3 pb-2 text-center">
+                  <div className="text-2xl font-bold text-red-700">
+                    {qcResults.filter((r: Record<string, unknown>) => r.status === "fail").length}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Failed</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-3 pb-2 text-center">
+                  <div className="text-2xl font-bold">
+                    {qcResults.length > 0
+                      ? `${Math.round((qcResults.filter((r: Record<string, unknown>) => r.status === "pass").length / qcResults.length) * 100)}%`
+                      : "—"}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Pass Rate</div>
+                </CardContent>
+              </Card>
+            </div>
+            <Card>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50 border-b">
+                      <tr>
+                        <th className="text-left px-4 py-2 font-medium">Type</th>
+                        <th className="text-left px-4 py-2 font-medium">Status</th>
+                        <th className="text-left px-4 py-2 font-medium">Corrective</th>
+                        <th className="text-left px-4 py-2 font-medium">Time</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {qcResults.slice(0, 10).map((r: Record<string, unknown>) => {
+                        const qcStatus = r.status as string;
+                        const qcColor = {
+                          pass: "bg-green-100 text-green-800", fail: "bg-red-100 text-red-800",
+                          conditional: "bg-amber-100 text-amber-800", waived: "bg-gray-100 text-gray-600",
+                        }[qcStatus] || "bg-gray-100 text-gray-600";
+                        return (
+                          <tr key={r.id as string} className="border-b last:border-0 hover:bg-muted/30">
+                            <td className="px-4 py-2 text-xs">{r.reference_type as string}</td>
+                            <td className="px-4 py-2">
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${qcColor}`}>{qcStatus}</span>
+                            </td>
+                            <td className="px-4 py-2 text-xs text-muted-foreground">
+                              {r.corrective_status === "open"
+                                ? <span className="text-red-600 font-medium">Open</span>
+                                : r.corrective_status === "resolved"
+                                  ? <span className="text-green-600">Resolved</span>
+                                  : "—"}
+                            </td>
+                            <td className="px-4 py-2 text-xs text-muted-foreground">
+                              {timeAgo(r.inspected_at as string)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </>
         )}
       </div>
     </div>
