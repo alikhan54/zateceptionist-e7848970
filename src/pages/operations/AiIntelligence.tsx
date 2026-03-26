@@ -28,9 +28,9 @@ const AGENTS = [
   { codename: "NEXUS", role: "Operations Supervisor", phase: "P20 — Active", icon: Brain, live: true },
   { codename: "ORACLE", role: "Demand Forecasting", phase: "P21 — Active", icon: TrendingUp, live: true },
   { codename: "STOCKMASTER", role: "Inventory Management", phase: "P21 — Active", icon: Package, live: true },
-  { codename: "SOURCER", role: "Vendor Discovery", phase: "P22", icon: Users, live: false },
-  { codename: "BUYER", role: "Purchase Orders", phase: "P22", icon: ShoppingCart, live: false },
-  { codename: "DIPLOMAT", role: "Vendor Relations", phase: "P22", icon: Users, live: false },
+  { codename: "SOURCER", role: "Vendor Discovery", phase: "P22 — Active", icon: Users, live: true },
+  { codename: "BUYER", role: "Purchase Orders", phase: "P22 — Active", icon: ShoppingCart, live: true },
+  { codename: "DIPLOMAT", role: "Vendor Relations", phase: "P22 — Active", icon: Users, live: true },
   { codename: "FACTORY", role: "Production Planning", phase: "P23", icon: Zap, live: false },
   { codename: "SENTINEL", role: "Quality Control", phase: "P23", icon: CheckSquare, live: false },
   { codename: "COURIER", role: "Logistics & Routing", phase: "P24", icon: Truck, live: false },
@@ -128,6 +128,39 @@ export default function AiIntelligence() {
       return data || [];
     },
     refetchInterval: 60000,
+  });
+
+  // Fetch vendors (Phase 22)
+  const { data: vendors = [] } = useQuery({
+    queryKey: ["ops-vendors", tenantSlug, industry],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ops_vendors")
+        .select("*")
+        .eq("tenant_id", tenantSlug)
+        .eq("industry", industry)
+        .order("score", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    refetchInterval: 60000,
+  });
+
+  // Fetch purchase orders (Phase 22)
+  const { data: purchaseOrders = [] } = useQuery({
+    queryKey: ["ops-purchase-orders", tenantSlug, industry],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ops_purchase_orders")
+        .select("*")
+        .eq("tenant_id", tenantSlug)
+        .eq("industry", industry)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return data || [];
+    },
+    refetchInterval: 30000,
   });
 
   const [forecastLoading, setForecastLoading] = useState(false);
@@ -229,7 +262,7 @@ export default function AiIntelligence() {
           Powered by OpsNexus — 12-agent autonomous operations system
         </p>
         <Badge variant="outline" className="mt-2 bg-blue-50 text-blue-700 border-blue-200">
-          Phase 21 Active — ORACLE + STOCKMASTER
+          Phase 22 Active — Procurement Pipeline
         </Badge>
       </div>
 
@@ -566,6 +599,137 @@ export default function AiIntelligence() {
                         <span className="text-xs text-red-600 font-medium">Stock gap predicted</span>
                       </div>
                     )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Purchase Orders — BUYER */}
+      <div>
+        <h2 className="font-semibold mb-3 text-lg flex items-center gap-2">
+          <ShoppingCart className="w-5 h-5" /> Purchase Orders — BUYER
+        </h2>
+        {purchaseOrders.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No POs yet. BUYER creates them automatically from stock gaps.
+          </p>
+        ) : (
+          <>
+            <div className="grid grid-cols-4 gap-3 mb-3">
+              {[
+                { label: "Total POs", val: purchaseOrders.length, color: "text-gray-700" },
+                { label: "Pending Approval", val: purchaseOrders.filter((p: Record<string, unknown>) => p.status === "pending_approval").length, color: "text-amber-700" },
+                { label: "Sent", val: purchaseOrders.filter((p: Record<string, unknown>) => p.status === "sent").length, color: "text-blue-700" },
+                { label: "Delivered", val: purchaseOrders.filter((p: Record<string, unknown>) => p.status === "delivered").length, color: "text-green-700" },
+              ].map((kpi) => (
+                <Card key={kpi.label}>
+                  <CardContent className="pt-3 pb-2 text-center">
+                    <div className={`text-2xl font-bold ${kpi.color}`}>{kpi.val}</div>
+                    <div className="text-xs text-muted-foreground">{kpi.label}</div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            <Card>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50 border-b">
+                      <tr>
+                        <th className="text-left px-4 py-2 font-medium">PO #</th>
+                        <th className="text-left px-4 py-2 font-medium">Vendor</th>
+                        <th className="text-left px-4 py-2 font-medium">Amount</th>
+                        <th className="text-left px-4 py-2 font-medium">Status</th>
+                        <th className="text-left px-4 py-2 font-medium">Delivery</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {purchaseOrders.slice(0, 10).map((po: Record<string, unknown>) => {
+                        const poStatus = po.status as string;
+                        const poColor = {
+                          draft: "bg-gray-100 text-gray-600",
+                          pending_approval: "bg-amber-100 text-amber-800",
+                          approved: "bg-blue-100 text-blue-800",
+                          sent: "bg-indigo-100 text-indigo-800",
+                          delivered: "bg-green-100 text-green-800",
+                          disputed: "bg-red-100 text-red-800",
+                          cancelled: "bg-gray-100 text-gray-500",
+                        }[poStatus] || "bg-gray-100 text-gray-600";
+                        return (
+                          <tr key={po.id as string} className="border-b last:border-0 hover:bg-muted/30">
+                            <td className="px-4 py-2 font-mono text-xs">{po.po_number as string}</td>
+                            <td className="px-4 py-2">{po.vendor_name as string}</td>
+                            <td className="px-4 py-2 font-medium">
+                              {po.currency as string} {Number(po.total_amount)?.toFixed(2)}
+                            </td>
+                            <td className="px-4 py-2">
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${poColor}`}>
+                                {poStatus?.replace("_", " ")}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2 text-muted-foreground text-xs">
+                              {po.delivery_date as string}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
+      </div>
+
+      {/* Vendor Directory — SOURCER */}
+      <div>
+        <h2 className="font-semibold mb-3 text-lg flex items-center gap-2">
+          <Users className="w-5 h-5" /> Vendors — SOURCER
+        </h2>
+        {vendors.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No vendors yet. Use NEXUS to discover vendors.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {vendors.map((v: Record<string, unknown>) => {
+              const vScore = Number(v.score) || 0;
+              const scoreColor = vScore >= 8 ? "bg-green-500" : vScore >= 6 ? "bg-amber-500" : "bg-red-500";
+              return (
+                <Card key={v.id as string}>
+                  <CardContent className="pt-4">
+                    <div className="flex justify-between items-start">
+                      <div className="font-medium text-sm">{v.name as string}</div>
+                      {v.is_approved && (
+                        <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200">
+                          Approved
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="mt-2">
+                      <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                        <span>Score</span>
+                        <span>{vScore.toFixed(1)}/10</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded h-1.5">
+                        <div className={`h-1.5 rounded ${scoreColor}`}
+                          style={{ width: `${vScore * 10}%` }} />
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {((v.categories as string[]) || []).map((cat) => (
+                        <span key={cat} className="text-[10px] px-1.5 py-0.5 bg-muted rounded">
+                          {cat}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-2">
+                      Lead time: {v.lead_time_days as number} days | {v.payment_terms as string}
+                    </div>
                   </CardContent>
                 </Card>
               );
