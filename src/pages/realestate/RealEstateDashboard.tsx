@@ -4,7 +4,10 @@ import { useRealEstateListings } from "@/hooks/useRealEstateListings";
 import { useRealEstateClients } from "@/hooks/useRealEstateClients";
 import { useRealEstateDeals } from "@/hooks/useRealEstateDeals";
 import { useRealEstateViewings } from "@/hooks/useRealEstateViewings";
-import { Building2, Users, DollarSign, Calendar, TrendingUp, Home, Handshake, Target } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useTenant } from "@/contexts/TenantContext";
+import { Building2, Users, DollarSign, Calendar, TrendingUp, Home, Handshake, Target, Sparkles, AlertTriangle, Link2 } from "lucide-react";
 import { RTLWrapper } from "@/components/realestate/RTLWrapper";
 
 const formatAED = (amount: number) => `AED ${amount.toLocaleString()}`;
@@ -32,10 +35,41 @@ const stageColors: Record<string, string> = {
 };
 
 export default function RealEstateDashboard() {
+  const { tenantId } = useTenant();
   const { stats: listingStats, isLoading: listingsLoading } = useRealEstateListings();
   const { clients, stats: clientStats, isLoading: clientsLoading } = useRealEstateClients();
   const { deals, stats: dealStats, isLoading: dealsLoading } = useRealEstateDeals();
   const { stats: viewingStats, isLoading: viewingsLoading } = useRealEstateViewings();
+
+  const { data: recentMatches = [] } = useQuery({
+    queryKey: ["re-matches-recent", tenantId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("re_matches" as any)
+        .select("*, client:re_clients!client_id(full_name), listing:re_listings!listing_id(title, community, price)")
+        .eq("tenant_id", tenantId)
+        .eq("status", "new")
+        .order("match_score", { ascending: false })
+        .limit(5);
+      return (data || []) as any[];
+    },
+    enabled: !!tenantId,
+  });
+
+  const { data: complianceAlerts = [] } = useQuery({
+    queryKey: ["re-compliance-alerts", tenantId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("re_compliance_alerts" as any)
+        .select("*")
+        .eq("tenant_id", tenantId)
+        .is("acknowledged_at", null)
+        .order("severity", { ascending: true })
+        .limit(5);
+      return (data || []) as any[];
+    },
+    enabled: !!tenantId,
+  });
 
   const isLoading = listingsLoading || clientsLoading || dealsLoading || viewingsLoading;
 
@@ -176,6 +210,65 @@ export default function RealEstateDashboard() {
               </div>
             ))}
             {clients.length === 0 && <p className="text-sm text-muted-foreground">No clients yet</p>}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* AI Matches + Compliance Alerts */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5" /> AI Property Matches
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {recentMatches.length > 0 ? recentMatches.map((match: any) => (
+              <div key={match.id} className="flex items-center justify-between border-b pb-2 last:border-0">
+                <div>
+                  <p className="text-sm font-medium">{match.client?.full_name || "Client"}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {match.listing?.title || "Listing"} &middot; {match.listing?.community}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge className={match.match_score >= 80 ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}>
+                    {match.match_score}%
+                  </Badge>
+                </div>
+              </div>
+            )) : (
+              <p className="text-sm text-muted-foreground">No new matches. The auto-matcher runs every 30 minutes.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5" /> Compliance Alerts
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {complianceAlerts.length > 0 ? complianceAlerts.map((alert: any) => (
+              <div key={alert.id} className="flex items-start gap-2 border-b pb-2 last:border-0">
+                <Badge className={
+                  alert.severity === "critical" ? "bg-red-100 text-red-800 mt-0.5" :
+                  alert.severity === "warning" ? "bg-yellow-100 text-yellow-800 mt-0.5" :
+                  "bg-blue-100 text-blue-800 mt-0.5"
+                }>
+                  {alert.severity}
+                </Badge>
+                <div>
+                  <p className="text-sm">{alert.message}</p>
+                  {alert.days_remaining !== null && alert.days_remaining > 0 && (
+                    <p className="text-xs text-muted-foreground">{alert.days_remaining} days remaining</p>
+                  )}
+                </div>
+              </div>
+            )) : (
+              <p className="text-sm text-muted-foreground">No compliance alerts. All deals are on track.</p>
+            )}
           </CardContent>
         </Card>
       </div>

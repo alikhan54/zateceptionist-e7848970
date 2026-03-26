@@ -517,6 +517,7 @@ export function NavigationSidebar() {
       { title: "Region Settings", url: "/realestate/regions", icon: Globe },
       { title: "AI Pricing", url: "/realestate/pricing", icon: Sparkles },
       { title: "Cross-Border", url: "/realestate/cross-border", icon: Globe },
+      { title: "Agent Performance", url: "/realestate/agent-performance", icon: BarChart3 },
     ],
   };
 

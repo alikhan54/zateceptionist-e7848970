@@ -8,8 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useRealEstateListings, REListing } from "@/hooks/useRealEstateListings";
 import { useToast } from "@/hooks/use-toast";
-import { Home, Search, Plus, Bed, Bath, Car, MapPin, DollarSign, Building2 } from "lucide-react";
+import { Home, Search, Plus, Bed, Bath, Car, MapPin, DollarSign, Building2, FileText } from "lucide-react";
 import { RTLWrapper } from "@/components/realestate/RTLWrapper";
+import { callWebhook } from "@/lib/webhook";
+import { useTenant } from "@/contexts/TenantContext";
 
 const formatAED = (amount: number) => `AED ${amount.toLocaleString()}`;
 
@@ -28,6 +30,57 @@ export default function PropertyListings() {
   const [showAdd, setShowAdd] = useState(false);
   const { listings, isLoading, stats, createListing } = useRealEstateListings(searchTerm, filters);
   const { toast } = useToast();
+  const { tenantId } = useTenant();
+  const [generatingProposal, setGeneratingProposal] = useState<string | null>(null);
+
+  const handleGenerateProposal = async (listingId: string) => {
+    setGeneratingProposal(listingId);
+    try {
+      const result = await callWebhook<any>("/re-generate-proposal", { listing_id: listingId, language: "en" }, tenantId);
+      if (result.success && result.data?.success) {
+        const p = result.data.proposal;
+        // Open proposal in new window for printing/PDF
+        const win = window.open("", "_blank");
+        if (win) {
+          win.document.write(`<html><head><title>Property Proposal - ${p.property.title}</title>
+            <style>body{font-family:Arial,sans-serif;max-width:800px;margin:0 auto;padding:40px;color:#333}
+            h1{color:${p.primary_color || '#1a365d'}} .header{border-bottom:3px solid ${p.primary_color || '#1a365d'};padding-bottom:20px;margin-bottom:30px}
+            .price{font-size:28px;font-weight:bold;color:${p.primary_color || '#1a365d'}} table{width:100%;border-collapse:collapse;margin:20px 0}
+            td{padding:8px;border-bottom:1px solid #eee} td:first-child{font-weight:600;width:40%}
+            .section{margin:30px 0} .footer{margin-top:40px;padding-top:20px;border-top:2px solid #eee;font-size:14px;color:#666}
+            @media print{body{padding:20px}}</style></head><body>
+            <div class="header"><h1>${p.company_name}</h1></div>
+            <h2>${p.property.title}</h2>
+            <p class="price">${p.property.price_formatted}</p>
+            <div class="section"><h3>Property Details</h3><table>
+            <tr><td>Type</td><td>${p.property.property_type} (${p.property.purpose})</td></tr>
+            <tr><td>Location</td><td>${p.property.community}${p.property.sub_community ? ', ' + p.property.sub_community : ''}</td></tr>
+            <tr><td>Bedrooms</td><td>${p.property.bedrooms || 'Studio'}</td></tr>
+            <tr><td>Size</td><td>${p.property.size_sqft?.toLocaleString() || 'N/A'} sqft</td></tr>
+            <tr><td>Price/sqft</td><td>AED ${p.property.price_per_sqft?.toLocaleString() || 'N/A'}</td></tr>
+            <tr><td>View</td><td>${p.property.view_type || 'N/A'}</td></tr>
+            <tr><td>Furnishing</td><td>${p.property.furnishing || 'N/A'}</td></tr>
+            </table></div>
+            ${p.ai_description ? `<div class="section"><h3>About This Property</h3><p>${p.ai_description}</p></div>` : ''}
+            ${p.investment ? `<div class="section"><h3>Investment Analysis</h3><table>
+            <tr><td>Est. Annual Rent</td><td>AED ${p.investment.estimated_annual_rent?.toLocaleString()}</td></tr>
+            <tr><td>Gross Yield</td><td>${p.investment.gross_yield}</td></tr>
+            </table></div>` : ''}
+            ${p.client ? `<div class="section"><h3>Prepared For</h3><p>${p.client.name}${p.client.nationality ? ' (' + p.client.nationality + ')' : ''}</p></div>` : ''}
+            <div class="footer"><p>${p.agent_contact?.company || ''} | ${p.agent_contact?.email || ''} | ${p.agent_contact?.phone || ''}</p>
+            <p>Generated ${new Date().toLocaleDateString()}</p></div></body></html>`);
+          win.document.close();
+        }
+        toast({ title: "Proposal generated", description: "Opened in new tab for printing" });
+      } else {
+        toast({ title: "Error", description: result.data?.error || result.error || "Failed to generate proposal", variant: "destructive" });
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setGeneratingProposal(null);
+    }
+  };
 
   const [form, setForm] = useState({ title: "", property_type: "apartment", purpose: "sale", community: "", bedrooms: 0, bathrooms: 0, size_sqft: 0, price: 0, furnishing: "unfurnished" });
 
@@ -163,6 +216,18 @@ export default function PropertyListings() {
                   {listing.listing_agent_name && <span className="text-muted-foreground">{listing.listing_agent_name}</span>}
                 </div>
                 {listing.view_type && <p className="text-xs text-muted-foreground capitalize">{listing.view_type.replace("_", " ")}</p>}
+                {listing.status === "active" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full mt-2"
+                    onClick={() => handleGenerateProposal(listing.id)}
+                    disabled={generatingProposal === listing.id}
+                  >
+                    <FileText className="h-3 w-3 mr-1" />
+                    {generatingProposal === listing.id ? "Generating..." : "Generate Proposal"}
+                  </Button>
+                )}
               </CardContent>
             </Card>
           ))}

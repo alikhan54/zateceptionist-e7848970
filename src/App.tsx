@@ -93,6 +93,7 @@ const EmployeeProfilePage = lazy(() => import("./pages/hr/EmployeeProfile"));
 const AIAgentsPage = lazy(() => import("./pages/hr/AIAgents"));
 const AIAgentHirePage = lazy(() => import("./pages/hr/AIAgentHire"));
 const AIAgentProfilePage = lazy(() => import("./pages/hr/AIAgentProfile"));
+const AIAgentAnalyticsPage = lazy(() => import("./pages/hr/AIAgentAnalytics"));
 
 // Operations Module
 const Inventory = lazy(() => import("./pages/operations/Inventory"));
@@ -134,6 +135,7 @@ const RegionSettings = lazy(() => import("./pages/realestate/RegionSettings"));
 const DealAdvisor = lazy(() => import("./pages/realestate/DealAdvisor"));
 const REKnowledgeBase = lazy(() => import("./pages/realestate/KnowledgeBase"));
 const PricePrediction = lazy(() => import("./pages/realestate/PricePrediction"));
+const AgentPerformance = lazy(() => import("./pages/realestate/AgentPerformance"));
 // CrossBorderAdvisor removed - module not found
 
 // Estimation Module
@@ -909,6 +911,14 @@ const App = () => (
                       </LazyPage>
                     }
                   />
+                  <Route
+                    path="/hr/ai-agents/analytics"
+                    element={
+                      <LazyPage>
+                        <AIAgentAnalyticsPage />
+                      </LazyPage>
+                    }
+                  />
 
                   {/* Operations Module */}
                   <Route path="/operations" element={<Navigate to="/operations/inventory" replace />} />
@@ -1104,6 +1114,7 @@ const App = () => (
                   <Route path="/realestate/advisor" element={<LazyPage><DealAdvisor /></LazyPage>} />
                   <Route path="/realestate/knowledge" element={<LazyPage><REKnowledgeBase /></LazyPage>} />
                   <Route path="/realestate/pricing" element={<LazyPage><PricePrediction /></LazyPage>} />
+                  <Route path="/realestate/agent-performance" element={<LazyPage><AgentPerformance /></LazyPage>} />
                   {/* CrossBorderAdvisor route removed - module not found */}
 
                   {/* Communications Module */}

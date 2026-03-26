@@ -4,8 +4,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useRealEstateDeals } from "@/hooks/useRealEstateDeals";
-import { Handshake, DollarSign, FileCheck, AlertCircle, CheckCircle2, Clock } from "lucide-react";
+import { Handshake, DollarSign, FileCheck, AlertCircle, CheckCircle2, Clock, ShieldAlert } from "lucide-react";
 import { RTLWrapper } from "@/components/realestate/RTLWrapper";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useTenant } from "@/contexts/TenantContext";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
 const formatAED = (amount: number) => `AED ${amount.toLocaleString()}`;
 
@@ -27,8 +31,32 @@ const dealTypeLabels: Record<string, string> = {
 };
 
 export default function DealPipeline() {
+  const { tenantId } = useTenant();
   const [stageFilter, setStageFilter] = useState<string>("");
   const [typeFilter, setTypeFilter] = useState<string>("");
+
+  const { data: complianceAlerts = [] } = useQuery({
+    queryKey: ["re-compliance-by-deal", tenantId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("re_compliance_alerts" as any)
+        .select("deal_id, severity, message, alert_type")
+        .eq("tenant_id", tenantId)
+        .is("acknowledged_at", null);
+      return (data || []) as any[];
+    },
+    enabled: !!tenantId,
+  });
+
+  const getDealAlerts = (dealId: string) => complianceAlerts.filter((a: any) => a.deal_id === dealId);
+  const getWorstSeverity = (dealId: string) => {
+    const alerts = getDealAlerts(dealId);
+    if (alerts.some((a: any) => a.severity === "critical")) return "critical";
+    if (alerts.some((a: any) => a.severity === "warning")) return "warning";
+    if (alerts.length > 0) return "info";
+    return null;
+  };
+
   const { deals, isLoading, stats, DEAL_STAGES } = useRealEstateDeals({
     stage: stageFilter || undefined,
     deal_type: typeFilter || undefined,
@@ -92,9 +120,28 @@ export default function DealPipeline() {
                   <Card key={deal.id} className="hover:shadow-md transition-shadow">
                     <CardContent className="pt-4 space-y-3">
                       <div className="flex items-start justify-between">
-                        <div>
-                          <p className="font-medium">{deal.deal_reference || "New Deal"}</p>
-                          <p className="text-xs text-muted-foreground">{deal.lead_agent_name || "Unassigned"}</p>
+                        <div className="flex items-center gap-2">
+                          {getWorstSeverity(deal.id) && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <span className={`inline-block w-2.5 h-2.5 rounded-full ${
+                                    getWorstSeverity(deal.id) === "critical" ? "bg-red-500" :
+                                    getWorstSeverity(deal.id) === "warning" ? "bg-yellow-500" : "bg-blue-400"
+                                  }`} />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {getDealAlerts(deal.id).map((a: any, i: number) => (
+                                    <p key={i} className="text-xs">{a.message}</p>
+                                  ))}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                          <div>
+                            <p className="font-medium">{deal.deal_reference || "New Deal"}</p>
+                            <p className="text-xs text-muted-foreground">{deal.lead_agent_name || "Unassigned"}</p>
+                          </div>
                         </div>
                         <Badge variant="outline">{dealTypeLabels[deal.deal_type] || deal.deal_type}</Badge>
                       </div>
