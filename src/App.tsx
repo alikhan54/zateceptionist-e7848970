@@ -397,6 +397,7 @@ const App = () => (
                   />
 
                   {/* Sales Module */}
+                  <Route path="/leads" element={<Navigate to="/sales/dashboard" replace />} />
                   <Route path="/sales" element={<Navigate to="/sales/dashboard" replace />} />
                   <Route
                     path="/sales/dashboard"
