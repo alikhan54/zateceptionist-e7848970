@@ -71,6 +71,7 @@ const statusColor = (status: string) =>
 export default function AiIntelligence() {
   const [goal, setGoal] = useState("");
   const [industry, setIndustry] = useState("restaurant");
+  const [region, setRegion] = useState<"uae" | "pakistan" | "ksa" | "qatar">("uae");
   const [mode, setMode] = useState<"auto" | "manual" | "hybrid">("auto");
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<Record<string, unknown> | null>(null);
@@ -276,7 +277,7 @@ export default function AiIntelligence() {
             tenant_slug: tenantSlug,
             tenant_id: tenantId,
             industry,
-            region: "uae",
+            region,
             goal: "forecast_all_items",
             mode: "auto",
           }),
@@ -322,7 +323,7 @@ export default function AiIntelligence() {
             tenant_slug: tenantSlug,
             tenant_id: tenantId,
             industry,
-            region: "uae",
+            region,
             goal: goal.trim(),
             mode,
           }),
@@ -361,7 +362,7 @@ export default function AiIntelligence() {
           Powered by OpsNexus — 12-agent autonomous operations system
         </p>
         <Badge variant="outline" className="mt-2 bg-blue-50 text-blue-700 border-blue-200">
-          Phase 27 — Predictive Intelligence Active
+          Phase 28 — Multi-Region MENA Active
         </Badge>
       </div>
 
@@ -392,6 +393,16 @@ export default function AiIntelligence() {
               <option value="technology">Technology</option>
               <option value="realestate">Real Estate</option>
             </select>
+            <div className="flex gap-0.5 border rounded-md overflow-hidden text-sm">
+              {(["uae", "pakistan", "ksa", "qatar"] as const).map((r) => (
+                <button key={r} onClick={() => setRegion(r)}
+                  className={`px-2 py-1.5 uppercase text-xs transition-colors ${
+                    region === r ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
+                  }`}>
+                  {r === "uae" ? "UAE" : r === "ksa" ? "KSA" : r.charAt(0).toUpperCase() + r.slice(1)}
+                </button>
+              ))}
+            </div>
             <div className="flex gap-0.5 border rounded-md overflow-hidden text-sm">
               {(["auto", "manual", "hybrid"] as const).map((m) => (
                 <button
