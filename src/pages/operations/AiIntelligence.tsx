@@ -25,7 +25,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 
 const AGENTS = [
-  { codename: "NEXUS", role: "Operations Supervisor", phase: "P20 — Active", icon: Brain, live: true },
+  { codename: "NEXUS", role: "Operations Supervisor", phase: "P26 — Full Orchestration", icon: Brain, live: true },
   { codename: "ORACLE", role: "Demand Forecasting", phase: "P21 — Active", icon: TrendingUp, live: true },
   { codename: "STOCKMASTER", role: "Inventory Management", phase: "P21 — Active", icon: Package, live: true },
   { codename: "SOURCER", role: "Vendor Discovery", phase: "P22 — Active", icon: Users, live: true },
@@ -361,7 +361,7 @@ export default function AiIntelligence() {
           Powered by OpsNexus — 12-agent autonomous operations system
         </p>
         <Badge variant="outline" className="mt-2 bg-blue-50 text-blue-700 border-blue-200">
-          Phase 25 Active — All 12 Agents Online
+          Phase 26 — Full Orchestration Active
         </Badge>
       </div>
 
@@ -412,31 +412,67 @@ export default function AiIntelligence() {
               Send to NEXUS
             </Button>
           </div>
-          {response && (
-            <div
-              className={`mt-3 p-3 rounded-md text-sm border ${
-                (response as Record<string, unknown>).success
-                  ? "bg-green-50 border-green-200 dark:bg-green-900/20"
-                  : "bg-red-50 border-red-200 dark:bg-red-900/20"
-              }`}
-            >
-              {(response as Record<string, unknown>).success ? (
-                <div>
-                  <strong>NEXUS:</strong>{" "}
-                  {((response as Record<string, unknown>).result as Record<string, unknown>)?.message as string ||
-                    "Task acknowledged"}
-                  <br />
-                  <span className="text-xs text-muted-foreground">
-                    Task ID: {(response as Record<string, unknown>).task_id as string}
-                  </span>
+          <div className="flex gap-2 flex-wrap">
+            {["How is our inventory this week?", "Check budget and find savings",
+              "Daily operations summary", "Review vendor performance"].map((eg) => (
+              <button key={eg} onClick={() => setGoal(eg)}
+                className="text-xs px-2 py-1 border rounded-md text-muted-foreground hover:bg-muted transition-colors">
+                {eg}
+              </button>
+            ))}
+          </div>
+          {response && (() => {
+            const res = response as Record<string, unknown>;
+            const result = (res.result || res) as Record<string, unknown>;
+            const isManual = result.status === "awaiting_approval";
+            const briefing = result.briefing as string;
+            const plan = result.plan as Record<string, unknown> | undefined;
+
+            if (!res.success && !result.success) {
+              return (
+                <div className="mt-3 p-3 rounded-md text-sm border bg-red-50 border-red-200 dark:bg-red-900/20">
+                  <div className="text-red-700">Error: {(res.error || result.error) as string}</div>
                 </div>
-              ) : (
-                <div className="text-red-700">
-                  Error: {(response as Record<string, unknown>).error as string}
+              );
+            }
+
+            if (isManual && plan) {
+              const tasks = (plan.tasks || []) as Record<string, unknown>[];
+              return (
+                <div className="mt-3 p-4 rounded-md text-sm border bg-amber-50 border-amber-200 dark:bg-amber-900/10">
+                  <div className="font-semibold mb-2">NEXUS Plan — Awaiting Approval</div>
+                  <p className="text-xs text-muted-foreground mb-2">{plan.primary_impact as string}</p>
+                  <div className="space-y-1 mb-3">
+                    {tasks.map((t, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-[10px] font-mono">{t.agent as string}</Badge>
+                        <span className="text-xs">{t.action as string}</span>
+                        <span className="text-xs text-muted-foreground">— {t.rationale as string}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <span className="text-xs text-muted-foreground">Task ID: {result.task_id as string}</span>
                 </div>
-              )}
-            </div>
-          )}
+              );
+            }
+
+            return (
+              <div className="mt-3 p-4 rounded-md text-sm border bg-green-50 border-green-200 dark:bg-green-900/10">
+                {briefing ? (
+                  <div className="whitespace-pre-wrap">{briefing}</div>
+                ) : (
+                  <div><strong>NEXUS:</strong> {result.message as string || "Goal completed"}</div>
+                )}
+                <div className="flex gap-3 mt-2 text-xs text-muted-foreground">
+                  {result.tasks_run != null && <span>Tasks: {result.tasks_run as number}</span>}
+                  {result.duration_s != null && <span>Duration: {result.duration_s as number}s</span>}
+                  {result.escalated && (
+                    <Badge variant="outline" className="text-amber-700 border-amber-300 text-[10px]">Escalated to OMEGA</Badge>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
         </CardContent>
       </Card>
 
