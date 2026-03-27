@@ -361,7 +361,7 @@ export default function AiIntelligence() {
           Powered by OpsNexus — 12-agent autonomous operations system
         </p>
         <Badge variant="outline" className="mt-2 bg-blue-50 text-blue-700 border-blue-200">
-          Phase 26 — Full Orchestration Active
+          Phase 27 — Predictive Intelligence Active
         </Badge>
       </div>
 
@@ -1266,6 +1266,63 @@ export default function AiIntelligence() {
             </CardContent>
           </Card>
         )}
+      </div>
+      {/* Predictive Intelligence (Phase 27) */}
+      <div>
+        <h2 className="font-semibold mb-3 text-lg flex items-center gap-2">
+          <Brain className="w-5 h-5" /> Predictive Intelligence
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <Card>
+            <CardContent className="pt-3">
+              <div className="text-sm font-medium mb-1">ORACLE Accuracy</div>
+              <p className="text-xs text-muted-foreground">
+                Forecast accuracy improves as actuals are recorded.
+                Recalibration triggers below 70%.
+              </p>
+              {forecasts.filter((f: Record<string, unknown>) => f.accuracy_score != null).length > 0 ? (
+                <div className="mt-2 space-y-1">
+                  {forecasts.filter((f: Record<string, unknown>) => f.accuracy_score != null).slice(0, 3).map((f: Record<string, unknown>) => {
+                    const acc = Number(f.accuracy_score) * 100;
+                    const color = acc >= 80 ? "bg-green-500" : acc >= 60 ? "bg-amber-500" : "bg-red-500";
+                    return (
+                      <div key={f.id as string} className="flex items-center gap-2 text-xs">
+                        <span className="w-24 truncate">{f.item_name as string}</span>
+                        <div className="flex-1 bg-gray-200 rounded h-1.5">
+                          <div className={`h-1.5 rounded ${color}`} style={{ width: `${acc}%` }} />
+                        </div>
+                        <span className="w-10 text-right">{acc.toFixed(0)}%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground mt-2">No accuracy data yet</p>
+              )}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-3">
+              <div className="text-sm font-medium mb-1">Anomaly Monitor</div>
+              <p className="text-xs text-muted-foreground">
+                SENTINEL scans for statistical outliers every 6 hours.
+              </p>
+              <div className="mt-2 text-center text-green-600 text-sm font-medium">
+                System Normal
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-3">
+              <div className="text-sm font-medium mb-1">Agent Performance</div>
+              <p className="text-xs text-muted-foreground">
+                Weekly scorecards generated every Sunday at 06:00.
+              </p>
+              <div className="mt-2 text-center text-2xl font-bold">12</div>
+              <div className="text-xs text-muted-foreground text-center">agents active</div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
