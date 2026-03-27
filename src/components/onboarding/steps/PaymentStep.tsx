@@ -30,7 +30,7 @@ export default function PaymentStep({ data, updateData, onNext, onBack }: Paymen
   const { tenantId, tenantConfig } = useTenant();
   const { toast } = useToast();
 
-  const selectedPlan = (data.selectedPlan || 'professional') as SubscriptionTierId;
+  const selectedPlan = (data.selectedPlan || 'professional') as string;
 
   const selectPlan = (planId: SubscriptionTierId) => {
     updateData({ selectedPlan: planId });
@@ -45,7 +45,7 @@ export default function PaymentStep({ data, updateData, onNext, onBack }: Paymen
     }
 
     // Paid plan — open Paddle checkout overlay
-    const email = tenantConfig?.email || tenantConfig?.company_email || '';
+    const email = (tenantConfig as any)?.email || (tenantConfig as any)?.company_email || '';
     if (!tenantId) {
       toast({ title: "Error", description: "Tenant not found. Please refresh.", variant: "destructive" });
       return;

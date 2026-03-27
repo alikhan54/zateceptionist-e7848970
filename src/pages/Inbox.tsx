@@ -1565,18 +1565,18 @@ export default function Inbox() {
                                 </Badge>
                               )}
                               {/* Tags display */}
-                              {conv.tags && Array.isArray(conv.tags) && conv.tags.slice(0, 2).map((tag: string, i: number) => (
+                              {(conv as any).tags && Array.isArray((conv as any).tags) && (conv as any).tags.slice(0, 2).map((tag: string, i: number) => (
                                 <Badge key={i} variant="secondary" className="text-[9px] h-3.5 px-1">
                                   {tag}
                                 </Badge>
                               ))}
-                              {conv.tags && conv.tags.length > 2 && (
-                                <span className="text-[9px] text-muted-foreground">+{conv.tags.length - 2}</span>
+                              {(conv as any).tags && (conv as any).tags.length > 2 && (
+                                <span className="text-[9px] text-muted-foreground">+{(conv as any).tags.length - 2}</span>
                               )}
                               {/* Sentiment indicator */}
-                              {conv.sentiment && (
-                                <span className="text-[10px]" title={`Sentiment: ${conv.sentiment}`}>
-                                  {SENTIMENT_EMOJI[conv.sentiment] || ""}
+                              {(conv as any).sentiment && (
+                                <span className="text-[10px]" title={`Sentiment: ${(conv as any).sentiment}`}>
+                                  {SENTIMENT_EMOJI[(conv as any).sentiment] || ""}
                                 </span>
                               )}
                             </div>
@@ -1957,7 +1957,7 @@ export default function Inbox() {
                             conversationId={selectedConversationId || ""}
                             tenantId={tenantUuid || ""}
                             messageInput={messageInput}
-                            channel={selectedConv?.channel || "email"}
+                            channel={selectedConversation?.channel || "email"}
                             onScheduled={() => { setMessageInput(""); }}
                           />
                           {/* Send button */}
@@ -2621,7 +2621,7 @@ export default function Inbox() {
             onOpenChange={setShowMergeDialog}
             conversationId={selectedConversation.id}
             tenantId={tenantUuid || ""}
-            ticketNumber={selectedConversation.ticket_number}
+            ticketNumber={(selectedConversation as any).ticket_number}
             onMerged={() => { refetchConversations(); refetchMessages(); }}
           />
         )}

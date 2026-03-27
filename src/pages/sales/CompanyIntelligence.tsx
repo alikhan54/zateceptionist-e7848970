@@ -51,7 +51,7 @@ export default function CompanyIntelligence() {
     setResearchingDomain(domain);
     try {
       const r = await callWebhook("/research-company", { tenant_id: tenantId, website: "https://" + domain, company_name: name }, tenantId);
-      toast.success(r?.success ? `Researched: ${r.completeness}% complete` : "Research queued");
+      toast.success(r?.success ? `Researched: ${(r as any).completeness}% complete` : "Research queued");
     } catch { toast.error("Research failed"); }
     setResearchingDomain(null);
   };

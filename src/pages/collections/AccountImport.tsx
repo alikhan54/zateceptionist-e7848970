@@ -113,15 +113,16 @@ export default function AccountImport() {
         action: "import_accounts",
         tenant_id: tenantId,
         accounts,
-      });
+      }, tenantId || '');
 
+      const resData = response as any;
       setResult({
         success: true,
-        imported: response?.imported || parsedRows.length,
-        errors: response?.errors || [],
+        imported: resData?.imported || parsedRows.length,
+        errors: resData?.errors || [],
       });
 
-      toast({ title: "Import Complete", description: `${response?.imported || parsedRows.length} accounts imported.` });
+      toast({ title: "Import Complete", description: `${resData?.imported || parsedRows.length} accounts imported.` });
     } catch (err: any) {
       setResult({
         success: false,
