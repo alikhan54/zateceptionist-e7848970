@@ -362,7 +362,7 @@ export default function AiIntelligence() {
           Powered by OpsNexus — 12-agent autonomous operations system
         </p>
         <Badge variant="outline" className="mt-2 bg-blue-50 text-blue-700 border-blue-200">
-          Phase 28 — Multi-Region MENA Active
+          Phase 29 — Enterprise White-Label Active
         </Badge>
       </div>
 
@@ -1334,6 +1334,38 @@ export default function AiIntelligence() {
             </CardContent>
           </Card>
         </div>
+      </div>
+      {/* SLA Targets — Enterprise (Phase 29) */}
+      <div>
+        <h2 className="font-semibold mb-3 text-lg flex items-center gap-2">
+          <CheckSquare className="w-5 h-5" /> SLA Targets
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+          {[
+            { name: "Delivery On-Time", target: "95%", metric: "on_time_delivery_pct" },
+            { name: "PO Processing", target: "<24h", metric: "po_processing_hours" },
+            { name: "Stockout Rate", target: "<2%", metric: "stockout_rate_pct" },
+            { name: "QC Pass Rate", target: "98%", metric: "qc_pass_rate_pct" },
+            { name: "Forecast Accuracy", target: "80%", metric: "oracle_accuracy_pct" },
+          ].map((sla) => (
+            <Card key={sla.metric}>
+              <CardContent className="pt-3 pb-2 text-center">
+                <div className="text-xs text-muted-foreground">{sla.name}</div>
+                <div className="text-lg font-bold mt-1">{sla.target}</div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      {/* Template Marketplace (Phase 29) */}
+      <div>
+        <h2 className="font-semibold mb-3 text-lg flex items-center gap-2">
+          <Package className="w-5 h-5" /> Industry Templates
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Share and install ops configurations across industries. Browse public templates or publish your own.
+        </p>
       </div>
     </div>
   );
