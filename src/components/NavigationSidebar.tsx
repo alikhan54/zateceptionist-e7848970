@@ -802,6 +802,46 @@ export function NavigationSidebar() {
       )}
 
       <SidebarContent className="px-2 py-2 space-y-1">
+        {/* TEMPORARY TOUCH DIAGNOSTIC — REMOVE AFTER FIX */}
+        <div style={{ padding: '8px' }}>
+          <a
+            href="/inbox"
+            style={{
+              display: 'block',
+              padding: '14px',
+              backgroundColor: '#ef4444',
+              color: 'white',
+              textAlign: 'center',
+              borderRadius: '8px',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              textDecoration: 'none',
+              WebkitTapHighlightColor: 'rgba(255,0,0,0.3)',
+            }}
+          >
+            TEST A: TAP → INBOX (plain link)
+          </a>
+          <button
+            onClick={() => { window.location.href = '/customers'; }}
+            style={{
+              display: 'block',
+              width: '100%',
+              padding: '14px',
+              marginTop: '8px',
+              backgroundColor: '#22c55e',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+            }}
+          >
+            TEST B: TAP → CUSTOMERS (JS onclick)
+          </button>
+        </div>
+        {/* END TEMPORARY TOUCH DIAGNOSTIC */}
+
         {/* Staff Section - Only for staff */}
         {authUser?.role === "staff" && <StaticSection section={staffSection} />}
 
