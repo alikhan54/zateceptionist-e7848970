@@ -32,7 +32,7 @@ export interface LeadScore {
 export function useRELeadScores() {
   const { tenantId } = useTenant();
 
-  const { data: scores = [], isLoading } = useQuery({
+  const { data: scores = [], isLoading, error } = useQuery({
     queryKey: ["re-lead-scores", tenantId],
     queryFn: async () => {
       const { data: scoreData } = await supabase
@@ -77,5 +77,5 @@ export function useRELeadScores() {
     }).length,
   };
 
-  return { scores, isLoading, stats };
+  return { scores, isLoading, error, stats };
 }

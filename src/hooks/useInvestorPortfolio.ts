@@ -34,7 +34,7 @@ export function useInvestorPortfolio() {
   const { tenantId } = useTenant();
   const qc = useQueryClient();
 
-  const { data: properties = [], isLoading } = useQuery({
+  const { data: properties = [], isLoading, error } = useQuery({
     queryKey: ["re-investment-portfolio", tenantId],
     queryFn: async () => {
       const { data } = await supabase.from("re_investment_portfolio" as any).select("*").eq("tenant_id", tenantId).eq("status", "active").order("purchase_date", { ascending: false });
@@ -66,5 +66,5 @@ export function useInvestorPortfolio() {
     unreadAlerts: properties.flatMap((p) => (p.alerts || []).filter((a) => !a.read)),
   };
 
-  return { properties, isLoading, stats, addProperty: addMutation.mutateAsync, isAdding: addMutation.isPending };
+  return { properties, isLoading, error, stats, addProperty: addMutation.mutateAsync, isAdding: addMutation.isPending };
 }

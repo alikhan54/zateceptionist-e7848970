@@ -44,7 +44,7 @@ export function useRealEstateClients(searchTerm?: string, filters?: { client_typ
   const { tenantId } = useTenant();
   const queryClient = useQueryClient();
 
-  const { data: clients = [], isLoading, refetch } = useQuery({
+  const { data: clients = [], isLoading, error, refetch } = useQuery({
     queryKey: ["re_clients", tenantId, searchTerm, filters],
     queryFn: async () => {
       let query = supabase
@@ -119,5 +119,5 @@ export function useRealEstateClients(searchTerm?: string, filters?: { client_typ
     }).length,
   };
 
-  return { clients, isLoading, stats, refetch, createClient, updateClient };
+  return { clients, isLoading, error, stats, refetch, createClient, updateClient };
 }

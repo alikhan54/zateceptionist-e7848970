@@ -60,7 +60,7 @@ export function useRealEstateListings(searchTerm?: string, filters?: { community
   const { tenantId } = useTenant();
   const queryClient = useQueryClient();
 
-  const { data: listings = [], isLoading, refetch } = useQuery({
+  const { data: listings = [], isLoading, error, refetch } = useQuery({
     queryKey: ["re_listings", tenantId, searchTerm, filters],
     queryFn: async () => {
       let query = supabase
@@ -134,5 +134,5 @@ export function useRealEstateListings(searchTerm?: string, filters?: { community
     communities: [...new Set(activeListings.map(l => l.community).filter(Boolean))],
   };
 
-  return { listings, isLoading, stats, refetch, createListing, updateListing };
+  return { listings, isLoading, error, stats, refetch, createListing, updateListing };
 }

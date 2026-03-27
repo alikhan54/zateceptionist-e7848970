@@ -1,15 +1,25 @@
+import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
 import {
   Bot, ArrowLeft, Phone, MessageSquare, Mail, Globe,
   Play, Pause, XCircle, Settings, Activity, Clock,
-  Zap, CheckCircle
+  Zap, CheckCircle, FileText, BookOpen, AlertTriangle,
+  ChevronDown, ChevronUp, Send, Loader2, MessageCircle,
+  BarChart3, PhoneCall, CalendarCheck, AlertOctagon
 } from "lucide-react";
-import { useAIAgent, useUpdateAgent, useAgentTasks } from "@/hooks/useAIAgents";
+import { useAIAgent, useUpdateAgent, useAgentTasks, useAgentMetrics, useAgentConversations, useAgentSuggestions } from "@/hooks/useAIAgents";
+import AgentKnowledgeEditor from "@/components/hr/AgentKnowledgeEditor";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { callWebhook } from "@/integrations/supabase/client";
+import { useTenant } from "@/contexts/TenantContext";
+import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
+import { toast } from "sonner";
 
 const statusColors: Record<string, string> = {
   active: "bg-green-100 text-green-800",
@@ -30,9 +40,47 @@ const channelIcons: Record<string, any> = {
 export default function AIAgentProfile() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id || "";
+  const queryClient = useQueryClient();
   const { data: agent, isLoading } = useAIAgent(id);
   const { data: tasks = [] } = useAgentTasks(id);
   const updateAgent = useUpdateAgent();
+  const { data: metrics = [] } = useAgentMetrics(id, 30);
+  const { data: conversations = [] } = useAgentConversations(id);
+  const { data: suggestions = [] } = useAgentSuggestions(id);
+  const [showKB, setShowKB] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [expandedConvId, setExpandedConvId] = useState<string | null>(null);
+  const [kbSaving, setKbSaving] = useState(false);
+
+  const perfSummary = useMemo(() => {
+    if (!metrics?.length) return null;
+    const totals = metrics.reduce((acc, m) => ({
+      tasks: acc.tasks + (m.total_tasks || 0),
+      calls: acc.calls + (m.calls_handled || 0),
+      messages: acc.messages + (m.messages_handled || 0),
+      appointments: acc.appointments + (m.appointments_booked || 0),
+      escalations: acc.escalations + (m.escalations || 0),
+    }), { tasks: 0, calls: 0, messages: 0, appointments: 0, escalations: 0 });
+    const resRates = metrics.filter(m => m.resolution_rate != null);
+    return {
+      ...totals,
+      resolutionRate: resRates.length > 0
+        ? Math.round(resRates.reduce((s, m) => s + (m.resolution_rate || 0), 0) / resRates.length * 100)
+        : null,
+      daysActive: metrics.length,
+    };
+  }, [metrics]);
+
+  const chartData = useMemo(() =>
+    (metrics || []).map(m => ({ date: m.metric_date.slice(5), tasks: m.total_tasks })),
+  [metrics]);
+
+  // Chat test state
+  const [testMessage, setTestMessage] = useState("");
+  const [chatMessages, setChatMessages] = useState<Array<{ role: string; text: string }>>([]);
+  const [chatLoading, setChatLoading] = useState(false);
 
   if (isLoading) {
     return (
@@ -57,13 +105,53 @@ export default function AIAgentProfile() {
     );
   }
 
-  const handleStatusChange = async (newStatus: 'active' | 'paused' | 'terminated') => {
-    await updateAgent.mutateAsync({
-      id: agent.id,
-      status: newStatus,
-      ...(newStatus === 'active' && !agent.hired_at ? { hired_at: new Date().toISOString() } : {}),
-      ...(newStatus === 'terminated' ? { terminated_at: new Date().toISOString() } : {}),
-    });
+  const handleStatusChange = async (action: 'activate' | 'pause' | 'terminate') => {
+    setActionLoading(true);
+    try {
+      const result = await callWebhook("/hr/ai-agent/activate", {
+        agent_id: agent.id,
+        action,
+      }, tenantUuid);
+
+      const data = result.data as any;
+      const msg = data?.message || (result as any)?.message;
+      if (data?.success || (result as any)?.success) {
+        toast.success(msg || `Agent ${action}d`);
+        queryClient.invalidateQueries({ queryKey: ['ai-agent'] });
+        queryClient.invalidateQueries({ queryKey: ['ai-agents'] });
+      } else {
+        toast.error(data?.error || result.error || "Action failed");
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Action failed");
+    }
+    setActionLoading(false);
+  };
+
+  const handleTestChat = async () => {
+    if (!testMessage.trim()) return;
+    const msg = testMessage.trim();
+    setTestMessage("");
+    setChatMessages(prev => [...prev, { role: "user", text: msg }]);
+    setChatLoading(true);
+
+    try {
+      const result = await callWebhook("/hr/ai-agent/chat", {
+        agent_id: agent.id,
+        message: msg,
+        contact_name: "Admin Test",
+        session_id: `test-${Date.now()}`,
+      }, tenantUuid);
+
+      const data = result.data as any;
+      const response = data?.response || (result as any)?.response || "No response";
+      setChatMessages(prev => [...prev, { role: "agent", text: response }]);
+      // Refresh tasks
+      queryClient.invalidateQueries({ queryKey: ['ai-agent-tasks'] });
+    } catch {
+      setChatMessages(prev => [...prev, { role: "agent", text: "Error: Could not reach agent" }]);
+    }
+    setChatLoading(false);
   };
 
   return (
@@ -86,23 +174,20 @@ export default function AIAgentProfile() {
           </div>
         </div>
         <div className="flex gap-2">
-          {agent.status === 'draft' && (
-            <Button onClick={() => handleStatusChange('active')} className="gap-2">
-              <Play className="h-4 w-4" /> Activate
+          {(agent.status === 'draft' || agent.status === 'paused') && (
+            <Button onClick={() => handleStatusChange('activate')} disabled={actionLoading} className="gap-2">
+              {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+              {agent.status === 'draft' ? 'Activate' : 'Resume'}
             </Button>
           )}
           {agent.status === 'active' && (
-            <Button variant="outline" onClick={() => handleStatusChange('paused')} className="gap-2">
-              <Pause className="h-4 w-4" /> Pause
-            </Button>
-          )}
-          {agent.status === 'paused' && (
-            <Button onClick={() => handleStatusChange('active')} className="gap-2">
-              <Play className="h-4 w-4" /> Resume
+            <Button variant="outline" onClick={() => handleStatusChange('pause')} disabled={actionLoading} className="gap-2">
+              {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pause className="h-4 w-4" />}
+              Pause
             </Button>
           )}
           {agent.status !== 'terminated' && (
-            <Button variant="destructive" onClick={() => handleStatusChange('terminated')} className="gap-2">
+            <Button variant="destructive" onClick={() => handleStatusChange('terminate')} disabled={actionLoading} className="gap-2">
               <XCircle className="h-4 w-4" /> Terminate
             </Button>
           )}
@@ -112,6 +197,109 @@ export default function AIAgentProfile() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Info */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Test Chat — only when active */}
+          {agent.status === 'active' && (
+            <Card className="border-primary/20">
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <MessageCircle className="h-4 w-4 text-primary" /> Test Chat
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {/* Chat messages */}
+                {chatMessages.length > 0 && (
+                  <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
+                    {chatMessages.map((msg, i) => (
+                      <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[80%] px-3 py-2 rounded-lg text-sm ${
+                          msg.role === 'user'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted'
+                        }`}>
+                          {msg.text}
+                        </div>
+                      </div>
+                    ))}
+                    {chatLoading && (
+                      <div className="flex justify-start">
+                        <div className="bg-muted px-3 py-2 rounded-lg text-sm flex items-center gap-2">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          {agent.agent_name} is typing...
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {/* Input */}
+                <div className="flex gap-2">
+                  <Input
+                    placeholder={`Say something to ${agent.agent_name}...`}
+                    value={testMessage}
+                    onChange={(e) => setTestMessage(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && !chatLoading && handleTestChat()}
+                    disabled={chatLoading}
+                  />
+                  <Button size="icon" onClick={handleTestChat} disabled={chatLoading || !testMessage.trim()}>
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Performance Metrics */}
+          {perfSummary && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4" /> Performance — Last {perfSummary.daysActive} days
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  <div className="text-center p-3 rounded-lg bg-blue-50">
+                    <p className="text-xl font-bold text-blue-700">{perfSummary.tasks}</p>
+                    <p className="text-xs text-blue-600">Total Tasks</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-green-50">
+                    <p className="text-xl font-bold text-green-700">{perfSummary.messages}</p>
+                    <p className="text-xs text-green-600">Messages</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-purple-50">
+                    <p className="text-xl font-bold text-purple-700">{perfSummary.calls}</p>
+                    <p className="text-xs text-purple-600">Calls</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-amber-50">
+                    <p className="text-xl font-bold text-amber-700">{perfSummary.appointments}</p>
+                    <p className="text-xs text-amber-600">Appointments</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-red-50">
+                    <p className="text-xl font-bold text-red-700">{perfSummary.escalations}</p>
+                    <p className="text-xs text-red-600">Escalations</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-emerald-50">
+                    <p className="text-xl font-bold text-emerald-700">
+                      {perfSummary.resolutionRate != null ? `${perfSummary.resolutionRate}%` : '—'}
+                    </p>
+                    <p className="text-xs text-emerald-600">Resolution</p>
+                  </div>
+                </div>
+                {chartData.length > 1 && (
+                  <div className="h-32">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={chartData}>
+                        <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                        <YAxis hide />
+                        <Tooltip />
+                        <Area type="monotone" dataKey="tasks" stroke="#6366f1" fill="#6366f1" fillOpacity={0.1} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Channels */}
           <Card>
             <CardHeader>
@@ -189,6 +377,174 @@ export default function AIAgentProfile() {
               )}
             </CardContent>
           </Card>
+
+          {/* System Prompt */}
+          {agent.system_prompt && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <FileText className="h-4 w-4" /> System Prompt
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <pre className="text-xs bg-muted p-4 rounded-lg overflow-x-auto whitespace-pre-wrap font-mono max-h-64 overflow-y-auto">
+                  {agent.system_prompt}
+                </pre>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Knowledge Base Editor */}
+          <AgentKnowledgeEditor
+            agent={agent}
+            isLoading={kbSaving}
+            onSave={async (kb) => {
+              setKbSaving(true);
+              try {
+                await updateAgent.mutateAsync({ id: agent.id, knowledge_base: kb });
+                toast.success('Knowledge base saved');
+              } catch { /* handled by mutation */ }
+              setKbSaving(false);
+            }}
+          />
+
+          {/* Conversations */}
+          {conversations.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <MessageCircle className="h-4 w-4" /> Conversations ({conversations.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {conversations.slice(0, 15).map((conv) => (
+                  <div key={conv.id}>
+                    <div
+                      className="flex items-center justify-between py-2 px-2 rounded hover:bg-muted/50 cursor-pointer"
+                      onClick={() => setExpandedConvId(expandedConvId === conv.id ? null : conv.id)}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-[10px]">{conv.channel || 'webchat'}</Badge>
+                        <span className="text-sm">{conv.contact_name || 'Unknown'}</span>
+                        <span className="text-xs text-muted-foreground">({conv.message_count} msgs)</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {conv.was_escalated && <Badge variant="destructive" className="text-[10px]">escalated</Badge>}
+                        <span className="text-xs text-muted-foreground">{format(new Date(conv.created_at), 'MMM d, HH:mm')}</span>
+                        {expandedConvId === conv.id ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                      </div>
+                    </div>
+                    {expandedConvId === conv.id && (
+                      <div className="ml-4 space-y-2 py-2 border-l-2 pl-3 mb-2">
+                        {(conv.messages || []).map((msg, i) => (
+                          <div key={i} className={`flex ${msg.role === 'customer' ? 'justify-start' : 'justify-end'}`}>
+                            <div className={`max-w-[85%] px-3 py-1.5 rounded-lg text-xs ${
+                              msg.role === 'customer' ? 'bg-muted' : 'bg-primary/10'
+                            }`}>
+                              <p className="font-medium text-[10px] mb-0.5 capitalize">{msg.role}</p>
+                              {msg.content}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Learning Suggestions */}
+          {suggestions.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-amber-500" /> Learning Suggestions
+                  <Badge className="bg-amber-100 text-amber-700 text-[10px]">{suggestions.length} pending</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {suggestions.map((sugg) => (
+                  <div key={sugg.id} className="p-3 rounded-lg bg-muted/50 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Badge variant="outline" className="text-[10px]">{sugg.suggestion_type.replace(/_/g, ' ')}</Badge>
+                      <div className="flex gap-1">
+                        <Button size="sm" variant="outline" className="h-6 text-xs"
+                          onClick={async () => {
+                            // Apply suggestion to KB
+                            const kb = { ...(agent.knowledge_base || {}) };
+                            const content = sugg.suggestion_content;
+                            if (content.suggested_faq) {
+                              kb.faq = [...(kb.faq || []), content.suggested_faq];
+                            }
+                            if (content.suggested_policy) {
+                              kb.policies = [...(kb.policies || []), content.suggested_policy];
+                            }
+                            await updateAgent.mutateAsync({ id: agent.id, knowledge_base: kb });
+                            // Mark as accepted
+                            await (await import('@/integrations/supabase/client')).supabase
+                              .from('ai_agent_suggestions' as any)
+                              .update({ status: 'accepted', applied_at: new Date().toISOString() })
+                              .eq('id', sugg.id);
+                            queryClient.invalidateQueries({ queryKey: ['ai-agent-suggestions'] });
+                            toast.success('Suggestion applied');
+                          }}>
+                          Accept
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-6 text-xs"
+                          onClick={async () => {
+                            await (await import('@/integrations/supabase/client')).supabase
+                              .from('ai_agent_suggestions' as any)
+                              .update({ status: 'rejected' })
+                              .eq('id', sugg.id);
+                            queryClient.invalidateQueries({ queryKey: ['ai-agent-suggestions'] });
+                            toast.success('Suggestion rejected');
+                          }}>
+                          Reject
+                        </Button>
+                      </div>
+                    </div>
+                    {sugg.suggestion_content.missing_knowledge && (
+                      <p className="text-xs text-muted-foreground">{sugg.suggestion_content.missing_knowledge}</p>
+                    )}
+                    {sugg.suggestion_content.suggested_faq && (
+                      <div className="text-xs">
+                        <p className="font-medium">Q: {sugg.suggestion_content.suggested_faq.q}</p>
+                        <p className="text-muted-foreground">A: {sugg.suggestion_content.suggested_faq.a}</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Escalation Rules */}
+          {agent.escalation_rules && (agent.escalation_rules as any).triggers && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" /> Escalation Rules
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2">Escalation triggers:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {((agent.escalation_rules as any).triggers || []).map((t: string) => (
+                      <Badge key={t} variant="destructive" className="text-xs">{t}</Badge>
+                    ))}
+                  </div>
+                </div>
+                {(agent.escalation_rules as any).message && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Escalation message:</p>
+                    <p className="text-sm italic">"{(agent.escalation_rules as any).message}"</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Sidebar */}

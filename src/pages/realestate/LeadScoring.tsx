@@ -35,7 +35,7 @@ function ScoreBar({ label, score, color }: { label: string; score: number; color
 }
 
 export default function LeadScoring() {
-  const { scores, isLoading, stats } = useRELeadScores();
+  const { scores, isLoading, error, stats } = useRELeadScores();
   const [gradeFilter, setGradeFilter] = useState<string>("all");
   const [urgencyFilter, setUrgencyFilter] = useState<string>("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -134,6 +134,11 @@ export default function LeadScoring() {
         </div>
 
         {/* Scores Table */}
+        {error ? (
+          <div className="text-center py-12">
+            <p className="text-red-500">Failed to load data. Please try again.</p>
+          </div>
+        ) : (
         <Card>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -227,6 +232,7 @@ export default function LeadScoring() {
             </div>
           </CardContent>
         </Card>
+        )}
       </div>
     </RTLWrapper>
   );

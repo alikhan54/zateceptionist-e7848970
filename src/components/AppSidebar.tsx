@@ -144,6 +144,7 @@ const hrNavItems = [
   { title: "Reports", url: "/hr/reports", icon: BarChart3 },
   { title: "AI Assistant", url: "/hr/ai-assistant", icon: Bot },
   { title: "AI Workforce", url: "/hr/ai-agents", icon: Bot },
+  { title: "AI Analytics", url: "/hr/ai-agents/analytics", icon: BarChart3 },
 ];
 
 // ========================================

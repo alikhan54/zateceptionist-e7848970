@@ -7,7 +7,7 @@ import { useInvestorPortfolio } from "@/hooks/useInvestorPortfolio";
 const formatAED = (n: number) => `AED ${Math.round(n).toLocaleString()}`;
 
 export default function InvestorPortfolio() {
-  const { properties, isLoading, stats } = useInvestorPortfolio();
+  const { properties, isLoading, error, stats } = useInvestorPortfolio();
 
   return (
     <RTLWrapper>
@@ -53,7 +53,11 @@ export default function InvestorPortfolio() {
         </div>
 
         {/* Properties */}
-        {isLoading ? (
+        {error ? (
+          <div className="text-center py-12">
+            <p className="text-red-500">Failed to load data. Please try again.</p>
+          </div>
+        ) : isLoading ? (
           <div className="text-center py-12 text-muted-foreground">Loading portfolio...</div>
         ) : properties.length === 0 ? (
           <Card><CardContent className="py-12 text-center text-muted-foreground">

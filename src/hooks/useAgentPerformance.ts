@@ -17,7 +17,7 @@ export interface AgentMetrics {
 export function useAgentPerformance() {
   const { tenantId } = useTenant();
 
-  const { data: metrics = [], isLoading } = useQuery({
+  const { data: metrics = [], isLoading, error } = useQuery({
     queryKey: ["re-agent-performance", tenantId],
     queryFn: async () => {
       const now = new Date();
@@ -126,5 +126,5 @@ export function useAgentPerformance() {
     totalListings: metrics.reduce((s, m) => s + m.active_listings, 0),
   };
 
-  return { metrics, isLoading, totals };
+  return { metrics, isLoading, error, totals };
 }

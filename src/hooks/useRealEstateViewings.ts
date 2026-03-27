@@ -29,7 +29,7 @@ export function useRealEstateViewings(filters?: { status?: string; dateFrom?: st
   const { tenantId } = useTenant();
   const queryClient = useQueryClient();
 
-  const { data: viewings = [], isLoading, refetch } = useQuery({
+  const { data: viewings = [], isLoading, error, refetch } = useQuery({
     queryKey: ["re_viewings", tenantId, filters],
     queryFn: async () => {
       let query = supabase
@@ -101,5 +101,5 @@ export function useRealEstateViewings(filters?: { status?: string; dateFrom?: st
       : 0,
   };
 
-  return { viewings, isLoading, stats, refetch, createViewing, updateViewing };
+  return { viewings, isLoading, error, stats, refetch, createViewing, updateViewing };
 }

@@ -21,7 +21,7 @@ interface RegionConfig {
 }
 
 export default function RegionSettings() {
-  const { data: regions = [], isLoading } = useQuery({
+  const { data: regions = [], isLoading, error } = useQuery({
     queryKey: ["re_region_config"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -66,7 +66,11 @@ export default function RegionSettings() {
         <p className="text-muted-foreground">Regulatory frameworks, tax rates, and compliance requirements by region</p>
       </div>
 
-      {isLoading ? (
+      {error ? (
+        <div className="text-center py-12">
+          <p className="text-red-500">Failed to load data. Please try again.</p>
+        </div>
+      ) : isLoading ? (
         <div className="text-center p-8 text-muted-foreground">Loading region configurations...</div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2">

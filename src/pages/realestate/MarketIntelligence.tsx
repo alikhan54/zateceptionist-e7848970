@@ -59,7 +59,7 @@ export default function MarketIntelligence() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [typeFilter, setTypeFilter] = useState<string>("all");
 
-  const { data: records = [], isLoading } = useQuery({
+  const { data: records = [], isLoading, error } = useQuery({
     queryKey: ["re_market_data", tenantId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -147,7 +147,9 @@ export default function MarketIntelligence() {
       {/* Data Table */}
       <Card>
         <CardContent className="p-0">
-          {isLoading ? (
+          {error ? (
+            <div className="p-8 text-center text-red-500">Failed to load data. Please try again.</div>
+          ) : isLoading ? (
             <div className="p-8 text-center text-muted-foreground">Loading market data...</div>
           ) : sorted.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">No market data available. Data will appear after the market scraper runs.</div>

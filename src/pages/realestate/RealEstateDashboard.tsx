@@ -36,10 +36,10 @@ const stageColors: Record<string, string> = {
 
 export default function RealEstateDashboard() {
   const { tenantId } = useTenant();
-  const { stats: listingStats, isLoading: listingsLoading } = useRealEstateListings();
-  const { clients, stats: clientStats, isLoading: clientsLoading } = useRealEstateClients();
-  const { deals, stats: dealStats, isLoading: dealsLoading } = useRealEstateDeals();
-  const { stats: viewingStats, isLoading: viewingsLoading } = useRealEstateViewings();
+  const { stats: listingStats, isLoading: listingsLoading, error: listingsError } = useRealEstateListings();
+  const { clients, stats: clientStats, isLoading: clientsLoading, error: clientsError } = useRealEstateClients();
+  const { deals, stats: dealStats, isLoading: dealsLoading, error: dealsError } = useRealEstateDeals();
+  const { stats: viewingStats, isLoading: viewingsLoading, error: viewingsError } = useRealEstateViewings();
 
   const { data: recentMatches = [] } = useQuery({
     queryKey: ["re-matches-recent", tenantId],
@@ -72,6 +72,19 @@ export default function RealEstateDashboard() {
   });
 
   const isLoading = listingsLoading || clientsLoading || dealsLoading || viewingsLoading;
+  const hasError = listingsError || clientsError || dealsError || viewingsError;
+
+  if (hasError) {
+    return (
+      <RTLWrapper>
+        <div className="p-6">
+          <div className="text-center py-12">
+            <p className="text-red-500">Failed to load data. Please try again.</p>
+          </div>
+        </div>
+      </RTLWrapper>
+    );
+  }
 
   return (
     <RTLWrapper>

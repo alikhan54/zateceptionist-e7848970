@@ -13,7 +13,7 @@ function TrendIcon({ current, previous }: { current: number; previous: number })
 }
 
 export default function AgentPerformance() {
-  const { metrics, isLoading, totals } = useAgentPerformance();
+  const { metrics, isLoading, error, totals } = useAgentPerformance();
 
   return (
     <RTLWrapper>
@@ -68,7 +68,11 @@ export default function AgentPerformance() {
       </div>
 
       {/* Agent Table */}
-      {isLoading ? (
+      {error ? (
+        <div className="text-center py-12">
+          <p className="text-red-500">Failed to load data. Please try again.</p>
+        </div>
+      ) : isLoading ? (
         <p className="text-muted-foreground">Loading agent metrics...</p>
       ) : metrics.length === 0 ? (
         <Card>

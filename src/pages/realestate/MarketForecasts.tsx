@@ -21,7 +21,7 @@ const recColors: Record<string, string> = {
 };
 
 export default function MarketForecasts() {
-  const { forecasts, isLoading, locations, getForLocation } = useMarketForecasts();
+  const { forecasts, isLoading, error, locations, getForLocation } = useMarketForecasts();
   const [selectedLocation, setSelectedLocation] = useState<string>("all");
 
   const displayed = selectedLocation === "all" ? forecasts : getForLocation(selectedLocation);
@@ -51,7 +51,11 @@ export default function MarketForecasts() {
           </Select>
         </div>
 
-        {isLoading ? (
+        {error ? (
+          <div className="text-center py-12">
+            <p className="text-red-500">Failed to load data. Please try again.</p>
+          </div>
+        ) : isLoading ? (
           <div className="text-center py-12 text-muted-foreground">Loading forecasts...</div>
         ) : displayed.length === 0 ? (
           <Card><CardContent className="py-12 text-center text-muted-foreground">No forecasts available yet. The Market Forecaster runs daily at 6 AM and generates predictions for all active listing locations.</CardContent></Card>

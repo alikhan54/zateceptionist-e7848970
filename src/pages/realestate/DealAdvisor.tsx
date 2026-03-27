@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Brain, DollarSign, Lightbulb, CheckCircle, BookOpen } from "lucide-react";
 import { useREIntelligence } from "@/hooks/useREIntelligence";
 import { RTLWrapper } from "@/components/realestate/RTLWrapper";
+import { toast } from "sonner";
 
 const formatAED = (amount: number) => `AED ${amount.toLocaleString()}`;
 
@@ -35,14 +36,19 @@ export default function DealAdvisor() {
 
   const handleSubmit = async () => {
     if (!form.property_price) return;
-    const data = await getDealAdvice({
-      deal_type: form.deal_type,
-      property_price: parseFloat(form.property_price),
-      region_code: form.region_code,
-      buyer_type: form.buyer_type,
-      financing: form.financing,
-    });
-    if (data) setResult(data as DealAdviceResult);
+    try {
+      const data = await getDealAdvice({
+        deal_type: form.deal_type,
+        property_price: parseFloat(form.property_price),
+        region_code: form.region_code,
+        buyer_type: form.buyer_type,
+        financing: form.financing,
+      });
+      if (data) setResult(data as DealAdviceResult);
+    } catch (err) {
+      toast.error("An error occurred. Please try again.");
+      console.error(err);
+    }
   };
 
   return (

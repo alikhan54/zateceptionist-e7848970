@@ -224,6 +224,108 @@ export function useAgentTasks(agentId?: string) {
   });
 }
 
+// Conversation types + hooks
+export interface AIAgentConversation {
+  id: string;
+  tenant_id: string;
+  agent_id: string;
+  session_id: string;
+  contact_name?: string;
+  contact_phone?: string;
+  contact_email?: string;
+  channel?: string;
+  messages: Array<{ role: string; content: string; timestamp: string }>;
+  message_count: number;
+  started_at: string;
+  ended_at?: string;
+  duration_seconds?: number;
+  sentiment_score?: number;
+  was_escalated: boolean;
+  escalated_to?: string;
+  resolution?: string;
+  ai_provider?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AIAgentSuggestion {
+  id: string;
+  tenant_id: string;
+  agent_id: string;
+  conversation_id?: string;
+  suggestion_type: string;
+  suggestion_content: Record<string, any>;
+  status: 'pending' | 'accepted' | 'rejected' | 'auto_applied';
+  applied_at?: string;
+  created_at: string;
+}
+
+export function useAgentConversations(agentId?: string) {
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
+
+  return useQuery({
+    queryKey: ['ai-agent-conversations', tenantUuid, agentId],
+    queryFn: async () => {
+      if (!tenantUuid || !agentId) return [];
+      const { data, error } = await (supabase as any)
+        .from('ai_agent_conversations')
+        .select('*')
+        .eq('tenant_id', tenantUuid)
+        .eq('agent_id', agentId)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return (data || []) as AIAgentConversation[];
+    },
+    enabled: !!tenantUuid && !!agentId,
+  });
+}
+
+export function useAgentSuggestions(agentId?: string) {
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
+
+  return useQuery({
+    queryKey: ['ai-agent-suggestions', tenantUuid, agentId],
+    queryFn: async () => {
+      if (!tenantUuid || !agentId) return [];
+      const { data, error } = await (supabase as any)
+        .from('ai_agent_suggestions')
+        .select('*')
+        .eq('tenant_id', tenantUuid)
+        .eq('agent_id', agentId)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []) as AIAgentSuggestion[];
+    },
+    enabled: !!tenantUuid && !!agentId,
+  });
+}
+
+export function useAgentAnalytics(days: number = 30) {
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
+
+  return useQuery({
+    queryKey: ['ai-agent-analytics', tenantUuid, days],
+    queryFn: async () => {
+      if (!tenantUuid) return [];
+      const fromDate = new Date(Date.now() - days * 86400000).toISOString().split('T')[0];
+      const { data, error } = await (supabase as any)
+        .from('ai_agent_metrics')
+        .select('*')
+        .eq('tenant_id', tenantUuid)
+        .gte('metric_date', fromDate)
+        .order('metric_date', { ascending: true });
+      if (error) throw error;
+      return (data || []) as AIAgentMetric[];
+    },
+    enabled: !!tenantUuid,
+  });
+}
+
 export function useAgentMetrics(agentId?: string, days: number = 30) {
   const { tenantConfig } = useTenant();
   const tenantUuid = tenantConfig?.id;

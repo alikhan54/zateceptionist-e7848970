@@ -67,7 +67,7 @@ export function useRealEstateDeals(filters?: { stage?: string; status?: string; 
   const { tenantId } = useTenant();
   const queryClient = useQueryClient();
 
-  const { data: deals = [], isLoading, refetch } = useQuery({
+  const { data: deals = [], isLoading, error, refetch } = useQuery({
     queryKey: ["re_deals", tenantId, filters],
     queryFn: async () => {
       let query = supabase
@@ -142,5 +142,5 @@ export function useRealEstateDeals(filters?: { stage?: string; status?: string; 
     pipeline,
   };
 
-  return { deals, isLoading, stats, refetch, createDeal, updateDeal, DEAL_STAGES };
+  return { deals, isLoading, error, stats, refetch, createDeal, updateDeal, DEAL_STAGES };
 }

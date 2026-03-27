@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calculator, TrendingUp, DollarSign, BarChart3 } from "lucide-react";
 import { RTLWrapper } from "@/components/realestate/RTLWrapper";
 import { useREIntelligence } from "@/hooks/useREIntelligence";
+import { toast } from "sonner";
 
 const formatAED = (amount: number) => `AED ${amount.toLocaleString()}`;
 
@@ -50,14 +51,19 @@ export default function InvestmentCalculator() {
 
   const handleCalculate = async () => {
     if (!form.purchase_price || !form.annual_rent) return;
-    const data = await calculateYield({
-      purchase_price: parseFloat(form.purchase_price),
-      annual_rent: parseFloat(form.annual_rent),
-      service_charge: form.service_charge ? parseFloat(form.service_charge) : undefined,
-      size_sqft: form.size_sqft ? parseFloat(form.size_sqft) : undefined,
-      region_code: form.region_code,
-    });
-    if (data) setResult(data as YieldResult);
+    try {
+      const data = await calculateYield({
+        purchase_price: parseFloat(form.purchase_price),
+        annual_rent: parseFloat(form.annual_rent),
+        service_charge: form.service_charge ? parseFloat(form.service_charge) : undefined,
+        size_sqft: form.size_sqft ? parseFloat(form.size_sqft) : undefined,
+        region_code: form.region_code,
+      });
+      if (data) setResult(data as YieldResult);
+    } catch (err) {
+      toast.error("An error occurred. Please try again.");
+      console.error(err);
+    }
   };
 
   const yields = result?.yields;

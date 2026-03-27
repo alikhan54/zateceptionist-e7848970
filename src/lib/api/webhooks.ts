@@ -42,10 +42,10 @@ export const WEBHOOKS = {
   SEO_ANALYZE: "/seo-analyze",
 
   // HR
-  EMPLOYEE_ONBOARDING: "/hr/employee-onboarding",
+  EMPLOYEE_ONBOARDING: "/hr/employee-onboarding-v2",
   ATTENDANCE_CHECK_IN: "/hr/attendance/check-in",
   ATTENDANCE_CHECK_OUT: "/hr/attendance/check-out",
-  LEAVE_REQUEST: "/hr/leave/request",
+  LEAVE_REQUEST: "/hr/leave/request-v2",
   LEAVE_APPROVE: "/hr/leave/approve",
   GET_EMPLOYEES: "/hr/employees",
   GET_EMPLOYEE: "/hr/employee",

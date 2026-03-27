@@ -1,15 +1,19 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Bot, Plus, Phone, MessageSquare, Mail, Globe,
   TrendingUp, Headphones, UserSearch, Megaphone,
   CalendarCheck, Banknote, Building, ClipboardList,
-  UtensilsCrossed, Users, Zap, Activity
+  UtensilsCrossed, Users, Zap, Activity, CheckCircle
 } from "lucide-react";
 import { useAIAgents, useAgentTemplates, AIAgent, AIAgentTemplate } from "@/hooks/useAIAgents";
+import { supabase } from "@/integrations/supabase/client";
+import { useTenant } from "@/contexts/TenantContext";
 
 const statusColors: Record<string, string> = {
   active: "bg-green-100 text-green-800",
@@ -50,11 +54,35 @@ const tierColors: Record<string, string> = {
 
 export default function AIAgents() {
   const navigate = useNavigate();
+  const { tenantConfig } = useTenant();
   const { data: agents = [], isLoading } = useAIAgents();
   const { data: templates = [] } = useAgentTemplates();
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const activeCount = agents.filter(a => a.status === 'active').length;
   const totalCount = agents.length;
+
+  // Today's task count across all agents
+  const { data: todayTasks = 0 } = useQuery({
+    queryKey: ['ai-agents-today-tasks', tenantConfig?.id],
+    queryFn: async () => {
+      if (!tenantConfig?.id) return 0;
+      const today = new Date().toISOString().split('T')[0];
+      const { count } = await (supabase as any)
+        .from('ai_agent_tasks')
+        .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', tenantConfig.id)
+        .gte('created_at', today + 'T00:00:00Z');
+      return count || 0;
+    },
+    enabled: !!tenantConfig?.id,
+    staleTime: 60000,
+  });
+
+  const filteredAgents = useMemo(() => {
+    if (statusFilter === 'all') return agents;
+    return agents.filter(a => a.status === statusFilter);
+  }, [agents, statusFilter]);
 
   return (
     <div className="p-6 space-y-8">
@@ -109,7 +137,7 @@ export default function AIAgents() {
                 <Activity className="h-5 w-5 text-purple-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">—</p>
+                <p className="text-2xl font-bold">{todayTasks}</p>
                 <p className="text-xs text-muted-foreground">Tasks Today</p>
               </div>
             </CardContent>
@@ -120,12 +148,24 @@ export default function AIAgents() {
                 <TrendingUp className="h-5 w-5 text-amber-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">—</p>
-                <p className="text-xs text-muted-foreground">Satisfaction</p>
+                <p className="text-2xl font-bold">{new Set(agents.flatMap(a => a.channels || [])).size}</p>
+                <p className="text-xs text-muted-foreground">Channels</p>
               </div>
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* Status Filter */}
+      {totalCount > 0 && (
+        <Tabs value={statusFilter} onValueChange={setStatusFilter}>
+          <TabsList>
+            <TabsTrigger value="all">All ({totalCount})</TabsTrigger>
+            <TabsTrigger value="active">Active ({activeCount})</TabsTrigger>
+            <TabsTrigger value="paused">Paused ({agents.filter(a => a.status === 'paused').length})</TabsTrigger>
+            <TabsTrigger value="draft">Draft ({agents.filter(a => a.status === 'draft').length})</TabsTrigger>
+          </TabsList>
+        </Tabs>
       )}
 
       {/* Agent Cards Grid */}
@@ -152,9 +192,13 @@ export default function AIAgents() {
             </Button>
           </CardContent>
         </Card>
+      ) : filteredAgents.length === 0 ? (
+        <div className="text-center py-8 text-muted-foreground">
+          <p>No {statusFilter} agents found.</p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {agents.map((agent) => (
+          {filteredAgents.map((agent) => (
             <AgentCard key={agent.id} agent={agent} onClick={() => navigate(`/hr/ai-agents/${agent.id}`)} />
           ))}
         </div>
@@ -183,8 +227,15 @@ function AgentCard({ agent, onClick }: { agent: AIAgent; onClick: () => void }) 
       <CardContent className="p-5">
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-              <Bot className="h-6 w-6 text-primary" />
+            <div className="relative">
+              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <Bot className="h-6 w-6 text-primary" />
+              </div>
+              {agent.status === 'active' && (
+                <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-green-500 border-2 border-background">
+                  <span className="absolute inset-0 rounded-full bg-green-500 animate-ping opacity-75" />
+                </span>
+              )}
             </div>
             <div>
               <h3 className="font-semibold">{agent.agent_name}</h3>

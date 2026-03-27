@@ -30,7 +30,7 @@ export interface MarketForecast {
 export function useMarketForecasts() {
   const { tenantId } = useTenant();
 
-  const { data: forecasts = [], isLoading } = useQuery({
+  const { data: forecasts = [], isLoading, error } = useQuery({
     queryKey: ["re-market-forecasts", tenantId],
     queryFn: async () => {
       const { data } = await supabase.from("re_market_forecasts" as any).select("*").eq("tenant_id", tenantId).order("forecast_date", { ascending: false });
@@ -48,5 +48,5 @@ export function useMarketForecasts() {
     },
   });
 
-  return { forecasts, isLoading, locations, getForLocation, getAdvice: advisorMutation.mutateAsync, isAdvising: advisorMutation.isPending, advice: advisorMutation.data };
+  return { forecasts, isLoading, error, locations, getForLocation, getAdvice: advisorMutation.mutateAsync, isAdvising: advisorMutation.isPending, advice: advisorMutation.data };
 }

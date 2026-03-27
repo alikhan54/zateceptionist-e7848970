@@ -57,7 +57,7 @@ export default function DealPipeline() {
     return null;
   };
 
-  const { deals, isLoading, stats, DEAL_STAGES } = useRealEstateDeals({
+  const { deals, isLoading, error, stats, DEAL_STAGES } = useRealEstateDeals({
     stage: stageFilter || undefined,
     deal_type: typeFilter || undefined,
   });
@@ -103,7 +103,11 @@ export default function DealPipeline() {
       </div>
 
       {/* Pipeline by Stage */}
-      {isLoading ? <p className="text-muted-foreground">Loading...</p> : deals.length === 0 ? (
+      {error ? (
+        <div className="text-center py-12">
+          <p className="text-red-500">Failed to load data. Please try again.</p>
+        </div>
+      ) : isLoading ? <p className="text-muted-foreground">Loading...</p> : deals.length === 0 ? (
         <Card><CardContent className="py-8 text-center text-muted-foreground">No deals found</CardContent></Card>
       ) : (
         <div className="space-y-6">

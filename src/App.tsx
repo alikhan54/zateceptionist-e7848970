@@ -144,7 +144,7 @@ const MarketForecasts = lazy(() => import("./pages/realestate/MarketForecasts"))
 const WhatsAppJourneys = lazy(() => import("./pages/realestate/WhatsAppJourneys"));
 const InvestorPortfolio = lazy(() => import("./pages/realestate/InvestorPortfolio"));
 const DeveloperPortal = lazy(() => import("./pages/realestate/DeveloperPortal"));
-// CrossBorderAdvisor removed - module not found
+const CrossBorderAdvisor = lazy(() => import("./pages/realestate/CrossBorderAdvisor"));
 
 // Estimation Module
 const EstimationProjects = lazy(() => import("./pages/estimation/ProjectsDashboard"));
@@ -1131,7 +1131,7 @@ const App = () => (
                   <Route path="/realestate/whatsapp-journeys" element={<LazyPage><WhatsAppJourneys /></LazyPage>} />
                   <Route path="/realestate/investor-portfolio" element={<LazyPage><InvestorPortfolio /></LazyPage>} />
                   <Route path="/realestate/developer-api" element={<LazyPage><DeveloperPortal /></LazyPage>} />
-                  {/* CrossBorderAdvisor route removed - module not found */}
+                  <Route path="/realestate/cross-border" element={<LazyPage><CrossBorderAdvisor /></LazyPage>} />
 
                   {/* Communications Module */}
                   <Route path="/communications" element={<Navigate to="/communications/voice-ai" replace />} />

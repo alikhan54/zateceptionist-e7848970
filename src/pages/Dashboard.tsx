@@ -181,7 +181,7 @@ export default function Dashboard() {
         supabase.from('customers').select('*', { count: 'exact', head: true })
           .eq('tenant_id', tenantId),
         supabase.from('conversations').select('*', { count: 'exact', head: true })
-          .eq('tenant_id', tenantConfig!.id),
+          .eq('tenant_id', tenantConfig?.id || ''),
         supabase.from('appointments').select('*', { count: 'exact', head: true })
           .eq('tenant_id', tenantId)
           .in('status', ['scheduled', 'confirmed', 'pending']),

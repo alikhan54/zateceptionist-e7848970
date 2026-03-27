@@ -521,7 +521,7 @@ export function useTriggerSourcing() {
   return useMutation({
     mutationFn: async (jobRequisitionId: string) => {
       if (!tenantUuid) throw new Error('No tenant');
-      return callWebhook('/hr/trigger-sourcing', {
+      return callWebhook('/hr/job/trigger-sourcing', {
         job_requisition_id: jobRequisitionId,
         trigger_type: 'manual',
       }, tenantUuid);
