@@ -362,7 +362,7 @@ export default function AiIntelligence() {
           Powered by OpsNexus — 12-agent autonomous operations system
         </p>
         <Badge variant="outline" className="mt-2 bg-blue-50 text-blue-700 border-blue-200">
-          Phase 29 — Enterprise White-Label Active
+          Phase 30 — Full Autonomy Active
         </Badge>
       </div>
 
@@ -1366,6 +1366,88 @@ export default function AiIntelligence() {
         <p className="text-sm text-muted-foreground">
           Share and install ops configurations across industries. Browse public templates or publish your own.
         </p>
+      </div>
+      {/* Autonomy Mode Control (Phase 30) */}
+      <div className="border-2 border-blue-200 rounded-lg p-5 bg-blue-50/50">
+        <h2 className="font-bold text-lg mb-1">Autonomy Mode</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Controls how NEXUS handles operations — automatically or with your approval.
+        </p>
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { level: "supervised", label: "Supervised",
+              desc: "NEXUS plans. You approve every action." },
+            { level: "semi_autonomous", label: "Semi-Autonomous",
+              desc: "NEXUS acts on small decisions. You approve large ones." },
+            { level: "full_autonomous", label: "Full Autonomous",
+              desc: "NEXUS acts. You receive outcomes. Maximum efficiency." },
+          ].map(({ level, label, desc }) => {
+            const isActive = configs.some((c: Record<string, unknown>) =>
+              (c.config as Record<string, unknown>)?.autonomy_level === level &&
+              (c.industry as string) === industry);
+            return (
+              <div key={level}
+                className={`border-2 rounded-lg p-3 cursor-pointer transition-all ${
+                  isActive
+                    ? "border-blue-500 bg-blue-50 ring-2 ring-blue-300"
+                    : "border-gray-200 hover:border-gray-300 bg-white"
+                }`}
+                onClick={async () => {
+                  await fetch("https://webhooks.zatesystems.com/webhook/ops/dispatch", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      tenant_slug: tenantSlug, tenant_id: tenantId,
+                      industry, region, goal: `Set autonomy to ${level}`, mode: "auto",
+                    }),
+                  });
+                }}
+              >
+                <div className="font-semibold text-sm">{label}</div>
+                <p className="text-xs text-muted-foreground mt-1">{desc}</p>
+                {isActive && (
+                  <span className="text-xs font-bold text-blue-700 mt-1 block">Active</span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* AI Ops Twin — Simulation (Phase 30) */}
+      <div className="border rounded-lg p-5">
+        <h2 className="font-semibold mb-1 flex items-center gap-2">
+          <Brain className="w-5 h-5" /> AI Ops Twin — What-If Analysis
+        </h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Simulate scenarios before they happen. No real actions executed.
+        </p>
+        <div className="flex gap-2 flex-wrap">
+          {[
+            { scenario: "ramadan_prep", label: "Ramadan Surge" },
+            { scenario: "vendor_failure", label: "Vendor Failure" },
+            { scenario: "cost_cut_15", label: "Cut Costs 15%" },
+          ].map(({ scenario, label }) => (
+            <Button key={scenario} variant="outline" size="sm"
+              onClick={async () => {
+                const r = await fetch("https://webhooks.zatesystems.com/webhook/ops/dispatch", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    tenant_slug: tenantSlug, tenant_id: tenantId,
+                    industry, region,
+                    goal: `Simulate scenario: ${scenario}`,
+                    mode: "auto",
+                  }),
+                });
+                const d = await r.json();
+                toast({ title: "Simulation started", description: d.result?.recommendation || "Processing..." });
+              }}
+            >
+              {label}
+            </Button>
+          ))}
+        </div>
       </div>
     </div>
   );
