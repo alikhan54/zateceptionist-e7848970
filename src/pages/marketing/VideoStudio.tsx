@@ -192,7 +192,7 @@ export default function VideoStudio() {
       return result.data || result;
     },
     onSuccess: (data) => {
-      if (data.job_id) {
+      if ((data as any).job_id) {
         toast({ title: "Render Started!", description: "Check Queue tab for progress." });
         setTab("queue");
       }
