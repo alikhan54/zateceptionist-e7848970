@@ -518,6 +518,9 @@ export function NavigationSidebar() {
       { title: "AI Pricing", url: "/realestate/pricing", icon: Sparkles },
       { title: "Cross-Border", url: "/realestate/cross-border", icon: Globe },
       { title: "Agent Performance", url: "/realestate/agent-performance", icon: BarChart3 },
+      { title: "Lead Scoring", url: "/realestate/lead-scoring", icon: Target },
+      { title: "Off-Plan Projects", url: "/realestate/offplan", icon: Layers },
+      { title: "Mortgage Calculator", url: "/realestate/mortgage-calculator", icon: Banknote },
     ],
   };
 

@@ -136,6 +136,9 @@ const DealAdvisor = lazy(() => import("./pages/realestate/DealAdvisor"));
 const REKnowledgeBase = lazy(() => import("./pages/realestate/KnowledgeBase"));
 const PricePrediction = lazy(() => import("./pages/realestate/PricePrediction"));
 const AgentPerformance = lazy(() => import("./pages/realestate/AgentPerformance"));
+const LeadScoring = lazy(() => import("./pages/realestate/LeadScoring"));
+const OffPlanExplorer = lazy(() => import("./pages/realestate/OffPlanExplorer"));
+const REMortgageCalculator = lazy(() => import("./pages/realestate/MortgageCalculator"));
 // CrossBorderAdvisor removed - module not found
 
 // Estimation Module
@@ -1115,6 +1118,9 @@ const App = () => (
                   <Route path="/realestate/knowledge" element={<LazyPage><REKnowledgeBase /></LazyPage>} />
                   <Route path="/realestate/pricing" element={<LazyPage><PricePrediction /></LazyPage>} />
                   <Route path="/realestate/agent-performance" element={<LazyPage><AgentPerformance /></LazyPage>} />
+                  <Route path="/realestate/lead-scoring" element={<LazyPage><LeadScoring /></LazyPage>} />
+                  <Route path="/realestate/offplan" element={<LazyPage><OffPlanExplorer /></LazyPage>} />
+                  <Route path="/realestate/mortgage-calculator" element={<LazyPage><REMortgageCalculator /></LazyPage>} />
                   {/* CrossBorderAdvisor route removed - module not found */}
 
                   {/* Communications Module */}
