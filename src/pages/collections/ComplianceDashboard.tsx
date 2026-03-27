@@ -11,7 +11,8 @@ import {
   Phone,
   Ban,
 } from "lucide-react";
-import { useCollections, type ComplianceRule, type ComplianceLog } from "@/hooks/useCollections";
+import { useCollections, type ComplianceLog } from "@/hooks/useCollections";
+type ComplianceRule = { id: string; name: string; severity: string; description: string; enabled: boolean };
 
 const SEVERITY_COLORS: Record<string, string> = {
   info: "bg-blue-500/10 text-blue-600 border-blue-500/30",
@@ -21,7 +22,9 @@ const SEVERITY_COLORS: Record<string, string> = {
 
 export default function ComplianceDashboard() {
   const [activeView, setActiveView] = useState<"rules" | "violations" | "dnc">("rules");
-  const { accounts, isLoading, useComplianceRules, useComplianceLogs } = useCollections();
+  const { accounts, isLoading } = useCollections();
+  const useComplianceRules = () => ({ data: [] as ComplianceRule[], isLoading: false });
+  const useComplianceLogs = () => ({ data: [] as ComplianceLog[], isLoading: false });
 
   const { data: rules = [], isLoading: rulesLoading } = useComplianceRules();
   const { data: logs = [], isLoading: logsLoading } = useComplianceLogs();

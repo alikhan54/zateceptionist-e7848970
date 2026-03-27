@@ -16,7 +16,8 @@ interface RTLConfig {
 }
 
 export function useRTL(): RTLConfig {
-  const { tenant } = useTenant();
+  const tenantCtx = useTenant();
+  const tenant = (tenantCtx as any).tenant || tenantCtx.tenantConfig;
   const [config, setConfig] = useState<RTLConfig>({
     isRTL: false,
     dir: 'ltr',
