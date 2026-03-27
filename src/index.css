@@ -376,3 +376,19 @@ html {
 .safe-top {
   padding-top: env(safe-area-inset-top, 0px);
 }
+
+/* Fix: sidebar items not responding to touch on mobile */
+[data-sidebar="sidebar"],
+[data-sidebar="sidebar"] * {
+  pointer-events: auto !important;
+}
+
+[data-mobile="true"] {
+  pointer-events: auto !important;
+}
+
+@media (max-width: 767px) {
+  [data-sidebar="menu-button"] {
+    min-height: 44px;
+  }
+}
