@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTenant } from '@/contexts/TenantContext';
 import { callWebhook, WEBHOOKS } from '@/lib/api/webhooks';
 import { OnboardingData, ONBOARDING_STEPS } from '@/pages/onboarding/constants';
+import { useToast } from '@/hooks/use-toast';
 
 interface ReadyStepProps {
   data: OnboardingData;
@@ -28,6 +29,7 @@ const TRAINING_MODULES = [
 export default function ReadyStep({ data, updateData }: ReadyStepProps) {
   const navigate = useNavigate();
   const { tenantId } = useTenant();
+  const { toast } = useToast();
   const [trainingStatus, setTrainingStatus] = useState<Record<string, 'pending' | 'training' | 'done' | 'error'>>({});
   const [isTraining, setIsTraining] = useState(false);
   const [trainingComplete, setTrainingComplete] = useState(false);
@@ -127,9 +129,13 @@ export default function ReadyStep({ data, updateData }: ReadyStepProps) {
       setTrainingComplete(true);
       updateData({ trainingComplete: true });
     } catch (err) {
-      // Even if training call fails, allow user to proceed
       console.error('Training error:', err);
-      // Mark remaining as done (best effort)
+      toast({
+        title: "Setup encountered an issue",
+        description: "Some features may need manual configuration. You can continue to your dashboard.",
+        variant: "destructive",
+      });
+      // Mark remaining as done (best effort) — still allow user to proceed
       TRAINING_MODULES.forEach(m => {
         if (status[m.key] !== 'done') status[m.key] = 'done';
       });

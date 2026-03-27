@@ -75,7 +75,7 @@ export const WEBHOOKS = {
   HR_BATCH_IMPORT: "/hr-batch-import",
 
   // HR - Recruitment Webhooks
-  HR_TRIGGER_SOURCING: "/hr/trigger-sourcing",
+  HR_TRIGGER_SOURCING: "/hr/job/trigger-sourcing",
   HR_TRIGGER_AI_INTERVIEW: "/hr/ai-interview/trigger",
   HR_APPROVE_OUTREACH: "/hr/approve-outreach",
   HR_RECRUITMENT_OUTREACH: "/hr-recruitment-outreach",
@@ -105,7 +105,8 @@ export const WEBHOOKS = {
   OMEGA_AUTONOMOUS_TRIGGER: "/omega-autonomous-trigger",
 
   // Deep scrape — cascading website + social + document analysis
-  DEEP_SCRAPE: "/onboarding/deep-scrape",
+  // FIXED: Was "/onboarding/deep-scrape" (404) — n8n OB.1 node uses "analyze-company"
+  DEEP_SCRAPE: "/onboarding/analyze-company",
   // Analyze social profiles
   ANALYZE_SOCIAL: "/onboarding/analyze-social",
 

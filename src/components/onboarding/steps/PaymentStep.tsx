@@ -2,28 +2,17 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
-  CreditCard, Building2, Check, ArrowRight, ChevronLeft, Loader2,
+  Check, ArrowRight, ChevronLeft, Loader2,
   Shield, AlertCircle, Sparkles,
 } from 'lucide-react';
-import { SUBSCRIPTION_TIERS, SubscriptionTier } from '@/contexts/SubscriptionContext';
 import { OnboardingData } from '@/pages/onboarding/constants';
-import { isStripeConfigured } from '@/lib/stripe';
-import type { PaymentMethodType } from '@/hooks/usePayment';
-
-// Lazy imports for Stripe — only used when Stripe is configured
-let CardElement: any = null;
-let usePayment: any = null;
-if (isStripeConfigured) {
-  try {
-    CardElement = require('@stripe/react-stripe-js').CardElement;
-    usePayment = require('@/hooks/usePayment').usePayment;
-  } catch { /* Stripe not available */ }
-}
+import { useTenant } from '@/contexts/TenantContext';
+import { openCheckout } from '@/lib/paddle';
+import { SUBSCRIPTION_TIERS, type SubscriptionTierId } from '@/lib/pricing';
+import { useToast } from '@/hooks/use-toast';
 
 interface PaymentStepProps {
   data: OnboardingData;
@@ -33,34 +22,51 @@ interface PaymentStepProps {
   onSkip: () => void;
 }
 
-const PLAN_ORDER: SubscriptionTier[] = ['free', 'starter', 'professional', 'enterprise'];
+const PLAN_ORDER: SubscriptionTierId[] = ['free_trial', 'starter', 'professional', 'enterprise'];
 
 export default function PaymentStep({ data, updateData, onNext, onBack }: PaymentStepProps) {
   const [isYearly, setIsYearly] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('card');
+  const [isLoading, setIsLoading] = useState(false);
+  const { tenantId, tenantConfig } = useTenant();
+  const { toast } = useToast();
 
-  // Only call usePayment when Stripe is configured and the hook is available
-  const stripeHook = usePayment ? usePayment() : { setupAndSubscribe: null, isLoading: false, error: null, clearError: () => {} };
-  const { setupAndSubscribe, isLoading, error: paymentError, clearError } = stripeHook;
+  const selectedPlan = (data.selectedPlan || 'professional') as SubscriptionTierId;
 
-  const selectedPlan = (data.selectedPlan || 'professional') as SubscriptionTier;
-
-  const selectPlan = (planId: SubscriptionTier) => {
+  const selectPlan = (planId: SubscriptionTierId) => {
     updateData({ selectedPlan: planId });
-    clearError();
   };
 
   const handleSubscribe = async () => {
-    if (selectedPlan === 'free' || !setupAndSubscribe) {
-      updateData({ paymentVerified: true, trialStarted: true });
+    // Free plan — skip payment
+    if (selectedPlan === 'free_trial' || selectedPlan === 'free') {
+      updateData({ selectedPlan: 'free', paymentVerified: true, trialStarted: true });
       onNext();
       return;
     }
 
-    const result = await setupAndSubscribe(selectedPlan, paymentMethod);
-    if (result.success) {
+    // Paid plan — open Paddle checkout overlay
+    const email = tenantConfig?.email || tenantConfig?.company_email || '';
+    if (!tenantId) {
+      toast({ title: "Error", description: "Tenant not found. Please refresh.", variant: "destructive" });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await openCheckout(selectedPlan as SubscriptionTierId, tenantId, email);
+      // Paddle overlay handles the rest — on success it redirects to /settings/billing?success=true
+      // For onboarding flow, allow user to proceed after opening checkout
       updateData({ paymentVerified: true, trialStarted: true });
       onNext();
+    } catch (err) {
+      console.error('Paddle checkout error:', err);
+      toast({
+        title: "Payment setup failed",
+        description: "You can continue with the free plan and upgrade later.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -73,7 +79,7 @@ export default function PaymentStep({ data, updateData, onNext, onBack }: Paymen
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold">Choose Your Plan</h2>
-        <p className="text-muted-foreground mt-1">Start with a 7-day free trial. No charge until the trial ends.</p>
+        <p className="text-muted-foreground mt-1">Start with a free trial. Upgrade anytime.</p>
       </div>
 
       {/* Billing Toggle */}
@@ -90,7 +96,7 @@ export default function PaymentStep({ data, updateData, onNext, onBack }: Paymen
         {PLAN_ORDER.map((planId) => {
           const tier = SUBSCRIPTION_TIERS[planId];
           const isSelected = selectedPlan === planId;
-          const price = isYearly ? Math.round(tier.yearlyPrice / 12) : tier.price;
+          const price = isYearly ? Math.round(tier.price * 0.83) : tier.price;
 
           return (
             <Card
@@ -102,9 +108,9 @@ export default function PaymentStep({ data, updateData, onNext, onBack }: Paymen
               }`}
               onClick={() => selectPlan(planId)}
             >
-              {tier.badge && (
+              {tier.popular && (
                 <Badge className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-xs">
-                  {tier.badge}
+                  Most Popular
                 </Badge>
               )}
               <CardHeader className="pb-3">
@@ -113,7 +119,9 @@ export default function PaymentStep({ data, updateData, onNext, onBack }: Paymen
                   <span className="text-3xl font-bold">${price}</span>
                   {price > 0 && <span className="text-muted-foreground text-sm">/mo</span>}
                 </div>
-                <CardDescription className="text-xs">{tier.description}</CardDescription>
+                <CardDescription className="text-xs">
+                  {tier.price === 0 ? tier.period : `${tier.period}ly billing`}
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-1.5">
@@ -142,79 +150,12 @@ export default function PaymentStep({ data, updateData, onNext, onBack }: Paymen
         })}
       </div>
 
-      {/* Payment Method (for paid plans) */}
-      {selectedPlan !== 'free' && isStripeConfigured && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Payment Method</CardTitle>
-            <CardDescription>
-              Your card will be verified but not charged. Trial starts after setup.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Tabs value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethodType)}>
-              <TabsList className="grid grid-cols-2 w-full max-w-sm">
-                <TabsTrigger value="card" className="flex items-center gap-1">
-                  <CreditCard className="h-4 w-4" /> Card
-                </TabsTrigger>
-                <TabsTrigger value="us_bank_account" className="flex items-center gap-1">
-                  <Building2 className="h-4 w-4" /> Bank
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="card" className="mt-4">
-                <div className="border rounded-lg p-4 bg-muted/30">
-                  <CardElement
-                    options={{
-                      style: {
-                        base: {
-                          fontSize: '16px',
-                          color: '#1a1a1a',
-                          '::placeholder': { color: '#9ca3af' },
-                        },
-                      },
-                    }}
-                  />
-                </div>
-              </TabsContent>
-
-              <TabsContent value="us_bank_account" className="mt-4">
-                <Alert>
-                  <Building2 className="h-4 w-4" />
-                  <AlertDescription>
-                    Bank account verification will open in a secure Stripe window after you click Subscribe.
-                  </AlertDescription>
-                </Alert>
-              </TabsContent>
-            </Tabs>
-
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Shield className="h-4 w-4" />
-              <span>Secured by Stripe. Your payment info is never stored on our servers.</span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {selectedPlan !== 'free' && !isStripeConfigured && (
+      {/* Paddle payment info for paid plans */}
+      {selectedPlan !== 'free_trial' && selectedPlan !== 'free' && (
         <Alert>
-          <AlertCircle className="h-4 w-4" />
+          <Shield className="h-4 w-4" />
           <AlertDescription>
-            Payment processing is not configured yet. You can continue with the Free plan for now
-            and upgrade later from Settings.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Error */}
-      {paymentError && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription className="flex items-center justify-between">
-            <span>{paymentError}</span>
-            <Button variant="outline" size="sm" onClick={handleFreeFallback}>
-              Continue Free
-            </Button>
+            Secure payment powered by Paddle. You'll complete payment in a secure overlay after clicking Subscribe.
           </AlertDescription>
         </Alert>
       )}
@@ -224,7 +165,7 @@ export default function PaymentStep({ data, updateData, onNext, onBack }: Paymen
           <ChevronLeft className="h-4 w-4 mr-1" /> Back
         </Button>
         <div className="flex gap-2">
-          {selectedPlan !== 'free' && (
+          {selectedPlan !== 'free_trial' && selectedPlan !== 'free' && (
             <Button variant="outline" onClick={handleFreeFallback}>
               Continue Free Instead
             </Button>
@@ -232,12 +173,12 @@ export default function PaymentStep({ data, updateData, onNext, onBack }: Paymen
           <Button onClick={handleSubscribe} disabled={isLoading}>
             {isLoading ? (
               <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Processing...</>
-            ) : selectedPlan === 'free' ? (
+            ) : selectedPlan === 'free_trial' || selectedPlan === 'free' ? (
               <>Start Free Plan <ArrowRight className="h-4 w-4 ml-1" /></>
             ) : (
               <>
                 <Sparkles className="h-4 w-4 mr-1" />
-                Start 7-Day Free Trial
+                Subscribe with Paddle
               </>
             )}
           </Button>
