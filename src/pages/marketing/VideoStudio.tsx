@@ -145,7 +145,7 @@ export default function VideoStudio() {
       return data || [];
     },
     enabled: !!tid,
-    refetchInterval: false,
+    refetchInterval: 5000,
   });
 
   // ============================================================
