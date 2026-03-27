@@ -12,7 +12,7 @@ import {
   Ban,
 } from "lucide-react";
 import { useCollections, type ComplianceLog } from "@/hooks/useCollections";
-type ComplianceRule = { id: string; name: string; severity: string; description: string; enabled: boolean };
+type ComplianceRule = { id: string; name: string; severity: string; description: string; enabled: boolean; is_active?: boolean; rule_code?: string; regulation?: string; rule_type?: string };
 
 const SEVERITY_COLORS: Record<string, string> = {
   info: "bg-blue-500/10 text-blue-600 border-blue-500/30",
