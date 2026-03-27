@@ -139,6 +139,11 @@ const AgentPerformance = lazy(() => import("./pages/realestate/AgentPerformance"
 const LeadScoring = lazy(() => import("./pages/realestate/LeadScoring"));
 const OffPlanExplorer = lazy(() => import("./pages/realestate/OffPlanExplorer"));
 const REMortgageCalculator = lazy(() => import("./pages/realestate/MortgageCalculator"));
+const DealOrchestrator = lazy(() => import("./pages/realestate/DealOrchestrator"));
+const MarketForecasts = lazy(() => import("./pages/realestate/MarketForecasts"));
+const WhatsAppJourneys = lazy(() => import("./pages/realestate/WhatsAppJourneys"));
+const InvestorPortfolio = lazy(() => import("./pages/realestate/InvestorPortfolio"));
+const DeveloperPortal = lazy(() => import("./pages/realestate/DeveloperPortal"));
 // CrossBorderAdvisor removed - module not found
 
 // Estimation Module
@@ -1121,6 +1126,11 @@ const App = () => (
                   <Route path="/realestate/lead-scoring" element={<LazyPage><LeadScoring /></LazyPage>} />
                   <Route path="/realestate/offplan" element={<LazyPage><OffPlanExplorer /></LazyPage>} />
                   <Route path="/realestate/mortgage-calculator" element={<LazyPage><REMortgageCalculator /></LazyPage>} />
+                  <Route path="/realestate/deal-orchestrator" element={<LazyPage><DealOrchestrator /></LazyPage>} />
+                  <Route path="/realestate/market-forecasts" element={<LazyPage><MarketForecasts /></LazyPage>} />
+                  <Route path="/realestate/whatsapp-journeys" element={<LazyPage><WhatsAppJourneys /></LazyPage>} />
+                  <Route path="/realestate/investor-portfolio" element={<LazyPage><InvestorPortfolio /></LazyPage>} />
+                  <Route path="/realestate/developer-api" element={<LazyPage><DeveloperPortal /></LazyPage>} />
                   {/* CrossBorderAdvisor route removed - module not found */}
 
                   {/* Communications Module */}

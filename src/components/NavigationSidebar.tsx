@@ -521,6 +521,11 @@ export function NavigationSidebar() {
       { title: "Lead Scoring", url: "/realestate/lead-scoring", icon: Target },
       { title: "Off-Plan Projects", url: "/realestate/offplan", icon: Layers },
       { title: "Mortgage Calculator", url: "/realestate/mortgage-calculator", icon: Banknote },
+      { title: "Deal Orchestrator", url: "/realestate/deal-orchestrator", icon: Workflow },
+      { title: "Market Forecasts", url: "/realestate/market-forecasts", icon: LineChart },
+      { title: "WhatsApp Journeys", url: "/realestate/whatsapp-journeys", icon: MessageCircle },
+      { title: "Investor Portfolio", url: "/realestate/investor-portfolio", icon: DollarSign },
+      { title: "Developer API", url: "/realestate/developer-api", icon: Key },
     ],
   };
 
