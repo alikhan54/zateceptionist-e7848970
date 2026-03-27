@@ -161,7 +161,7 @@ export default function VideoProjects() {
 
   const deleteProject = useMutation({
     mutationFn: async (projectId: string) => {
-      const { error } = await supabase.from('video_projects').delete().eq('id', projectId);
+      const { error } = await supabase.from('video_projects').delete().eq('id', projectId).eq('tenant_id', tenantConfig!.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -180,7 +180,7 @@ export default function VideoProjects() {
     toast({ title: '🎬 AI is generating your video script and scenes...' });
     try {
       // Update status to generating
-      await supabase.from('video_projects').update({ status: 'generating' }).eq('id', project.id);
+      await supabase.from('video_projects').update({ status: 'generating' }).eq('id', project.id).eq('tenant_id', tenantConfig!.id);
       queryClient.invalidateQueries({ queryKey: ['video_projects'] });
 
       const result = await callWebhook(WEBHOOKS.VIDEO_GENERATE, {
@@ -217,16 +217,16 @@ export default function VideoProjects() {
         if (script) updateData.script_content = typeof script === 'string' ? script : JSON.stringify(script);
         if (scenes.length) updateData.scenes = scenes;
         
-        await supabase.from('video_projects').update(updateData).eq('id', project.id);
+        await supabase.from('video_projects').update(updateData).eq('id', project.id).eq('tenant_id', tenantConfig!.id);
         queryClient.invalidateQueries({ queryKey: ['video_projects'] });
         toast({ title: '✅ Script Generated!' });
       } else {
-        await supabase.from('video_projects').update({ status: 'draft' }).eq('id', project.id);
+        await supabase.from('video_projects').update({ status: 'draft' }).eq('id', project.id).eq('tenant_id', tenantConfig!.id);
         queryClient.invalidateQueries({ queryKey: ['video_projects'] });
         toast({ title: '⚠️ AI generation service unavailable', description: 'The AI engine could not process your request. Status reset to draft — you can retry.', variant: 'destructive' });
       }
     } catch (err: any) {
-      await supabase.from('video_projects').update({ status: 'draft' }).eq('id', project.id);
+      await supabase.from('video_projects').update({ status: 'draft' }).eq('id', project.id).eq('tenant_id', tenantConfig!.id);
       queryClient.invalidateQueries({ queryKey: ['video_projects'] });
       toast({ title: '⚠️ AI generation service unavailable', description: 'The AI engine could not process your request. You can retry.', variant: 'destructive' });
     } finally {

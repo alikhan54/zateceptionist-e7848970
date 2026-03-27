@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, callWebhook, WEBHOOKS } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -145,7 +145,7 @@ export default function VideoStudio() {
       return data || [];
     },
     enabled: !!tid,
-    refetchInterval: 5000,
+    refetchInterval: false,
   });
 
   // ============================================================
@@ -174,7 +174,7 @@ export default function VideoStudio() {
   const updateScenes = useMutation({
     mutationFn: async (p: { id: string; scenes: any[] }) => {
       const { error } = await supabase.from("video_projects" as any)
-        .update({ scenes: p.scenes, updated_at: new Date().toISOString() }).eq("id", p.id);
+        .update({ scenes: p.scenes, updated_at: new Date().toISOString() }).eq("id", p.id).eq("tenant_id", tid);
       if (error) throw error;
     },
     onSuccess: () => toast({ title: "Scenes saved!" }),
@@ -183,19 +183,13 @@ export default function VideoStudio() {
   const startRender = useMutation({
     mutationFn: async (project: any) => {
       const scenes = typeof project.scenes === "string" ? JSON.parse(project.scenes) : project.scenes || [];
-      const resp = await fetch("http://localhost:8125/render-full", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tenant_id: tid, project_id: project.id,
-          scenes: scenes.map((s: any, i: number) => ({
-            visual_description: s.visual_prompt || s.visual_description || s.description || `Scene ${i + 1}`,
-            voiceover_text: s.voiceover || s.voiceover_text || s.narration || "",
-            scene_number: i + 1,
-          })),
-          aspect_ratio: project.aspect_ratio || "9:16",
-        }),
-      });
-      return resp.json();
+      const result = await callWebhook(WEBHOOKS.VIDEO_ORCHESTRATE, {
+        trigger_type: "manual_render",
+        content: project.title || "Video render",
+        project_id: project.id,
+        priority: "standard",
+      }, tid!);
+      return result.data || result;
     },
     onSuccess: (data) => {
       if (data.job_id) {
@@ -269,17 +263,14 @@ export default function VideoStudio() {
       } catch {}
 
       setGenStep("AI is writing your video script...");
-      const resp = await fetch("https://webhooks.zatesystems.com/webhook/video/auto-create", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tenant_id: tid, trigger_type: "manual_prompt",
-          source_data: {
-            prompt: aiPrompt, platform: aiPlatform, format: platform.format,
-            duration_seconds: aiDuration, scene_count: sceneCount, brand_voice: brandVoice,
-          },
-        }),
-      });
-      const result = await resp.json();
+      const webhookResult = await callWebhook(WEBHOOKS.VIDEO_AUTO_CREATE, {
+        trigger_type: "manual_prompt",
+        source_data: {
+          prompt: aiPrompt, platform: aiPlatform, format: platform.format,
+          duration_seconds: aiDuration, scene_count: sceneCount, brand_voice: brandVoice,
+        },
+      }, tid!);
+      const result = webhookResult.data as any || webhookResult;
 
       if (result?.success && result?.project_id) {
         toast({ title: "AI Video Created!", description: `${result.scenes || sceneCount} scenes generated.` });
@@ -323,11 +314,10 @@ export default function VideoStudio() {
 
   const triggerAutoCreate = async (triggerType: string, sourceData: any) => {
     try {
-      const resp = await fetch("https://webhooks.zatesystems.com/webhook/video/auto-create", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tenant_id: tid, trigger_type: triggerType, source_data: sourceData }),
-      });
-      const result = await resp.json();
+      const webhookResult = await callWebhook(WEBHOOKS.VIDEO_AUTO_CREATE, {
+        trigger_type: triggerType, source_data: sourceData,
+      }, tid!);
+      const result = webhookResult.data as any || webhookResult;
       if (result?.success) {
         toast({ title: "Video Auto-Created!", description: `${result.scenes} scenes from ${triggerType.replace(/_/g, " ")}` });
         refreshProjects();
