@@ -383,26 +383,27 @@ export function NavigationSidebar() {
     items: [
       { title: "Marketing Hub", url: "/marketing", icon: Megaphone },
       { title: "Content AI", url: "/marketing/content", icon: PenTool, children: [
+        { title: "Content Studio", url: "/marketing/content", icon: PenTool },
         { title: "Blog Manager", url: "/marketing/blogs", icon: FileText },
         { title: "Landing Pages", url: "/marketing/landing", icon: Globe },
         { title: "Lead Magnets", url: "/marketing/lead-magnets", icon: Magnet },
+        { title: "Email AI", url: "/marketing/email", icon: Mail },
       ]},
       { title: "Social Commander", url: "/marketing/social", icon: Share2, children: [
         { title: "Social Listening", url: "/marketing/social-listening", icon: Ear },
       ]},
       { title: "Video AI", url: "/marketing/video-studio", icon: Film, children: [
+        { title: "Video Studio", url: "/marketing/video-studio", icon: Film },
         { title: "Video Projects", url: "/marketing/videos", icon: Video },
       ]},
       { title: "Campaign Central", url: "/marketing/campaigns", icon: Send, children: [
         { title: "Ads Manager", url: "/marketing/ads", icon: Target },
         { title: "A/B Testing", url: "/marketing/ab-testing", icon: GitBranch },
-        { title: "Sequences", url: "/marketing/sequences", icon: Layers },
+        { title: "Marketing Sequences", url: "/marketing/sequences", icon: Layers },
         { title: "Content Calendar", url: "/marketing/calendar", icon: CalendarDays },
       ]},
-      { title: "Email Builder", url: "/marketing/email", icon: Mail, children: [
-        { title: "Email Templates", url: "/marketing/templates", icon: Layers },
-      ]},
       { title: "Intelligence", url: "/marketing/analytics", icon: PieChart, children: [
+        { title: "Marketing Analytics", url: "/marketing/analytics", icon: PieChart },
         { title: "Competitor Intel", url: "/marketing/competitors", icon: Eye },
         { title: "SEO Dashboard", url: "/marketing/seo", icon: Search },
       ]},
