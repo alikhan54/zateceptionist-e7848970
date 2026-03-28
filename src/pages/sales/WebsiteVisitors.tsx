@@ -17,6 +17,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
+import { FeatureBanner } from "@/components/FeatureBanner";
 
 // --- Types ---
 interface WebsiteVisitor {
@@ -192,6 +193,8 @@ export default function WebsiteVisitors() {
           <h1 className="text-2xl font-bold text-foreground">Website Intent</h1>
           <p className="text-sm text-muted-foreground">Track visitor behavior and score buying intent in real-time</p>
         </div>
+
+      <FeatureBanner icon={Eye} title="Website Visitor Intelligence" description="Track which companies visit your website. Deploy the pixel to start." />
       </div>
 
       <Tabs defaultValue="live" className="space-y-6">

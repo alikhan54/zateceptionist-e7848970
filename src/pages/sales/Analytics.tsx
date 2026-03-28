@@ -168,6 +168,21 @@ export default function SalesAnalytics() {
     return { sent, failed, deliveryRate, avgScore, pipelineValue, totalDeals: deals.length };
   }, [emailActivity, leads, deals]);
 
+
+  // Email activity by date for chart
+  const emailByDate = useMemo(() => {
+    if (!emailActivity?.length) return [];
+    const byDate: Record<string, { sent: number; failed: number }> = {};
+    emailActivity.forEach((msg: any) => {
+      const d = new Date(msg.created_at);
+      const key = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      if (!byDate[key]) byDate[key] = { sent: 0, failed: 0 };
+      if (msg.status === 'sent') byDate[key].sent++;
+      else if (msg.status === 'failed' || msg.status === 'bounced') byDate[key].failed++;
+    });
+    return Object.entries(byDate).map(([date, c]) => ({ date, ...c })).slice(-14);
+  }, [emailActivity]);
+
   const isLoading = leadsLoading || dealsLoading;
 
   // =====================================================
@@ -371,7 +386,7 @@ export default function SalesAnalytics() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="revenue">Revenue</TabsTrigger>
+          <TabsTrigger value="revenue">Activity</TabsTrigger>
           <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
           <TabsTrigger value="sequences">Sequences</TabsTrigger>
           <TabsTrigger value="winloss">Win/Loss</TabsTrigger>
@@ -383,20 +398,22 @@ export default function SalesAnalytics() {
           <div className="grid lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle>Revenue by Month</CardTitle>
-                <CardDescription>Won deal value over time</CardDescription>
+                <CardTitle>Email Activity</CardTitle>
+                <CardDescription>Emails sent and failed per day</CardDescription>
               </CardHeader>
               <CardContent>
-                {revenueData.length === 0 ? (
-                  <EmptyState message="No won deals yet. Revenue will appear here as deals close." />
+                {emailByDate.length === 0 ? (
+                  <EmptyState message="No email activity yet. Emails appear as sequences run." />
                 ) : (
                   <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={revenueData}>
+                    <BarChart data={emailByDate}>
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
-                      <YAxis tickFormatter={(v) => formatCurrency(v)} />
-                      <Tooltip formatter={(v: number) => formatCurrency(v)} />
-                      <Bar dataKey="revenue" name="Revenue" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                      <XAxis dataKey="date" fontSize={12} />
+                      <YAxis fontSize={12} />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="sent" name="Sent" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="failed" name="Failed" fill="#ef4444" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
@@ -405,27 +422,21 @@ export default function SalesAnalytics() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Revenue Trend</CardTitle>
-                <CardDescription>Cumulative revenue over time</CardDescription>
+                <CardTitle>Pipeline Distribution</CardTitle>
+                <CardDescription>Leads by stage</CardDescription>
               </CardHeader>
               <CardContent>
-                {revenueData.length === 0 ? (
-                  <EmptyState message="Revenue trend will appear after deals are closed." />
+                {pipelineDistribution.length === 0 ? (
+                  <EmptyState message="No leads in pipeline yet." />
                 ) : (
                   <ResponsiveContainer width="100%" height={300}>
-                    <AreaChart data={revenueData}>
+                    <BarChart data={pipelineDistribution} layout="vertical">
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
-                      <YAxis tickFormatter={(v) => formatCurrency(v)} />
-                      <Tooltip formatter={(v: number) => formatCurrency(v)} />
-                      <Area
-                        type="monotone"
-                        dataKey="revenue"
-                        stroke="#3b82f6"
-                        fill="#3b82f6"
-                        fillOpacity={0.2}
-                      />
-                    </AreaChart>
+                      <XAxis type="number" fontSize={12} />
+                      <YAxis dataKey="name" type="category" fontSize={12} width={100} />
+                      <Tooltip />
+                      <Bar dataKey="value" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
+                    </BarChart>
                   </ResponsiveContainer>
                 )}
               </CardContent>

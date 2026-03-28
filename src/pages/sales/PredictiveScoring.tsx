@@ -14,6 +14,7 @@ import {
   ResponsiveContainer, ReferenceLine, Cell, ZAxis,
 } from "recharts";
 import { format } from "date-fns";
+import { FeatureBanner } from "@/components/FeatureBanner";
 
 const GRADE_COLORS: Record<string, string> = {
   A: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
@@ -122,6 +123,8 @@ export default function PredictiveScoring() {
         </h1>
         <p className="text-muted-foreground text-sm mt-1">ML-powered lead scoring with rule vs. model comparison</p>
       </div>
+
+      <FeatureBanner icon={Brain} title="AI Lead Scoring" description="Every lead scored 0-100 combining contact quality, engagement, and fit." />
 
       {/* Model Info */}
       {model && (

@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Crosshair, Plus, Search, Building2, Users, MapPin, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { FeatureBanner } from "@/components/FeatureBanner";
 
 interface TargetAccount {
   id: string;
@@ -130,6 +131,8 @@ export default function TargetAccounts() {
           <h1 className="text-3xl font-bold flex items-center gap-2"><Crosshair className="h-8 w-8" /> Target Accounts</h1>
           <p className="text-muted-foreground mt-1">Account-Based Marketing — target specific companies</p>
         </div>
+
+      <FeatureBanner icon={Crosshair} title="Account-Based Marketing" description="Research and target your dream clients with AI-powered account research." stat="3x" statLabel="higher conversion" />
         <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
           <DialogTrigger asChild>
             <Button><Plus className="h-4 w-4 mr-2" /> Add Target Account</Button>

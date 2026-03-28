@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Layers, ChevronDown, Mail, Phone, MessageSquare, Loader2 } from "lucide-react";
+import { FeatureBanner } from "@/components/FeatureBanner";
 
 interface SeqTemplate {
   id: string; name: string; description?: string; trigger_sentiment?: string;
@@ -40,6 +41,8 @@ export default function SequenceTemplates() {
     <div className="space-y-6">
       <div><h1 className="text-3xl font-bold flex items-center gap-2"><Layers className="h-8 w-8" /> Sequence Templates</h1>
       <p className="text-muted-foreground mt-1">Pre-built follow-up sequences triggered by reply sentiment</p></div>
+
+      <FeatureBanner icon={Layers} title="Smart Reply Templates" description="Pre-built follow-up sequences triggered by reply sentiment." />
 
       <div className="grid gap-4">
         {templates.map(t => {

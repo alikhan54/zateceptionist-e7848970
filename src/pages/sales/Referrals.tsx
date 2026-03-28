@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UserPlus, Send, Loader2, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
+import { FeatureBanner } from "@/components/FeatureBanner";
 
 interface Referral {
   id: string;
@@ -98,6 +99,8 @@ export default function Referrals() {
           <h1 className="text-3xl font-bold flex items-center gap-2"><UserPlus className="h-8 w-8" /> Referrals</h1>
           <p className="text-muted-foreground mt-1">Leverage customers for warm introductions</p>
         </div>
+
+      <FeatureBanner icon={UserPlus} title="Referral Program" description="Your best leads come from happy customers. Referral leads convert 5x faster." stat="5x" statLabel="faster conversion" />
         <Dialog open={showRequestDialog} onOpenChange={setShowRequestDialog}>
           <DialogTrigger asChild>
             <Button><Send className="h-4 w-4 mr-2" /> Request Referral</Button>

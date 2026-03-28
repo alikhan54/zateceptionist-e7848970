@@ -5,6 +5,7 @@ import { useTenant } from "@/contexts/TenantContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Clock, Loader2 } from "lucide-react";
+import { FeatureBanner } from "@/components/FeatureBanner";
 
 interface SendTimePref {
   id: string; recipient_email: string; best_day_of_week?: string; best_hour_utc?: number;
@@ -49,6 +50,8 @@ export default function SendTimeInsights() {
     <div className="space-y-6">
       <div><h1 className="text-3xl font-bold flex items-center gap-2"><Clock className="h-8 w-8" /> Send Time Insights</h1>
       <p className="text-muted-foreground mt-1">Optimal send times learned from engagement patterns</p></div>
+
+      <FeatureBanner icon={Clock} title="AI Send Time Optimization" description="Analyzes when recipients open emails and schedules sends at optimal times." />
 
       <div className="grid grid-cols-3 gap-4">
         <Card><CardContent className="pt-4 text-center"><div className="text-2xl font-bold">{prefs.length}</div><div className="text-xs text-muted-foreground">Recipients Analyzed</div></CardContent></Card>
