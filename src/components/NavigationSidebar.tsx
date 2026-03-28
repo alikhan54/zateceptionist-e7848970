@@ -406,6 +406,7 @@ export function NavigationSidebar() {
         { title: "Marketing Analytics", url: "/marketing/analytics", icon: PieChart },
         { title: "Competitor Intel", url: "/marketing/competitors", icon: Eye },
         { title: "SEO Dashboard", url: "/marketing/seo", icon: Search },
+        { title: "AEO Dashboard", url: "/marketing/aeo-dashboard", icon: Brain },
       ]},
       { title: "Brand Voice", url: "/marketing/brand-voice", icon: Palette, children: [
         { title: "Playbooks", url: "/marketing/playbooks", icon: BookOpen },
