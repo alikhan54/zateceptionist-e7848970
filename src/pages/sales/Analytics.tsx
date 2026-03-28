@@ -84,7 +84,7 @@ export default function SalesAnalytics() {
         .from('sales_leads')
         .select('id, lead_status, pipeline_stage, source, lead_temperature, temperature, sequence_status, created_at')
         .eq('tenant_id', tenantId);
-      if (error) throw error;
+      if (error) { console.warn("Query error:", error.message); return []; }
       return data || [];
     },
     enabled: !!tenantId,
@@ -99,7 +99,7 @@ export default function SalesAnalytics() {
         .from('deals')
         .select('id, value, stage, probability, won_reason, lost_reason, products, created_at, actual_close_date')
         .eq('tenant_id', tenantId);
-      if (error) throw error;
+      if (error) { console.warn("Query error:", error.message); return []; }
       return data || [];
     },
     enabled: !!tenantId,

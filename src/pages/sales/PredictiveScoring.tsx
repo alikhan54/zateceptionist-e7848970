@@ -33,7 +33,7 @@ export default function PredictiveScoring() {
   const [filterHiddenGem, setFilterHiddenGem] = useState(false);
   const [filterFalsePositive, setFilterFalsePositive] = useState(false);
 
-  const { data: predictions = [] } = useQuery({
+  const { data: predictions = [], isError: predictionsError, isLoading: predictionsLoading } = useQuery({
     queryKey: ["lead_score_predictions", tenantId],
     queryFn: async () => {
       if (!tenantId) return [];
@@ -111,6 +111,9 @@ export default function PredictiveScoring() {
     name: (leadsMap as any)[p.lead_id]?.name || "Lead",
   }));
 
+
+  if (predictionsLoading) return <div className="flex items-center justify-center h-96 text-muted-foreground">Loading scoring data...</div>;
+  if (predictionsError) return <div className="flex items-center justify-center h-96 text-muted-foreground">Unable to load scoring data. The predictions table may not be available yet.</div>;
   return (
     <div className="min-h-screen bg-background text-foreground p-6 space-y-6">
       <div>
