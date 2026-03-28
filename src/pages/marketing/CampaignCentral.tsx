@@ -188,6 +188,12 @@ export default function CampaignCentral() {
           metadata: { campaign_name: newCampaign.name, channel: newCampaign.type },
         }),
       }).catch(() => {});
+
+      // AEO: Auto-score campaign content for AI engine optimization
+      fetch("https://webhooks.zatesystems.com/webhook/aeo/optimize-content", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tenant_id: tenantConfig.id, content_type: "landing_page", title: newCampaign.name, content: (newCampaign.content || newCampaign.subject || "").substring(0, 3000) }),
+      }).catch(() => {});
     } catch (err: any) {
       toast({ title: 'Error', description: err?.message || 'Failed to create campaign', variant: 'destructive' });
     }

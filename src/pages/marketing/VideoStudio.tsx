@@ -195,6 +195,11 @@ export default function VideoStudio() {
       if ((data as any).job_id) {
         toast({ title: "Render Started!", description: "Check Queue tab for progress." });
         setTab("queue");
+        // AEO: Auto-score video content for AI engine optimization
+        fetch("https://webhooks.zatesystems.com/webhook/aeo/optimize-content", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tenant_id: tenantConfig?.id, content_type: "video", title: selectedProject?.title || "Video", content: selectedProject?.description || "" }),
+        }).catch(() => {});
       }
     },
   });

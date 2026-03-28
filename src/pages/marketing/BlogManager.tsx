@@ -145,6 +145,12 @@ export default function BlogManager() {
           }),
         }).catch(() => {});
 
+        // AEO: Auto-score blog for AI engine optimization
+        fetch("https://webhooks.zatesystems.com/webhook/aeo/optimize-content", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tenant_id: tenantConfig?.id, content_type: "blog", title: post.title, content: (post.content_html || "").substring(0, 3000) }),
+        }).catch(() => {});
+
         // Calendar sync on publish
         syncToCalendar({
           tenantId: tenantConfig?.id || '',

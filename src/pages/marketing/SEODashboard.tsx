@@ -446,6 +446,19 @@ export default function SEODashboard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* AEO Integration */}
+      <Card className="mt-6 border-dashed border-purple-500/30">
+        <CardContent className="pt-4 flex items-center justify-between">
+          <div>
+            <h3 className="font-medium">AI Engine Optimization (AEO)</h3>
+            <p className="text-sm text-muted-foreground">See how ChatGPT, Gemini and Perplexity perceive your brand</p>
+          </div>
+          <a href="/marketing/aeo-dashboard">
+            <Button variant="outline">View AEO Dashboard</Button>
+          </a>
+        </CardContent>
+      </Card>
     </div>
   );
 }
