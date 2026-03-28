@@ -154,7 +154,7 @@ export function NavigationSidebar() {
     if (isActive(item.url)) return true;
     return item.children?.some((c) => isActive(c.url)) || false;
   };
-  const toggleGroup = (url: string) => setOpenGroups((prev) => ({ ...prev, [url]: !prev[url] }));
+  const toggleGroup = (url: string, currentlyOpen: boolean) => setOpenGroups((prev) => ({ ...prev, [url]: !currentlyOpen }));
 
   // Close sections when clicking outside
   useEffect(() => {
@@ -609,7 +609,7 @@ export function NavigationSidebar() {
         <>
           <SidebarMenuItem>
             <SidebarMenuButton
-              onClick={() => { navigate(item.url); toggleGroup(item.url); }}
+              onClick={() => { navigate(item.url); toggleGroup(item.url, isOpen); }}
               className={cn(
                 "w-full justify-start gap-3 transition-all duration-200",
                 groupActive && "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
