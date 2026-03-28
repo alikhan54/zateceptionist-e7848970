@@ -286,3 +286,15 @@ export async function calculateProjectCost(
     project_id: projectId,
   }, tenantId);
 }
+
+// ── Export Engine v2 (Phase 1 — Material-Wise) ──────────────────
+
+export async function getMaterialSummary(
+  projectId: string,
+  tenantId: string,
+) {
+  return callWebhook(WEBHOOKS.ESTIMATION_EXPORT_V2, {
+    action: "material_summary",
+    project_id: projectId,
+  }, tenantId);
+}

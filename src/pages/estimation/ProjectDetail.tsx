@@ -17,7 +17,7 @@ import { useEstimationRFIs } from "@/hooks/useEstimationRFIs";
 import { useEstimationRevisions } from "@/hooks/useEstimationRevisions";
 import { useEstimationTeam } from "@/hooks/useEstimationTeam";
 import { useTenant } from "@/contexts/TenantContext";
-import { exportEstimationData, analyzeBidsetText, aiQAReview, suggestMaterials, generateQualification, processVisionPdf, checkVisionStatus } from "@/lib/api/estimationApi";
+import { exportEstimationData, analyzeBidsetText, aiQAReview, suggestMaterials, generateQualification, processVisionPdf, checkVisionStatus, getMaterialSummary } from "@/lib/api/estimationApi";
 import { supabase } from "@/integrations/supabase/client";
 import { exportQuantitiesXlsx, exportCostSheetXlsx, exportQualificationPdf, exportColorCodedPdf, exportCsv, type ExportData } from "@/lib/estimation/exportUtils";
 import { ArrowLeft, Building2, Calendar, Users, DollarSign, Plus, Ruler, FileText, HelpCircle, History, Activity, Truck, Download, Bot, Loader2, CheckCircle, XCircle, Copy, Sparkles, AlertTriangle, AlertCircle, Upload, Send, Zap, Package, RefreshCw } from "lucide-react";
@@ -870,6 +870,43 @@ export default function ProjectDetail() {
                         toast.success("Estimate sent to " + email);
                       } catch (e: any) { toast.error(e.message || "Send failed"); }
                     }}><Send className="mr-1 h-3 w-3" /> Send to Client</Button>
+                    <Button variant="outline" size="sm" className="border-green-600 text-green-400 hover:bg-green-900/20" onClick={async () => {
+                      if (!id || !tenantId) return;
+                      setExportLoading("material_summary");
+                      try {
+                        const resp = await getMaterialSummary(id, tenantId);
+                        const data = (resp as any)?.data || resp;
+                        if (!data?.success) throw new Error(data?.error || "Export failed");
+                        const XLSX = await import("xlsx");
+                        const wb = XLSX.utils.book_new();
+                        const rows: (string | number)[][] = [[data.header || "Material Summary"], [], ["Item Name", "Unit", "Qty", "Net Area", "Waste %", "Material $", "Labor $", "Total $", "Rooms"]];
+                        for (const [section, items] of Object.entries(data.sections || {})) {
+                          if ((items as any[]).length === 0) continue;
+                          rows.push([]);
+                          rows.push([section.toUpperCase().replace(/_/g, " ")]);
+                          for (const item of items as any[]) {
+                            rows.push([item.item_name, item.unit, item.qty, item.net_area, item.waste_addon + "%",
+                              item.material_cost, item.labor_cost, item.total_cost, item.room_count + " rooms"]);
+                          }
+                        }
+                        rows.push([], ["TOTAL", "", "", "", "", data.summary?.material_cost, data.summary?.labor_cost, data.summary?.total_cost]);
+                        rows.push([], ...((data.notes || []) as string[]).map((n: string) => [n]));
+                        const ws = XLSX.utils.aoa_to_sheet(rows);
+                        ws["!cols"] = [{wch:60},{wch:5},{wch:10},{wch:10},{wch:8},{wch:12},{wch:12},{wch:12},{wch:10}];
+                        XLSX.utils.book_append_sheet(wb, ws, "Material Summary");
+                        const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+                        const blob = new Blob([buf], { type: "application/octet-stream" });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a"); a.href = url;
+                        a.download = `${project?.project_number || "EST"}-Material-Summary.xlsx`; a.click();
+                        URL.revokeObjectURL(url);
+                        toast.success("Material Summary downloaded");
+                      } catch (e: any) { toast.error(e.message || "Export failed"); }
+                      finally { setExportLoading(null); }
+                    }}>
+                      {exportLoading === "material_summary" ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Package className="mr-1 h-3 w-3" />}
+                      Material Summary (.xlsx)
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
