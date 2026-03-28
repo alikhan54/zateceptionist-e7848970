@@ -175,6 +175,19 @@ export default function CampaignCentral() {
       setNewCampaign({ name: '', type: 'email', subject: '', content: '' });
       toast({ title: '✅ Campaign Created', description: `"${newCampaign.name}" saved as draft. You can send it when ready.` });
       logSystemEvent({ tenantId: tenantConfig.id, eventType: 'campaign_created', sourceModule: 'marketing', eventData: { campaign_name: newCampaign.name, channel: newCampaign.type } });
+
+      // Auto-create video ad from campaign — fire-and-forget
+      fetch("https://webhooks.zatesystems.com/webhook/video/orchestrate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          trigger_type: "campaign_created",
+          tenant_id: tenantConfig.id,
+          content: `${newCampaign.name}: ${(newCampaign.content || newCampaign.subject || '').substring(0, 500)}`,
+          priority: "standard",
+          metadata: { campaign_name: newCampaign.name, channel: newCampaign.type },
+        }),
+      }).catch(() => {});
     } catch (err: any) {
       toast({ title: 'Error', description: err?.message || 'Failed to create campaign', variant: 'destructive' });
     }

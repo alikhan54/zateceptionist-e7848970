@@ -132,6 +132,19 @@ export default function BlogManager() {
           }
         }).catch(() => console.log("Auto-repurpose failed — can retry manually"));
 
+        // Auto-create video from blog — fire-and-forget
+        fetch("https://webhooks.zatesystems.com/webhook/video/orchestrate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            trigger_type: "blog_published",
+            tenant_id: tenantConfig?.id,
+            content: `${post.title}: ${(post.excerpt || '').substring(0, 500)}`,
+            priority: "standard",
+            metadata: { blog_id: post.id, source: "blog_manager" },
+          }),
+        }).catch(() => {});
+
         // Calendar sync on publish
         syncToCalendar({
           tenantId: tenantConfig?.id || '',
