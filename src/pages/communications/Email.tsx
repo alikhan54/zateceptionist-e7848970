@@ -383,9 +383,9 @@ export default function EmailHub() {
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Date</p>
                     <p className="text-sm mt-1">
                       {selectedEmail.sent_at
-                        ? new Date(selectedEmail.sent_at).toLocaleString()
+                        ? formatSmartDate(selectedEmail.sent_at)
                         : selectedEmail.created_at
-                        ? new Date(selectedEmail.created_at).toLocaleString()
+                        ? formatSmartDate(selectedEmail.created_at)
                         : "—"}
                     </p>
                   </div>

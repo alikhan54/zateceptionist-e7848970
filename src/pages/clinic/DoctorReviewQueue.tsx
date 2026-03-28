@@ -1,3 +1,4 @@
+import { formatSmartDate } from "@/lib/utils";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -154,7 +155,7 @@ export default function DoctorReviewQueue() {
                           <p className="text-sm text-muted-foreground mt-1">{item.summary}</p>
                         )}
                         <p className="text-xs text-muted-foreground mt-1">
-                          Created: {new Date(item.created_at).toLocaleString()}
+                          Created: {formatSmartDate(item.created_at)}
                           {item.reviewer_name && ` · Reviewed by: ${item.reviewer_name}`}
                         </p>
                         {item.reviewer_notes && (

@@ -1,3 +1,4 @@
+import { formatDate } from "@/lib/utils";
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -187,7 +188,7 @@ export default function ConsultationNotes() {
                       <div>
                         <h3 className="font-semibold">{patient?.full_name || 'Unknown Patient'}</h3>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Calendar className="h-3 w-3" /> {new Date(c.consultation_date).toLocaleDateString()}
+                          <Calendar className="h-3 w-3" /> {formatDate(c.consultation_date, 'medium')}
                           {c.doctor_name && <><Stethoscope className="h-3 w-3 ml-2" /> Dr. {c.doctor_name}</>}
                         </div>
                       </div>
@@ -204,7 +205,7 @@ export default function ConsultationNotes() {
                     {c.chief_complaint && <div><span className="font-medium">Complaint:</span> {c.chief_complaint}</div>}
                     {c.diagnosis && <div><span className="font-medium">Diagnosis:</span> {c.diagnosis}</div>}
                     {c.treatment_plan && <div><span className="font-medium">Plan:</span> <span className="line-clamp-2">{c.treatment_plan}</span></div>}
-                    {c.follow_up_date && <div className="text-muted-foreground">Follow-up: {new Date(c.follow_up_date).toLocaleDateString()}</div>}
+                    {c.follow_up_date && <div className="text-muted-foreground">Follow-up: {formatDate(c.follow_up_date, 'medium')}</div>}
                   </div>
                 </CardContent>
               </Card>

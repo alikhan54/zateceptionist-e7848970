@@ -1,3 +1,4 @@
+import { formatSmartDate } from "@/lib/utils";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -192,7 +193,7 @@ export default function HealthReports() {
                         <p className="font-medium">{getPatientName(report.patient_id)}</p>
                         <p className="text-sm text-muted-foreground">
                           {REPORT_TYPES.find(t => t.value === report.report_type)?.label || report.report_type}
-                          {" · "}{new Date(report.created_at).toLocaleDateString()}
+                          {" · "}{formatSmartDate(report.created_at)}
                         </p>
                       </div>
                     </div>
@@ -260,7 +261,7 @@ export default function HealthReports() {
                       <div>
                         <p className="font-medium">{getPatientName(analysis.patient_id)}</p>
                         <p className="text-sm text-muted-foreground">
-                          {(analysis.report_ids || []).length} reports correlated · {new Date(analysis.created_at).toLocaleDateString()}
+                          {(analysis.report_ids || []).length} reports correlated · {formatSmartDate(analysis.created_at)}
                         </p>
                       </div>
                     </div>

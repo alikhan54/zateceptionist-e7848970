@@ -1,3 +1,4 @@
+import { formatDate } from "@/lib/utils";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -207,7 +208,7 @@ export default function ComplianceDashboard() {
                       {log.severity}
                     </Badge>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {new Date(log.created_at).toLocaleDateString()}
+                      {formatDate(log.created_at, 'medium')}
                     </p>
                   </div>
                 </CardContent>

@@ -1,3 +1,4 @@
+import { formatSmartDate, formatDate } from "@/lib/utils";
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -479,8 +480,8 @@ function ContactsTab({ contacts }: { contacts: ContactLog[] }) {
               </div>
             </div>
             <div className="text-right text-sm text-muted-foreground">
-              <p>{new Date(log.created_at).toLocaleDateString()}</p>
-              <p className="text-xs">{new Date(log.created_at).toLocaleTimeString()}</p>
+              <p>{formatDate(log.created_at, 'medium')}</p>
+              <p className="text-xs">{formatDate(log.created_at, 'time')}</p>
               {log.duration_seconds && <p className="text-xs">{log.duration_seconds}s</p>}
             </div>
           </CardContent>
@@ -649,7 +650,7 @@ function ComplianceTab({ logs }: { logs: ComplianceLog[] }) {
                 {log.severity}
               </Badge>
               <p className="text-xs text-muted-foreground mt-1">
-                {new Date(log.created_at).toLocaleDateString()}
+                {formatDate(log.created_at, 'medium')}
               </p>
               {log.resolved && (
                 <Badge variant="outline" className="text-green-600 text-xs mt-1">Resolved</Badge>

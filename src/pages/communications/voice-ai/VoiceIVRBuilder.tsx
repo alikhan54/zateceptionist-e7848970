@@ -1,3 +1,4 @@
+import { formatDate } from "@/lib/utils";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -498,7 +499,7 @@ export default function VoiceIVRBuilder() {
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          {(flow.nodes || []).length} nodes &middot; {flow.trigger_type || "inbound"} &middot; Created {new Date(flow.created_at).toLocaleDateString()}
+                          {(flow.nodes || []).length} nodes &middot; {flow.trigger_type || "inbound"} &middot; Created {formatDate(flow.created_at, 'medium')}
                         </p>
                         {flow.description && <p className="text-xs text-muted-foreground mt-0.5">{flow.description}</p>}
                       </div>
