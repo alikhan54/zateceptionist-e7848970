@@ -86,15 +86,43 @@ export default function Deliverability() {
     enabled: !!tenantId,
   });
 
+  // Fallback calculation from outbound_messages when DB rates are wrong
+  const { data: rawEmails = [] } = useQuery({
+    queryKey: ['raw-email-stats', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return [];
+      const { data } = await supabase
+        .from('outbound_messages')
+        .select('status, created_at')
+        .eq('tenant_id', tenantId)
+        .eq('channel', 'email');
+      return (data as any[]) || [];
+    },
+    enabled: !!tenantId,
+  });
+
+  const fallbackStats = useMemo(() => {
+    const sent = rawEmails.filter((m: any) => m.status === 'sent').length;
+    const failed = rawEmails.filter((m: any) => m.status === 'failed' || m.status === 'bounced').length;
+    const total = sent + failed;
+    return {
+      deliveryRate: total > 0 ? (sent / total) * 100 : 0,
+      bounceRate: total > 0 ? (failed / total) * 100 : 0,
+      totalSent: sent,
+    };
+  }, [rawEmails]);
+
+  const useFallback = (latest?.delivery_rate ?? 0) < 10 && fallbackStats.totalSent >= 10;
+
   const latest = metrics.length > 0 ? metrics[metrics.length - 1] : null;
   const prev = metrics.length > 1 ? metrics[metrics.length - 2] : null;
 
-  const deliveryRate = latest?.delivery_rate ?? 0;
-  const bounceRate = latest?.bounce_rate ?? 0;
+  const deliveryRate = useFallback ? fallbackStats.deliveryRate : (latest?.delivery_rate ?? 0);
+  const bounceRate = useFallback ? fallbackStats.bounceRate : (latest?.bounce_rate ?? 0);
   const openRate = latest?.open_rate ?? 0;
   const replyRate = latest?.reply_rate ?? 0;
   const spamScore = latest?.spam_score ?? 0;
-  const overall = getOverallHealth(deliveryRate, bounceRate, spamScore);
+  const overall = fallbackStats.totalSent < 10 ? 'good' : getOverallHealth(deliveryRate, bounceRate, spamScore);
   const HealthIcon = overallHealthConfig[overall]?.icon || ShieldCheck;
 
   const openTrend = prev ? openRate - (prev.open_rate ?? 0) : 0;

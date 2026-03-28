@@ -140,6 +140,34 @@ export default function SalesAnalytics() {
     enabled: !!tenantId,
   });
 
+
+  // Activity metrics from outbound_messages (REAL email data)
+  const { data: emailActivity = [] } = useQuery({
+    queryKey: ['email-activity', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return [];
+      const { data } = await supabase
+        .from('outbound_messages')
+        .select('status, created_at')
+        .eq('tenant_id', tenantId)
+        .eq('channel', 'email');
+      return (data as any[]) || [];
+    },
+    enabled: !!tenantId,
+  });
+
+  const activityKpis = useMemo(() => {
+    const sent = emailActivity.filter((m: any) => m.status === 'sent').length;
+    const failed = emailActivity.filter((m: any) => m.status === 'failed' || m.status === 'bounced').length;
+    const total = sent + failed;
+    const deliveryRate = total > 0 ? Math.round((sent / total) * 100) : 0;
+    const avgScore = leads.length > 0
+      ? Math.round(leads.reduce((s: number, l: any) => s + (Number(l.lead_score) || 0), 0) / leads.length)
+      : 0;
+    const pipelineValue = deals.reduce((s: number, d: any) => s + (Number(d.value) || 0), 0);
+    return { sent, failed, deliveryRate, avgScore, pipelineValue, totalDeals: deals.length };
+  }, [emailActivity, leads, deals]);
+
   const isLoading = leadsLoading || dealsLoading;
 
   // =====================================================
@@ -320,8 +348,8 @@ export default function SalesAnalytics() {
       {/* KPI Summary */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {[
-          { title: 'Total Revenue', value: formatCurrency(kpis.totalRevenue), icon: DollarSign, hasData: kpis.totalRevenue > 0 },
-          { title: 'Deals Won', value: String(kpis.dealsWon), icon: Trophy, hasData: kpis.dealsWon > 0 },
+          { title: kpis.dealsWon > 0 ? 'Total Revenue' : 'Active Leads', value: kpis.dealsWon > 0 ? formatCurrency(kpis.totalRevenue) : String(leads.length), icon: kpis.dealsWon > 0 ? DollarSign : Target, hasData: kpis.dealsWon > 0 ? kpis.totalRevenue > 0 : leads.length > 0 },
+          { title: kpis.dealsWon > 0 ? 'Deals Won' : 'Emails Sent', value: kpis.dealsWon > 0 ? String(kpis.dealsWon) : String(activityKpis.sent), icon: kpis.dealsWon > 0 ? Trophy : Inbox, hasData: kpis.dealsWon > 0 || activityKpis.sent > 0 },
           { title: 'Win Rate', value: kpis.winRate > 0 ? `${kpis.winRate}%` : '—', icon: Target, hasData: kpis.winRate > 0 },
           { title: 'Avg Deal Size', value: kpis.avgDealSize > 0 ? formatCurrency(kpis.avgDealSize) : '—', icon: Briefcase, hasData: kpis.avgDealSize > 0 },
           { title: 'Sales Cycle', value: kpis.avgCycleDays > 0 ? `${kpis.avgCycleDays} days` : '—', icon: Clock, hasData: kpis.avgCycleDays > 0 },
