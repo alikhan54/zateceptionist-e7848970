@@ -237,6 +237,13 @@ export default function CompetitorAnalysis() {
         queryClient.invalidateQueries({ queryKey: ['competitor_content'] });
         queryClient.invalidateQueries({ queryKey: ['competitor_events'] });
         toast({ title: '✅ Analysis Complete!' });
+        // Auto-create counter video — fire-and-forget
+        callWebhook(WEBHOOKS.VIDEO_ORCHESTRATE, {
+          trigger_type: 'competitor_ad_detected',
+          content: `Competitor: ${comp.competitor_name} — counter-ad response`,
+          priority: 'high',
+          metadata: { competitor_id: comp.id, source: 'competitor_analysis' },
+        }, tenantConfig?.id || '').catch(() => {});
       } else {
         toast({ title: '⏳ Analysis Queued', description: 'Will be processed shortly by the AI engine.' });
       }
