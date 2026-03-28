@@ -604,7 +604,7 @@ export function NavigationSidebar() {
   const NavItemComponent = ({ item, indent = false }: { item: NavItem; indent?: boolean }) => {
     if (item.children && item.children.length > 0 && !collapsed) {
       const groupActive = isGroupActive(item);
-      const isOpen = openGroups[item.url] || groupActive;
+      const isOpen = openGroups[item.url] !== undefined ? openGroups[item.url] : groupActive;
       return (
         <>
           <SidebarMenuItem>
