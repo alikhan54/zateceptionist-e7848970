@@ -10,7 +10,7 @@ import {
   Megaphone, FileText, Users, PenSquare, Plus, ArrowRight,
   Sparkles, Zap, Clock, Target, TrendingUp, Brain, Calendar,
   Send, Share2, BarChart3, CheckCircle2, Activity,
-  AlertTriangle, XCircle, Shield,
+  AlertTriangle, XCircle, Shield, Film, Eye, Play,
 } from 'lucide-react';
 import { useTenant } from '@/contexts/TenantContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -325,6 +325,22 @@ export default function MarketingHub() {
     enabled: !!tenantConfig?.id,
   });
 
+  const { data: aiVideos = [] } = useQuery({
+    queryKey: ['hub-ai-videos', tenantConfig?.id],
+    queryFn: async () => {
+      if (!tenantConfig?.id) return [];
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const { data } = await supabase.from("video_projects" as any)
+        .select("id, title, trigger_type, render_status, video_url, created_at")
+        .eq("tenant_id", tenantConfig.id)
+        .gte("created_at", sevenDaysAgo)
+        .order("created_at", { ascending: false })
+        .limit(5);
+      return data || [];
+    },
+    enabled: !!tenantConfig?.id,
+  });
+
   const isLoading = l1 || l2 || l3 || l4 || l5;
 
   const metrics = [
@@ -466,6 +482,46 @@ export default function MarketingHub() {
           </Card>
         </div>
       )}
+
+      {/* ═══ AI VIDEO ACTIVITY ═══ */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Film className="h-5 w-5 text-pink-500" /> AI Created For You
+            <span className="text-xs font-normal text-muted-foreground ml-auto">Last 7 days</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {aiVideos.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">
+              AI will automatically create videos as you publish blogs, detect competitors, and run campaigns.
+            </p>
+          ) : aiVideos.map((v: any) => {
+            const triggerIcons: Record<string, string> = {
+              blog_published: "📝", competitor_ad_detected: "⚡", campaign_created: "🎯",
+              engagement_drop: "📊", sales_proposal: "💼", manual_prompt: "✨",
+              engagement_followup: "🔄", manual: "🎬",
+            };
+            return (
+              <div key={v.id} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/50">
+                <span className="text-lg">{triggerIcons[v.trigger_type] || "🎬"}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{v.title || "Untitled"}</p>
+                  <p className="text-[11px] text-muted-foreground">{v.trigger_type?.replace(/_/g, " ")} · {formatDistanceToNow(new Date(v.created_at), { addSuffix: true })}</p>
+                </div>
+                <Badge variant={v.render_status === "complete" ? "default" : "secondary"} className="text-[10px]">
+                  {v.render_status || "pending"}
+                </Badge>
+                {v.render_status === "complete" && v.video_url && (
+                  <a href={v.video_url} target="_blank" rel="noopener noreferrer">
+                    <Button size="sm" variant="ghost" className="h-7 px-2"><Play className="h-3 w-3" /></Button>
+                  </a>
+                )}
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
 
       {/* ═══ INTELLIGENCE ALERTS ═══ */}
       {intelligence.length > 0 && (

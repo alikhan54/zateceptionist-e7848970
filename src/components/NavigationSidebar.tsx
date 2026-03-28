@@ -402,7 +402,6 @@ export function NavigationSidebar() {
       ]},
       { title: "Video AI", url: "/marketing/video-studio", icon: Film, children: [
         { title: "Video Studio", url: "/marketing/video-studio", icon: Film },
-        { title: "Video Projects", url: "/marketing/videos", icon: Video },
       ]},
       { title: "Campaign Central", url: "/marketing/campaigns", icon: Send, children: [
         { title: "Ads Manager", url: "/marketing/ads", icon: Target },
@@ -430,20 +429,29 @@ export function NavigationSidebar() {
     featureKey: "hr_module",
     items: [
       { title: "HR Dashboard", url: "/hr/dashboard", icon: Building2 },
-      { title: translate("staffs"), url: "/hr/employees", icon: Users },
-      { title: "Attendance", url: "/hr/attendance", icon: Clock },
-      { title: "Shifts", url: "/hr/shifts", icon: CalendarClock },
-      { title: "Leave Management", url: "/hr/leave", icon: CalendarDays },
-      { title: "Payroll", url: "/hr/payroll", icon: DollarSign },
-      { title: "Departments", url: "/hr/departments", icon: Network },
-      { title: "Performance", url: "/hr/performance", icon: Award },
-      { title: "Training", url: "/hr/training", icon: GraduationCap },
-      { title: "Recruitment", url: "/hr/recruitment", icon: UserPlus },
-      { title: "Compliance", url: "/hr/compliance", icon: Shield },
-      { title: "Documents", url: "/hr/documents", icon: FileText },
-      { title: "Reports", url: "/hr/reports", icon: BarChart3 },
-      { title: "HR AI Assistant", url: "/hr/ai-assistant", icon: Bot },
-      { title: "AI Workforce", url: "/hr/ai-agents", icon: Bot },
+      { title: "People", url: "/hr/employees", icon: Users, children: [
+        { title: translate("staffs"), url: "/hr/employees", icon: Users },
+        { title: "Departments", url: "/hr/departments", icon: Network },
+        { title: "Attendance", url: "/hr/attendance", icon: Clock },
+        { title: "Shifts", url: "/hr/shifts", icon: CalendarClock },
+      ]},
+      { title: "Talent", url: "/hr/recruitment", icon: UserPlus, children: [
+        { title: "Recruitment", url: "/hr/recruitment", icon: UserPlus },
+        { title: "Performance", url: "/hr/performance", icon: Award },
+        { title: "Training", url: "/hr/training", icon: GraduationCap },
+      ]},
+      { title: "Operations", url: "/hr/leave", icon: ClipboardList, children: [
+        { title: "Leave", url: "/hr/leave", icon: CalendarDays },
+        { title: "Payroll", url: "/hr/payroll", icon: DollarSign },
+        { title: "Documents", url: "/hr/documents", icon: FileText },
+        { title: "Compliance", url: "/hr/compliance", icon: Shield },
+        { title: "Reports", url: "/hr/reports", icon: BarChart3 },
+      ]},
+      { title: "AI Workforce", url: "/hr/ai-agents", icon: Bot, children: [
+        { title: "AI Assistant", url: "/hr/ai-assistant", icon: Sparkles },
+        { title: "AI Agents", url: "/hr/ai-agents", icon: Bot },
+        { title: "AI Analytics", url: "/hr/ai-agents/analytics", icon: BarChart3 },
+      ]},
     ],
   };
 

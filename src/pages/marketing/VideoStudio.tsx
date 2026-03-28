@@ -16,7 +16,7 @@ import {
   Film, Play, Plus, Download, Clock, Layers, Smartphone, Monitor,
   Square, Image as ImageIcon, RefreshCw, Loader2, Sparkles, BarChart3,
   Zap, Instagram, Youtube, Share2, Music, Trash2, Wand2, Mic, ArrowLeft,
-  FileText, Shield, Send, Bot,
+  FileText, Shield, Send, Bot, Eye, Heart, CheckCircle, Users, Target,
 } from "lucide-react";
 
 // ============================================================
@@ -140,13 +140,50 @@ export default function VideoStudio() {
     queryKey: ["video-render-queue", tid],
     queryFn: async () => {
       if (!tid) return [];
-      const { data } = await supabase.from("video_render_queue" as any).select("*")
+      const { data } = await supabase.from("video_render_queue" as any)
+        .select("*, video_projects!video_render_queue_project_id_fkey(title, video_url, thumbnail_url)")
         .eq("tenant_id", tid).order("created_at", { ascending: false }).limit(20);
-      return data || [];
+      // Flatten the joined video_projects data for easier access
+      return (data || []).map((row: any) => ({
+        ...row,
+        project_title: row.video_projects?.title || null,
+        result_url: row.output_url || row.video_projects?.video_url || null,
+      }));
     },
     enabled: !!tid,
     refetchInterval: 5000,
   });
+
+  // AIDA Viewer Intelligence queries
+  const { data: aidaAudiences = [] } = useQuery({
+    queryKey: ["aida-audiences", tid],
+    queryFn: async () => {
+      if (!tid) return [];
+      const { data } = await supabase.from("video_retargeting_audiences" as any)
+        .select("*").eq("tenant_id", tid).order("aida_stage");
+      return data || [];
+    },
+    enabled: !!tid,
+  });
+
+  const { data: aidaViews = [] } = useQuery({
+    queryKey: ["aida-views", tid],
+    queryFn: async () => {
+      if (!tid) return [];
+      const { data } = await supabase.from("video_view_tracking" as any)
+        .select("*").eq("tenant_id", tid)
+        .order("last_viewed_at", { ascending: false }).limit(100);
+      return data || [];
+    },
+    enabled: !!tid,
+  });
+
+  const AIDA_STAGES = {
+    attention: { icon: Eye, color: "text-blue-600", bg: "bg-blue-50 border-blue-200", label: "Attention", desc: "0-25% watched" },
+    interest: { icon: Zap, color: "text-amber-600", bg: "bg-amber-50 border-amber-200", label: "Interest", desc: "25-50% watched" },
+    desire: { icon: Heart, color: "text-red-600", bg: "bg-red-50 border-red-200", label: "Desire", desc: "50-75% watched" },
+    action: { icon: CheckCircle, color: "text-green-600", bg: "bg-green-50 border-green-200", label: "Action", desc: "75%+ watched" },
+  };
 
   // ============================================================
   // MUTATIONS
@@ -444,10 +481,11 @@ export default function VideoStudio() {
 
       {/* TABS */}
       <Tabs value={tab} onValueChange={(v) => { setTab(v); if (v !== "projects") setSelectedProject(null); }}>
-        <TabsList className="grid grid-cols-4 w-full max-w-md">
+        <TabsList className="grid grid-cols-5 w-full max-w-xl">
           <TabsTrigger value="templates"><Layers className="h-3.5 w-3.5 mr-1" /> Templates</TabsTrigger>
-          <TabsTrigger value="projects"><Film className="h-3.5 w-3.5 mr-1" /> Projects</TabsTrigger>
+          <TabsTrigger value="projects"><Film className="h-3.5 w-3.5 mr-1" /> My Videos</TabsTrigger>
           <TabsTrigger value="queue"><RefreshCw className="h-3.5 w-3.5 mr-1" /> Queue</TabsTrigger>
+          <TabsTrigger value="viewers"><Eye className="h-3.5 w-3.5 mr-1" /> Viewers</TabsTrigger>
           <TabsTrigger value="analytics"><BarChart3 className="h-3.5 w-3.5 mr-1" /> Stats</TabsTrigger>
         </TabsList>
 
@@ -672,17 +710,17 @@ export default function VideoStudio() {
               <div key={job.id} className="rounded-lg border p-4">
                 <div className="flex items-center justify-between mb-2">
                   <div>
-                    <h4 className="font-medium text-sm">{job.title || `Render ${job.id?.slice(0,8)}`}</h4>
+                    <h4 className="font-medium text-sm">{job.project_title || job.title || `Render ${job.id?.slice(0,8)}`}</h4>
                     <p className="text-[11px] text-muted-foreground">{job.format} &middot; {job.tier||"standard"}</p>
                   </div>
                   <Badge className={st.color}>{st.label}</Badge>
                 </div>
-                {job.status !== "complete" && job.status !== "failed" && (
+                {job.status !== "complete" && job.status !== "completed" && job.status !== "failed" && (
                   <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
                     <div className="h-full bg-gradient-to-r from-purple-600 to-pink-600 transition-all duration-500" style={{ width: `${progress}%` }} />
                   </div>
                 )}
-                {job.status === "complete" && job.result_url && (
+                {(job.status === "complete" || job.status === "completed") && job.result_url && (
                   <div className="mt-2 flex gap-2">
                     <Button size="sm" className="text-xs" asChild><a href={job.result_url} target="_blank" rel="noopener"><Play className="h-3 w-3 mr-1" /> Watch</a></Button>
                     <Button size="sm" variant="outline" className="text-xs" asChild><a href={job.result_url} download><Download className="h-3 w-3 mr-1" /> Download</a></Button>
@@ -692,6 +730,80 @@ export default function VideoStudio() {
               </div>
             );
           })}
+        </TabsContent>
+
+        {/* VIEWER INTELLIGENCE TAB */}
+        <TabsContent value="viewers" className="space-y-4 mt-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {(["attention", "interest", "desire", "action"] as const).map((stage) => {
+              const config = AIDA_STAGES[stage];
+              const audience = aidaAudiences.find((a: any) => a.aida_stage === stage);
+              const Icon = config.icon;
+              return (
+                <Card key={stage} className={`border-2 ${config.bg}`}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Icon className={`h-5 w-5 ${config.color}`} />
+                      <h3 className={`font-bold ${config.color}`}>{config.label}</h3>
+                    </div>
+                    <p className="text-3xl font-bold">{audience?.member_count || 0}</p>
+                    <p className="text-xs text-muted-foreground">{config.desc}</p>
+                    {audience?.retargeting_action && (
+                      <p className="text-xs mt-2 italic text-muted-foreground">{audience.retargeting_action}</p>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+          {aidaViews.length > 0 ? (
+            <Card>
+              <CardContent className="p-4">
+                <h3 className="font-semibold mb-3 flex items-center gap-2">
+                  <Users className="h-4 w-4" /> Viewer Engagement ({aidaViews.length})
+                </h3>
+                <div className="overflow-auto max-h-[400px]">
+                  <table className="w-full text-sm">
+                    <thead className="text-xs text-muted-foreground border-b sticky top-0 bg-background">
+                      <tr>
+                        <th className="text-left p-2">Viewer</th>
+                        <th className="text-left p-2">Platform</th>
+                        <th className="text-right p-2">Watch %</th>
+                        <th className="text-center p-2">CTA</th>
+                        <th className="text-center p-2">Stage</th>
+                        <th className="text-right p-2">Views</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {aidaViews.map((view: any) => {
+                        const sc = AIDA_STAGES[view.aida_stage as keyof typeof AIDA_STAGES] || AIDA_STAGES.attention;
+                        return (
+                          <tr key={view.id} className="border-b hover:bg-muted/50">
+                            <td className="p-2 font-medium">{view.viewer_email || view.viewer_id || "Anonymous"}</td>
+                            <td className="p-2 capitalize">{view.platform}</td>
+                            <td className="p-2 text-right font-mono">{Number(view.watch_percentage || 0).toFixed(0)}%</td>
+                            <td className="p-2 text-center">{view.cta_clicked ? <CheckCircle className="h-4 w-4 text-green-500 mx-auto" /> : "-"}</td>
+                            <td className="p-2 text-center"><Badge variant="outline" className={`text-xs ${sc.color}`}>{sc.label}</Badge></td>
+                            <td className="p-2 text-right">{view.total_views || 1}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                <Target className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                <h3 className="text-lg font-semibold">No Viewer Data Yet</h3>
+                <p className="text-muted-foreground mt-1 max-w-md">
+                  Video view tracking data will appear here as viewers watch your content.
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* ANALYTICS TAB */}
