@@ -17,7 +17,7 @@ import { useEstimationRFIs } from "@/hooks/useEstimationRFIs";
 import { useEstimationRevisions } from "@/hooks/useEstimationRevisions";
 import { useEstimationTeam } from "@/hooks/useEstimationTeam";
 import { useTenant } from "@/contexts/TenantContext";
-import { exportEstimationData, analyzeBidsetText, aiQAReview, suggestMaterials, generateQualification, processVisionPdf, checkVisionStatus, getMaterialSummary } from "@/lib/api/estimationApi";
+import { exportEstimationData, analyzeBidsetText, aiQAReview, suggestMaterials, generateQualification, processVisionPdf, checkVisionStatus, getMaterialSummary, recalculateWaste } from "@/lib/api/estimationApi";
 import { supabase } from "@/integrations/supabase/client";
 import { exportQuantitiesXlsx, exportCostSheetXlsx, exportQualificationPdf, exportColorCodedPdf, exportCsv, type ExportData } from "@/lib/estimation/exportUtils";
 import { ArrowLeft, Building2, Calendar, Users, DollarSign, Plus, Ruler, FileText, HelpCircle, History, Activity, Truck, Download, Bot, Loader2, CheckCircle, XCircle, Copy, Sparkles, AlertTriangle, AlertCircle, Upload, Send, Zap, Package, RefreshCw } from "lucide-react";
@@ -942,6 +942,14 @@ export default function ProjectDetail() {
                         window.location.reload();
                       } catch (e: any) { toast.error(e.message || "Cost calculation failed"); }
                     }}><RefreshCw className="mr-1 h-3 w-3" /> Recalculate Costs</Button>
+                    <Button variant="outline" size="sm" className="ml-2" onClick={async () => {
+                      try {
+                        toast.info("Recalculating waste with precision matrix...");
+                        await recalculateWaste(id!, tenantId);
+                        toast.success("Waste factors updated with size/pattern precision");
+                        window.location.reload();
+                      } catch (e: any) { toast.error(e.message || "Waste recalc failed"); }
+                    }}><Ruler className="mr-1 h-3 w-3" /> Precision Waste</Button>
                   </div>
                 </CardContent>
               </Card>
