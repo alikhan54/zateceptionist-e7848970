@@ -48,6 +48,7 @@ export const WEBHOOKS = {
   VIDEO_GENERATE: "marketing/video-generate",
   VIDEO_AUTO_CREATE: "video/auto-create",
   VIDEO_ORCHESTRATE: "video/orchestrate",
+  VIDEO_TRACK_VIEW: "video/track-view",
 
   // Marketing AI Tools
   SEQUENCE_ENROLL: "ai-tool/enroll-sequence",

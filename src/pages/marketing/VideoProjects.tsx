@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase, callWebhook, WEBHOOKS } from '@/integrations/supabase/client';
@@ -52,6 +52,19 @@ export default function VideoProjects() {
   const [pageTab, setPageTab] = useState('projects');
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
   const [repurposeProject, setRepurposeProject] = useState<any>(null);
+
+  // Track video view when detail dialog opens (AIDA retargeting)
+  useEffect(() => {
+    if (detailProject?.id && tenantConfig?.id) {
+      callWebhook(WEBHOOKS.VIDEO_TRACK_VIEW, {
+        video_project_id: detailProject.id,
+        tenant_id: tenantConfig.id,
+        watch_percentage: 0.25,
+        platform: 'dashboard',
+        viewer_identifier: 'dashboard_user',
+      }, tenantConfig.id).catch(() => {});
+    }
+  }, [detailProject?.id]);
 
   const { data: aidaAudiences = [], refetch: refetchAida } = useQuery({
     queryKey: ['aida_audiences', tenantConfig?.id],

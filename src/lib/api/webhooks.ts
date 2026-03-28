@@ -34,6 +34,7 @@ export const WEBHOOKS = {
   VIDEO_ORCHESTRATE: "/video/orchestrate",
   VIDEO_AUTO_CREATE: "/video/auto-create",
   AI_VIDEO_GENERATE: "/ai-video/generate",
+  VIDEO_TRACK_VIEW: "/video/track-view",
   CREATE_AD_CAMPAIGN: "/marketing/create-ad-campaign",
   GENERATE_AD_CREATIVE: "/marketing/generate-ad-creative",
   TRACK_CONVERSION: "/marketing/track-conversion",
