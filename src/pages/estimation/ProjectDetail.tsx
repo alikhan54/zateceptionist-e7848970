@@ -17,7 +17,7 @@ import { useEstimationRFIs } from "@/hooks/useEstimationRFIs";
 import { useEstimationRevisions } from "@/hooks/useEstimationRevisions";
 import { useEstimationTeam } from "@/hooks/useEstimationTeam";
 import { useTenant } from "@/contexts/TenantContext";
-import { exportEstimationData, analyzeBidsetText, aiQAReview, suggestMaterials, generateQualification, processVisionPdf, checkVisionStatus, getMaterialSummary, recalculateWaste } from "@/lib/api/estimationApi";
+import { exportEstimationData, analyzeBidsetText, aiQAReview, suggestMaterials, generateQualification, processVisionPdf, checkVisionStatus, getMaterialSummary, recalculateWaste, calculateTransitions } from "@/lib/api/estimationApi";
 import { supabase } from "@/integrations/supabase/client";
 import { exportQuantitiesXlsx, exportCostSheetXlsx, exportQualificationPdf, exportColorCodedPdf, exportCsv, type ExportData } from "@/lib/estimation/exportUtils";
 import { ArrowLeft, Building2, Calendar, Users, DollarSign, Plus, Ruler, FileText, HelpCircle, History, Activity, Truck, Download, Bot, Loader2, CheckCircle, XCircle, Copy, Sparkles, AlertTriangle, AlertCircle, Upload, Send, Zap, Package, RefreshCw } from "lucide-react";
@@ -950,6 +950,15 @@ export default function ProjectDetail() {
                         window.location.reload();
                       } catch (e: any) { toast.error(e.message || "Waste recalc failed"); }
                     }}><Ruler className="mr-1 h-3 w-3" /> Precision Waste</Button>
+                    <Button variant="outline" size="sm" className="ml-2" onClick={async () => {
+                      try {
+                        toast.info("Calculating transitions...");
+                        const resp = await calculateTransitions(id!, tenantId);
+                        const data = (resp as any)?.data || resp;
+                        toast.success(`Found ${data?.transitions_found || 0} transitions (${data?.total_lf || 0} LF). ${data?.rfis_created || 0} RFIs created.`);
+                        window.location.reload();
+                      } catch (e: any) { toast.error(e.message || "Transition calc failed"); }
+                    }}><Zap className="mr-1 h-3 w-3" /> Transitions</Button>
                   </div>
                 </CardContent>
               </Card>

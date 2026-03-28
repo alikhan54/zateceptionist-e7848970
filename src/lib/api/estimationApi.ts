@@ -289,6 +289,15 @@ export async function calculateProjectCost(
 
 // ── Export Engine v2 (Phase 1 — Material-Wise) ──────────────────
 
+export async function calculateTransitions(
+  projectId: string,
+  tenantId: string,
+) {
+  return callWebhook(WEBHOOKS.ESTIMATION_TRANSITIONS, {
+    project_id: projectId,
+  }, tenantId);
+}
+
 export async function recalculateWaste(
   projectId: string,
   tenantId: string,
