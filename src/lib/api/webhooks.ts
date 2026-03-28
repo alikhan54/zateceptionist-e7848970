@@ -134,6 +134,7 @@ export const WEBHOOKS = {
   ESTIMATION_EXPORT_V2: "/estimation-export-v2",
   ESTIMATION_WASTE_RECALC: "/estimation-recalculate-waste",
   ESTIMATION_TRANSITIONS: "/estimation-calculate-transitions",
+  ESTIMATION_DETAILS: "/estimation-parse-details",
 
   // Bulk Voice Calls (Phase 14)
   BULK_CALL_CREATE: "/bulk-call/create-campaign",

@@ -289,6 +289,17 @@ export async function calculateProjectCost(
 
 // ── Export Engine v2 (Phase 1 — Material-Wise) ──────────────────
 
+export async function parseRoomDetails(
+  projectId: string,
+  tenantId: string,
+  mode: string = "heuristic",
+) {
+  return callWebhook(WEBHOOKS.ESTIMATION_DETAILS, {
+    project_id: projectId,
+    mode,
+  }, tenantId);
+}
+
 export async function calculateTransitions(
   projectId: string,
   tenantId: string,
