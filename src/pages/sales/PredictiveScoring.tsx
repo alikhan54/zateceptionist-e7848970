@@ -42,7 +42,7 @@ export default function PredictiveScoring() {
         .select("*")
         .eq("tenant_id", tenantId)
         .order("combined_score", { ascending: false });
-      if (error) throw error;
+      if (error) { console.warn("Predictions query failed:", error.message); return []; }
       return (data as any[]) || [];
     },
     enabled: !!tenantId,
