@@ -105,6 +105,7 @@ export const WEBHOOKS = {
   OMEGA_CHAT: "/omega-chat",
   OMEGA_HEALTH: "/omega-health",
   OMEGA_AUTONOMOUS_TRIGGER: "/omega-autonomous-trigger",
+  OMEGA_TTS: "/omega-tts",
 
   // Deep scrape — cascading website + social + document analysis
   // FIXED: Was "/onboarding/deep-scrape" (404) — n8n OB.1 node uses "analyze-company"

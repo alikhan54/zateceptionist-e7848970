@@ -204,6 +204,7 @@ const Intelligence = lazy(() => import("./pages/Intelligence"));
 
 // OMEGA Command Center
 const OmegaCommandCenter = lazy(() => import("./pages/OmegaCommandCenter"));
+const OmegaAlerts = lazy(() => import("./pages/OmegaAlerts"));
 
 // Public Pages
 const PublicBlog = lazy(() => import("./pages/public/PublicBlog"));
@@ -1240,6 +1241,14 @@ const App = () => (
                     element={
                       <LazyPage>
                         <OmegaCommandCenter />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/omega/alerts"
+                    element={
+                      <LazyPage>
+                        <OmegaAlerts />
                       </LazyPage>
                     }
                   />
