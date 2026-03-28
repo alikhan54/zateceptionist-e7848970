@@ -106,6 +106,12 @@ const KitchenDisplay = lazy(() => import("./pages/operations/KitchenDisplay"));
 const MenuEditor = lazy(() => import("./pages/operations/MenuEditor"));
 const Reservations = lazy(() => import("./pages/operations/Reservations"));
 const AiIntelligence = lazy(() => import("./pages/operations/AiIntelligence"));
+const OpsCommandCenter = lazy(() => import("./pages/operations/OpsCommandCenter"));
+const PurchaseOrders = lazy(() => import("./pages/operations/PurchaseOrders"));
+const Shipments = lazy(() => import("./pages/operations/Shipments"));
+const Production = lazy(() => import("./pages/operations/Production"));
+const Budgets = lazy(() => import("./pages/operations/Budgets"));
+const AgentNetwork = lazy(() => import("./pages/operations/AgentNetwork"));
 
 // Collections Module
 const CollectionsDashboard = lazy(() => import("./pages/collections/CollectionsDashboard"));
@@ -1012,6 +1018,14 @@ const App = () => (
                       </LazyPage>
                     }
                   />
+
+                  {/* OPS Module — Phases 20-30 */}
+                  <Route path="/operations/command-center" element={<LazyPage><OpsCommandCenter /></LazyPage>} />
+                  <Route path="/operations/purchase-orders" element={<LazyPage><PurchaseOrders /></LazyPage>} />
+                  <Route path="/operations/shipments" element={<LazyPage><Shipments /></LazyPage>} />
+                  <Route path="/operations/production" element={<LazyPage><Production /></LazyPage>} />
+                  <Route path="/operations/budgets" element={<LazyPage><Budgets /></LazyPage>} />
+                  <Route path="/operations/agents" element={<LazyPage><AgentNetwork /></LazyPage>} />
 
                   {/* Collections Module */}
                   <Route path="/collections" element={<Navigate to="/collections/dashboard" replace />} />
