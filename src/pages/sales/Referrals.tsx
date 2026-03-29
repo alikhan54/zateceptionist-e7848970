@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UserPlus, Send, Loader2, ArrowRight } from "lucide-react";
+import { UserPlus, Send, Loader2, ArrowRight, DollarSign, TrendingUp, Award } from "lucide-react";
 import { toast } from "sonner";
 import { FeatureBanner } from "@/components/FeatureBanner";
 
@@ -134,6 +134,59 @@ export default function Referrals() {
         <Card><CardContent className="pt-4 text-center"><div className="text-2xl font-bold text-green-400">{statusCounts.converted || 0}</div><div className="text-xs text-muted-foreground">Converted</div></CardContent></Card>
         <Card><CardContent className="pt-4 text-center"><div className="text-2xl font-bold text-blue-400">{convRate}%</div><div className="text-xs text-muted-foreground">Conv. Rate</div></CardContent></Card>
       </div>
+
+      {/* Value Proposition */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="bg-gradient-to-br from-green-500/5 to-green-500/10 border-green-500/20">
+          <CardContent className="pt-6 text-center">
+            <DollarSign className="w-8 h-8 mx-auto mb-2 text-green-500" />
+            <p className="text-2xl font-bold">$0</p>
+            <p className="text-xs text-muted-foreground">Acquisition Cost</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-br from-blue-500/5 to-blue-500/10 border-blue-500/20">
+          <CardContent className="pt-6 text-center">
+            <TrendingUp className="w-8 h-8 mx-auto mb-2 text-blue-500" />
+            <p className="text-2xl font-bold">5x</p>
+            <p className="text-xs text-muted-foreground">Faster Close Rate</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-br from-purple-500/5 to-purple-500/10 border-purple-500/20">
+          <CardContent className="pt-6 text-center">
+            <Award className="w-8 h-8 mx-auto mb-2 text-purple-500" />
+            <p className="text-2xl font-bold">80%</p>
+            <p className="text-xs text-muted-foreground">Higher Lifetime Value</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* How It Works */}
+      <Card>
+        <CardContent className="pt-6">
+          <h3 className="text-sm font-semibold mb-4">How Referrals Work</h3>
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">1</div>
+              <span className="text-muted-foreground">Request from client</span>
+            </div>
+            <ArrowRight className="w-4 h-4 text-muted-foreground hidden md:block" />
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">2</div>
+              <span className="text-muted-foreground">Client introduces lead</span>
+            </div>
+            <ArrowRight className="w-4 h-4 text-muted-foreground hidden md:block" />
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">3</div>
+              <span className="text-muted-foreground">Lead enters pipeline (score +25)</span>
+            </div>
+            <ArrowRight className="w-4 h-4 text-muted-foreground hidden md:block" />
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">4</div>
+              <span className="text-muted-foreground">Track & reward referrer</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Referrals Table */}
       <Card>
