@@ -132,7 +132,7 @@ export default function Proposals() {
 
       // Try n8n webhook first
       try {
-        await fetch("https://webhooks.zatesystems.com/webhook/proposal-create", {
+        await fetch("https://webhooks.zatesystems.com/webhook/9c081f8c-6928-4473-bf97-d112c215b967", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -183,7 +183,7 @@ export default function Proposals() {
   const sendProposal = async (id: string) => {
     try {
       // Call n8n webhook to send
-      await fetch("https://webhooks.zatesystems.com/webhook/proposal-send", {
+      await fetch("https://webhooks.zatesystems.com/webhook/60ff10ba-4801-4f5e-9901-530b709b90bc", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tenant_id: tenantId, proposal_id: id }),
