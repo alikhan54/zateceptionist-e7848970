@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { GitBranch, Save, MessageSquare, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
+import { FeatureBanner } from '@/components/FeatureBanner';
 
 const SENTIMENT_COLORS: Record<string, string> = {
   positive: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
@@ -119,9 +120,18 @@ export default function ReplyRouting() {
         </div>
         <div>
           <h1 className="text-2xl font-bold">Reply Routing Rules</h1>
+
           <p className="text-sm text-gray-400">Configure how detected reply sentiments trigger automated actions</p>
         </div>
       </div>
+
+      <FeatureBanner
+          icon={GitBranch}
+          title="Intelligent Reply Routing"
+          description="AI classifies every reply by sentiment and triggers the right follow-up. Positive replies get meeting links. Questions get info packs. Unsubscribes handled instantly."
+          stat="8"
+          statLabel="sentiment types"
+        />
 
       {/* Rules Table */}
       <Card className="bg-[#111118] border-white/5">

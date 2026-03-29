@@ -357,6 +357,7 @@ export function NavigationSidebar() {
         { title: "Lead Pipeline", url: "/sales/pipeline", icon: Target },
         { title: "Deal Tracker", url: "/sales/deals", icon: Briefcase },
         { title: "Proposals", url: "/sales/proposals", icon: FileText },
+        { title: "Doc Activity", url: "/sales/doc-tracking", icon: FileCheck },
       ]},
       { title: "Outreach", url: "/sales/sequences", icon: Send, children: [
         { title: "Sequences", url: "/sales/sequences", icon: Workflow },
@@ -377,9 +378,7 @@ export function NavigationSidebar() {
         { title: "Trigger Events", url: "/sales/trigger-events", icon: Zap },
         { title: "Website Intent", url: "/sales/website-visitors", icon: Eye },
         { title: "Send Time", url: "/sales/send-time", icon: Clock },
-        { title: "Target Accounts", url: "/sales/target-accounts", icon: Crosshair },
         { title: "Referrals", url: "/sales/referrals", icon: UserPlus },
-        { title: "Doc Tracking", url: "/sales/doc-tracking", icon: FileCheck },
       ]},
     ],
   };
@@ -414,6 +413,7 @@ export function NavigationSidebar() {
         { title: "Competitor Intel", url: "/marketing/competitors", icon: Eye },
         { title: "SEO Dashboard", url: "/marketing/seo", icon: Search },
         { title: "AEO Dashboard", url: "/marketing/aeo-dashboard", icon: Brain },
+        { title: "Target Accounts", url: "/sales/target-accounts", icon: Crosshair },
       ]},
       { title: "Brand Voice", url: "/marketing/brand-voice", icon: Palette, children: [
         { title: "Playbooks", url: "/marketing/playbooks", icon: BookOpen },
