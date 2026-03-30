@@ -214,6 +214,9 @@ export default function Deliverability() {
             <CardTitle className="text-base">30-Day Volume Trend</CardTitle>
           </CardHeader>
           <CardContent>
+            {(metrics || []).length === 0 ? (
+              <div className="h-[280px] flex items-center justify-center text-sm text-muted-foreground">No email volume data yet. Metrics appear after emails are sent.</div>
+            ) : (
             <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={metrics}>
@@ -237,6 +240,7 @@ export default function Deliverability() {
                 </AreaChart>
               </ResponsiveContainer>
             </div>
+            )}
           </CardContent>
         </Card>
 

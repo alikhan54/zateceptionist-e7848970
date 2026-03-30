@@ -426,14 +426,14 @@ export default function SalesAnalytics() {
                 <CardDescription>Leads by stage</CardDescription>
               </CardHeader>
               <CardContent>
-                {pipelineDistribution.length === 0 ? (
+                {funnelData.length === 0 ? (
                   <EmptyState message="No leads in pipeline yet." />
                 ) : (
                   <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={pipelineDistribution} layout="vertical">
+                    <BarChart data={funnelData} layout="vertical">
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis type="number" fontSize={12} />
-                      <YAxis dataKey="name" type="category" fontSize={12} width={100} />
+                      <YAxis dataKey="stage" type="category" fontSize={12} width={100} />
                       <Tooltip />
                       <Bar dataKey="value" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
                     </BarChart>

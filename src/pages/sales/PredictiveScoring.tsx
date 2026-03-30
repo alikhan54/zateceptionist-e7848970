@@ -102,8 +102,8 @@ export default function PredictiveScoring() {
   const falsePositivesCount = (predictions || []).filter((p: any) => p.is_false_positive).length;
   const accuracy = model?.accuracy_percentage ?? 0;
 
-  const hiddenGems = (predictions || []).filter((p: any) => p.is_hidden_gem).slice(0, 5);
-  const falsePositives = (predictions || []).filter((p: any) => p.is_false_positive).slice(0, 5);
+  const hiddenGems = (predictions || []).filter((p: any) => p?.is_hidden_gem).slice(0, 5);
+  const falsePositives = (predictions || []).filter((p: any) => p?.is_false_positive).slice(0, 5);
 
   const scatterData = (predictions || []).map((p: any) => ({
     x: p.rule_based_score ?? 0,
@@ -235,7 +235,7 @@ export default function PredictiveScoring() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((p: any) => {
+                {(filtered || []).map((p: any) => {
                   const lead = (leadsMap as any)[p.lead_id];
                   const isGem = p.is_hidden_gem;
                   const isFP = p.is_false_positive;
@@ -291,35 +291,37 @@ export default function PredictiveScoring() {
         </CardContent>
       </Card>
 
-      {/* Scatter Chart */}
-      <Card className="bg-card border-border">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Rule vs ML Score Agreement</CardTitle>
-          <CardDescription className="text-xs">Dots above the diagonal = ML rates higher (potential hidden gems). Below = rules rate higher (potential false positives).</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={360}>
-            <ScatterChart margin={{ top: 10, right: 20, bottom: 20, left: 10 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis type="number" dataKey="x" domain={[0, 100]} name="Rule Score" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} label={{ value: "Rule-Based Score", position: "bottom", offset: 0, fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-              <YAxis type="number" dataKey="y" domain={[0, 100]} name="ML Score" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} label={{ value: "ML Score", angle: -90, position: "insideLeft", fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-              <ZAxis range={[40, 40]} />
-              <RechartsTooltip
-                cursor={{ strokeDasharray: "3 3" }}
-                contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
-                formatter={(value: any, name: string) => [value, name === "x" ? "Rule Score" : "ML Score"]}
-                labelFormatter={(_, payload) => payload?.[0]?.payload?.name || ""}
-              />
-              <ReferenceLine segment={[{ x: 0, y: 0 }, { x: 100, y: 100 }]} stroke="hsl(var(--muted-foreground))" strokeDasharray="5 5" opacity={0.5} />
-              <Scatter data={scatterData} shape="circle">
-                {scatterData.map((entry, i) => (
-                  <Cell key={i} fill={GRADE_DOT_COLORS[entry.grade] || GRADE_DOT_COLORS.D} fillOpacity={0.8} />
-                ))}
-              </Scatter>
-            </ScatterChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+      {/* Scatter Chart — only render when data exists (Recharts ReferenceLine crashes with empty data) */}
+      {scatterData.length > 0 && (
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Rule vs ML Score Agreement</CardTitle>
+            <CardDescription className="text-xs">Dots above the diagonal = ML rates higher (potential hidden gems). Below = rules rate higher (potential false positives).</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={360}>
+              <ScatterChart margin={{ top: 10, right: 20, bottom: 20, left: 10 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis type="number" dataKey="x" domain={[0, 100]} name="Rule Score" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} label={{ value: "Rule-Based Score", position: "bottom", offset: 0, fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                <YAxis type="number" dataKey="y" domain={[0, 100]} name="ML Score" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} label={{ value: "ML Score", angle: -90, position: "insideLeft", fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                <ZAxis range={[40, 40]} />
+                <RechartsTooltip
+                  cursor={{ strokeDasharray: "3 3" }}
+                  contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                  formatter={(value: any, name: string) => [value, name === "x" ? "Rule Score" : "ML Score"]}
+                  labelFormatter={(_, payload) => payload?.[0]?.payload?.name || ""}
+                />
+                <ReferenceLine segment={[{ x: 0, y: 0 }, { x: 100, y: 100 }]} stroke="hsl(var(--muted-foreground))" strokeDasharray="5 5" opacity={0.5} />
+                <Scatter data={scatterData} shape="circle">
+                  {scatterData.map((entry, i) => (
+                    <Cell key={i} fill={GRADE_DOT_COLORS[entry.grade] || GRADE_DOT_COLORS.D} fillOpacity={0.8} />
+                  ))}
+                </Scatter>
+              </ScatterChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Insights */}
       <div className="grid md:grid-cols-2 gap-4">
