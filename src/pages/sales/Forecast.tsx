@@ -171,17 +171,18 @@ export default function Forecasting() {
 
     // Analyze pipeline coverage
     const coverage = parseFloat(metrics.pipelineCoverage as string) || 0;
+    const currentQ = `Q${Math.ceil((new Date().getMonth() + 1) / 3)}`;
     if (coverage >= 200) {
       insights.push({
         type: "positive",
-        title: "Q2 forecast looks strong, 3 enterprise deals likely to close.",
+        title: `${currentQ} forecast looks strong — ${coverage.toFixed(0)}% pipeline coverage.`,
         confidence: 85,
-        description: "Based on deal velocity and engagement metrics",
+        description: "Pipeline well above target, strong closing potential",
       });
     } else if (coverage < 100) {
       insights.push({
         type: "warning",
-        title: "Pipeline coverage below target. Consider increasing prospecting.",
+        title: `Pipeline coverage at ${coverage.toFixed(0)}% — below target. Consider increasing prospecting.`,
         confidence: 78,
         description: "Current pipeline may not meet quarterly goals",
       });
@@ -192,9 +193,9 @@ export default function Forecasting() {
     if (highValueDeals.length > 0) {
       insights.push({
         type: "warning",
-        title: `${highValueDeals.length} deals at risk due to competitor activity. Consider intervention.`,
+        title: `${highValueDeals.length} high-value deal${highValueDeals.length > 1 ? "s" : ""} with low probability. Consider intervention.`,
         confidence: 72,
-        description: "High-value deals with stalled progress",
+        description: "High-value deals with stalled progress need attention",
       });
     }
 
@@ -205,9 +206,9 @@ export default function Forecasting() {
       if (avgRecent > 5) {
         insights.push({
           type: "positive",
-          title: "Historical data suggests May will exceed target by 8%.",
+          title: `Lead velocity strong — averaging ${avgRecent.toFixed(1)} new leads/day this week.`,
           confidence: 78,
-          description: "Based on seasonal patterns and current momentum",
+          description: "Recent lead generation trending above average",
         });
       }
     }
@@ -235,7 +236,7 @@ export default function Forecasting() {
       const monthKey = date.toLocaleString("default", { month: "short" });
 
       if (!monthlyData[monthKey]) {
-        monthlyData[monthKey] = { month: monthKey, actual: 0, forecast: 0, target: 150000 };
+        monthlyData[monthKey] = { month: monthKey, actual: 0, forecast: 0, target: 0 };
       }
       monthlyData[monthKey].actual += a.won_value || 0;
       monthlyData[monthKey].forecast += a.forecast_value || a.won_value * 1.1 || 0;
@@ -348,7 +349,12 @@ export default function Forecasting() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
               <TrendingUp className="h-5 w-5 text-green-600" />
-              <Badge className="bg-green-500 text-xs">+2.7%</Badge>
+              {metrics.targetRevenue > 0 && (
+                <Badge className={`text-xs ${metrics.forecastRevenue >= metrics.targetRevenue ? "bg-green-500" : "bg-red-500"}`}>
+                  {metrics.forecastRevenue >= metrics.targetRevenue ? "+" : ""}
+                  {(((metrics.forecastRevenue - metrics.targetRevenue) / metrics.targetRevenue) * 100).toFixed(1)}%
+                </Badge>
+              )}
             </div>
             <p className="text-2xl font-bold">{formatCurrency(metrics.forecastRevenue)}</p>
             <p className="text-xs text-muted-foreground">Full Year Forecast</p>
