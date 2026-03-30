@@ -300,6 +300,28 @@ export async function parseRoomDetails(
   }, tenantId);
 }
 
+export async function parseScope(
+  projectId: string,
+  tenantId: string,
+  scopeText: string,
+) {
+  return callWebhook(WEBHOOKS.ESTIMATION_SCOPE, {
+    action: "parse_scope",
+    project_id: projectId,
+    scope_text: scopeText,
+  }, tenantId);
+}
+
+export async function getScopeSummary(
+  projectId: string,
+  tenantId: string,
+) {
+  return callWebhook(WEBHOOKS.ESTIMATION_SCOPE, {
+    action: "get_scope_summary",
+    project_id: projectId,
+  }, tenantId);
+}
+
 export async function calculateTransitions(
   projectId: string,
   tenantId: string,
