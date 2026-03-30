@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useTenant } from '@/contexts/TenantContext';
@@ -15,6 +15,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AnimatedNumber } from '@/components/hr/AnimatedNumber';
+import { AskAIButton } from '@/components/hr/AskAIButton';
+import { cn } from '@/lib/utils';
 import {
   Users, UserCheck, CalendarDays, Briefcase, AlertTriangle, Clock, CheckCircle2,
   TrendingUp, ArrowRight, Plus, DollarSign, Building2, Award, Activity, Sparkles,
@@ -75,6 +77,48 @@ export default function HRDashboardPage() {
     return 'Good evening';
   })();
 
+  const alerts = useMemo(() => {
+    const items: { icon: typeof AlertTriangle; title: string; description: string; link: string; type: 'urgent' | 'warning' | 'info'; aiMessage: string }[] = [];
+    if ((leaveRequests?.length || 0) > 0) {
+      items.push({
+        icon: Clock, title: 'Pending Leave Requests',
+        description: `${leaveRequests!.length} leave request${leaveRequests!.length > 1 ? 's' : ''} awaiting approval`,
+        link: '/hr/leave', type: 'urgent',
+        aiMessage: `There are ${leaveRequests!.length} pending leave requests. Analyze the requests, check for team conflicts, and suggest an approval strategy.`,
+      });
+    }
+    const expiringDocs = employees?.filter(emp => {
+      const fields = [emp.visa_expiry_date, emp.labor_card_expiry, emp.medical_insurance_expiry, emp.work_permit_expiry];
+      return fields.some(d => {
+        if (!d) return false;
+        const diff = (new Date(d).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
+        return diff > 0 && diff <= 30;
+      });
+    }) || [];
+    if (expiringDocs.length > 0) {
+      items.push({
+        icon: FileText, title: 'Documents Expiring Soon',
+        description: `${expiringDocs.length} employee${expiringDocs.length > 1 ? 's have' : ' has'} documents expiring within 30 days`,
+        link: '/hr/compliance', type: 'warning',
+        aiMessage: `${expiringDocs.length} employees have documents expiring within 30 days. List the employees, expiring documents, and recommend renewal actions.`,
+      });
+    }
+    const probationDue = employees?.filter(emp => {
+      if (!emp.date_of_joining || emp.employment_status !== 'active') return false;
+      const days = (Date.now() - new Date(emp.date_of_joining).getTime()) / (1000 * 60 * 60 * 24);
+      return days >= 80 && days <= 100;
+    }) || [];
+    if (probationDue.length > 0) {
+      items.push({
+        icon: UserCheck, title: 'Probation Reviews Due',
+        description: `${probationDue.length} employee${probationDue.length > 1 ? 's' : ''} approaching probation end`,
+        link: '/hr/performance', type: 'info',
+        aiMessage: `${probationDue.length} employees are nearing the end of their probation period. Suggest review criteria and next steps.`,
+      });
+    }
+    return items;
+  }, [leaveRequests, employees]);
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Greeting Header */}
@@ -91,6 +135,7 @@ export default function HRDashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <AskAIButton message="Give me an executive HR summary: headcount, attendance trends, pending approvals, upcoming reviews, and key concerns" label="AI Summary" />
           <Button variant="outline" asChild>
             <Link to="/hr/employees">
               <Users className="h-4 w-4 mr-2" />
@@ -208,6 +253,54 @@ export default function HRDashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Needs Your Attention */}
+      {alerts.length > 0 ? (
+        <Card className="border-chart-4/30 bg-gradient-to-r from-chart-4/5 to-transparent">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Bell className="h-5 w-5 text-chart-4" />
+              Needs Your Attention
+              <Badge variant="destructive" className="ml-auto">{alerts.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {alerts.map((alert, i) => (
+                <div key={i} className={cn(
+                  'flex items-start gap-3 p-3 rounded-lg border transition-colors hover:bg-muted/50',
+                  alert.type === 'urgent' && 'border-destructive/30 bg-destructive/5',
+                  alert.type === 'warning' && 'border-chart-4/30 bg-chart-4/5',
+                  alert.type === 'info' && 'border-chart-3/30 bg-chart-3/5',
+                )}>
+                  <alert.icon className={cn('h-5 w-5 mt-0.5 shrink-0',
+                    alert.type === 'urgent' && 'text-destructive',
+                    alert.type === 'warning' && 'text-chart-4',
+                    alert.type === 'info' && 'text-chart-3',
+                  )} />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">{alert.title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{alert.description}</p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Button variant="link" size="sm" className="h-auto p-0 text-xs" asChild>
+                        <Link to={alert.link}>View <ArrowRight className="h-3 w-3 ml-1" /></Link>
+                      </Button>
+                      <AskAIButton message={alert.aiMessage} size="sm" variant="ghost" className="h-auto py-0.5 px-1.5 text-xs" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="border-chart-2/30 bg-gradient-to-r from-chart-2/5 to-transparent">
+          <CardContent className="p-4 flex items-center gap-3">
+            <CheckCircle2 className="h-5 w-5 text-chart-2" />
+            <p className="text-sm font-medium">All clear — no urgent items need your attention</p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Main Content + Quick Actions sidebar */}
       <div className="grid lg:grid-cols-4 gap-6">

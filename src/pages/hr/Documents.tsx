@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
+import { AskAIButton } from '@/components/hr/AskAIButton';
 import { useHRDocuments } from '@/hooks/useHR';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -97,10 +98,12 @@ export default function DocumentsPage() {
             Manage HR policies, templates, and personal documents
           </p>
         </div>
-        <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Upload className="h-4 w-4" />
+        <div className="flex items-center gap-2">
+          <AskAIButton message="Check document expiry status and list overdue renewals" label="AI Document Check" />
+          <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Upload className="h-4 w-4" />
               Upload Document
             </Button>
           </DialogTrigger>
@@ -152,6 +155,7 @@ export default function DocumentsPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Stats */}

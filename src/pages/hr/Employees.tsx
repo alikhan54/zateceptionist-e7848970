@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTenant } from '@/contexts/TenantContext';
 import { useEmployees, useDepartments } from '@/hooks/useHR';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -8,14 +9,10 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Progress } from '@/components/ui/progress';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
+import { AskAIButton } from '@/components/hr/AskAIButton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -26,7 +23,7 @@ import {
   Users, Plus, Search, MoreHorizontal, Edit, Trash2, Eye, Mail, Phone, MapPin,
   Building2, Calendar, Download, Upload, Filter, Grid3X3, List, UserCircle,
   Briefcase, DollarSign, FileText, Clock, TrendingUp, ChevronRight, CheckCircle2,
-  XCircle, ArrowUpDown, MessageSquare
+  XCircle, ArrowUpDown
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -42,6 +39,7 @@ const emptyNewEmployee = {
 export default function EmployeesPage() {
   const { t } = useTenant();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { data: employees, isLoading, createEmployee, updateEmployee } = useEmployees();
   const { data: deptList } = useDepartments();
   const departments = ['All', ...(deptList || []).map(d => d.name)];
@@ -53,11 +51,8 @@ export default function EmployeesPage() {
   const [filterStatus, setFilterStatus] = useState('All');
   const [filterType, setFilterType] = useState('All');
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
-  const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState(1);
-  const [profileTab, setProfileTab] = useState('personal');
 
   const displayEmployees = employees || [];
   
@@ -102,8 +97,7 @@ export default function EmployeesPage() {
   };
 
   const openProfile = (employee: any) => {
-    setSelectedEmployee(employee);
-    setIsProfileOpen(true);
+    navigate(`/hr/employees/${employee.id}`);
   };
 
   const formatCurrency = (amount: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(amount);
@@ -134,6 +128,7 @@ export default function EmployeesPage() {
               <TooltipContent>Download employee list as CSV</TooltipContent>
             </Tooltip>
           </TooltipProvider>
+          <AskAIButton message="Analyze workforce demographics, headcount by department, and staffing concerns" label="AI Analysis" />
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button><Plus className="h-4 w-4 mr-2" />Add {t('staff')}</Button>
@@ -408,78 +403,6 @@ export default function EmployeesPage() {
         </Card>
       )}
 
-      {/* Employee Profile Sheet */}
-      <Sheet open={isProfileOpen} onOpenChange={setIsProfileOpen}>
-        <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
-          {selectedEmployee && (
-            <>
-              {/* Profile Header with accent bar */}
-              <div className="h-2 bg-gradient-to-r from-primary to-primary/30 -mx-6 -mt-6 mb-6 rounded-t-lg" />
-              <SheetHeader>
-                <div className="flex items-center gap-4">
-                  <Avatar className="h-16 w-16 ring-2 ring-primary/20 shadow-lg">
-                    <AvatarImage src={selectedEmployee.profile_picture_url || undefined} />
-                    <AvatarFallback className="bg-primary/10 text-primary text-xl">{selectedEmployee.first_name?.[0]}{selectedEmployee.last_name?.[0]}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <SheetTitle className="text-xl">{selectedEmployee.full_name || `${selectedEmployee.first_name} ${selectedEmployee.last_name}`}</SheetTitle>
-                    <SheetDescription>{selectedEmployee.position}</SheetDescription>
-                    <div className="flex items-center gap-2 mt-1">
-                      {getStatusBadge(selectedEmployee.employment_status)}
-                      <Badge variant="secondary" className="rounded-full">{selectedEmployee.department_name || 'Unassigned'}</Badge>
-                    </div>
-                  </div>
-                </div>
-              </SheetHeader>
-
-              <div className="flex gap-2 mt-4">
-                <Button size="sm" variant="outline"><Phone className="h-4 w-4 mr-1" />Call</Button>
-                <Button size="sm" variant="outline"><Mail className="h-4 w-4 mr-1" />Email</Button>
-                <Button size="sm" variant="outline"><MessageSquare className="h-4 w-4 mr-1" />Message</Button>
-              </div>
-
-              <Tabs value={profileTab} onValueChange={setProfileTab} className="mt-6">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="personal">Personal</TabsTrigger>
-                  <TabsTrigger value="employment">Employment</TabsTrigger>
-                  <TabsTrigger value="documents">Documents</TabsTrigger>
-                </TabsList>
-                <TabsContent value="personal" className="space-y-3 mt-4">
-                  {[
-                    { icon: Mail, label: 'Email', value: selectedEmployee.company_email },
-                    { icon: Phone, label: 'Phone', value: selectedEmployee.phone || selectedEmployee.mobile || '-' },
-                  ].map((item) => (
-                    <div key={item.label} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors">
-                      <item.icon className="h-4 w-4 text-muted-foreground" />
-                      <div><p className="text-xs text-muted-foreground">{item.label}</p><p className="text-sm">{item.value}</p></div>
-                    </div>
-                  ))}
-                </TabsContent>
-                <TabsContent value="employment" className="space-y-3 mt-4">
-                  {[
-                    { icon: Building2, label: 'Department', value: selectedEmployee.department_name || 'Unassigned' },
-                    { icon: Briefcase, label: 'Position', value: selectedEmployee.position },
-                    { icon: Calendar, label: 'Date of Joining', value: selectedEmployee.date_of_joining },
-                    { icon: DollarSign, label: 'Salary', value: selectedEmployee.salary ? formatCurrency(selectedEmployee.salary) + '/year' : '-' },
-                  ].map((item) => (
-                    <div key={item.label} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors">
-                      <item.icon className="h-4 w-4 text-muted-foreground" />
-                      <div><p className="text-xs text-muted-foreground">{item.label}</p><p className="text-sm">{item.value}</p></div>
-                    </div>
-                  ))}
-                </TabsContent>
-                <TabsContent value="documents" className="space-y-4 mt-4">
-                  <div className="text-center py-8">
-                    <FileText className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
-                    <p className="text-sm text-muted-foreground">No documents uploaded yet</p>
-                    <Button variant="outline" size="sm" className="mt-3"><Upload className="h-4 w-4 mr-2" />Upload Document</Button>
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </>
-          )}
-        </SheetContent>
-      </Sheet>
     </div>
   );
 }

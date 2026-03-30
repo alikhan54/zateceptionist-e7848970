@@ -86,6 +86,7 @@ const PerformancePage = lazy(() => import("./pages/hr/Performance"));
 const TrainingPage = lazy(() => import("./pages/hr/Training"));
 const RecruitmentPage = lazy(() => import("./pages/hr/Recruitment"));
 const HRDocumentsPage = lazy(() => import("./pages/hr/Documents"));
+const EmployeeProfilePage = lazy(() => import("./pages/hr/EmployeeProfile"));
 const HRReportsPage = lazy(() => import("./pages/hr/Reports"));
 const HRAIAssistantPage = lazy(() => import("./pages/hr/AIAssistant"));
 const CompliancePage = lazy(() => import("./pages/hr/Compliance"));
@@ -118,6 +119,9 @@ const CollectionsDashboard = lazy(() => import("./pages/collections/CollectionsD
 const PTTracker = lazy(() => import("./pages/collections/PTTracker"));
 const SettlementTracker = lazy(() => import("./pages/collections/SettlementTracker"));
 const AgentKPIs = lazy(() => import("./pages/collections/AgentKPIs"));
+const AccountDetail = lazy(() => import("./pages/collections/AccountDetail"));
+const CollectionsComplianceDashboard = lazy(() => import("./pages/collections/ComplianceDashboard"));
+const AccountImport = lazy(() => import("./pages/collections/AccountImport"));
 
 // Clinic Module
 const ClinicDashboard = lazy(() => import("./pages/clinic/ClinicDashboard"));
@@ -1058,6 +1062,30 @@ const App = () => (
                     element={
                       <LazyPage>
                         <AgentKPIs />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/collections/account/:accountId"
+                    element={
+                      <LazyPage>
+                        <AccountDetail />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/collections/compliance"
+                    element={
+                      <LazyPage>
+                        <CollectionsComplianceDashboard />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/collections/import"
+                    element={
+                      <LazyPage>
+                        <AccountImport />
                       </LazyPage>
                     }
                   />

@@ -91,6 +91,100 @@ export interface ComplianceLog {
   created_at: string;
 }
 
+export interface CollectionsPTP {
+  id: string;
+  tenant_id: string;
+  account_id: string;
+  promised_amount: number;
+  promised_date: string;
+  promised_method: string | null;
+  status: string;
+  actual_amount: number | null;
+  actual_date: string | null;
+  follow_up_date: string | null;
+  broken_count: number;
+  agent_name: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BucketConfig {
+  id: string;
+  tenant_id: string;
+  bucket: string;
+  dpd_min: number;
+  dpd_max: number;
+  max_daily_calls: number;
+  max_daily_sms: number;
+  max_daily_email: number;
+  max_daily_whatsapp: number;
+  settlement_authority: string;
+  settlement_max_discount: number | null;
+  ai_mode: string;
+  call_start_hour: number;
+  call_end_hour: number;
+  friday_restricted: boolean;
+  escalation_days: number | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface CollectionsKPI {
+  id: string;
+  tenant_id: string;
+  kpi_date: string;
+  agent_id: string | null;
+  agent_name: string | null;
+  total_calls: number;
+  connected_calls: number;
+  right_party_contacts: number;
+  ptps_secured: number;
+  ptps_amount: number;
+  ptps_kept: number;
+  ptps_broken: number;
+  settlements_offered: number;
+  settlements_accepted: number;
+  settlements_amount: number;
+  payments_collected: number;
+  payments_amount: number;
+  contact_rate: number | null;
+  ptp_rate: number | null;
+  pkr: number | null;
+  cure_rate: number | null;
+  created_at: string;
+}
+
+export interface ComplianceRule {
+  id: string;
+  tenant_id: string;
+  rule_code: string;
+  regulation: string;
+  rule_type: string;
+  description: string;
+  rule_config: Record<string, any>;
+  severity: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface FieldVisit {
+  id: string;
+  tenant_id: string;
+  account_id: string;
+  visit_date: string;
+  address: string | null;
+  agent: string | null;
+  status: string;
+  result: string | null;
+  amount_collected: number | null;
+  gps_lat: number | null;
+  gps_lng: number | null;
+  photos: string[] | null;
+  notes: string | null;
+  created_at: string;
+}
+
 export interface CollectionsStats {
   totalAccounts: number;
   totalOutstanding: number;
@@ -384,6 +478,241 @@ export function useCollections(bucketFilter?: string) {
     },
   });
 
+  // Fetch PTPs for an account
+  const usePTPs = (accountId: string | null) =>
+    useQuery({
+      queryKey: ["collections_ptp", tenantId, accountId],
+      queryFn: async () => {
+        if (!accountId) return [];
+        const { data, error } = await supabase
+          .from("collections_ptp" as any)
+          .select("*")
+          .eq("tenant_id", tenantId)
+          .eq("account_id", accountId)
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        return (data || []) as unknown as CollectionsPTP[];
+      },
+      enabled: !!tenantId && !!accountId,
+    });
+
+  // Fetch bucket configuration
+  const useBucketConfig = () =>
+    useQuery({
+      queryKey: ["collections_bucket_config", tenantId],
+      queryFn: async () => {
+        const { data, error } = await supabase
+          .from("collections_bucket_config" as any)
+          .select("*")
+          .eq("tenant_id", tenantId)
+          .order("dpd_min", { ascending: true });
+        if (error) throw error;
+        return (data || []) as unknown as BucketConfig[];
+      },
+      enabled: !!tenantId,
+    });
+
+  // Fetch KPIs
+  const useKPIs = (days: number = 30) =>
+    useQuery({
+      queryKey: ["collections_kpis", tenantId, days],
+      queryFn: async () => {
+        const since = new Date();
+        since.setDate(since.getDate() - days);
+        const { data, error } = await supabase
+          .from("collections_kpis" as any)
+          .select("*")
+          .eq("tenant_id", tenantId)
+          .gte("kpi_date", since.toISOString().split("T")[0])
+          .order("kpi_date", { ascending: false });
+        if (error) throw error;
+        return (data || []) as unknown as CollectionsKPI[];
+      },
+      enabled: !!tenantId,
+    });
+
+  // Fetch compliance rules
+  const useComplianceRules = () =>
+    useQuery({
+      queryKey: ["collections_compliance_rules", tenantId],
+      queryFn: async () => {
+        const { data, error } = await supabase
+          .from("collections_compliance_rules" as any)
+          .select("*")
+          .eq("tenant_id", tenantId)
+          .order("rule_code", { ascending: true });
+        if (error) throw error;
+        return (data || []) as unknown as ComplianceRule[];
+      },
+      enabled: !!tenantId,
+    });
+
+  // Fetch field visits for an account
+  const useFieldVisits = (accountId: string | null) =>
+    useQuery({
+      queryKey: ["collections_field_visits", tenantId, accountId],
+      queryFn: async () => {
+        if (!accountId) return [];
+        const { data, error } = await supabase
+          .from("collections_field_visits" as any)
+          .select("*")
+          .eq("tenant_id", tenantId)
+          .eq("account_id", accountId)
+          .order("visit_date", { ascending: false });
+        if (error) throw error;
+        return (data || []) as unknown as FieldVisit[];
+      },
+      enabled: !!tenantId && !!accountId,
+    });
+
+  // Fetch compliance log events
+  const useComplianceLogs = (accountId?: string | null) =>
+    useQuery({
+      queryKey: ["collections_compliance_log", tenantId, accountId],
+      queryFn: async () => {
+        let query = supabase
+          .from("collections_compliance_log" as any)
+          .select("*")
+          .eq("tenant_id", tenantId)
+          .order("created_at", { ascending: false });
+        if (accountId) {
+          query = query.eq("account_id", accountId);
+        }
+        const { data, error } = await query;
+        if (error) throw error;
+        return (data || []) as unknown as ComplianceLog[];
+      },
+      enabled: !!tenantId,
+    });
+
+  // Mutation: create PTP record in new collections_ptp table
+  const createPTP = useMutation({
+    mutationFn: async ({
+      accountId,
+      promisedAmount,
+      promisedDate,
+      promisedMethod,
+      agentName,
+      notes,
+    }: {
+      accountId: string;
+      promisedAmount: number;
+      promisedDate: string;
+      promisedMethod?: string;
+      agentName?: string;
+      notes?: string;
+    }) => {
+      const { error } = await supabase.from("collections_ptp" as any).insert({
+        tenant_id: tenantId,
+        account_id: accountId,
+        promised_amount: promisedAmount,
+        promised_date: promisedDate,
+        promised_method: promisedMethod || null,
+        status: "pending",
+        agent_name: agentName || null,
+        notes: notes || null,
+        broken_count: 0,
+      } as any);
+      if (error) throw error;
+
+      // Also update inline PTP on the account
+      const acct = accounts.find((a) => a.id === accountId);
+      await supabase
+        .from("collections_accounts" as any)
+        .update({
+          ptp_date: promisedDate,
+          ptp_amount: promisedAmount,
+          ptp_status: "pending",
+          ptp_count: (acct?.ptp_count || 0) + 1,
+          updated_at: new Date().toISOString(),
+        } as any)
+        .eq("id", accountId)
+        .eq("tenant_id", tenantId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["collections_accounts", tenantId] });
+      queryClient.invalidateQueries({ queryKey: ["collections_ptp", tenantId] });
+    },
+  });
+
+  // Mutation: create settlement
+  const createSettlement = useMutation({
+    mutationFn: async ({
+      accountId,
+      settledAmount,
+      discountPercent,
+      offeredBy,
+      expiryDate,
+      notes,
+    }: {
+      accountId: string;
+      settledAmount: number;
+      discountPercent?: number;
+      offeredBy?: string;
+      expiryDate?: string;
+      notes?: string;
+    }) => {
+      const acct = accounts.find((a) => a.id === accountId);
+      const { error } = await supabase
+        .from("collections_settlements" as any)
+        .insert({
+          tenant_id: tenantId,
+          account_id: accountId,
+          original_outstanding: acct?.outstanding_balance || 0,
+          settled_amount: settledAmount,
+          discount_percent: discountPercent || null,
+          offered_by: offeredBy || null,
+          status: "pending_approval",
+          offer_date: new Date().toISOString().split("T")[0],
+          expiry_date: expiryDate || null,
+        } as any);
+      if (error) throw error;
+
+      // Update account settlement status
+      await supabase
+        .from("collections_accounts" as any)
+        .update({
+          settlement_status: "pending_approval",
+          settlement_amount: settledAmount,
+          updated_at: new Date().toISOString(),
+        } as any)
+        .eq("id", accountId)
+        .eq("tenant_id", tenantId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["collections_accounts", tenantId] });
+      queryClient.invalidateQueries({ queryKey: ["collections_settlements", tenantId] });
+    },
+  });
+
+  // Mutation: approve settlement
+  const approveSettlement = useMutation({
+    mutationFn: async ({
+      settlementId,
+      approvedBy,
+      authorityLevel,
+    }: {
+      settlementId: string;
+      approvedBy: string;
+      authorityLevel: string;
+    }) => {
+      const { error } = await supabase
+        .from("collections_settlements" as any)
+        .update({
+          status: "approved",
+          approved_by: approvedBy,
+          authority_level: authorityLevel,
+        } as any)
+        .eq("id", settlementId)
+        .eq("tenant_id", tenantId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["collections_settlements", tenantId] });
+      queryClient.invalidateQueries({ queryKey: ["collections_accounts", tenantId] });
+    },
+  });
+
   return {
     accounts,
     isLoading,
@@ -394,5 +723,14 @@ export function useCollections(bucketFilter?: string) {
     logContact,
     useContactLogs,
     useSettlements,
+    usePTPs,
+    useBucketConfig,
+    useKPIs,
+    useComplianceRules,
+    useFieldVisits,
+    useComplianceLogs,
+    createPTP,
+    createSettlement,
+    approveSettlement,
   };
 }

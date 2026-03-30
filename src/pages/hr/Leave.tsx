@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
+import { AskAIButton } from '@/components/hr/AskAIButton';
 import { useLeaveBalance, useLeaveRequests, type LeaveBalance } from '@/hooks/useHR';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -142,6 +143,7 @@ export default function LeavePage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <AskAIButton message="Analyze team leave patterns, utilization rates, and suggest approval strategy" label="AI Leave Analysis" />
           <Button variant="outline" size="sm">
             <Download className="h-4 w-4 mr-2" />
             Export

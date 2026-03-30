@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
+import { AskAIButton } from '@/components/hr/AskAIButton';
 import { useTraining } from '@/hooks/useHR';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -51,6 +52,7 @@ export default function TrainingPage() {
           </h1>
           <p className="text-muted-foreground mt-1">Develop skills and advance your career</p>
         </div>
+        <AskAIButton message="Recommend training programs based on performance gaps and skill requirements" label="AI Training Plan" />
       </div>
 
       {/* Stats */}

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -70,10 +71,9 @@ const STATUS_BADGE: Record<string, string> = {
 };
 
 export default function CollectionsDashboard() {
+  const navigate = useNavigate();
   const [bucketFilter, setBucketFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedAccount, setSelectedAccount] =
-    useState<CollectionsAccount | null>(null);
 
   const { accounts, isLoading, stats } = useCollections(
     bucketFilter === "all" ? undefined : bucketFilter
@@ -239,11 +239,7 @@ export default function CollectionsDashboard() {
               <Card
                 key={acct.id}
                 className="cursor-pointer hover:shadow-md transition-shadow"
-                onClick={() =>
-                  setSelectedAccount(
-                    selectedAccount?.id === acct.id ? null : acct
-                  )
-                }
+                onClick={() => navigate(`/collections/account/${acct.id}`)}
               >
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
@@ -284,6 +280,16 @@ export default function CollectionsDashboard() {
                           {acct.assigned_team && (
                             <span>{acct.assigned_team.replace(/_/g, " ")}</span>
                           )}
+                          {(acct as any).priority && (
+                            <Badge variant="outline" className="text-xs capitalize">
+                              {(acct as any).priority}
+                            </Badge>
+                          )}
+                          {(acct as any).risk_score != null && (
+                            <span className={`text-xs ${(acct as any).risk_score >= 70 ? "text-red-600" : (acct as any).risk_score >= 40 ? "text-yellow-600" : "text-green-600"}`}>
+                              Risk: {(acct as any).risk_score}
+                            </span>
+                          )}
                         </div>
                         {/* PTP info */}
                         {acct.ptp_status === "pending" && acct.ptp_date && (
@@ -310,70 +316,9 @@ export default function CollectionsDashboard() {
                           </div>
                         )}
                       </div>
-                      <ChevronRight
-                        className={`h-4 w-4 text-muted-foreground transition-transform ${
-                          selectedAccount?.id === acct.id ? "rotate-90" : ""
-                        }`}
-                      />
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
                     </div>
                   </div>
-
-                  {/* Expanded Detail */}
-                  {selectedAccount?.id === acct.id && (
-                    <div className="mt-4 pt-4 border-t grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <p className="text-muted-foreground">Original Amount</p>
-                        <p className="font-medium">
-                          AED {formatAmount(acct.original_amount)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Due Date</p>
-                        <p className="font-medium">{acct.due_date || "N/A"}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Last Payment</p>
-                        <p className="font-medium">
-                          {acct.last_payment_date
-                            ? `AED ${formatAmount(
-                                acct.last_payment_amount || 0
-                              )} on ${acct.last_payment_date}`
-                            : "None"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">PTP History</p>
-                        <p className="font-medium">
-                          Total: {acct.ptp_count} | Kept: {acct.ptp_kept_count}{" "}
-                          | Broken: {acct.ptp_broken_count}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Phone</p>
-                        <p className="font-medium">
-                          {acct.client_phone || "N/A"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Email</p>
-                        <p className="font-medium">
-                          {acct.client_email || "N/A"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Next Action</p>
-                        <p className="font-medium">
-                          {acct.next_action || "None scheduled"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Settlement</p>
-                        <p className="font-medium">
-                          {acct.settlement_status || "N/A"}
-                        </p>
-                      </div>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             );

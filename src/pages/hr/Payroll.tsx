@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
+import { AskAIButton } from '@/components/hr/AskAIButton';
 import { usePayroll } from '@/hooks/useHR';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -130,6 +131,7 @@ export default function PayrollPage() {
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
+          <AskAIButton message="Analyze payroll distribution, identify anomalies, compare with benchmarks" label="AI Payroll Analysis" />
         </div>
       </div>
 

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
+import { AskAIButton } from '@/components/hr/AskAIButton';
 import { usePerformance, useEmployees } from '@/hooks/useHR';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -72,7 +73,10 @@ export default function PerformancePage() {
           <h1 className="text-3xl font-bold">Performance</h1>
           <p className="text-muted-foreground mt-1">Track goals, reviews, and {t('staff').toLowerCase()} development</p>
         </div>
-        <Button className="gap-2" onClick={() => setIsReviewOpen(true)}><Plus className="h-4 w-4" />Create Review</Button>
+        <div className="flex items-center gap-2">
+          <AskAIButton message="Analyze performance trends, identify top performers and improvement areas" label="AI Performance Insights" />
+          <Button className="gap-2" onClick={() => setIsReviewOpen(true)}><Plus className="h-4 w-4" />Create Review</Button>
+        </div>
       </div>
 
       {/* Stats */}

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
+import { AskAIButton } from '@/components/hr/AskAIButton';
 import { useAttendance, useDepartments } from '@/hooks/useHR';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -110,6 +111,7 @@ export default function AttendancePage() {
             </TooltipTrigger>
             <TooltipContent>Download attendance report</TooltipContent>
           </Tooltip>
+          <AskAIButton message="Analyze attendance patterns, identify late trends, and suggest improvements" label="AI Attendance Report" />
         </TooltipProvider>
       </div>
 

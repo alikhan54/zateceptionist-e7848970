@@ -6,8 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AskAIButton } from '@/components/hr/AskAIButton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -31,7 +33,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 export default function DepartmentsPage() {
-  const { t } = useTenant();
+  const { t, tenantConfig } = useTenant();
   const { data: departments, isLoading, createDepartment, updateDepartment } = useDepartments();
   const { data: employees } = useEmployees();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -74,13 +76,15 @@ export default function DepartmentsPage() {
             Manage organizational structure and teams
           </p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Department
-            </Button>
-          </DialogTrigger>
+        <div className="flex items-center gap-2">
+          <AskAIButton message="Analyze department structure, headcount distribution, budget allocation, and suggest organizational improvements" label="AI Insights" />
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Department
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Create Department</DialogTitle>
@@ -137,6 +141,7 @@ export default function DepartmentsPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Summary Stats */}
@@ -312,22 +317,73 @@ export default function DepartmentsPage() {
             <CardContent>
               {displayDepartments.length > 0 ? (
                 <div className="flex flex-col items-center py-8">
-                  <div className="p-4 bg-primary/10 rounded-xl border-2 border-primary/20 text-center mb-4">
-                    <p className="font-semibold">CEO</p>
-                    <p className="text-sm text-muted-foreground">Executive</p>
+                  {/* Company Level */}
+                  <div className="p-5 bg-primary/10 rounded-xl border-2 border-primary/20 text-center mb-2 min-w-[220px]">
+                    <Building2 className="h-6 w-6 text-primary mx-auto mb-1" />
+                    <p className="font-bold text-lg">{tenantConfig?.company_name || 'Organization'}</p>
+                    <p className="text-sm text-muted-foreground">{employees?.length || 0} employees · {displayDepartments.length} departments</p>
                   </div>
+                  {/* Connector */}
                   <div className="w-px h-8 bg-border" />
                   <div className="w-3/4 h-px bg-border" />
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mt-4 w-full">
-                    {displayDepartments.map((dept) => (
-                      <div key={dept.id} className="flex flex-col items-center">
-                        <div className="w-px h-4 bg-border" />
-                        <div className="p-3 bg-muted rounded-lg text-center w-full">
-                          <p className="font-medium text-sm">{dept.name}</p>
-                          <p className="text-xs text-muted-foreground">{dept.employee_count} people</p>
+                  {/* Department Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4 w-full">
+                    {displayDepartments.map((dept) => {
+                      const deptEmployees = (employees || []).filter(e => e.department_name === dept.name);
+                      const previewEmps = deptEmployees.slice(0, 3);
+                      const colors = ['bg-primary', 'bg-chart-2', 'bg-chart-3', 'bg-chart-4', 'bg-chart-5'];
+                      const colorIdx = displayDepartments.indexOf(dept) % colors.length;
+                      return (
+                        <div
+                          key={dept.id}
+                          className="flex flex-col items-center cursor-pointer group"
+                          onClick={() => navigate(`/hr/employees?department=${dept.name}`)}
+                        >
+                          <div className="w-px h-4 bg-border" />
+                          <Card className="w-full hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 overflow-hidden">
+                            <div className={`h-1.5 ${colors[colorIdx]}`} />
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-3">
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <h3 className="font-semibold">{dept.name}</h3>
+                                    {dept.code && <Badge variant="secondary" className="text-xs">{dept.code}</Badge>}
+                                  </div>
+                                  <div className="flex items-center gap-1.5 mt-1 text-sm text-muted-foreground">
+                                    <UserCircle className="h-3.5 w-3.5" />
+                                    <span>{dept.manager_name || 'No manager'}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline">{dept.employee_count} {t('staffs').toLowerCase()}</Badge>
+                                  {dept.budget ? <Badge variant="outline">{formatCurrency(dept.budget)}</Badge> : null}
+                                </div>
+                                {previewEmps.length > 0 && (
+                                  <div className="flex -space-x-2">
+                                    {previewEmps.map((emp) => (
+                                      <Avatar key={emp.id} className="h-7 w-7 ring-2 ring-background">
+                                        <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                                          {emp.first_name?.[0]}{emp.last_name?.[0]}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                    ))}
+                                    {deptEmployees.length > 3 && (
+                                      <Avatar className="h-7 w-7 ring-2 ring-background">
+                                        <AvatarFallback className="bg-muted text-muted-foreground text-xs">
+                                          +{deptEmployees.length - 3}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               ) : (

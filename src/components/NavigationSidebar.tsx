@@ -104,6 +104,7 @@ import {
   Magnet,
   Film,
   CalendarClock,
+  Upload,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -486,6 +487,8 @@ export function NavigationSidebar() {
       { title: "PTP Tracker", url: "/collections/ptp", icon: HandCoins },
       { title: "Settlements", url: "/collections/settlements", icon: Scale },
       { title: "Agent KPIs", url: "/collections/kpis", icon: Gauge },
+      { title: "Compliance", url: "/collections/compliance", icon: Shield },
+      { title: "Import", url: "/collections/import", icon: Upload },
     ],
   };
 
