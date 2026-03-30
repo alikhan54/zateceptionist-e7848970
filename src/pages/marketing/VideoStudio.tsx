@@ -232,6 +232,7 @@ export default function VideoStudio() {
         content: project.title || "Video render",
         project_id: project.id,
         priority: renderQuality === "premium" ? "high" : "standard",
+        quality_tier: renderQuality,
       }, tid!);
       return result.data || result;
     },
