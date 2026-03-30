@@ -17,7 +17,7 @@ import { useEstimationRFIs } from "@/hooks/useEstimationRFIs";
 import { useEstimationRevisions } from "@/hooks/useEstimationRevisions";
 import { useEstimationTeam } from "@/hooks/useEstimationTeam";
 import { useTenant } from "@/contexts/TenantContext";
-import { exportEstimationData, analyzeBidsetText, aiQAReview, suggestMaterials, generateQualification, processVisionPdf, checkVisionStatus, getMaterialSummary, recalculateWaste, calculateTransitions, parseRoomDetails } from "@/lib/api/estimationApi";
+import { exportEstimationData, analyzeBidsetText, aiQAReview, suggestMaterials, generateQualification, processVisionPdf, checkVisionStatus, getMaterialSummary, recalculateWaste, calculateTransitions, parseRoomDetails, parseScope } from "@/lib/api/estimationApi";
 import { supabase } from "@/integrations/supabase/client";
 import { exportQuantitiesXlsx, exportCostSheetXlsx, exportQualificationPdf, exportColorCodedPdf, exportCsv, type ExportData } from "@/lib/estimation/exportUtils";
 import { ArrowLeft, Building2, Calendar, Users, DollarSign, Plus, Ruler, FileText, HelpCircle, History, Activity, Truck, Download, Bot, Loader2, CheckCircle, XCircle, Copy, Sparkles, AlertTriangle, AlertCircle, Upload, Send, Zap, Package, RefreshCw } from "lucide-react";
@@ -1190,6 +1190,95 @@ export default function ProjectDetail() {
                     <div className="text-sm text-blue-100 mt-1">
                       {processingProgress.rooms_count} rooms | {processingProgress.takeoff_count || 0} items
                       {processingProgress.qa_score != null && ` | QA: ${processingProgress.qa_score}/100`}
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* ITB/Scope Parser */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4" /> Parse ITB / Scope of Work</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Textarea
+                placeholder="Paste ITB / Scope of Work text here..."
+                rows={4}
+                value={(window as any).__scopeText || ""}
+                onChange={(e) => { (window as any).__scopeText = e.target.value; e.target.setAttribute("data-v", e.target.value); }}
+                className="text-xs"
+              />
+              <div className="flex gap-2">
+                <Button size="sm" onClick={async () => {
+                  const txt = (window as any).__scopeText || "";
+                  if (!txt || txt.length < 50) { toast.error("Paste ITB text (min 50 chars)"); return; }
+                  toast.info("Parsing scope with AI...");
+                  try {
+                    const resp = await parseScope(id!, tenantId, txt);
+                    const d = (resp as any)?.data || resp;
+                    if (!d?.success) { toast.error(d?.error || "Parse failed"); return; }
+                    const parts = [];
+                    if (d.scope?.included?.length) parts.push(`${d.scope.included.length} trades included`);
+                    if (d.alternates?.total) parts.push(`${d.alternates.total} alternates`);
+                    if (d.general_requirements?.total) parts.push(`${d.general_requirements.total} requirements`);
+                    if (d.ohp?.cap) parts.push(`OH&P cap ${d.ohp.cap}%`);
+                    toast.success(`Scope parsed: ${parts.join(", ")}`);
+                    d.warnings?.forEach((w: string) => toast.warning(w));
+                    window.location.reload();
+                  } catch (e: any) { toast.error(e.message || "Parse failed"); }
+                }}><Bot className="mr-1 h-3 w-3" /> Parse Scope</Button>
+              </div>
+              {(project as any)?.scope_parsed_at && (
+                <div className="space-y-3 pt-3 border-t">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <CheckCircle className="h-3 w-3 text-green-500" />
+                    Parsed {new Date((project as any).scope_parsed_at).toLocaleDateString()}
+                    {(project as any).ohp_cap_pct && <Badge variant="outline" className="text-xs">OH&P Cap: {(project as any).ohp_cap_pct}%</Badge>}
+                    {(project as any).labor_type && <Badge variant="outline" className="text-xs">{(project as any).labor_type === "open_shop" ? "Open Shop" : "Union"}</Badge>}
+                    {(project as any).is_capital_project && <Badge variant="outline" className="text-xs">Capital/CCI</Badge>}
+                  </div>
+                  {(project as any).scope_trades_included?.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium mb-1">Trades Included:</p>
+                      <div className="flex flex-wrap gap-1">{(project as any).scope_trades_included.map((t: string) => <Badge key={t} className="bg-green-100 text-green-800 text-xs">{t}</Badge>)}</div>
+                    </div>
+                  )}
+                  {(project as any).scope_trades_excluded?.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium mb-1">Trades Excluded:</p>
+                      <div className="flex flex-wrap gap-1">{(project as any).scope_trades_excluded.map((t: string) => <Badge key={t} variant="destructive" className="text-xs">{t}</Badge>)}</div>
+                    </div>
+                  )}
+                  {(project as any).alternates?.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium mb-1">Alternates ({(project as any).alternates.length}):</p>
+                      <div className="space-y-1">{(project as any).alternates.map((a: any, i: number) => (
+                        <div key={i} className="text-xs p-2 bg-muted rounded flex justify-between">
+                          <span><strong>{a.id}:</strong> {a.description?.substring(0, 80)}</span>
+                          {a.affects_flooring_trades && <Badge className="bg-amber-100 text-amber-800 text-xs">Affects Scope</Badge>}
+                        </div>
+                      ))}</div>
+                    </div>
+                  )}
+                  {(project as any).general_requirements?.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium mb-1">General Requirements ({(project as any).general_requirements.length}):</p>
+                      <div className="space-y-1">{(project as any).general_requirements.map((r: any, i: number) => (
+                        <div key={i} className="text-xs p-2 bg-muted rounded flex justify-between items-center">
+                          <span>{r.number}. {r.requirement?.substring(0, 100)}</span>
+                          <Badge variant="outline" className={`text-xs ${r.cost_impact === "high" ? "border-red-300 text-red-700" : r.cost_impact === "medium" ? "border-amber-300 text-amber-700" : ""}`}>{r.cost_impact || "none"}</Badge>
+                        </div>
+                      ))}</div>
+                    </div>
+                  )}
+                  {(project as any).building_vendors?.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium mb-1">Building Vendors:</p>
+                      <div className="space-y-1">{(project as any).building_vendors.map((v: any, i: number) => (
+                        <div key={i} className="text-xs p-2 bg-muted rounded">{v.system}: {v.company} — {v.contact} {v.phone}</div>
+                      ))}</div>
                     </div>
                   )}
                 </div>
