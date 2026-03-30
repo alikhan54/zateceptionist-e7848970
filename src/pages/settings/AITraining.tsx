@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTenant } from "@/contexts/TenantContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Brain, RefreshCw, CheckCircle2, Clock, AlertCircle, Loader2 } from "lucide-react";
+import { Brain, RefreshCw, CheckCircle2, Clock, AlertCircle, Loader2, Bot } from "lucide-react";
 import { callWebhook, WEBHOOKS } from "@/lib/api/webhooks";
 
 type ModuleStatus = "pending" | "training" | "ready" | "error";
@@ -129,6 +130,31 @@ export default function AITraining() {
     setCurrentModule(null);
   };
 
+  // Agent contexts from Supabase
+  interface AgentContext {
+    agent_name: string;
+    training_version: number;
+    last_trained_at: string;
+    is_active: boolean;
+    confidence_score: number;
+  }
+  const [agentContexts, setAgentContexts] = useState<AgentContext[]>([]);
+  const [loadingAgents, setLoadingAgents] = useState(false);
+
+  useEffect(() => {
+    if (!tenantId) return;
+    setLoadingAgents(true);
+    supabase
+      .from("agent_contexts")
+      .select("agent_name, training_version, last_trained_at, is_active, confidence_score")
+      .eq("tenant_id", tenantId)
+      .order("agent_name")
+      .then(({ data }) => {
+        setAgentContexts(data || []);
+        setLoadingAgents(false);
+      });
+  }, [tenantId]);
+
   const readyCount = modules.filter((m) => m.status === "ready").length;
 
   return (
@@ -230,6 +256,56 @@ export default function AITraining() {
           </div>
         </CardContent>
       </Card>
+
+      {agentContexts.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bot className="h-5 w-5" />
+              AI Agent Contexts
+            </CardTitle>
+            <CardDescription>
+              {agentContexts.filter((a) => a.is_active).length}/{agentContexts.length} agents have active contexts
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {agentContexts.map((agent) => (
+                <div
+                  key={agent.agent_name}
+                  className="flex items-center justify-between p-3 border rounded-lg"
+                >
+                  <div className="flex items-center gap-3">
+                    {agent.is_active ? (
+                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4 text-amber-500" />
+                    )}
+                    <div>
+                      <p className="font-medium text-sm">{agent.agent_name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        v{agent.training_version} — Trained{" "}
+                        {new Date(agent.last_trained_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      {Math.round(agent.confidence_score * 100)}%
+                    </span>
+                    <Badge
+                      variant={agent.is_active ? "default" : "secondary"}
+                      className={agent.is_active ? "bg-green-500 hover:bg-green-600" : ""}
+                    >
+                      {agent.is_active ? "Active" : "Stale"}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardContent className="pt-6">
