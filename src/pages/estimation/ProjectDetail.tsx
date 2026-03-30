@@ -22,6 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { exportQuantitiesXlsx, exportCostSheetXlsx, exportQualificationPdf, exportColorCodedPdf, exportCsv, type ExportData } from "@/lib/estimation/exportUtils";
 import { ArrowLeft, Building2, Calendar, Users, DollarSign, Plus, Ruler, FileText, HelpCircle, History, Activity, Truck, Download, Bot, Loader2, CheckCircle, XCircle, Copy, Sparkles, AlertTriangle, AlertCircle, Upload, Send, Zap, Package, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import CompletenessGrid from "@/components/estimation/CompletenessGrid";
 
 const STATUS_LABELS: Record<string, string> = {
   rfp_received: "RFP Received", reviewing: "Reviewing", in_progress: "In Progress",
@@ -626,6 +627,7 @@ export default function ProjectDetail() {
           <TabsTrigger value="team"><Users className="h-4 w-4 mr-1" /> Team</TabsTrigger>
           <TabsTrigger value="activity"><Activity className="h-4 w-4 mr-1" /> Activity</TabsTrigger>
           <TabsTrigger value="suppliers"><Truck className="h-4 w-4 mr-1" /> Suppliers</TabsTrigger>
+          <TabsTrigger value="completeness"><CheckCircle className="h-4 w-4 mr-1" /> Completeness</TabsTrigger>
           <TabsTrigger value="ai"><Bot className="h-4 w-4 mr-1" /> AI Analysis</TabsTrigger>
         </TabsList>
 
@@ -1201,6 +1203,11 @@ export default function ProjectDetail() {
         {/* SUPPLIERS TAB */}
         <TabsContent value="suppliers">
           <Card><CardContent className="py-12 text-center text-muted-foreground">Supplier quotes coming soon. Track pricing from estimation_supplier_pricing.</CardContent></Card>
+        </TabsContent>
+
+        {/* COMPLETENESS TAB */}
+        <TabsContent value="completeness">
+          <CompletenessGrid projectId={id!} />
         </TabsContent>
 
         {/* AI ANALYSIS TAB */}
