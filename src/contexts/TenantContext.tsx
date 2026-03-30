@@ -101,6 +101,9 @@ export interface TenantConfig {
   linkedin_url?: string | null;
   custom_system_prompt_override?: string | null;
   country?: string | null;
+  services_description?: string | null;
+  target_audience?: string | null;
+  value_proposition?: string | null;
 }
 
 // Industry-specific vocabulary translations
