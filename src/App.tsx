@@ -91,7 +91,6 @@ const HRReportsPage = lazy(() => import("./pages/hr/Reports"));
 const HRAIAssistantPage = lazy(() => import("./pages/hr/AIAssistant"));
 const CompliancePage = lazy(() => import("./pages/hr/Compliance"));
 const ShiftsPage = lazy(() => import("./pages/hr/Shifts"));
-const EmployeeProfilePage = lazy(() => import("./pages/hr/EmployeeProfile"));
 const AIAgentsPage = lazy(() => import("./pages/hr/AIAgents"));
 const AIAgentHirePage = lazy(() => import("./pages/hr/AIAgentHire"));
 const AIAgentProfilePage = lazy(() => import("./pages/hr/AIAgentProfile"));
@@ -189,6 +188,8 @@ const TeamSettings = lazy(() => import("./pages/settings/Team"));
 const BillingSettings = lazy(() => import("./pages/settings/Billing"));
 const NotificationSettings = lazy(() => import("./pages/settings/Notifications"));
 const KnowledgeBaseSettings = lazy(() => import("./pages/settings/KnowledgeBase"));
+const CompanyInfoSettings = lazy(() => import("./pages/settings/CompanyInfo"));
+const AITrainingSettings = lazy(() => import("./pages/settings/AITraining"));
 const OutreachSettings = lazy(() => import("./pages/settings/OutreachSettings"));
 // PhoneNumberSettings removed — now part of VoiceAIHub
 
@@ -1344,14 +1345,32 @@ const App = () => (
                       </LazyPage>
                     }
                   />
+                  <Route path="/settings/business-profile" element={<Navigate to="/settings/business-profile/company" replace />} />
                   <Route
-                    path="/settings/knowledge-base"
+                    path="/settings/business-profile/company"
+                    element={
+                      <LazyPage>
+                        <CompanyInfoSettings />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/settings/business-profile/knowledge"
                     element={
                       <LazyPage>
                         <KnowledgeBaseSettings />
                       </LazyPage>
                     }
                   />
+                  <Route
+                    path="/settings/business-profile/training"
+                    element={
+                      <LazyPage>
+                        <AITrainingSettings />
+                      </LazyPage>
+                    }
+                  />
+                  <Route path="/settings/knowledge-base" element={<Navigate to="/settings/business-profile/knowledge" replace />} />
                   <Route
                     path="/settings/outreach"
                     element={
