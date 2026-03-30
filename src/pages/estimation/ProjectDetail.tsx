@@ -251,16 +251,23 @@ export default function ProjectDetail() {
     throw new Error("Vision analysis timed out after 5 minutes. Check the project later — it may still complete.");
   };
 
-  const handlePdfUpload = async () => {
-    if (!pdfFile || !id || !tenantId) return;
-    if (pdfFile.type !== "application/pdf") {
+  const handlePdfUpload = async (fileOverride?: File) => {
+    const file = fileOverride || pdfFile;
+    if (!file || !id || !tenantId) return;
+    if (file.type !== "application/pdf") {
       setPdfError("Only PDF files are supported.");
       return;
     }
-    if (pdfFile.size > 50 * 1024 * 1024) {
+    if (file.size > 50 * 1024 * 1024) {
       setPdfError("PDF must be under 50MB.");
       return;
     }
+    // Auto-switch to ai_assisted if in manual mode
+    const mode = estimationMode === "manual" ? "ai_assisted" : estimationMode;
+    if (estimationMode === "manual") {
+      await updateProject.mutateAsync({ id: project!.id, updates: { estimation_mode: "ai_assisted" } });
+    }
+    setPdfFile(file);
     setPdfUploading(true);
     setIsOneClickRunning(true);
     setProcessingProgress({ step: "upload", message: "Uploading PDF..." });
@@ -269,11 +276,11 @@ export default function ProjectDetail() {
     setPdfStatusMsg("Uploading PDF...");
     try {
       // 1. Upload to Supabase Storage
-      const filePath = `${tenantId}/${id}/${Date.now()}-${pdfFile.name}`;
+      const filePath = `${tenantId}/${id}/${Date.now()}-${file.name}`;
       setPdfProgress(20);
       const { error: uploadError } = await supabase.storage
         .from("estimation-files")
-        .upload(filePath, pdfFile, { contentType: "application/pdf", upsert: false });
+        .upload(filePath, file, { contentType: "application/pdf", upsert: false });
       if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
       setPdfProgress(40);
 
@@ -286,7 +293,7 @@ export default function ProjectDetail() {
 
       // 3. Call vision webhook (5-minute timeout)
       setPdfProgress(55);
-      const result = await processVisionPdf(id, fileUrl, pdfFile.name, estimationMode, tenantId);
+      const result = await processVisionPdf(id, fileUrl, file.name, mode, tenantId);
       const data = (result as any)?.data || result;
 
       // 4. Handle response — check for timeout or network errors that need polling
@@ -1232,7 +1239,7 @@ export default function ProjectDetail() {
                       variant="secondary"
                       className="bg-white text-blue-700 hover:bg-blue-50 font-bold"
                       onClick={() => { fileInputRef.current?.click(); }}
-                      disabled={estimationMode === "manual"}
+                      disabled={pdfUploading}
                     >
                       <Upload className="mr-2 h-5 w-5" /> Upload PDF & Generate
                     </Button>
@@ -1468,7 +1475,11 @@ export default function ProjectDetail() {
                 type="file"
                 accept="application/pdf"
                 className="hidden"
-                onChange={e => { setPdfFile(e.target.files?.[0] || null); setPdfError(null); }}
+                onChange={e => {
+                  const f = e.target.files?.[0];
+                  if (f) { setPdfError(null); handlePdfUpload(f); }
+                  e.target.value = ""; // allow re-selecting same file
+                }}
               />
               <div className="flex items-center gap-3">
                 <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={pdfUploading}>
@@ -1478,8 +1489,8 @@ export default function ProjectDetail() {
                   <span className="text-xs text-muted-foreground">{(pdfFile.size / 1024 / 1024).toFixed(1)} MB</span>
                 )}
                 <Button
-                  onClick={handlePdfUpload}
-                  disabled={!pdfFile || pdfUploading || estimationMode === "manual"}
+                  onClick={() => handlePdfUpload()}
+                  disabled={!pdfFile || pdfUploading}
                 >
                   {pdfUploading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</> : <><Bot className="mr-2 h-4 w-4" /> Analyze with Vision AI</>}
                 </Button>
@@ -1495,8 +1506,8 @@ export default function ProjectDetail() {
               {pdfError && (
                 <div className="flex items-center gap-2 text-sm text-red-600"><AlertCircle className="h-4 w-4" /> {pdfError}</div>
               )}
-              {estimationMode === "manual" && (
-                <p className="text-xs text-muted-foreground">Switch to AI-Assisted or Autonomous mode to use vision analysis.</p>
+              {estimationMode === "manual" && !pdfUploading && (
+                <p className="text-xs text-muted-foreground">Uploading a PDF will automatically switch to AI-Assisted mode.</p>
               )}
             </CardContent>
           </Card>
