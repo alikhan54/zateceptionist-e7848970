@@ -344,6 +344,36 @@ export async function applyAtticStock(
   }, tenantId);
 }
 
+export async function listProjectFiles(
+  projectId: string,
+  tenantId: string,
+) {
+  return callWebhook(WEBHOOKS.ESTIMATION_FILES, {
+    action: "list_files",
+    project_id: projectId,
+  }, tenantId);
+}
+
+export async function registerFile(
+  projectId: string,
+  tenantId: string,
+  fileName: string,
+  fileUrl: string,
+  fileSize: number,
+  pageCount?: number,
+  documentType?: string,
+) {
+  return callWebhook(WEBHOOKS.ESTIMATION_FILES, {
+    action: "register_file",
+    project_id: projectId,
+    file_name: fileName,
+    file_url: fileUrl,
+    file_size: fileSize,
+    page_count: pageCount,
+    document_type: documentType,
+  }, tenantId);
+}
+
 export async function calculateTransitions(
   projectId: string,
   tenantId: string,

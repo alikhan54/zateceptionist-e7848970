@@ -17,7 +17,7 @@ import { useEstimationRFIs } from "@/hooks/useEstimationRFIs";
 import { useEstimationRevisions } from "@/hooks/useEstimationRevisions";
 import { useEstimationTeam } from "@/hooks/useEstimationTeam";
 import { useTenant } from "@/contexts/TenantContext";
-import { exportEstimationData, analyzeBidsetText, aiQAReview, suggestMaterials, generateQualification, processVisionPdf, checkVisionStatus, getMaterialSummary, recalculateWaste, calculateTransitions, parseRoomDetails, parseScope, parseSpecs, applyAtticStock } from "@/lib/api/estimationApi";
+import { exportEstimationData, analyzeBidsetText, aiQAReview, suggestMaterials, generateQualification, processVisionPdf, checkVisionStatus, getMaterialSummary, recalculateWaste, calculateTransitions, parseRoomDetails, parseScope, parseSpecs, applyAtticStock, registerFile } from "@/lib/api/estimationApi";
 import { supabase } from "@/integrations/supabase/client";
 import { exportQuantitiesXlsx, exportCostSheetXlsx, exportQualificationPdf, exportColorCodedPdf, exportCsv, type ExportData } from "@/lib/estimation/exportUtils";
 import { ArrowLeft, Building2, Calendar, Users, DollarSign, Plus, Ruler, FileText, HelpCircle, History, Activity, Truck, Download, Bot, Loader2, CheckCircle, XCircle, Copy, Sparkles, AlertTriangle, AlertCircle, Upload, Send, Zap, Package, RefreshCw } from "lucide-react";
@@ -728,6 +728,47 @@ export default function ProjectDetail() {
                   {estimationMode === "ai_auto" && "AI generates full takeoff from bid documents. Estimator reviews and approves."}
                 </span>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Project Files */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4" /> Project Files</CardTitle>
+                <Button size="sm" variant="outline" onClick={async () => {
+                  const name = prompt("File name (e.g., 'ITB BXP 35th floor.pdf'):");
+                  if (!name) return;
+                  const url = prompt("File URL (or leave blank):", "");
+                  const pages = parseInt(prompt("Page count:", "0") || "0");
+                  try {
+                    const resp = await registerFile(id!, tenantId, name, url || "", 0, pages);
+                    const d = (resp as any)?.data || resp;
+                    toast.success(`Registered as ${d?.document_type} → ${d?.processing_engine}`);
+                    window.location.reload();
+                  } catch (e: any) { toast.error(e.message); }
+                }}><Plus className="mr-1 h-3 w-3" /> Add File</Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const bidsets = (project as any)?.bidsets || [];
+                const TYPE_COLORS: Record<string,string> = {
+                  drawings: "bg-blue-100 text-blue-800", specifications: "bg-purple-100 text-purple-800",
+                  itb_scope: "bg-green-100 text-green-800", addendum: "bg-orange-100 text-orange-800",
+                  rules_regulations: "bg-gray-100 text-gray-800", loading_dock: "bg-gray-100 text-gray-800",
+                  other: "bg-gray-100 text-gray-800"
+                };
+                const ENGINE_LABELS: Record<string,string> = {
+                  vision_processor: "Vision AI", scope_engine: "Scope AI",
+                  spec_engine: "Spec AI", manual: "Manual"
+                };
+                return (
+                  <div className="text-sm text-muted-foreground">
+                    <p>Use the <strong>AI Analysis</strong> tab to upload PDFs and register project files. Files are auto-classified by type (drawings, specs, ITB, addendum) and routed to the appropriate AI engine.</p>
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
         </TabsContent>
