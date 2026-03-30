@@ -112,6 +112,13 @@ export default function VideoStudio() {
   const [newTitle, setNewTitle] = useState("");
   const [createFormat, setCreateFormat] = useState("9:16");
 
+  // Trigger modal state (Fix 2)
+  const [triggerModal, setTriggerModal] = useState<string | null>(null);
+  const [triggerInput, setTriggerInput] = useState("");
+
+  // Render quality state (Fix 3)
+  const [renderQuality, setRenderQuality] = useState("standard");
+
   // ============================================================
   // QUERIES
   // ============================================================
@@ -224,7 +231,7 @@ export default function VideoStudio() {
         trigger_type: "manual_render",
         content: project.title || "Video render",
         project_id: project.id,
-        priority: "standard",
+        priority: renderQuality === "premium" ? "high" : "standard",
       }, tid!);
       return result.data || result;
     },
@@ -238,6 +245,27 @@ export default function VideoStudio() {
           body: JSON.stringify({ tenant_id: tenantConfig?.id, content_type: "video", title: selectedProject?.title || "Video", content: selectedProject?.description || "" }),
         }).catch(() => {});
       }
+    },
+  });
+
+  // Queue delete mutations (Fix 1)
+  const deleteQueueItem = useMutation({
+    mutationFn: async (id: string) => {
+      await supabase.from("video_render_queue" as any).delete().eq("id", id).eq("tenant_id", tid);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["video-render-queue"] });
+      toast({ title: "Render cleared" });
+    },
+  });
+
+  const clearCompleted = useMutation({
+    mutationFn: async () => {
+      await supabase.from("video_render_queue" as any).delete().eq("tenant_id", tid).in("status", ["completed", "complete", "failed"]);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["video-render-queue"] });
+      toast({ title: "Cleared completed renders" });
     },
   });
 
@@ -468,13 +496,13 @@ export default function VideoStudio() {
 
       {/* QUICK AGENTIC ACTIONS */}
       <div className="flex gap-2">
-        <Button variant="outline" size="sm" className="text-xs" onClick={() => triggerAutoCreate("blog_published", { title: "Latest blog post" })}>
+        <Button variant="outline" size="sm" className="text-xs" title="Paste a blog URL or text — AI writes a video script and renders it" onClick={() => { setTriggerModal("blog_published"); setTriggerInput(""); }}>
           <FileText className="h-3 w-3 mr-1" /> Blog &rarr; Video
         </Button>
-        <Button variant="outline" size="sm" className="text-xs" onClick={() => triggerAutoCreate("competitor_ad_detected", { competitor_name: "Competitor", ad_message: "Their ad" })}>
+        <Button variant="outline" size="sm" className="text-xs" title="Describe a competitor's promotion — AI creates a counter-ad video" onClick={() => { setTriggerModal("competitor_ad_detected"); setTriggerInput(""); }}>
           <Shield className="h-3 w-3 mr-1" /> Counter Ad
         </Button>
-        <Button variant="outline" size="sm" className="text-xs" onClick={() => triggerAutoCreate("campaign_created", { name: "Campaign", message: "Content", type: "promotional" })}>
+        <Button variant="outline" size="sm" className="text-xs" title="Select a campaign — AI converts it into a promo video" onClick={() => { setTriggerModal("campaign_created"); setTriggerInput(""); }}>
           <Send className="h-3 w-3 mr-1" /> Campaign &rarr; Video
         </Button>
       </div>
@@ -554,13 +582,23 @@ export default function VideoStudio() {
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center">
                   <Button size="sm" variant="outline" onClick={() => updateScenes.mutate({ id: selectedProject.id, scenes: sceneEdits })}>Save</Button>
+                  <Select value={renderQuality} onValueChange={setRenderQuality}>
+                    <SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="standard">Standard</SelectItem>
+                      <SelectItem value="premium">Premium</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <Button size="sm" onClick={() => startRender.mutate({ ...selectedProject, scenes: sceneEdits })} disabled={startRender.isPending}
                     className="bg-gradient-to-r from-purple-600 to-pink-600">
                     {startRender.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Play className="h-4 w-4 mr-1" /> Render</>}
                   </Button>
                 </div>
+                {renderQuality === "premium" && (
+                  <p className="text-[10px] text-amber-500 text-right mt-1">Requires Local GPU &middot; ~3 min per scene</p>
+                )}
               </div>
 
               {/* Scene editor split */}
@@ -697,6 +735,13 @@ export default function VideoStudio() {
 
         {/* RENDER QUEUE TAB */}
         <TabsContent value="queue" className="space-y-3 mt-4">
+          {renderJobs.some((j: any) => j.status === "complete" || j.status === "completed" || j.status === "failed") && (
+            <div className="flex justify-end">
+              <Button variant="outline" size="sm" className="text-xs" onClick={() => clearCompleted.mutate()} disabled={clearCompleted.isPending}>
+                <Trash2 className="h-3 w-3 mr-1" /> Clear Completed
+              </Button>
+            </div>
+          )}
           {renderJobs.length === 0 ? (
             <div className="text-center py-16 text-muted-foreground">
               <Film className="h-12 w-12 mx-auto mb-3 opacity-20" />
@@ -706,6 +751,7 @@ export default function VideoStudio() {
           ) : renderJobs.map((job: any) => {
             const st = STATUS_LABELS[job.status] || { label: job.status || "unknown", color: "bg-gray-500" };
             const progress = job.scenes_total ? (job.scenes_complete / job.scenes_total) * 100 : 0;
+            const isDone = job.status === "complete" || job.status === "completed" || job.status === "failed";
             return (
               <div key={job.id} className="rounded-lg border p-4">
                 <div className="flex items-center justify-between mb-2">
@@ -713,9 +759,16 @@ export default function VideoStudio() {
                     <h4 className="font-medium text-sm">{job.project_title || job.title || `Render ${job.id?.slice(0,8)}`}</h4>
                     <p className="text-[11px] text-muted-foreground">{job.format} &middot; {job.tier||"standard"}</p>
                   </div>
-                  <Badge className={st.color}>{st.label}</Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge className={st.color}>{st.label}</Badge>
+                    {isDone && (
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive" onClick={() => deleteQueueItem.mutate(job.id)} disabled={deleteQueueItem.isPending}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
-                {job.status !== "complete" && job.status !== "completed" && job.status !== "failed" && (
+                {!isDone && (
                   <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
                     <div className="h-full bg-gradient-to-r from-purple-600 to-pink-600 transition-all duration-500" style={{ width: `${progress}%` }} />
                   </div>
@@ -915,6 +968,40 @@ export default function VideoStudio() {
               {createProject.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
               Create Project
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* TRIGGER MODAL (Fix 2) */}
+      <Dialog open={!!triggerModal} onOpenChange={(open) => { if (!open) setTriggerModal(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {triggerModal === "blog_published" ? "Blog → Video" : triggerModal === "competitor_ad_detected" ? "Counter Ad" : "Campaign → Video"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Textarea
+              value={triggerInput}
+              onChange={(e) => setTriggerInput(e.target.value)}
+              placeholder={
+                triggerModal === "blog_published" ? "Paste your blog title or URL..." :
+                triggerModal === "competitor_ad_detected" ? "Describe the competitor's promotion to counter..." :
+                "Which campaign or promotion to convert?"
+              }
+              rows={3}
+            />
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" size="sm" onClick={() => setTriggerModal(null)}>Cancel</Button>
+              <Button size="sm" className="bg-gradient-to-r from-purple-600 to-pink-600" disabled={!triggerInput.trim()} onClick={async () => {
+                const type = triggerModal!;
+                setTriggerModal(null);
+                await triggerAutoCreate(type, { content: triggerInput });
+                toast({ title: "AI is creating your video", description: "Check the Queue tab in ~2 minutes" });
+              }}>
+                <Sparkles className="h-3 w-3 mr-1" /> Generate Video
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
