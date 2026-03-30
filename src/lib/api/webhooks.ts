@@ -138,6 +138,7 @@ export const WEBHOOKS = {
   ESTIMATION_SCOPE: "/estimation-parse-scope",
   ESTIMATION_SPECS: "/estimation-parse-specs",
   ESTIMATION_FILES: "/estimation-manage-files",
+  ESTIMATION_PAINT: "/estimation-calculate-paint",
 
   // Bulk Voice Calls (Phase 14)
   BULK_CALL_CREATE: "/bulk-call/create-campaign",

@@ -374,6 +374,15 @@ export async function registerFile(
   }, tenantId);
 }
 
+export async function calculatePaint(
+  projectId: string,
+  tenantId: string,
+) {
+  return callWebhook(WEBHOOKS.ESTIMATION_PAINT, {
+    project_id: projectId,
+  }, tenantId);
+}
+
 export async function calculateTransitions(
   projectId: string,
   tenantId: string,

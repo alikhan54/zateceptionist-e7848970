@@ -17,7 +17,7 @@ import { useEstimationRFIs } from "@/hooks/useEstimationRFIs";
 import { useEstimationRevisions } from "@/hooks/useEstimationRevisions";
 import { useEstimationTeam } from "@/hooks/useEstimationTeam";
 import { useTenant } from "@/contexts/TenantContext";
-import { exportEstimationData, analyzeBidsetText, aiQAReview, suggestMaterials, generateQualification, processVisionPdf, checkVisionStatus, getMaterialSummary, recalculateWaste, calculateTransitions, parseRoomDetails, parseScope, parseSpecs, applyAtticStock, registerFile } from "@/lib/api/estimationApi";
+import { exportEstimationData, analyzeBidsetText, aiQAReview, suggestMaterials, generateQualification, processVisionPdf, checkVisionStatus, getMaterialSummary, recalculateWaste, calculateTransitions, parseRoomDetails, parseScope, parseSpecs, applyAtticStock, registerFile, calculatePaint } from "@/lib/api/estimationApi";
 import { supabase } from "@/integrations/supabase/client";
 import { exportQuantitiesXlsx, exportCostSheetXlsx, exportQualificationPdf, exportColorCodedPdf, exportCsv, type ExportData } from "@/lib/estimation/exportUtils";
 import { ArrowLeft, Building2, Calendar, Users, DollarSign, Plus, Ruler, FileText, HelpCircle, History, Activity, Truck, Download, Bot, Loader2, CheckCircle, XCircle, Copy, Sparkles, AlertTriangle, AlertCircle, Upload, Send, Zap, Package, RefreshCw } from "lucide-react";
@@ -1009,6 +1009,16 @@ export default function ProjectDetail() {
                         window.location.reload();
                       } catch (e: any) { toast.error(e.message || "Detail analysis failed"); }
                     }}><Ruler className="mr-1 h-3 w-3" /> Room Details</Button>
+                    <Button variant="outline" size="sm" className="ml-2" onClick={async () => {
+                      try {
+                        toast.info("Calculating paint scope...");
+                        const resp = await calculatePaint(id!, tenantId);
+                        const data = (resp as any)?.data || resp;
+                        const s = data?.summary || {};
+                        toast.success(`Paint: ${s.wall_paint_sf?.toLocaleString() || 0} SF walls, ${s.ceiling_paint_sf?.toLocaleString() || 0} SF ceilings, ${s.doors_painted || 0} doors, ${data?.paint_items_created || 0} items`);
+                        window.location.reload();
+                      } catch (e: any) { toast.error(e.message || "Paint calculation failed"); }
+                    }}><Sparkles className="mr-1 h-3 w-3" /> Paint Scope</Button>
                   </div>
                 </CardContent>
               </Card>
