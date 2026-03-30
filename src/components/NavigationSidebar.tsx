@@ -476,16 +476,22 @@ export function NavigationSidebar() {
     featureKey: "operations_module",
     items: [
       { title: "Command Center", url: "/operations/command-center", icon: Gauge },
-      { title: "Inventory", url: "/operations/inventory", icon: Package },
-      { title: "Purchase Orders", url: "/operations/purchase-orders", icon: FileText },
-      { title: "Vendors", url: "/operations/vendors", icon: Truck },
-      { title: "Shipments", url: "/operations/shipments", icon: Truck },
+      { title: "Supply Chain", url: "/operations/inventory", icon: Package, children: [
+        { title: "Inventory", url: "/operations/inventory", icon: Warehouse },
+        { title: "Vendors", url: "/operations/vendors", icon: Truck },
+        { title: "Purchase Orders", url: "/operations/purchase-orders", icon: FileText },
+        { title: "Shipments", url: "/operations/shipments", icon: Truck },
+      ]},
       { title: "Production", url: "/operations/production", icon: Factory },
-      { title: "Budgets", url: "/operations/budgets", icon: Wallet },
-      { title: "Expenses", url: "/operations/expenses", icon: Receipt },
-      { title: "Invoices", url: "/operations/invoices", icon: FileCheck },
-      { title: "Agent Network", url: "/operations/agents", icon: Network },
-      { title: "AI Intelligence", url: "/operations/ai-intelligence", icon: Brain },
+      { title: "Finance", url: "/operations/budgets", icon: DollarSign, children: [
+        { title: "Budgets", url: "/operations/budgets", icon: Wallet },
+        { title: "Expenses", url: "/operations/expenses", icon: Receipt },
+        { title: "Invoices", url: "/operations/invoices", icon: FileCheck },
+      ]},
+      { title: "AI Agents", url: "/operations/agents", icon: Brain, children: [
+        { title: "Agent Network", url: "/operations/agents", icon: Network },
+        { title: "AI Intelligence", url: "/operations/ai-intelligence", icon: Brain },
+      ]},
     ],
   };
 
