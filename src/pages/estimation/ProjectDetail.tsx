@@ -17,7 +17,7 @@ import { useEstimationRFIs } from "@/hooks/useEstimationRFIs";
 import { useEstimationRevisions } from "@/hooks/useEstimationRevisions";
 import { useEstimationTeam } from "@/hooks/useEstimationTeam";
 import { useTenant } from "@/contexts/TenantContext";
-import { exportEstimationData, analyzeBidsetText, aiQAReview, suggestMaterials, generateQualification, processVisionPdf, checkVisionStatus, getMaterialSummary, recalculateWaste, calculateTransitions, parseRoomDetails, parseScope, parseSpecs, applyAtticStock, registerFile, calculatePaint } from "@/lib/api/estimationApi";
+import { exportEstimationData, analyzeBidsetText, aiQAReview, suggestMaterials, generateQualification, processVisionPdf, checkVisionStatus, getMaterialSummary, recalculateWaste, calculateTransitions, parseRoomDetails, parseScope, parseSpecs, applyAtticStock, registerFile, calculatePaint, calculateCarpet } from "@/lib/api/estimationApi";
 import { supabase } from "@/integrations/supabase/client";
 import { exportQuantitiesXlsx, exportCostSheetXlsx, exportQualificationPdf, exportColorCodedPdf, exportCsv, type ExportData } from "@/lib/estimation/exportUtils";
 import { ArrowLeft, Building2, Calendar, Users, DollarSign, Plus, Ruler, FileText, HelpCircle, History, Activity, Truck, Download, Bot, Loader2, CheckCircle, XCircle, Copy, Sparkles, AlertTriangle, AlertCircle, Upload, Send, Zap, Package, RefreshCw } from "lucide-react";
@@ -1019,6 +1019,16 @@ export default function ProjectDetail() {
                         window.location.reload();
                       } catch (e: any) { toast.error(e.message || "Paint calculation failed"); }
                     }}><Sparkles className="mr-1 h-3 w-3" /> Paint Scope</Button>
+                    <Button variant="outline" size="sm" className="ml-2" onClick={async () => {
+                      try {
+                        toast.info("Calculating carpet layout...");
+                        const resp = await calculateCarpet(id!, tenantId);
+                        const data = (resp as any)?.data || resp;
+                        const t = data?.totals || {};
+                        toast.success(`Carpet: ${data?.carpet_tile_rooms || 0} tile rooms, ${data?.broadloom_rooms || 0} broadloom, ${t.adhesive_gal || 0} GAL adhesive, ${t.broadloom_seam_lf || 0} LF seams`);
+                        window.location.reload();
+                      } catch (e: any) { toast.error(e.message || "Carpet calculation failed"); }
+                    }}><Ruler className="mr-1 h-3 w-3" /> Carpet Layout</Button>
                   </div>
                 </CardContent>
               </Card>

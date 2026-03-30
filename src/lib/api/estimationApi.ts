@@ -383,6 +383,15 @@ export async function calculatePaint(
   }, tenantId);
 }
 
+export async function calculateCarpet(
+  projectId: string,
+  tenantId: string,
+) {
+  return callWebhook(WEBHOOKS.ESTIMATION_CARPET, {
+    project_id: projectId,
+  }, tenantId);
+}
+
 export async function calculateTransitions(
   projectId: string,
   tenantId: string,
