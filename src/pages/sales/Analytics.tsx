@@ -157,14 +157,14 @@ export default function SalesAnalytics() {
   });
 
   const activityKpis = useMemo(() => {
-    const sent = emailActivity.filter((m: any) => m.status === 'sent').length;
-    const failed = emailActivity.filter((m: any) => m.status === 'failed' || m.status === 'bounced').length;
+    const sent = (emailActivity || []).filter((m: any) => m.status === 'sent').length;
+    const failed = (emailActivity || []).filter((m: any) => m.status === 'failed' || m.status === 'bounced').length;
     const total = sent + failed;
     const deliveryRate = total > 0 ? Math.round((sent / total) * 100) : 0;
-    const avgScore = leads.length > 0
-      ? Math.round(leads.reduce((s: number, l: any) => s + (Number(l.lead_score) || 0), 0) / leads.length)
+    const avgScore = (leads || []).length > 0
+      ? Math.round((leads || []).reduce((s: number, l: any) => s + (Number(l.lead_score) || 0), 0) / leads.length)
       : 0;
-    const pipelineValue = deals.reduce((s: number, d: any) => s + (Number(d.value) || 0), 0);
+    const pipelineValue = (deals || []).reduce((s: number, d: any) => s + (Number(d.value) || 0), 0);
     return { sent, failed, deliveryRate, avgScore, pipelineValue, totalDeals: deals.length };
   }, [emailActivity, leads, deals]);
 
@@ -173,7 +173,7 @@ export default function SalesAnalytics() {
   const emailByDate = useMemo(() => {
     if (!emailActivity?.length) return [];
     const byDate: Record<string, { sent: number; failed: number }> = {};
-    emailActivity.forEach((msg: any) => {
+    (emailActivity || []).forEach((msg: any) => {
       const d = new Date(msg.created_at);
       const key = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       if (!byDate[key]) byDate[key] = { sent: 0, failed: 0 };
@@ -190,8 +190,8 @@ export default function SalesAnalytics() {
   // =====================================================
 
   const kpis = useMemo(() => {
-    const wonDeals = deals.filter(d => d.stage?.toLowerCase() === 'won');
-    const lostDeals = deals.filter(d => d.stage?.toLowerCase() === 'lost');
+    const wonDeals = (deals || []).filter(d => d.stage?.toLowerCase() === 'won');
+    const lostDeals = (deals || []).filter(d => d.stage?.toLowerCase() === 'lost');
     const totalRevenue = wonDeals.reduce((sum, d) => sum + (Number(d.value) || 0), 0);
     const dealsWon = wonDeals.length;
     const totalClosed = dealsWon + lostDeals.length;
@@ -215,7 +215,7 @@ export default function SalesAnalytics() {
 
   // Revenue by month from deals
   const revenueData = useMemo(() => {
-    const wonDeals = deals.filter(d => d.stage?.toLowerCase() === 'won');
+    const wonDeals = (deals || []).filter(d => d.stage?.toLowerCase() === 'won');
     const monthMap: Record<string, { revenue: number; count: number }> = {};
 
     wonDeals.forEach(d => {

@@ -113,10 +113,10 @@ export default function Deliverability() {
     };
   }, [rawEmails]);
 
-  const useFallback = (latest?.delivery_rate ?? 0) < 10 && fallbackStats.totalSent >= 10;
-
   const latest = metrics.length > 0 ? metrics[metrics.length - 1] : null;
   const prev = metrics.length > 1 ? metrics[metrics.length - 2] : null;
+
+  const useFallback = (latest?.delivery_rate ?? 0) < 10 && fallbackStats.totalSent >= 10;
 
   const deliveryRate = useFallback ? fallbackStats.deliveryRate : (latest?.delivery_rate ?? 0);
   const bounceRate = useFallback ? fallbackStats.bounceRate : (latest?.bounce_rate ?? 0);
@@ -129,7 +129,7 @@ export default function Deliverability() {
   const openTrend = prev ? openRate - (prev.open_rate ?? 0) : 0;
   const replyTrend = prev ? replyRate - (prev.reply_rate ?? 0) : 0;
 
-  const riskFactors: string[] = latest?.spam_risk_factors || [];
+  const riskFactors: string[] = Array.isArray(latest?.spam_risk_factors) ? latest.spam_risk_factors : [];
   const criticalFactors = riskFactors.filter((f: string) =>
     /blacklist|spf fail|dkim fail|high bounce|spam trap/i.test(f)
   );

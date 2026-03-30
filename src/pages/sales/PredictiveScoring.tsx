@@ -67,7 +67,7 @@ export default function PredictiveScoring() {
   });
 
   // Fetch lead names for the lead_ids in predictions
-  const leadIds = useMemo(() => predictions.map((p: any) => p.lead_id).filter(Boolean), [predictions]);
+  const leadIds = useMemo(() => (predictions || []).map((p: any) => p.lead_id).filter(Boolean), [predictions]);
 
   const { data: leadsMap = {} } = useQuery({
     queryKey: ["sales_leads_for_scoring", tenantId, leadIds],
@@ -89,7 +89,7 @@ export default function PredictiveScoring() {
   });
 
   const filtered = useMemo(() => {
-    let list = [...predictions];
+    let list = [...(predictions || [])];
     if (filterGrade !== "all") list = list.filter((p: any) => p.ml_grade === filterGrade);
     if (filterHiddenGem) list = list.filter((p: any) => p.is_hidden_gem);
     if (filterFalsePositive) list = list.filter((p: any) => p.is_false_positive);
@@ -97,15 +97,15 @@ export default function PredictiveScoring() {
     return list;
   }, [predictions, filterGrade, filterHiddenGem, filterFalsePositive, sortBy]);
 
-  const totalScored = predictions.length;
-  const hiddenGemsCount = predictions.filter((p: any) => p.is_hidden_gem).length;
-  const falsePositivesCount = predictions.filter((p: any) => p.is_false_positive).length;
+  const totalScored = (predictions || []).length;
+  const hiddenGemsCount = (predictions || []).filter((p: any) => p.is_hidden_gem).length;
+  const falsePositivesCount = (predictions || []).filter((p: any) => p.is_false_positive).length;
   const accuracy = model?.accuracy_percentage ?? 0;
 
-  const hiddenGems = predictions.filter((p: any) => p.is_hidden_gem).slice(0, 5);
-  const falsePositives = predictions.filter((p: any) => p.is_false_positive).slice(0, 5);
+  const hiddenGems = (predictions || []).filter((p: any) => p.is_hidden_gem).slice(0, 5);
+  const falsePositives = (predictions || []).filter((p: any) => p.is_false_positive).slice(0, 5);
 
-  const scatterData = predictions.map((p: any) => ({
+  const scatterData = (predictions || []).map((p: any) => ({
     x: p.rule_based_score ?? 0,
     y: p.ml_predicted_score ?? 0,
     grade: p.ml_grade || "D",

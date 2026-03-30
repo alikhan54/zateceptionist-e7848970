@@ -143,24 +143,24 @@ export default function WebsiteVisitors() {
   });
 
   // --- Today stats ---
-  const todayVisitors = useMemo(() => visitors.filter((v) => isToday(new Date(v.created_at))), [visitors]);
-  const hotToday = useMemo(() => todayVisitors.filter((v) => v.intent_level === "hot").length, [todayVisitors]);
-  const knownToday = useMemo(() => todayVisitors.filter((v) => v.lead_id).length, [todayVisitors]);
+  const todayVisitors = useMemo(() => (visitors || []).filter((v) => isToday(new Date(v.created_at))), [visitors]);
+  const hotToday = useMemo(() => (todayVisitors || []).filter((v) => v.intent_level === "hot").length, [todayVisitors]);
+  const knownToday = useMemo(() => (todayVisitors || []).filter((v) => v.lead_id).length, [todayVisitors]);
   const formInteractions = useMemo(
-    () => todayVisitors.reduce((s, v) => s + (v.form_interactions || 0), 0),
+    () => (todayVisitors || []).reduce((s, v) => s + (v.form_interactions || 0), 0),
     [todayVisitors]
   );
 
   // --- Filters ---
   const filteredVisitors = useMemo(() => {
-    let list = visitors;
+    let list = visitors || [];
     if (intentFilter !== "all") list = list.filter((v) => v.intent_level === intentFilter);
     if (pageTypeFilter !== "all") list = list.filter((v) => v.page_type === pageTypeFilter);
     return list;
   }, [visitors, intentFilter, pageTypeFilter]);
 
   const pageTypes = useMemo(() => {
-    const s = new Set(visitors.map((v) => v.page_type).filter(Boolean));
+    const s = new Set((visitors || []).map((v) => v.page_type).filter(Boolean));
     return Array.from(s) as string[];
   }, [visitors]);
 
