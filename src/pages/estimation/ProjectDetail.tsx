@@ -17,7 +17,7 @@ import { useEstimationRFIs } from "@/hooks/useEstimationRFIs";
 import { useEstimationRevisions } from "@/hooks/useEstimationRevisions";
 import { useEstimationTeam } from "@/hooks/useEstimationTeam";
 import { useTenant } from "@/contexts/TenantContext";
-import { exportEstimationData, analyzeBidsetText, aiQAReview, suggestMaterials, generateQualification, processVisionPdf, checkVisionStatus, getMaterialSummary, recalculateWaste, calculateTransitions, parseRoomDetails, parseScope } from "@/lib/api/estimationApi";
+import { exportEstimationData, analyzeBidsetText, aiQAReview, suggestMaterials, generateQualification, processVisionPdf, checkVisionStatus, getMaterialSummary, recalculateWaste, calculateTransitions, parseRoomDetails, parseScope, parseSpecs, applyAtticStock } from "@/lib/api/estimationApi";
 import { supabase } from "@/integrations/supabase/client";
 import { exportQuantitiesXlsx, exportCostSheetXlsx, exportQualificationPdf, exportColorCodedPdf, exportCsv, type ExportData } from "@/lib/estimation/exportUtils";
 import { ArrowLeft, Building2, Calendar, Users, DollarSign, Plus, Ruler, FileText, HelpCircle, History, Activity, Truck, Download, Bot, Loader2, CheckCircle, XCircle, Copy, Sparkles, AlertTriangle, AlertCircle, Upload, Send, Zap, Package, RefreshCw } from "lucide-react";
@@ -1283,6 +1283,49 @@ export default function ProjectDetail() {
                   )}
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          {/* Spec Book Parser */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2"><Package className="h-4 w-4" /> Parse Spec Book (Division 9)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Textarea
+                placeholder="Paste Division 9 specification text here (carpet, tile, resilient, paint sections)..."
+                rows={4}
+                value={(window as any).__specText || ""}
+                onChange={(e) => { (window as any).__specText = e.target.value; e.target.setAttribute("data-v", e.target.value); }}
+                className="text-xs"
+              />
+              <div className="flex gap-2">
+                <Button size="sm" onClick={async () => {
+                  const txt = (window as any).__specText || "";
+                  if (!txt || txt.length < 50) { toast.error("Paste spec text (min 50 chars)"); return; }
+                  toast.info("Parsing specifications with AI...");
+                  try {
+                    const resp = await parseSpecs(id!, tenantId, txt);
+                    const d = (resp as any)?.data || resp;
+                    if (!d?.success) { toast.error(d?.error || "Parse failed"); return; }
+                    const parts = [];
+                    if (d.materials_updated) parts.push(`${d.materials_updated} updated`);
+                    if (d.materials_created) parts.push(`${d.materials_created} created`);
+                    if (d.attic_stock_items) parts.push(`${d.attic_stock_items} attic stock items`);
+                    toast.success(`Specs parsed: ${parts.join(", ")}`);
+                    window.location.reload();
+                  } catch (e: any) { toast.error(e.message || "Parse failed"); }
+                }}><Bot className="mr-1 h-3 w-3" /> Parse Specs</Button>
+                <Button size="sm" variant="outline" onClick={async () => {
+                  toast.info("Recalculating attic stock...");
+                  try {
+                    const resp = await applyAtticStock(id!, tenantId);
+                    const d = (resp as any)?.data || resp;
+                    toast.success(`Attic stock: ${d?.attic_stock_items || 0} items created`);
+                    window.location.reload();
+                  } catch (e: any) { toast.error(e.message); }
+                }}><RefreshCw className="mr-1 h-3 w-3" /> Recalc Attic Stock</Button>
+              </div>
             </CardContent>
           </Card>
 

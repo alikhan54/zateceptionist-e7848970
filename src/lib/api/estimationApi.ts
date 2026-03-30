@@ -322,6 +322,28 @@ export async function getScopeSummary(
   }, tenantId);
 }
 
+export async function parseSpecs(
+  projectId: string,
+  tenantId: string,
+  specText: string,
+) {
+  return callWebhook(WEBHOOKS.ESTIMATION_SPECS, {
+    action: "parse_specs",
+    project_id: projectId,
+    spec_text: specText,
+  }, tenantId);
+}
+
+export async function applyAtticStock(
+  projectId: string,
+  tenantId: string,
+) {
+  return callWebhook(WEBHOOKS.ESTIMATION_SPECS, {
+    action: "apply_attic_stock",
+    project_id: projectId,
+  }, tenantId);
+}
+
 export async function calculateTransitions(
   projectId: string,
   tenantId: string,
