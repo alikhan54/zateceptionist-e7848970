@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, Component, ErrorInfo, ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTenant } from "@/contexts/TenantContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,6 +26,35 @@ const GRADE_COLORS: Record<string, string> = {
 const GRADE_DOT_COLORS: Record<string, string> = {
   A: "#34d399", B: "#60a5fa", C: "#fbbf24", D: "#f87171",
 };
+
+
+class ScoringErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null }> {
+  state = { hasError: false, error: null as Error | null };
+  static getDerivedStateFromError(error: Error) { return { hasError: true, error }; }
+  componentDidCatch(error: Error, info: ErrorInfo) { console.error("AI Scoring render error:", error, info); }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-background text-foreground p-6">
+          <div className="flex flex-col items-center justify-center h-64 gap-4">
+            <AlertTriangle className="w-12 h-12 text-amber-500" />
+            <h2 className="text-lg font-semibold">AI Scoring Unavailable</h2>
+            <p className="text-sm text-muted-foreground max-w-md text-center">
+              The scoring engine needs more data to display predictions.
+              As your pipeline grows, AI scoring will activate automatically.
+            </p>
+            <p className="text-xs text-muted-foreground/60 font-mono">{this.state.error?.message}</p>
+            <button onClick={() => this.setState({ hasError: false, error: null })}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm hover:bg-primary/90">
+              Try Again
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export default function PredictiveScoring() {
   const { tenantId } = useTenant();
@@ -116,6 +145,7 @@ export default function PredictiveScoring() {
   if (predictionsLoading) return <div className="flex items-center justify-center h-96 text-muted-foreground">Loading scoring data...</div>;
   if (predictionsError) return <div className="flex items-center justify-center h-96 text-muted-foreground">Unable to load scoring data. The predictions table may not be available yet.</div>;
   return (
+    <ScoringErrorBoundary>
     <div className="min-h-screen bg-background text-foreground p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -291,7 +321,7 @@ export default function PredictiveScoring() {
         </CardContent>
       </Card>
 
-      {/* Scatter Chart — only render when data exists (Recharts ReferenceLine crashes with empty data) */}
+      {/* Scatter Chart ï¿½ only render when data exists (Recharts ReferenceLine crashes with empty data) */}
       {scatterData.length > 0 && (
         <Card className="bg-card border-border">
           <CardHeader className="pb-2">
@@ -380,5 +410,6 @@ export default function PredictiveScoring() {
         </Card>
       </div>
     </div>
+    </ScoringErrorBoundary>
   );
 }
