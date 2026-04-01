@@ -339,13 +339,23 @@ export default function VideoStudio() {
         source_data: {
           prompt: aiPrompt, platform: aiPlatform, format: platform.format,
           duration_seconds: aiDuration, scene_count: sceneCount, brand_voice: brandVoice,
+          quality_tier: videoTier,
+          priority: videoTier === "premium" ? "high" : "standard",
         },
       }, tid!);
       const result = webhookResult.data as any || webhookResult;
 
       if (result?.success && result?.project_id) {
-        toast({ title: "AI Video Created!", description: `${result.scenes || sceneCount} scenes generated.` });
-        setTab("projects");
+        toast({ title: "AI Video Created!", description: "Now rendering your video..." });
+        // Auto-trigger render so user doesn't have to click Render separately
+        callWebhook(WEBHOOKS.VIDEO_ORCHESTRATE, {
+          trigger_type: "manual_render",
+          content: aiPrompt || result.title || "Video render",
+          project_id: result.project_id,
+          priority: videoTier === "premium" ? "high" : "standard",
+          quality_tier: videoTier,
+        }, tid!).catch(() => {});
+        setTab("queue");
         refreshProjects();
         setAiPrompt("");
       } else {
@@ -386,10 +396,27 @@ export default function VideoStudio() {
   const triggerAutoCreate = async (triggerType: string, sourceData: any) => {
     try {
       const webhookResult = await callWebhook(WEBHOOKS.VIDEO_AUTO_CREATE, {
-        trigger_type: triggerType, source_data: sourceData,
+        trigger_type: triggerType,
+        source_data: {
+          ...sourceData,
+          quality_tier: renderQuality,
+          priority: renderQuality === "premium" ? "high" : "standard",
+        },
       }, tid!);
       const result = webhookResult.data as any || webhookResult;
-      if (result?.success) {
+      if (result?.success && result?.project_id) {
+        toast({ title: "Video Created!", description: "Now rendering your video..." });
+        // Auto-trigger render so user doesn't have to click Render separately
+        callWebhook(WEBHOOKS.VIDEO_ORCHESTRATE, {
+          trigger_type: "manual_render",
+          content: sourceData?.content || result.title || "Video render",
+          project_id: result.project_id,
+          priority: renderQuality === "premium" ? "high" : "standard",
+          quality_tier: renderQuality,
+        }, tid!).catch(() => {});
+        refreshProjects();
+        setTab("queue");
+      } else if (result?.success) {
         toast({ title: "Video Auto-Created!", description: `${result.scenes} scenes from ${triggerType.replace(/_/g, " ")}` });
         refreshProjects();
         setTab("projects");
