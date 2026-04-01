@@ -23,6 +23,7 @@ import { exportQuantitiesXlsx, exportCostSheetXlsx, exportQualificationPdf, expo
 import { ArrowLeft, Building2, Calendar, Users, DollarSign, Plus, Ruler, FileText, HelpCircle, History, Activity, Truck, Download, Bot, Loader2, CheckCircle, XCircle, Copy, Sparkles, AlertTriangle, AlertCircle, Upload, Send, Zap, Package, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import CompletenessGrid from "@/components/estimation/CompletenessGrid";
+import FloorPlanViewer from "@/components/estimation/FloorPlanViewer";
 
 const STATUS_LABELS: Record<string, string> = {
   rfp_received: "RFP Received", reviewing: "Reviewing", in_progress: "In Progress",
@@ -784,6 +785,7 @@ export default function ProjectDetail() {
 
         {/* ROOMS TAB */}
         <TabsContent value="rooms" className="space-y-4">
+          <FloorPlanViewer projectId={id!} />
           <div className="flex items-center justify-between">
             <div className="text-sm text-muted-foreground">{roomStats.totalRooms} rooms, {roomStats.totalAreaSqft.toLocaleString()} SF total, {roomStats.verifiedRooms} verified</div>
             <Dialog open={showAddRoom} onOpenChange={setShowAddRoom}>
