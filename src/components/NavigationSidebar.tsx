@@ -107,6 +107,7 @@ import {
   Upload,
   Factory,
   Wallet,
+  LayoutTemplate,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -396,6 +397,7 @@ export function NavigationSidebar() {
         { title: "Content Studio", url: "/marketing/content", icon: PenTool },
         { title: "Blog Manager", url: "/marketing/blogs", icon: FileText },
         { title: "Landing Pages", url: "/marketing/landing", icon: Globe },
+        { title: "Page Builder", url: "/marketing/page-builder", icon: LayoutTemplate },
         { title: "Lead Magnets", url: "/marketing/lead-magnets", icon: Magnet },
         { title: "Email AI", url: "/marketing/email", icon: Mail },
       ]},

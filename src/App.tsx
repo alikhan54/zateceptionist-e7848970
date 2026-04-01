@@ -73,6 +73,7 @@ const Playbooks = lazy(() => import("./pages/marketing/Playbooks"));
 const VoiceMarketing = lazy(() => import("./pages/marketing/VoiceMarketing"));
 const AutonomousMarketing = lazy(() => import("./pages/marketing/AutonomousMarketing"));
 const VideoStudio = lazy(() => import("./pages/marketing/VideoStudio"));
+const PremiumPageBuilder = lazy(() => import("./pages/marketing/PremiumPageBuilder"));
 
 // HR Module
 const HRDashboardOverview = lazy(() => import("./pages/hr/Dashboard"));
@@ -220,6 +221,7 @@ const OmegaAlerts = lazy(() => import("./pages/OmegaAlerts"));
 // Public Pages
 const PublicBlog = lazy(() => import("./pages/public/PublicBlog"));
 const PublicLandingPage = lazy(() => import("./pages/public/PublicLandingPage"));
+const PremiumPage = lazy(() => import("./pages/public/PremiumPage"));
 const Pricing = lazy(() => import("./pages/public/Pricing"));
 const Terms = lazy(() => import("./pages/public/Terms"));
 const Privacy = lazy(() => import("./pages/public/Privacy"));
@@ -304,6 +306,14 @@ const App = () => (
                   element={
                     <LazyPage>
                       <PublicLandingPage />
+                    </LazyPage>
+                  }
+                />
+                <Route
+                  path="/p/:slug"
+                  element={
+                    <LazyPage>
+                      <PremiumPage />
                     </LazyPage>
                   }
                 />
@@ -644,6 +654,22 @@ const App = () => (
                     element={
                       <LazyPage>
                         <LandingPages />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/marketing/page-builder"
+                    element={
+                      <LazyPage>
+                        <PremiumPageBuilder />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/marketing/page-builder/:pageId"
+                    element={
+                      <LazyPage>
+                        <PremiumPageBuilder />
                       </LazyPage>
                     }
                   />
