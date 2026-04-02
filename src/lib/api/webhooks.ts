@@ -140,6 +140,7 @@ export const WEBHOOKS = {
   ESTIMATION_FILES: "/estimation-manage-files",
   ESTIMATION_PAINT: "/estimation-calculate-paint",
   ESTIMATION_CARPET: "/estimation-calculate-carpet",
+  ESTIMATION_DISSECT: "/estimation-dissect-pdf",
 
   // Bulk Voice Calls (Phase 14)
   BULK_CALL_CREATE: "/bulk-call/create-campaign",

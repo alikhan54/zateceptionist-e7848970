@@ -401,6 +401,27 @@ export async function calculateTransitions(
   }, tenantId);
 }
 
+export async function dissectPdf(
+  projectId: string,
+  pdfUrl: string,
+  tenantId: string,
+) {
+  return callWebhook(WEBHOOKS.ESTIMATION_DISSECT, {
+    project_id: projectId,
+    pdf_url: pdfUrl,
+  }, tenantId);
+}
+
+export async function getDissectedPages(projectId: string) {
+  const { data, error } = await supabase
+    .from("estimation_drawing_pages" as any)
+    .select("*")
+    .eq("project_id", projectId)
+    .order("page_number", { ascending: true });
+  if (error) throw error;
+  return data;
+}
+
 export async function recalculateWaste(
   projectId: string,
   tenantId: string,
