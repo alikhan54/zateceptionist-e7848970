@@ -509,30 +509,48 @@ export default function VideoStudio() {
                 {VOICE_OPTIONS.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
               </select>
             </div>
-            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-muted/50 text-[11px]">
-              <Layers className="h-3 w-3 text-muted-foreground" />
-              <select value={videoTier} onChange={(e) => setVideoTier(e.target.value)}
-                className="bg-transparent font-medium border-none outline-none cursor-pointer text-[11px]">
-                <option value="free">Free</option>
-                <option value="standard">Standard</option>
-                <option value="premium">Premium</option>
-              </select>
-            </div>
+            <span className="text-muted-foreground/30 mx-0.5">|</span>
+            <button onClick={() => setVideoTier("standard")}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all ${videoTier === "standard" ? "bg-gray-600 text-white shadow-sm" : "bg-muted/50 text-muted-foreground hover:bg-muted"}`}>
+              Standard ~1m
+            </button>
+            <button onClick={() => setVideoTier("premium")}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all ${videoTier === "premium" ? "bg-purple-600 text-white shadow-sm ring-1 ring-purple-400/50" : "bg-muted/50 text-muted-foreground hover:bg-muted"}`}>
+              Premium AI Motion
+            </button>
           </div>
         </div>
       </div>
 
       {/* QUICK AGENTIC ACTIONS */}
-      <div className="flex gap-2">
-        <Button variant="outline" size="sm" className="text-xs" title="Paste a blog URL or text — AI writes a video script and renders it" onClick={() => { setTriggerModal("blog_published"); setTriggerInput(""); }}>
-          <FileText className="h-3 w-3 mr-1" /> Blog &rarr; Video
-        </Button>
-        <Button variant="outline" size="sm" className="text-xs" title="Describe a competitor's promotion — AI creates a counter-ad video" onClick={() => { setTriggerModal("competitor_ad_detected"); setTriggerInput(""); }}>
-          <Shield className="h-3 w-3 mr-1" /> Counter Ad
-        </Button>
-        <Button variant="outline" size="sm" className="text-xs" title="Select a campaign — AI converts it into a promo video" onClick={() => { setTriggerModal("campaign_created"); setTriggerInput(""); }}>
-          <Send className="h-3 w-3 mr-1" /> Campaign &rarr; Video
-        </Button>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <Card className="hover:border-purple-500/40 cursor-pointer transition-all group" onClick={() => { setTriggerModal("blog_published"); setTriggerInput(""); }}>
+          <CardContent className="pt-4 pb-3">
+            <div className="flex items-center gap-2 mb-1">
+              <FileText className="h-4 w-4 text-blue-500" />
+              <h4 className="font-medium text-sm">Blog to Video</h4>
+            </div>
+            <p className="text-[11px] text-muted-foreground">Turn any blog post into a short video with AI narration</p>
+          </CardContent>
+        </Card>
+        <Card className="hover:border-purple-500/40 cursor-pointer transition-all group" onClick={() => { setTriggerModal("competitor_ad_detected"); setTriggerInput(""); }}>
+          <CardContent className="pt-4 pb-3">
+            <div className="flex items-center gap-2 mb-1">
+              <Shield className="h-4 w-4 text-orange-500" />
+              <h4 className="font-medium text-sm">Counter Ad</h4>
+            </div>
+            <p className="text-[11px] text-muted-foreground">AI creates a counter-video to respond to competitor promotions</p>
+          </CardContent>
+        </Card>
+        <Card className="hover:border-purple-500/40 cursor-pointer transition-all group" onClick={() => { setTriggerModal("campaign_created"); setTriggerInput(""); }}>
+          <CardContent className="pt-4 pb-3">
+            <div className="flex items-center gap-2 mb-1">
+              <Send className="h-4 w-4 text-green-500" />
+              <h4 className="font-medium text-sm">Campaign Video</h4>
+            </div>
+            <p className="text-[11px] text-muted-foreground">Convert any campaign into a promotional video ad</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* TABS */}
@@ -540,7 +558,7 @@ export default function VideoStudio() {
         <TabsList className="grid grid-cols-5 w-full max-w-xl">
           <TabsTrigger value="templates"><Layers className="h-3.5 w-3.5 mr-1" /> Templates</TabsTrigger>
           <TabsTrigger value="projects"><Film className="h-3.5 w-3.5 mr-1" /> My Videos</TabsTrigger>
-          <TabsTrigger value="queue"><RefreshCw className="h-3.5 w-3.5 mr-1" /> Queue</TabsTrigger>
+          <TabsTrigger value="queue"><RefreshCw className="h-3.5 w-3.5 mr-1" /> Rendering</TabsTrigger>
           <TabsTrigger value="viewers"><Eye className="h-3.5 w-3.5 mr-1" /> Viewers</TabsTrigger>
           <TabsTrigger value="analytics"><BarChart3 className="h-3.5 w-3.5 mr-1" /> Stats</TabsTrigger>
         </TabsList>
@@ -730,21 +748,39 @@ export default function VideoStudio() {
                 const scenes = parseScenes(p);
                 const st = STATUS_LABELS[p.status] || { label: p.status, color: "bg-gray-500" };
                 return (
-                  <Card key={p.id} className="hover:border-purple-500/50 cursor-pointer transition-all" onClick={() => openProject(p)}>
-                    <CardContent className="pt-4 space-y-2">
+                  <Card key={p.id} className="hover:border-purple-500/50 cursor-pointer transition-all overflow-hidden" onClick={() => openProject(p)}>
+                    {p.thumbnail_url && (
+                      <div className="relative aspect-video bg-muted">
+                        <img src={p.thumbnail_url} alt={p.title} className="w-full h-full object-cover" />
+                        {p.video_url && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity">
+                            <Play className="h-8 w-8 text-white" />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <CardContent className={`${p.thumbnail_url ? "pt-3" : "pt-4"} space-y-2`}>
                       <div className="flex items-center justify-between">
                         <h3 className="font-medium text-sm line-clamp-1">{p.title || "Untitled"}</h3>
                         <Badge className={`${st.color} text-[10px]`}>{st.label}</Badge>
                       </div>
-                      <div className="flex gap-1.5">
+                      <div className="flex gap-1.5 flex-wrap">
                         <Badge variant="outline" className="text-[10px]">{p.aspect_ratio || "9:16"}</Badge>
                         <Badge variant="outline" className="text-[10px]">{scenes.length} scenes</Badge>
                         {p.ai_generated && <Badge variant="outline" className="text-[10px] text-purple-500">AI</Badge>}
+                        {p.source_type && p.source_type !== "manual" && (
+                          <Badge variant="outline" className="text-[10px] text-muted-foreground">{p.source_type.replace(/_/g, " ")}</Badge>
+                        )}
                       </div>
                       {p.video_url && (
-                        <Button size="sm" variant="outline" className="w-full text-xs" asChild>
-                          <a href={p.video_url} target="_blank" rel="noopener"><Download className="h-3 w-3 mr-1" /> Download</a>
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" className="flex-1 text-xs" asChild onClick={(e: any) => e.stopPropagation()}>
+                            <a href={p.video_url} target="_blank" rel="noopener"><Play className="h-3 w-3 mr-1" /> Watch</a>
+                          </Button>
+                          <Button size="sm" variant="outline" className="text-xs" asChild onClick={(e: any) => e.stopPropagation()}>
+                            <a href={p.video_url} download><Download className="h-3 w-3 mr-1" /></a>
+                          </Button>
+                        </div>
                       )}
                     </CardContent>
                   </Card>
@@ -783,9 +819,19 @@ export default function VideoStudio() {
             return (
               <div key={job.id} className="rounded-lg border p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <div>
+                  <div className="space-y-1">
                     <h4 className="font-medium text-sm">{job.project_title || job.title || `Render ${job.id?.slice(0,8)}`}</h4>
-                    <p className="text-[11px] text-muted-foreground">{job.format} &middot; {job.tier||"standard"}</p>
+                    <div className="flex items-center gap-1.5">
+                      <Badge variant="outline" className={`text-[10px] ${(job.tier === "premium") ? "border-purple-500/50 text-purple-400" : "text-muted-foreground"}`}>
+                        {job.tier === "premium" ? "Premium" : "Standard"}
+                      </Badge>
+                      {job.trigger_type && job.trigger_type !== "manual_render" && (
+                        <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                          {job.trigger_type?.replace(/_/g, " ")}
+                        </Badge>
+                      )}
+                      {job.format && <Badge variant="outline" className="text-[10px] text-muted-foreground">{job.format}</Badge>}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge className={st.color}>{st.label}</Badge>
@@ -797,13 +843,18 @@ export default function VideoStudio() {
                   </div>
                 </div>
                 {!isDone && (
-                  <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-purple-600 to-pink-600 transition-all duration-500" style={{ width: `${progress}%` }} />
+                  <div className="space-y-1">
+                    <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-purple-600 to-pink-600 transition-all duration-500 animate-pulse" style={{ width: `${Math.max(progress, 5)}%` }} />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      {progress > 0 ? `${Math.round(progress)}%` : "Starting..."} {job.tier === "premium" ? " ~ 5 min/scene" : " ~ 1 min total"}
+                    </p>
                   </div>
                 )}
                 {(job.status === "complete" || job.status === "completed") && job.result_url && (
                   <div className="mt-2 flex gap-2">
-                    <Button size="sm" className="text-xs" asChild><a href={job.result_url} target="_blank" rel="noopener"><Play className="h-3 w-3 mr-1" /> Watch</a></Button>
+                    <Button size="sm" className="text-xs bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700" asChild><a href={job.result_url} target="_blank" rel="noopener"><Play className="h-3 w-3 mr-1" /> Watch</a></Button>
                     <Button size="sm" variant="outline" className="text-xs" asChild><a href={job.result_url} download><Download className="h-3 w-3 mr-1" /> Download</a></Button>
                   </div>
                 )}
