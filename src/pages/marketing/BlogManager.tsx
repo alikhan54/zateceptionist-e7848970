@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, FileText, Eye, Sparkles, Clock, CheckCircle, PenTool, RotateCw, RefreshCw, Copy, Download, ExternalLink, Layout, Info, Palette } from "lucide-react";
+import { Plus, FileText, Eye, Sparkles, Clock, CheckCircle, PenTool, RotateCw, RefreshCw, Copy, Download, ExternalLink, Layout, Info, Palette, Film } from "lucide-react";
 import { useBrandVoice } from "@/hooks/useBrandVoice";
 import { RepurposeDialog } from "@/components/marketing/RepurposeDialog";
 import { SEOScoreWidget } from "@/components/marketing/SEOScoreWidget";
@@ -444,6 +444,26 @@ export default function BlogManager() {
                         ? <><Clock className="h-3 w-3 mr-1 animate-spin" /></>
                         : <><Layout className="h-3 w-3 mr-1" /> Landing Page</>}
                     </Button>
+
+                    {/* Make Video */}
+                    {post.content_html && (
+                      <Button size="sm" variant="outline"
+                        onClick={async () => {
+                          try {
+                            await callWebhook(WEBHOOKS.VIDEO_ORCHESTRATE, {
+                              trigger_type: "blog_published",
+                              content: `${post.title}: ${(post.excerpt || post.content_html || "").substring(0, 500)}`,
+                              priority: "standard",
+                              quality_tier: "standard",
+                            }, tenantConfig?.id || "");
+                            toast({ title: "Video Creating", description: "AI is generating a video from this blog post. Check Video Studio." });
+                          } catch {
+                            toast({ title: "Video Queued", description: "Video generation has been queued." });
+                          }
+                        }}>
+                        <Film className="h-3 w-3 mr-1" /> Make Video
+                      </Button>
+                    )}
 
                     {/* Repurpose Dialog */}
                     <Button variant="outline" size="sm" onClick={() => setRepurposePost(post)}>

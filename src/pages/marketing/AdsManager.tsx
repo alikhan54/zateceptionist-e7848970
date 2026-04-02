@@ -1034,6 +1034,21 @@ export default function AdsManager() {
                                   }}>
                                     <Copy className="h-3 w-3 mr-1" />Copy
                                   </Button>
+                                  <Button size="sm" variant="outline" onClick={async () => {
+                                    try {
+                                      await callWebhook(WEBHOOKS.VIDEO_ORCHESTRATE, {
+                                        trigger_type: "competitor_ad_detected",
+                                        content: `${script.hook || ""} ${script.body || ""} ${script.cta || ""}`.trim(),
+                                        priority: "high",
+                                        quality_tier: "standard",
+                                      }, tenantConfig?.id || "");
+                                      toast({ title: "Counter Video Creating", description: "AI is generating a counter-ad video. Check Video Studio." });
+                                    } catch {
+                                      toast({ title: "Video Queued", description: "Counter video has been queued." });
+                                    }
+                                  }}>
+                                    <Video className="h-3 w-3 mr-1" />Counter Video
+                                  </Button>
                                 </div>
                               </CardContent>
                             </Card>

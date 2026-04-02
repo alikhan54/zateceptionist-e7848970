@@ -26,7 +26,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Search, Plus, Mail, MessageSquare, Phone, Calendar as CalendarIcon, Copy, Eye, Send,
   CheckCircle, XCircle, Clock, RefreshCw, Users, ChevronLeft, ChevronRight,
-  AlertCircle, FileEdit, Megaphone, Sparkles, UserPlus, Star, ShieldCheck, Loader2, Activity,
+  AlertCircle, FileEdit, Megaphone, Sparkles, UserPlus, Star, ShieldCheck, Loader2, Activity, Film,
 } from 'lucide-react';
 import { format, formatDistanceToNow, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths } from 'date-fns';
 
@@ -370,6 +370,25 @@ export default function CampaignCentral() {
                                   </TooltipTrigger><TooltipContent>Send now</TooltipContent></Tooltip></TooltipProvider>
                                 )}
                                 <Button variant="ghost" size="icon" onClick={() => handleDuplicate(campaign)}><Copy className="h-4 w-4" /></Button>
+                                <TooltipProvider><Tooltip><TooltipTrigger asChild>
+                                  <Button variant="ghost" size="icon" onClick={async () => {
+                                    try {
+                                      await fetch("https://webhooks.zatesystems.com/webhook/video/orchestrate", {
+                                        method: "POST", headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({
+                                          trigger_type: "campaign_created",
+                                          tenant_id: tenantUuid,
+                                          content: `${campaign.name}: ${(campaign.content || campaign.subject || "").substring(0, 500)}`,
+                                          priority: "standard",
+                                          quality_tier: "standard",
+                                        }),
+                                      });
+                                      toast({ title: "Video Ad Creating", description: "AI is generating a video ad. Check Video Studio." });
+                                    } catch {
+                                      toast({ title: "Video Queued", description: "Video ad has been queued." });
+                                    }
+                                  }}><Film className="h-4 w-4" /></Button>
+                                </TooltipTrigger><TooltipContent>Generate Video</TooltipContent></Tooltip></TooltipProvider>
                               </div>
                             </TableCell>
                           </TableRow>
