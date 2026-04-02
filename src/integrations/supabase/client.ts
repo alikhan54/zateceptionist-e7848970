@@ -121,7 +121,14 @@ export async function callWebhook(
       };
     }
 
-    const responseData = await response.json();
+    const text = await response.text();
+    let responseData: unknown;
+    try {
+      responseData = text ? JSON.parse(text) : {};
+    } catch {
+      console.warn(`Webhook [${endpoint}] returned non-JSON:`, text.slice(0, 100));
+      return { success: false, error: `Webhook returned non-JSON response` };
+    }
     return {
       success: true,
       data: responseData,

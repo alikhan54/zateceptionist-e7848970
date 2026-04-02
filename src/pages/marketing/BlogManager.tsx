@@ -145,6 +145,12 @@ export default function BlogManager() {
           }),
         }).catch(() => {});
 
+        // Auto SEO analysis — fire-and-forget
+        fetch("https://webhooks.zatesystems.com/webhook/seo-analyze", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tenant_id: tenantConfig?.id, content_type: "blog_post", content_id: post.id, keywords: [post.primary_keyword || ''].filter(Boolean) }),
+        }).catch(() => {});
+
         // AEO: Auto-score blog for AI engine optimization
         fetch("https://webhooks.zatesystems.com/webhook/aeo/optimize-content", {
           method: "POST", headers: { "Content-Type": "application/json" },

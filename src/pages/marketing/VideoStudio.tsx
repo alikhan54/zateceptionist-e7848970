@@ -260,6 +260,21 @@ export default function VideoStudio() {
     },
   });
 
+  const deleteProject = useMutation({
+    mutationFn: async (id: string) => {
+      // Delete associated render queue rows first
+      await supabase.from("video_render_queue" as any).delete().eq("project_id", id).eq("tenant_id", tid);
+      // Delete the project (tenant_id guard prevents cross-tenant deletion)
+      await supabase.from("video_projects" as any).delete().eq("id", id).eq("tenant_id", tid);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["video-projects-studio"] });
+      qc.invalidateQueries({ queryKey: ["video-render-queue"] });
+      toast({ title: "Video deleted" });
+      setSelectedProject(null);
+    },
+  });
+
   const clearCompleted = useMutation({
     mutationFn: async () => {
       await supabase.from("video_render_queue" as any).delete().eq("tenant_id", tid).in("status", ["completed", "complete", "failed"]);
@@ -772,7 +787,7 @@ export default function VideoStudio() {
                           <Badge variant="outline" className="text-[10px] text-muted-foreground">{p.source_type.replace(/_/g, " ")}</Badge>
                         )}
                       </div>
-                      {p.video_url && (
+                      {p.video_url ? (
                         <div className="flex gap-2">
                           <Button size="sm" variant="outline" className="flex-1 text-xs" asChild onClick={(e: any) => e.stopPropagation()}>
                             <a href={p.video_url} target="_blank" rel="noopener"><Play className="h-3 w-3 mr-1" /> Watch</a>
@@ -780,8 +795,15 @@ export default function VideoStudio() {
                           <Button size="sm" variant="outline" className="text-xs" asChild onClick={(e: any) => e.stopPropagation()}>
                             <a href={p.video_url} download><Download className="h-3 w-3 mr-1" /></a>
                           </Button>
+                          <Button size="sm" variant="ghost" className="text-xs text-muted-foreground hover:text-destructive h-8 w-8 p-0" onClick={(e: any) => { e.stopPropagation(); deleteProject.mutate(p.id); }} disabled={deleteProject.isPending}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
                         </div>
-                      )}
+                      ) : p.render_status !== "complete" && p.status === "script_ready" ? (
+                        <Button size="sm" className="w-full text-xs bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700" onClick={(e: any) => { e.stopPropagation(); startRender.mutate(p); }} disabled={startRender.isPending}>
+                          <Zap className="h-3 w-3 mr-1" /> Render Now
+                        </Button>
+                      ) : null}
                     </CardContent>
                   </Card>
                 );
