@@ -8,15 +8,27 @@ import { RTLWrapper } from "@/components/realestate/RTLWrapper";
 interface RegionConfig {
   id: string;
   region_code: string;
-  region_name: string;
-  country: string;
-  currency: string;
+  country_name: string;
+  country_code: string;
+  flag_emoji: string;
+  currency_code: string;
+  currency_symbol: string;
   regulatory_body: string;
-  ownership_rules: Record<string, unknown>;
-  tax_rates: Record<string, unknown>;
-  visa_programs: Record<string, unknown>;
-  transaction_fees: Record<string, unknown>;
-  compliance_requirements: string[];
+  license_requirements: Record<string, unknown>;
+  compliance_rules: Record<string, unknown>;
+  transfer_fee_pct: number;
+  transfer_fee_name: string;
+  vat_rate: number;
+  capital_gains_tax: boolean;
+  capital_gains_rate: number;
+  stamp_duty_brackets: Record<string, unknown>;
+  additional_fees: Record<string, unknown>;
+  golden_visa_enabled: boolean;
+  golden_visa_minimum: number;
+  golden_visa_currency: string;
+  residency_programs: Record<string, unknown>;
+  language_primary: string;
+  rtl_support: boolean;
   is_active: boolean;
 }
 
@@ -28,7 +40,7 @@ export default function RegionSettings() {
         .from("re_region_config" as any)
         .select("*")
         .eq("is_active", true)
-        .order("region_name");
+        .order("country_name");
       if (error) throw error;
       return (data || []) as unknown as RegionConfig[];
     },
@@ -80,31 +92,50 @@ export default function RegionSettings() {
                 <CardTitle className="flex items-center justify-between">
                   <span className="flex items-center gap-2">
                     <Building2 className="h-5 w-5" />
-                    {region.region_name}
+                    {region.flag_emoji} {region.country_name}
                   </span>
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline">{region.currency}</Badge>
+                    <Badge variant="outline">{region.currency_code}</Badge>
                     <Badge variant="secondary">{region.region_code.toUpperCase()}</Badge>
                   </div>
                 </CardTitle>
-                <p className="text-sm text-muted-foreground">{region.country} • Regulatory: {region.regulatory_body}</p>
+                <p className="text-sm text-muted-foreground">
+                  {region.regulatory_body} {region.rtl_support ? "• RTL" : ""} • {region.language_primary}
+                </p>
               </CardHeader>
               <CardContent className="space-y-4">
-                {renderJsonSection("Ownership Rules", <Shield className="h-4 w-4" />, region.ownership_rules)}
-                {renderJsonSection("Tax Rates", <DollarSign className="h-4 w-4" />, region.tax_rates)}
-                {renderJsonSection("Transaction Fees", <DollarSign className="h-4 w-4" />, region.transaction_fees)}
-                {renderJsonSection("Visa Programs", <Users className="h-4 w-4" />, region.visa_programs)}
+                <div className="space-y-2">
+                  <h4 className="font-medium text-sm flex items-center gap-2"><DollarSign className="h-4 w-4" /> Fees & Taxes</h4>
+                  <div className="grid gap-1">
+                    <div className="flex justify-between items-center py-1 px-2 bg-muted/30 rounded text-sm">
+                      <span className="text-muted-foreground">{region.transfer_fee_name || "Transfer Fee"}</span>
+                      <span className="font-medium">{region.transfer_fee_pct}%</span>
+                    </div>
+                    <div className="flex justify-between items-center py-1 px-2 bg-muted/30 rounded text-sm">
+                      <span className="text-muted-foreground">VAT Rate</span>
+                      <span className="font-medium">{region.vat_rate}%</span>
+                    </div>
+                    <div className="flex justify-between items-center py-1 px-2 bg-muted/30 rounded text-sm">
+                      <span className="text-muted-foreground">Capital Gains Tax</span>
+                      <span className="font-medium">{region.capital_gains_tax ? `${region.capital_gains_rate}%` : "None"}</span>
+                    </div>
+                  </div>
+                </div>
 
-                {region.compliance_requirements && region.compliance_requirements.length > 0 && (
+                {region.golden_visa_enabled && (
                   <div className="space-y-2">
-                    <h4 className="font-medium text-sm flex items-center gap-2"><Shield className="h-4 w-4" /> Compliance</h4>
-                    <div className="flex flex-wrap gap-1">
-                      {region.compliance_requirements.map((req, i) => (
-                        <Badge key={i} variant="outline" className="text-xs">{req}</Badge>
-                      ))}
+                    <h4 className="font-medium text-sm flex items-center gap-2"><Users className="h-4 w-4" /> Golden Visa</h4>
+                    <div className="flex justify-between items-center py-1 px-2 bg-purple-50 rounded text-sm">
+                      <span className="text-purple-700">Minimum Investment</span>
+                      <span className="font-medium text-purple-700">{region.golden_visa_currency} {region.golden_visa_minimum?.toLocaleString()}</span>
                     </div>
                   </div>
                 )}
+
+                {renderJsonSection("Residency Programs", <Users className="h-4 w-4" />, region.residency_programs as Record<string, unknown>)}
+                {renderJsonSection("License Requirements", <Shield className="h-4 w-4" />, region.license_requirements as Record<string, unknown>)}
+                {renderJsonSection("Additional Fees", <DollarSign className="h-4 w-4" />, region.additional_fees as Record<string, unknown>)}
+                {renderJsonSection("Compliance Rules", <Shield className="h-4 w-4" />, region.compliance_rules as Record<string, unknown>)}
               </CardContent>
             </Card>
           ))}

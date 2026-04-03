@@ -187,13 +187,21 @@ export default function LeadScoring() {
                               <Badge variant="outline" className={urgencyColors[s.urgency_level] || ""}>{s.urgency_level}</Badge>
                             </td>
                             <td className="p-3 text-center">
-                              {visaPrograms.length > 0 ? (
+                              {s.client_golden_visa ? (
+                                <Badge variant="outline" className="bg-purple-50 text-purple-700 text-xs">
+                                  {"\uD83C\uDFC6"} Golden Visa
+                                </Badge>
+                              ) : visaPrograms.length > 0 ? (
                                 visaPrograms.map((v, i) => (
                                   <Badge key={i} variant="outline" className="bg-purple-50 text-purple-700 text-xs">
                                     {v.includes("Golden") ? "\uD83C\uDFC6" : "\uD83C\uDFE0"} {v}
                                   </Badge>
                                 ))
-                              ) : "-"}
+                              ) : (breakdown.visa?.eligible ? (
+                                <Badge variant="outline" className="bg-purple-50 text-purple-700 text-xs">
+                                  {"\uD83C\uDFC6"} {breakdown.visa?.type || "Visa Eligible"}
+                                </Badge>
+                              ) : "-")}
                             </td>
                             <td className="p-3 text-xs text-muted-foreground max-w-[200px] truncate">{s.recommended_action}</td>
                             <td className="p-3">{isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</td>

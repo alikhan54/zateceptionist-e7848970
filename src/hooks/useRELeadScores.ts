@@ -27,6 +27,7 @@ export interface LeadScore {
   client_budget_max?: number;
   client_email?: string;
   client_phone?: string;
+  client_golden_visa?: boolean;
 }
 
 export function useRELeadScores() {
@@ -43,7 +44,7 @@ export function useRELeadScores() {
 
       const { data: clients } = await supabase
         .from("re_clients" as any)
-        .select("id, full_name, first_name, last_name, nationality, budget_max, budget_min, email, phone")
+        .select("id, full_name, first_name, last_name, nationality, budget_max, budget_min, email, phone, golden_visa_eligible")
         .eq("tenant_id", tenantId);
 
       const clientMap = new Map((clients || []).map((c: any) => [c.id, c]));
@@ -57,6 +58,7 @@ export function useRELeadScores() {
           client_budget_max: Number((client as any).budget_max || (client as any).budget_min || 0),
           client_email: (client as any).email,
           client_phone: (client as any).phone,
+          client_golden_visa: (client as any).golden_visa_eligible || false,
         } as LeadScore;
       });
     },
@@ -71,9 +73,10 @@ export function useRELeadScores() {
     gradeD: scores.filter((s) => s.score_grade === "D").length,
     avgScore: scores.length > 0 ? Math.round(scores.reduce((sum, s) => sum + s.purchase_probability, 0) / scores.length) : 0,
     visaEligible: scores.filter((s) => {
+      if (s.client_golden_visa) return true;
       const breakdown = s.score_breakdown || {};
       const visa = breakdown.visa || {};
-      return visa.is_foreign && s.client_budget_max >= 750000;
+      return visa.eligible || (visa.is_foreign && (s.client_budget_max || 0) >= 750000);
     }).length,
   };
 
