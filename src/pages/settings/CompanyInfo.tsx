@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, Brain, Save, Loader2, Clock } from "lucide-react";
+import { Building2, Brain, Save, Loader2, Clock, Globe, Link } from "lucide-react";
 
 const INDUSTRIES: { value: IndustryType; label: string }[] = [
   { value: "technology", label: "Technology" },
@@ -48,11 +48,17 @@ export default function CompanyInfo() {
     ai_role: "",
     logo_url: "",
     primary_color: "",
+    website_url: "",
+    instagram_url: "",
+    facebook_url: "",
+    linkedin_url: "",
   });
 
+  // Load social links from business_profiles (separate from tenant_config)
   useEffect(() => {
     if (tenantConfig) {
-      setFormData({
+      setFormData((prev) => ({
+        ...prev,
         company_name: tenantConfig.company_name || "",
         industry: tenantConfig.industry || "general",
         services_description: tenantConfig.services_description || "",
@@ -66,9 +72,30 @@ export default function CompanyInfo() {
         ai_role: tenantConfig.ai_role || "",
         logo_url: tenantConfig.logo_url || "",
         primary_color: tenantConfig.primary_color || "",
-      });
+      }));
     }
   }, [tenantConfig]);
+
+  // Load business_profiles data (social links, website)
+  useEffect(() => {
+    if (!tenantId) return;
+    supabase
+      .from("business_profiles")
+      .select("website_url, instagram_url, facebook_url, linkedin_url")
+      .eq("tenant_id", tenantId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setFormData((prev) => ({
+            ...prev,
+            website_url: data.website_url || "",
+            instagram_url: data.instagram_url || "",
+            facebook_url: data.facebook_url || "",
+            linkedin_url: data.linkedin_url || "",
+          }));
+        }
+      });
+  }, [tenantId]);
 
   const handleSave = async () => {
     if (!tenantId) return;
@@ -96,6 +123,29 @@ export default function CompanyInfo() {
         .eq("tenant_id", tenantId);
 
       if (error) throw error;
+
+      // Sync to business_profiles (non-blocking secondary save)
+      try {
+        await supabase
+          .from("business_profiles")
+          .upsert(
+            {
+              tenant_id: tenantId,
+              company_name: formData.company_name || null,
+              industry: formData.industry || null,
+              short_description: formData.services_description || null,
+              unique_value_proposition: formData.value_proposition || null,
+              website_url: formData.website_url || null,
+              instagram_url: formData.instagram_url || null,
+              facebook_url: formData.facebook_url || null,
+              linkedin_url: formData.linkedin_url || null,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "tenant_id" }
+          );
+      } catch (bpErr) {
+        console.warn("business_profiles sync failed:", bpErr);
+      }
 
       toast({ title: "Saved", description: "Company information updated successfully" });
       await refreshConfig();
@@ -309,6 +359,72 @@ export default function CompanyInfo() {
           </Card>
         </div>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Globe className="h-5 w-5" />
+            Website & Social Links
+          </CardTitle>
+          <CardDescription>Your online presence</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="website_url">Website</Label>
+              <div className="relative">
+                <Globe className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="website_url"
+                  value={formData.website_url}
+                  onChange={(e) => updateField("website_url", e.target.value)}
+                  placeholder="https://example.com"
+                  className="pl-10"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="instagram_url">Instagram</Label>
+              <div className="relative">
+                <Link className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="instagram_url"
+                  value={formData.instagram_url}
+                  onChange={(e) => updateField("instagram_url", e.target.value)}
+                  placeholder="https://instagram.com/yourpage"
+                  className="pl-10"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="facebook_url">Facebook</Label>
+              <div className="relative">
+                <Link className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="facebook_url"
+                  value={formData.facebook_url}
+                  onChange={(e) => updateField("facebook_url", e.target.value)}
+                  placeholder="https://facebook.com/yourpage"
+                  className="pl-10"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="linkedin_url">LinkedIn</Label>
+              <div className="relative">
+                <Link className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="linkedin_url"
+                  value={formData.linkedin_url}
+                  onChange={(e) => updateField("linkedin_url", e.target.value)}
+                  placeholder="https://linkedin.com/company/yourco"
+                  className="pl-10"
+                />
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="flex justify-end">
         <Button onClick={handleSave} disabled={saving}>
