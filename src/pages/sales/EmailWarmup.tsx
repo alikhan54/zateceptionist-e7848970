@@ -71,14 +71,7 @@ export default function EmailWarmup() {
         .eq("tenant_id", tenantId)
         .maybeSingle();
       if (error) throw error;
-      return (data as unknown as WarmupStatus) ?? {
-        status: "warming",
-        current_day: 3,
-        daily_limit: 8,
-        sent_today: 5,
-        domain_health: 92,
-        bounce_rate: 1.2,
-      };
+      return (data as unknown as WarmupStatus) || null;
     },
     enabled: !!tenantId,
   });
@@ -124,12 +117,35 @@ export default function EmailWarmup() {
     }));
   }, [dailyLogs]);
 
+  // If no warmup data exists, show empty state instead of fake defaults
+  if (!warmupStatus && !statusLoading) {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center gap-2">
+          <Mail className="h-8 w-8" />
+          <div>
+            <h1 className="text-2xl font-bold">Email Warmup</h1>
+            <p className="text-muted-foreground">Build domain reputation over 21 days</p>
+          </div>
+        </div>
+        <div className="flex flex-col items-center justify-center py-16">
+          <Shield className="w-12 h-12 text-muted-foreground/40 mb-4" />
+          <h3 className="text-lg font-medium mb-2">Email Warmup Not Started</h3>
+          <p className="text-sm text-muted-foreground max-w-md text-center">
+            Configure your SMTP email settings in Settings to begin the warmup process.
+            The system will gradually increase your sending volume over 21 days to build domain reputation.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const status = warmupStatus?.status ?? "warming";
-  const currentDay = warmupStatus?.current_day ?? 3;
-  const dailyLimit = warmupStatus?.daily_limit ?? 8;
-  const sentToday = warmupStatus?.sent_today ?? 5;
-  const domainHealth = warmupStatus?.domain_health ?? 92;
-  const bounceRate = warmupStatus?.bounce_rate ?? 1.2;
+  const currentDay = warmupStatus?.current_day ?? 1;
+  const dailyLimit = warmupStatus?.daily_limit ?? 5;
+  const sentToday = warmupStatus?.sent_today ?? 0;
+  const domainHealth = warmupStatus?.domain_health ?? 50;
+  const bounceRate = warmupStatus?.bounce_rate ?? 0;
 
   const statusConfig = {
     warming: {
