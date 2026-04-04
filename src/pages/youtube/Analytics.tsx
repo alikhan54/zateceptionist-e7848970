@@ -9,6 +9,7 @@ import {
   DollarSign,
   TrendingUp,
   Activity,
+  CreditCard,
 } from "lucide-react";
 import {
   useYTPipelineStats,
