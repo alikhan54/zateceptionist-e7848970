@@ -162,6 +162,12 @@ export const WEBHOOKS = {
   MANUAL_EMAIL_START: "/manual-email/start-campaign",
   MANUAL_EMAIL_PAUSE: "/manual-email/pause-campaign",
   MANUAL_EMAIL_STATUS: "/manual-email/get-status",
+
+  // YouTube Agency
+  YOUTUBE_DISCOVER: "/youtube/discover-channels",
+  YOUTUBE_GENERATE_ASSETS: "/youtube/generate-assets",
+  YOUTUBE_GENERATE_SEO: "/youtube/generate-seo",
+  YOUTUBE_SEND_OUTREACH: "/youtube/send-outreach",
 } as const;
 
 export type WebhookEndpoint = (typeof WEBHOOKS)[keyof typeof WEBHOOKS];

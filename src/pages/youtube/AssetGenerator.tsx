@@ -24,6 +24,7 @@ import {
   useYTChannels,
   useYTAssets,
   useTriggerAssetGen,
+  useApproveAsset,
   type YTGeneratedAsset,
 } from "@/hooks/useYouTubeAgency";
 
@@ -59,6 +60,7 @@ export default function AssetGenerator() {
     selectedChannelId || undefined
   );
   const triggerAssetGen = useTriggerAssetGen();
+  const approveAsset = useApproveAsset();
 
   const toggleType = (type: string) => {
     setSelectedTypes((prev) =>
@@ -285,7 +287,8 @@ export default function AssetGenerator() {
                     size="sm"
                     variant={asset.is_approved ? "default" : "outline"}
                     className="flex-1"
-                    disabled={asset.is_approved}
+                    disabled={asset.is_approved || approveAsset.isPending}
+                    onClick={() => approveAsset.mutate({ id: asset.id, approved: true })}
                   >
                     <Check className="h-3 w-3 mr-1" />
                     {asset.is_approved ? "Approved" : "Approve"}
@@ -294,7 +297,8 @@ export default function AssetGenerator() {
                     size="sm"
                     variant="outline"
                     className="flex-1"
-                    disabled={asset.is_approved}
+                    disabled={asset.is_approved || approveAsset.isPending}
+                    onClick={() => approveAsset.mutate({ id: asset.id, approved: false })}
                   >
                     <X className="h-3 w-3 mr-1" />
                     Reject

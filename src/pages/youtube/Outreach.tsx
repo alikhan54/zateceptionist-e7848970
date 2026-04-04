@@ -25,6 +25,8 @@ import {
 import {
   useYTOutreachCampaigns,
   useCreateYTCampaign,
+  useLaunchCampaign,
+  useUpdateCampaignStatus,
 } from "@/hooks/useYouTubeAgency";
 
 const NICHE_OPTIONS = [
@@ -66,6 +68,8 @@ export default function Outreach() {
 
   const { data: campaigns, isLoading } = useYTOutreachCampaigns();
   const createCampaign = useCreateYTCampaign();
+  const launchCampaign = useLaunchCampaign();
+  const updateStatus = useUpdateCampaignStatus();
 
   const handleCreate = () => {
     if (!name.trim()) return;
@@ -310,6 +314,9 @@ export default function Outreach() {
                     <th className="pb-3 font-medium text-muted-foreground">
                       Revenue
                     </th>
+                    <th className="pb-3 font-medium text-muted-foreground">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -345,6 +352,41 @@ export default function Outreach() {
                       <td className="py-3">{campaign.deals_closed}</td>
                       <td className="py-3 font-semibold">
                         {formatCurrency(campaign.total_revenue)}
+                      </td>
+                      <td className="py-3">
+                        <div className="flex gap-1">
+                          {campaign.status === "draft" && (
+                            <Button
+                              size="sm"
+                              variant="default"
+                              onClick={() => launchCampaign.mutate(campaign.id)}
+                              disabled={launchCampaign.isPending}
+                            >
+                              <Send className="h-3 w-3 mr-1" />
+                              Launch
+                            </Button>
+                          )}
+                          {campaign.status === "active" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => updateStatus.mutate({ id: campaign.id, status: "paused" })}
+                              disabled={updateStatus.isPending}
+                            >
+                              Pause
+                            </Button>
+                          )}
+                          {campaign.status === "paused" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => updateStatus.mutate({ id: campaign.id, status: "active" })}
+                              disabled={updateStatus.isPending}
+                            >
+                              Resume
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
 import { useToast } from "@/hooks/use-toast";
+import { callWebhook, WEBHOOKS } from "@/lib/api/webhooks";
 
 // === Types ===
 
@@ -422,8 +423,6 @@ export function useYTPipelineStats() {
 
 // === Webhook Triggers ===
 
-const N8N_BASE = import.meta.env.VITE_N8N_WEBHOOK_URL || "";
-
 export function useTriggerDiscovery() {
   const { tenantId } = useTenant();
   const queryClient = useQueryClient();
@@ -438,13 +437,9 @@ export function useTriggerDiscovery() {
       country_filter?: string;
       audience_gender_filter?: string;
     }) => {
-      const resp = await fetch(`${N8N_BASE}/youtube/discover-channels`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...params, tenant_id: tenantId }),
-      });
-      if (!resp.ok) throw new Error(`Discovery failed: ${resp.status}`);
-      return resp.json();
+      const result = await callWebhook(WEBHOOKS.YOUTUBE_DISCOVER, params, tenantId!);
+      if (!result.success) throw new Error(result.error || "Discovery failed");
+      return result.data;
     },
     onSuccess: () => {
       toast({ title: "Discovery Started", description: "Channel discovery batch has been launched." });
@@ -468,13 +463,9 @@ export function useTriggerAssetGen() {
       asset_types: string[];
       style_preset?: string;
     }) => {
-      const resp = await fetch(`${N8N_BASE}/youtube/generate-assets`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...params, tenant_id: tenantId }),
-      });
-      if (!resp.ok) throw new Error(`Asset generation failed: ${resp.status}`);
-      return resp.json();
+      const result = await callWebhook(WEBHOOKS.YOUTUBE_GENERATE_ASSETS, params, tenantId!);
+      if (!result.success) throw new Error(result.error || "Asset generation failed");
+      return result.data;
     },
     onSuccess: () => {
       toast({ title: "Asset Generation Started", description: "AI is generating assets for this channel." });
@@ -496,13 +487,9 @@ export function useTriggerSeoGen() {
       channel_id: string;
       video_url?: string;
     }) => {
-      const resp = await fetch(`${N8N_BASE}/youtube/generate-seo`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...params, tenant_id: tenantId }),
-      });
-      if (!resp.ok) throw new Error(`SEO generation failed: ${resp.status}`);
-      return resp.json();
+      const result = await callWebhook(WEBHOOKS.YOUTUBE_GENERATE_SEO, params, tenantId!);
+      if (!result.success) throw new Error(result.error || "SEO generation failed");
+      return result.data;
     },
     onSuccess: () => {
       toast({ title: "SEO Package Generated", description: "AI SEO optimization complete." });
@@ -510,6 +497,79 @@ export function useTriggerSeoGen() {
     },
     onError: (err: Error) => {
       toast({ title: "SEO Generation Failed", description: err.message, variant: "destructive" });
+    },
+  });
+}
+
+// === Asset Approval ===
+
+export function useApproveAsset() {
+  const queryClient = useQueryClient();
+  const { tenantId } = useTenant();
+
+  return useMutation({
+    mutationFn: async ({ id, approved }: { id: string; approved: boolean }) => {
+      const { data, error } = await supabase
+        .from("yt_generated_assets")
+        .update({
+          is_approved: approved,
+          approved_by: approved ? "admin" : null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id)
+        .eq("tenant_id", tenantId!)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["yt_assets"] });
+    },
+  });
+}
+
+// === Campaign Execution ===
+
+export function useLaunchCampaign() {
+  const { tenantId } = useTenant();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (campaignId: string) => {
+      const result = await callWebhook(WEBHOOKS.YOUTUBE_SEND_OUTREACH, { campaign_id: campaignId }, tenantId!);
+      if (!result.success) throw new Error(result.error || "Campaign launch failed");
+      return result.data;
+    },
+    onSuccess: () => {
+      toast({ title: "Campaign Launched", description: "Outreach campaign is now running." });
+      queryClient.invalidateQueries({ queryKey: ["yt_outreach_campaigns"] });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Launch Failed", description: err.message, variant: "destructive" });
+    },
+  });
+}
+
+export function useUpdateCampaignStatus() {
+  const queryClient = useQueryClient();
+  const { tenantId } = useTenant();
+
+  return useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const { data, error } = await supabase
+        .from("yt_outreach_campaigns")
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq("id", id)
+        .eq("tenant_id", tenantId!)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["yt_outreach_campaigns"] });
     },
   });
 }
