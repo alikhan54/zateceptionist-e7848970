@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 
-export type IndustryType = "healthcare" | "healthcare_clinic" | "healthcare_staffing" | "real_estate" | "restaurant" | "salon" | "banking_collections" | "construction_estimation" | "technology" | "legal" | "fitness" | "education" | "automotive" | "professional" | "retail" | "general";
+export type IndustryType = "healthcare" | "healthcare_clinic" | "healthcare_staffing" | "real_estate" | "restaurant" | "salon" | "banking_collections" | "construction_estimation" | "youtube_agency" | "technology" | "legal" | "fitness" | "education" | "automotive" | "professional" | "retail" | "general";
 
 export interface TenantConfig {
   id: string;
@@ -220,6 +220,20 @@ const industryVocabulary: Partial<Record<IndustryType, Record<string, string>>> 
     lead: "Prospect",
     leads: "Prospects",
   },
+  youtube_agency: {
+    customer: "Creator",
+    customers: "Creators",
+    appointment: "Strategy Call",
+    appointments: "Strategy Calls",
+    product: "Package",
+    products: "Packages",
+    staff: "Specialist",
+    staffs: "Specialists",
+    deal: "Contract",
+    deals: "Contracts",
+    lead: "Channel",
+    leads: "Channels",
+  },
   technology: {
     customer: "Client",
     customers: "Clients",
@@ -316,6 +330,17 @@ const industryDealStages: Partial<Record<IndustryType, string[]>> & { general: s
     "Active Client",
     "Lost",
   ],
+  youtube_agency: [
+    "Discovered",
+    "Qualified",
+    "Sample Sent",
+    "In Conversation",
+    "Negotiating",
+    "Payment Pending",
+    "Active Client",
+    "Upsell",
+    "Lost",
+  ],
   technology: [
     "Discovery",
     "Qualified",
@@ -352,6 +377,7 @@ interface TenantContextType {
   isBankingCollections: boolean;
   isConstructionEstimation: boolean;
   isHealthcareStaffing: boolean;
+  isYouTubeAgency: boolean;
   refreshConfig: () => Promise<void>;
 }
 
@@ -552,6 +578,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const isBankingCollections = industry === "banking_collections" || (industry as string) === "finance";
   const isConstructionEstimation = industry === "construction_estimation" || (industry as string) === "construction";
   const isHealthcareStaffing = industry === "healthcare_staffing";
+  const isYouTubeAgency = industry === "youtube_agency";
 
   useEffect(() => {
     fetchTenantConfig();
@@ -580,6 +607,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         isBankingCollections,
         isConstructionEstimation,
         isHealthcareStaffing,
+        isYouTubeAgency,
         refreshConfig: fetchTenantConfig,
       }}
     >

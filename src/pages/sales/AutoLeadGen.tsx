@@ -91,6 +91,7 @@ const INDUSTRIES = [
   { id: 'fintech', label: 'Fintech / Digital Payments', icon: '💳' },
   { id: 'bpo_collections', label: 'BPO / Collections Services', icon: '📞' },
   { id: 'microfinance', label: 'Microfinance / Financial Inclusion', icon: '🌍' },
+  { id: 'youtube_agency', label: 'YouTube Agency / Creator Services', icon: '🎬' },
 ];
 
 // LOCAL DISCOVERY CATEGORIES - For Google Places/Maps

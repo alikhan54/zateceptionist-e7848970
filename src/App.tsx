@@ -167,6 +167,15 @@ const EstimationRFIs = lazy(() => import("./pages/estimation/RFITracker"));
 const EstimationReports = lazy(() => import("./pages/estimation/EstimationReports"));
 const EstimationApprovalQueue = lazy(() => import("./pages/estimation/EstimationApprovalQueue"));
 
+// YouTube Agency Module
+const YouTubeDiscovery = lazy(() => import("./pages/youtube/Discovery"));
+const YouTubePipeline = lazy(() => import("./pages/youtube/Pipeline"));
+const YouTubeAssets = lazy(() => import("./pages/youtube/AssetGenerator"));
+const YouTubeSeo = lazy(() => import("./pages/youtube/SeoEngine"));
+const YouTubeOutreach = lazy(() => import("./pages/youtube/Outreach"));
+const YouTubePayments = lazy(() => import("./pages/youtube/Payments"));
+const YouTubeAnalytics = lazy(() => import("./pages/youtube/Analytics"));
+
 // Communications Module
 const VoiceAIHub = lazy(() => import("./pages/communications/VoiceAIHub"));
 const WhatsAppHub = lazy(() => import("./pages/communications/WhatsApp"));
@@ -1186,6 +1195,16 @@ const App = () => (
                   <Route path="/estimation/rfis" element={<LazyPage><EstimationRFIs /></LazyPage>} />
                   <Route path="/estimation/reports" element={<LazyPage><EstimationReports /></LazyPage>} />
                   <Route path="/estimation/approval" element={<LazyPage><EstimationApprovalQueue /></LazyPage>} />
+
+                  {/* YouTube Agency Module */}
+                  <Route path="/youtube" element={<Navigate to="/youtube/discovery" replace />} />
+                  <Route path="/youtube/discovery" element={<LazyPage><YouTubeDiscovery /></LazyPage>} />
+                  <Route path="/youtube/pipeline" element={<LazyPage><YouTubePipeline /></LazyPage>} />
+                  <Route path="/youtube/assets" element={<LazyPage><YouTubeAssets /></LazyPage>} />
+                  <Route path="/youtube/seo" element={<LazyPage><YouTubeSeo /></LazyPage>} />
+                  <Route path="/youtube/outreach" element={<LazyPage><YouTubeOutreach /></LazyPage>} />
+                  <Route path="/youtube/payments" element={<LazyPage><YouTubePayments /></LazyPage>} />
+                  <Route path="/youtube/analytics" element={<LazyPage><YouTubeAnalytics /></LazyPage>} />
 
                   {/* Real Estate Module */}
                   <Route path="/realestate" element={<LazyPage><RealEstateDashboard /></LazyPage>} />

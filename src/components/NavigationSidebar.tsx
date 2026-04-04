@@ -144,7 +144,7 @@ export function NavigationSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, isAdmin, isMasterAdmin, authUser, hasPermission } = useAuth();
-  const { tenantConfig, translate, tenantId, setTenantId, isRestaurant, isBankingCollections, isHealthcareClinic, isConstructionEstimation, isRealEstate } = useTenant();
+  const { tenantConfig, translate, tenantId, setTenantId, isRestaurant, isBankingCollections, isHealthcareClinic, isConstructionEstimation, isRealEstate, isYouTubeAgency } = useTenant();
   const { isEnabled } = useFeatureFlags();
   const { toast } = useToast();
 
@@ -538,6 +538,20 @@ export function NavigationSidebar() {
     ],
   };
 
+  const youtubeAgencySection: NavSection = {
+    label: "YouTube Agency",
+    collapsible: true,
+    items: [
+      { title: "Channel Discovery", url: "/youtube/discovery", icon: Search },
+      { title: "Channel Pipeline", url: "/youtube/pipeline", icon: Users },
+      { title: "Asset Generator", url: "/youtube/assets", icon: Palette },
+      { title: "SEO Engine", url: "/youtube/seo", icon: TrendingUp },
+      { title: "Outreach Campaigns", url: "/youtube/outreach", icon: Send },
+      { title: "Payments", url: "/youtube/payments", icon: DollarSign },
+      { title: "Analytics", url: "/youtube/analytics", icon: BarChart3 },
+    ],
+  };
+
   const realEstateSection: NavSection = {
     label: "Real Estate",
     collapsible: true,
@@ -888,6 +902,11 @@ export function NavigationSidebar() {
         {/* Estimation Section — Construction industry only */}
         {isConstructionEstimation && canAccessSection(estimationSection) && (
           <CollapsibleSection section={estimationSection} sectionKey="estimation" />
+        )}
+
+        {/* YouTube Agency Section — YouTube Agency industry only */}
+        {isYouTubeAgency && canAccessSection(youtubeAgencySection) && (
+          <CollapsibleSection section={youtubeAgencySection} sectionKey="youtube" />
         )}
 
         {/* Real Estate Section — Real Estate industry only */}
