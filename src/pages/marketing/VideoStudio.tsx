@@ -119,6 +119,12 @@ export default function VideoStudio() {
   // Render quality state (Fix 3)
   const [renderQuality, setRenderQuality] = useState("standard");
 
+  // Cloud video provider state
+  const [videoProvider, setVideoProvider] = useState("local"); // "local" | "cloud"
+  const [cloudProvider, setCloudProvider] = useState("fal");   // "fal" | "replicate"
+  const [cloudModel, setCloudModel] = useState("");
+  const [scriptEngine, setScriptEngine] = useState("ollama");  // "ollama" | "gemini"
+
   // ============================================================
   // QUERIES
   // ============================================================
@@ -233,6 +239,9 @@ export default function VideoStudio() {
         project_id: project.id,
         priority: renderQuality === "premium" ? "high" : "standard",
         quality_tier: renderQuality,
+        cloud_provider: videoProvider === "cloud" ? cloudProvider : "",
+        cloud_model: videoProvider === "cloud" ? (cloudModel || "fal-ai/kling-video/v2/master") : "",
+        script_engine: scriptEngine,
       }, tid!);
       return result.data || result;
     },
@@ -369,6 +378,9 @@ export default function VideoStudio() {
           project_id: result.project_id,
           priority: videoTier === "premium" ? "high" : "standard",
           quality_tier: videoTier,
+          cloud_provider: videoProvider === "cloud" ? cloudProvider : "",
+          cloud_model: videoProvider === "cloud" ? (cloudModel || "fal-ai/kling-video/v2/master") : "",
+          script_engine: scriptEngine,
         }, tid!).catch(() => {});
         setTab("queue");
         refreshProjects();
@@ -428,6 +440,9 @@ export default function VideoStudio() {
           project_id: result.project_id,
           priority: renderQuality === "premium" ? "high" : "standard",
           quality_tier: renderQuality,
+          cloud_provider: videoProvider === "cloud" ? cloudProvider : "",
+          cloud_model: videoProvider === "cloud" ? (cloudModel || "fal-ai/kling-video/v2/master") : "",
+          script_engine: scriptEngine,
         }, tid!).catch(() => {});
         refreshProjects();
         setTab("queue");
@@ -525,13 +540,30 @@ export default function VideoStudio() {
               </select>
             </div>
             <span className="text-muted-foreground/30 mx-0.5">|</span>
-            <button onClick={() => setVideoTier("standard")}
-              className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all ${videoTier === "standard" ? "bg-gray-600 text-white shadow-sm" : "bg-muted/50 text-muted-foreground hover:bg-muted"}`}>
-              Standard ~1m
+            <button onClick={() => { setVideoTier("standard"); setVideoProvider("local"); }}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all ${videoTier === "standard" && videoProvider === "local" ? "bg-gray-600 text-white shadow-sm" : "bg-muted/50 text-muted-foreground hover:bg-muted"}`}>
+              Standard
             </button>
-            <button onClick={() => setVideoTier("premium")}
-              className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all ${videoTier === "premium" ? "bg-purple-600 text-white shadow-sm ring-1 ring-purple-400/50" : "bg-muted/50 text-muted-foreground hover:bg-muted"}`}>
-              Premium AI Motion
+            <button onClick={() => { setVideoTier("premium"); setVideoProvider("local"); }}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all ${videoTier === "premium" && videoProvider === "local" ? "bg-purple-600 text-white shadow-sm" : "bg-muted/50 text-muted-foreground hover:bg-muted"}`}>
+              Premium LTX
+            </button>
+            <button onClick={() => { setVideoTier("premium"); setVideoProvider("cloud"); }}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all ${videoProvider === "cloud" ? "bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-sm ring-1 ring-cyan-400/50" : "bg-muted/50 text-muted-foreground hover:bg-muted"}`}>
+              Cloud HD
+            </button>
+            {videoProvider === "cloud" && (
+              <select value={cloudModel || "fal-ai/kling-video/v2/master"} onChange={(e) => setCloudModel(e.target.value)}
+                className="bg-muted/50 text-[11px] font-medium rounded-full px-2 py-1 border-none outline-none cursor-pointer">
+                <option value="fal-ai/kling-video/v2/master">Kling v2</option>
+                <option value="fal-ai/minimax-video">Minimax</option>
+                <option value="fal-ai/veo2">Veo 2</option>
+              </select>
+            )}
+            <span className="text-muted-foreground/30 mx-0.5">|</span>
+            <button onClick={() => setScriptEngine(scriptEngine === "gemini" ? "ollama" : "gemini")}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all ${scriptEngine === "gemini" ? "bg-blue-600 text-white shadow-sm" : "bg-muted/50 text-muted-foreground hover:bg-muted"}`}>
+              {scriptEngine === "gemini" ? "Gemini Pro" : "Ollama"}
             </button>
           </div>
         </div>
