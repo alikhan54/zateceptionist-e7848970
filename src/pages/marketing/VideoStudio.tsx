@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -454,6 +455,34 @@ export default function VideoStudio() {
     } catch {}
   };
 
+  // View/download tracking (fire-and-forget)
+  const trackVideoAction = (projectId: string, action: "watch" | "download") => {
+    fetch("https://webhooks.zatesystems.com/webhook/video/track-view", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ video_project_id: projectId, tenant_id: tid, viewer_identifier: "studio-user", platform: "web", watch_percentage: action === "watch" ? 1.0 : 0, cta_clicked: action === "download" }),
+    }).catch(() => {});
+    // Also increment total_views on the project
+    if (action === "watch" && tid) {
+      supabase.rpc("increment_video_views" as any, { p_id: projectId }).catch(() => {
+        // RPC may not exist — silently ignore
+      });
+    }
+  };
+
+  // Publish video to social platform
+  const publishVideo = async (projectId: string, platform: string, videoUrl: string, title: string) => {
+    try {
+      await supabase.from("social_posts" as any).insert({
+        tenant_id: tid, post_text: `${title}`, media_urls: [videoUrl],
+        platform, status: "draft", ai_optimized: true,
+        scheduled_at: new Date().toISOString(),
+      });
+      toast({ title: `Queued for ${platform}`, description: "Review in Social Commander before publishing." });
+    } catch (err) {
+      toast({ title: "Publish failed", description: String(err), variant: "destructive" });
+    }
+  };
+
   // Stats
   const stats = {
     total: projects.length,
@@ -820,13 +849,31 @@ export default function VideoStudio() {
                         )}
                       </div>
                       {p.video_url ? (
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="outline" className="flex-1 text-xs" asChild onClick={(e: any) => e.stopPropagation()}>
-                            <a href={p.video_url} target="_blank" rel="noopener"><Play className="h-3 w-3 mr-1" /> Watch</a>
+                        <div className="flex gap-2 flex-wrap">
+                          <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={(e: any) => { e.stopPropagation(); trackVideoAction(p.id, "watch"); window.open(p.video_url, "_blank"); }}>
+                            <Play className="h-3 w-3 mr-1" /> Watch
                           </Button>
-                          <Button size="sm" variant="outline" className="text-xs" asChild onClick={(e: any) => e.stopPropagation()}>
+                          <Button size="sm" variant="outline" className="text-xs" onClick={(e: any) => { e.stopPropagation(); trackVideoAction(p.id, "download"); }} asChild>
                             <a href={p.video_url} download><Download className="h-3 w-3 mr-1" /></a>
                           </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild onClick={(e: any) => e.stopPropagation()}>
+                              <Button size="sm" variant="outline" className="text-xs"><Share2 className="h-3 w-3 mr-1" /> Publish</Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                              {["instagram", "tiktok", "facebook", "linkedin", "youtube"].map(pl => (
+                                <DropdownMenuItem key={pl} onClick={() => publishVideo(p.id, pl, p.video_url, p.title)}>
+                                  {pl.charAt(0).toUpperCase() + pl.slice(1)}
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          {p.render_status === "complete" && !p.source_type?.includes("premium") && (
+                            <Button size="sm" variant="outline" className="text-xs text-purple-400 border-purple-400/30 hover:bg-purple-400/10"
+                              onClick={(e: any) => { e.stopPropagation(); callWebhook(WEBHOOKS.VIDEO_ORCHESTRATE, { trigger_type: "manual_render", content: p.title || "Premium upgrade", project_id: p.id, priority: "high", quality_tier: "premium" }, tid!).then(() => { toast({ title: "Upgrading to Premium", description: "Re-rendering with AI motion. Check Rendering tab." }); setTab("queue"); }).catch(() => {}); }}>
+                              <Sparkles className="h-3 w-3 mr-1" /> Upgrade
+                            </Button>
+                          )}
                           <Button size="sm" variant="ghost" className="text-xs text-muted-foreground hover:text-destructive h-8 w-8 p-0" onClick={(e: any) => { e.stopPropagation(); deleteProject.mutate(p.id); }} disabled={deleteProject.isPending}>
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
@@ -996,8 +1043,8 @@ export default function VideoStudio() {
         <TabsContent value="analytics" className="space-y-4 mt-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Card><CardContent className="pt-5 text-center">
-              <p className="text-2xl font-bold">{stats.total}</p>
-              <p className="text-xs text-muted-foreground">Total Projects</p>
+              <p className="text-2xl font-bold">{projects.reduce((s: number, p: any) => s + (p.total_views || 0), 0)}</p>
+              <p className="text-xs text-muted-foreground">Total Views</p>
             </CardContent></Card>
             <Card><CardContent className="pt-5 text-center">
               <p className="text-2xl font-bold">{stats.rendered}</p>
