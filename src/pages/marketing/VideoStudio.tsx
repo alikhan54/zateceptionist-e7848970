@@ -39,6 +39,21 @@ const VOICE_OPTIONS = [
   { value: "ja-JP-NanamiNeural", label: "Nanami (JA)" },
 ];
 
+const LANGUAGES = [
+  { code: "en", name: "English", defaultVoice: "en-US-AriaNeural" },
+  { code: "ar", name: "Arabic", defaultVoice: "ar-SA-ZariyahNeural" },
+  { code: "hi", name: "Hindi", defaultVoice: "hi-IN-SwaraNeural" },
+  { code: "ur", name: "Urdu", defaultVoice: "ur-PK-UzmaNeural" },
+  { code: "es", name: "Spanish", defaultVoice: "es-ES-ElviraNeural" },
+  { code: "fr", name: "French", defaultVoice: "fr-FR-DeniseNeural" },
+  { code: "de", name: "German", defaultVoice: "de-DE-KatjaNeural" },
+  { code: "zh", name: "Chinese", defaultVoice: "zh-CN-XiaoxiaoNeural" },
+  { code: "ja", name: "Japanese", defaultVoice: "ja-JP-NanamiNeural" },
+  { code: "pt", name: "Portuguese", defaultVoice: "pt-BR-FranciscaNeural" },
+  { code: "ko", name: "Korean", defaultVoice: "ko-KR-SunHiNeural" },
+  { code: "tr", name: "Turkish", defaultVoice: "tr-TR-EmelNeural" },
+];
+
 const TRANSITIONS = [
   { value: "fade", label: "Fade" },
   { value: "slideleft", label: "Slide Left" },
@@ -125,6 +140,9 @@ export default function VideoStudio() {
   const [cloudProvider, setCloudProvider] = useState("fal");   // "fal" | "replicate"
   const [cloudModel, setCloudModel] = useState("");
   const [scriptEngine, setScriptEngine] = useState("ollama");  // "ollama" | "gemini"
+  const [videoType, setVideoType] = useState("standard");      // "standard" | "avatar"
+  const [selectedLanguage, setSelectedLanguage] = useState("en");
+  const [abTestEnabled, setAbTestEnabled] = useState(false);
 
   // ============================================================
   // QUERIES
@@ -243,6 +261,7 @@ export default function VideoStudio() {
         cloud_provider: videoProvider === "cloud" ? cloudProvider : "",
         cloud_model: videoProvider === "cloud" ? (cloudModel || "fal-ai/kling-video/v2/master") : "",
         script_engine: scriptEngine,
+        language: selectedLanguage !== "en" ? selectedLanguage : undefined,
       }, tid!);
       return result.data || result;
     },
@@ -593,6 +612,18 @@ export default function VideoStudio() {
             <button onClick={() => setScriptEngine(scriptEngine === "gemini" ? "ollama" : "gemini")}
               className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all ${scriptEngine === "gemini" ? "bg-blue-600 text-white shadow-sm" : "bg-muted/50 text-muted-foreground hover:bg-muted"}`}>
               {scriptEngine === "gemini" ? "Gemini Pro" : "Ollama"}
+            </button>
+            <select value={selectedLanguage} onChange={(e) => { setSelectedLanguage(e.target.value); const lang = LANGUAGES.find(l => l.code === e.target.value); if (lang) setSelectedVoice(lang.defaultVoice); }}
+              className="bg-muted/50 text-[11px] font-medium rounded-full px-2 py-1 border-none outline-none cursor-pointer">
+              {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.name}</option>)}
+            </select>
+            <button onClick={() => setVideoType(videoType === "avatar" ? "standard" : "avatar")}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all ${videoType === "avatar" ? "bg-orange-600 text-white shadow-sm" : "bg-muted/50 text-muted-foreground hover:bg-muted"}`}>
+              {videoType === "avatar" ? "Avatar" : "Standard"}
+            </button>
+            <button onClick={() => setAbTestEnabled(!abTestEnabled)}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all ${abTestEnabled ? "bg-green-600 text-white shadow-sm" : "bg-muted/50 text-muted-foreground hover:bg-muted"}`}>
+              A/B
             </button>
           </div>
         </div>
