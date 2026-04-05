@@ -728,18 +728,39 @@ export default function Inbox() {
         })
         .eq("id", conversationId);
 
-      // Call webhook to actually send (skip for internal notes)
+      // Call universal-outbound webhook to actually send (skip for internal notes)
       if (!internal) {
-        await callWebhook(
-          "/send-message",
-          {
-            conversation_id: conversationId,
-            customer_id: conv.contact_id,
-            message: content,
-            channel: conv.channel,
-          },
-          tenantId!,
-        );
+        // Get recipient identifier from the contact
+        let recipientId = "";
+        if (conv.contact_id) {
+          try {
+            const { data: contact } = await supabase
+              .from("contacts")
+              .select("phone,email,whatsapp_number,facebook_id,instagram_id")
+              .eq("id", conv.contact_id)
+              .single();
+            if (contact) {
+              // Pick the right identifier based on channel
+              if (conv.channel === "email") recipientId = contact.email || "";
+              else if (conv.channel === "facebook") recipientId = contact.facebook_id || "";
+              else if (conv.channel === "instagram") recipientId = contact.instagram_id || "";
+              else recipientId = contact.whatsapp_number || contact.phone || "";
+            }
+          } catch { /* fallback to empty */ }
+        }
+
+        if (recipientId) {
+          await callWebhook(
+            "/universal-outbound",
+            {
+              conversation_id: conversationId,
+              recipient_id: recipientId,
+              message: content,
+              channel: conv.channel,
+            },
+            tenantId!,
+          );
+        }
       }
 
       return { success: true, internal };
