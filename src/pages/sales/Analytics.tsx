@@ -82,7 +82,7 @@ export default function SalesAnalytics() {
       if (!tenantId) return [];
       const { data, error } = await supabase
         .from('sales_leads')
-        .select('id, lead_status, pipeline_stage, source, lead_temperature, temperature, sequence_status, created_at')
+        .select('id, lead_status, pipeline_stage, source, lead_temperature, temperature, sequence_status, created_at, intent_score, behavioral_score, data_quality_score, consent_status, phone_type, phone, lead_score')
         .eq('tenant_id', tenantId);
       if (error) { console.warn("Query error:", error.message); return []; }
       return data || [];
@@ -168,6 +168,131 @@ export default function SalesAnalytics() {
     return { sent, failed, deliveryRate, avgScore, pipelineValue, totalDeals: deals.length };
   }, [emailActivity, leads, deals]);
 
+
+  // ==========================================================
+  // INTELLIGENCE — A/B tests, channel performance, intent/quality
+  // ==========================================================
+
+  // sequence_ab_tests uses SLUG tenant_id
+  const { data: abTests = [] } = useQuery({
+    queryKey: ['analytics', 'ab-tests', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return [];
+      const { data, error } = await supabase
+        .from('sequence_ab_tests')
+        .select('id, step_index, variant_a_subject, variant_b_subject, variant_a_sent, variant_a_replies, variant_b_sent, variant_b_replies, winner, created_at')
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      if (error) { console.warn('[Analytics] ab-tests error:', error); return []; }
+      return data || [];
+    },
+    enabled: !!tenantId,
+  });
+
+  // Channel performance from multichannel_outreach + outbound_messages (both SLUG)
+  const { data: channelPerformance = [] } = useQuery({
+    queryKey: ['analytics', 'channel-perf', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return [];
+      const [multiRes, emailRes] = await Promise.all([
+        supabase
+          .from('multichannel_outreach')
+          .select('channel, status')
+          .eq('tenant_id', tenantId),
+        supabase
+          .from('outbound_messages')
+          .select('status')
+          .eq('tenant_id', tenantId)
+          .eq('channel', 'email'),
+      ]);
+      if (multiRes.error) console.warn('[Analytics] multichannel_outreach error:', multiRes.error);
+      if (emailRes.error) console.warn('[Analytics] outbound_messages error:', emailRes.error);
+
+      const channels: Record<string, { sent: number; failed: number }> = {
+        Email: { sent: 0, failed: 0 },
+        LinkedIn: { sent: 0, failed: 0 },
+        SMS: { sent: 0, failed: 0 },
+        WhatsApp: { sent: 0, failed: 0 },
+        Voice: { sent: 0, failed: 0 },
+      };
+
+      ((emailRes.data || []) as Array<{ status?: string | null }>).forEach((e) => {
+        if (e.status === 'sent') channels.Email.sent += 1;
+        else channels.Email.failed += 1;
+      });
+
+      ((multiRes.data || []) as Array<{ channel?: string | null; status?: string | null }>).forEach((m) => {
+        const ch = m.channel === 'linkedin' || m.channel === 'linkedin_view'
+          ? 'LinkedIn'
+          : m.channel === 'sms'
+          ? 'SMS'
+          : m.channel === 'whatsapp'
+          ? 'WhatsApp'
+          : m.channel === 'voice_call' || m.channel === 'call'
+          ? 'Voice'
+          : null;
+        if (!ch) return;
+        if (m.status === 'sent') channels[ch].sent += 1;
+        else channels[ch].failed += 1;
+      });
+
+      return Object.entries(channels).map(([channel, stats]) => ({ channel, ...stats }));
+    },
+    enabled: !!tenantId,
+  });
+
+  // Intent score distribution from leads
+  const intentDistribution = useMemo(() => {
+    const buckets = { HOT: 0, WARM: 0, COOL: 0, COLD: 0 };
+    (leads || []).forEach((l: Record<string, unknown>) => {
+      const s = Number(l.intent_score) || 0;
+      if (s >= 70) buckets.HOT += 1;
+      else if (s >= 40) buckets.WARM += 1;
+      else if (s >= 20) buckets.COOL += 1;
+      else buckets.COLD += 1;
+    });
+    return Object.entries(buckets).map(([bucket, count]) => ({ bucket, count }));
+  }, [leads]);
+
+  // Data quality distribution
+  const qualityDistribution = useMemo(() => {
+    const q = { EXCELLENT: 0, GOOD: 0, FAIR: 0, POOR: 0 };
+    (leads || []).forEach((l: Record<string, unknown>) => {
+      const s = Number(l.data_quality_score) || 0;
+      if (s >= 80) q.EXCELLENT += 1;
+      else if (s >= 60) q.GOOD += 1;
+      else if (s >= 40) q.FAIR += 1;
+      else q.POOR += 1;
+    });
+    return Object.entries(q).map(([quality, count]) => ({ quality, count }));
+  }, [leads]);
+
+  // Consent status breakdown
+  const consentData = useMemo(() => {
+    const c: Record<string, number> = {};
+    (leads || []).forEach((l: Record<string, unknown>) => {
+      const s = (l.consent_status as string) || 'unknown';
+      c[s] = (c[s] || 0) + 1;
+    });
+    return Object.entries(c)
+      .map(([status, count]) => ({ status, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [leads]);
+
+  // Phone validation breakdown
+  const phoneData = useMemo(() => {
+    const p: Record<string, number> = {};
+    (leads || [])
+      .filter((l: Record<string, unknown>) => l.phone)
+      .forEach((l: Record<string, unknown>) => {
+        const t = (l.phone_type as string) || 'unvalidated';
+        p[t] = (p[t] || 0) + 1;
+      });
+    return Object.entries(p)
+      .map(([type, count]) => ({ type, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [leads]);
 
   // Email activity by date for chart
   const emailByDate = useMemo(() => {
@@ -391,6 +516,8 @@ export default function SalesAnalytics() {
           <TabsTrigger value="sequences">Sequences</TabsTrigger>
           <TabsTrigger value="winloss">Win/Loss</TabsTrigger>
           <TabsTrigger value="sources">Lead Sources</TabsTrigger>
+          <TabsTrigger value="intelligence">Intelligence</TabsTrigger>
+          <TabsTrigger value="channels">Channels</TabsTrigger>
         </TabsList>
 
         {/* ============= REVENUE TAB ============= */}
@@ -648,6 +775,201 @@ export default function SalesAnalytics() {
                       <Bar dataKey="value" name="Leads" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* ============= INTELLIGENCE TAB ============= */}
+        <TabsContent value="intelligence" className="mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Intent Score Distribution */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Intent Distribution</CardTitle>
+                <CardDescription>Lead intent score buckets</CardDescription>
+              </CardHeader>
+              <CardContent className="h-[260px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={intentDistribution}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="bucket" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                    <Tooltip />
+                    <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                      {intentDistribution.map((entry, i) => (
+                        <Cell
+                          key={`intent-${i}`}
+                          fill={
+                            entry.bucket === 'HOT'
+                              ? '#ef4444'
+                              : entry.bucket === 'WARM'
+                              ? '#f97316'
+                              : entry.bucket === 'COOL'
+                              ? '#eab308'
+                              : '#6b7280'
+                          }
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Data Quality Distribution */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Data Quality</CardTitle>
+                <CardDescription>Lead enrichment completeness</CardDescription>
+              </CardHeader>
+              <CardContent className="h-[260px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={qualityDistribution}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="quality" stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                    <Tooltip />
+                    <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* A/B Test Results */}
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle className="text-base">A/B Test Results</CardTitle>
+                <CardDescription>Subject-line variant performance</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {abTests.length > 0 ? (
+                  <div className="space-y-3">
+                    {abTests.map((test) => (
+                      <div
+                        key={test.id}
+                        className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between p-3 rounded-lg bg-muted/50"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium">Step {(test.step_index ?? 0) + 1}</p>
+                          {test.variant_a_subject && (
+                            <p className="text-xs text-muted-foreground truncate">
+                              <span className="font-medium">A:</span> {test.variant_a_subject}
+                            </p>
+                          )}
+                          {test.variant_b_subject && (
+                            <p className="text-xs text-muted-foreground truncate">
+                              <span className="font-medium">B:</span> {test.variant_b_subject}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right text-xs shrink-0">
+                          <p>
+                            A: {test.variant_a_sent ?? 0} sent, {test.variant_a_replies ?? 0} replies
+                          </p>
+                          <p>
+                            B: {test.variant_b_sent ?? 0} sent, {test.variant_b_replies ?? 0} replies
+                          </p>
+                          {test.winner && (
+                            <Badge className="mt-1">{test.winner} wins</Badge>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    A/B tests need 10+ sends per variant. Results will appear as sequences run.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* ============= CHANNELS TAB ============= */}
+        <TabsContent value="channels" className="mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Channel Performance Bars */}
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle className="text-base">Channel Performance</CardTitle>
+                <CardDescription>Sent vs failed across all outreach channels</CardDescription>
+              </CardHeader>
+              <CardContent className="h-[320px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={channelPerformance} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                    <YAxis
+                      dataKey="channel"
+                      type="category"
+                      stroke="hsl(var(--muted-foreground))"
+                      fontSize={12}
+                      width={80}
+                    />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="sent" fill="hsl(var(--primary))" name="Sent" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="failed" fill="hsl(var(--destructive))" name="Failed" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Consent Breakdown */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Consent Status</CardTitle>
+                <CardDescription>GDPR consent state across leads</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {consentData.length === 0 ? (
+                  <EmptyState message="No consent data yet." />
+                ) : (
+                  <div className="space-y-2">
+                    {consentData.map((c) => (
+                      <div key={c.status} className="flex justify-between text-sm">
+                        <span
+                          className={
+                            c.status === 'opted_in'
+                              ? 'text-green-500'
+                              : c.status === 'bounced'
+                              ? 'text-red-500'
+                              : c.status === 'unsubscribed'
+                              ? 'text-orange-500'
+                              : 'text-muted-foreground'
+                          }
+                        >
+                          {c.status}
+                        </span>
+                        <span className="font-medium">{c.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Phone Types */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Phone Validation</CardTitle>
+                <CardDescription>Phone-type breakdown of leads with a phone</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {phoneData.length === 0 ? (
+                  <EmptyState message="No phone numbers yet." />
+                ) : (
+                  <div className="space-y-2">
+                    {phoneData.map((p) => (
+                      <div key={p.type} className="flex justify-between text-sm">
+                        <span className="capitalize">{p.type || 'unvalidated'}</span>
+                        <span className="font-medium">{p.count}</span>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </CardContent>
             </Card>
