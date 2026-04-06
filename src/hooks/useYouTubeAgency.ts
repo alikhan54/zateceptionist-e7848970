@@ -788,3 +788,342 @@ export function useTriggerScript() {
     },
   });
 }
+
+// === Phase 13: Competitors, Reports, Content Calendar ===
+
+export interface YTCompetitorTracking {
+  id: string;
+  tenant_id: string;
+  client_channel_id: string | null;
+  competitor_yt_id: string;
+  competitor_name: string | null;
+  competitor_handle: string | null;
+  competitor_subscribers: number | null;
+  competitor_total_views: number | null;
+  competitor_video_count: number | null;
+  competitor_niche: string | null;
+  is_active: boolean;
+  last_checked_at: string | null;
+  last_video_id: string | null;
+  last_video_title: string | null;
+  last_video_published_at: string | null;
+  sub_gap: number | null;
+  upload_freq_comparison: string | null;
+  engagement_comparison: string | null;
+  competitor_top_topics: string[];
+  competitor_title_patterns: string[];
+  competitor_avg_views_per_video: number | null;
+  content_gaps: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface YTCompetitorAlert {
+  id: string;
+  tenant_id: string;
+  client_channel_id: string | null;
+  competitor_tracking_id: string | null;
+  alert_type: string;
+  title: string;
+  description: string | null;
+  competitor_name: string | null;
+  video_id: string | null;
+  video_title: string | null;
+  video_views: number | null;
+  video_published_at: string | null;
+  suggested_action: string | null;
+  urgency: string;
+  is_read: boolean;
+  is_actioned: boolean;
+  actioned_note: string | null;
+  created_at: string;
+}
+
+export interface YTClientReport {
+  id: string;
+  tenant_id: string;
+  channel_id: string | null;
+  report_type: string;
+  period_start: string;
+  period_end: string;
+  thumbnails_delivered: number;
+  seo_packages_delivered: number;
+  scripts_delivered: number;
+  outreach_messages_sent: number;
+  subscribers_start: number | null;
+  subscribers_end: number | null;
+  subscriber_change: number | null;
+  total_views_start: number | null;
+  total_views_end: number | null;
+  view_change: number | null;
+  top_performing_video_title: string | null;
+  top_performing_video_views: number | null;
+  executive_summary: string | null;
+  key_wins: string[];
+  recommendations_next_period: string[];
+  report_html: string | null;
+  status: string;
+  sent_at: string | null;
+  sent_via: string | null;
+  created_at: string;
+}
+
+export interface YTContentCalendarEntry {
+  id: string;
+  tenant_id: string;
+  channel_id: string | null;
+  title: string;
+  description: string | null;
+  topic: string | null;
+  niche: string | null;
+  planned_date: string;
+  planned_time: string | null;
+  timezone: string;
+  script_id: string | null;
+  thumbnail_id: string | null;
+  seo_package_id: string | null;
+  status: string;
+  channel_name: string | null;
+  notes: string | null;
+  client_approved: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// === COMPETITORS ===
+export function useYTCompetitors(clientChannelId?: string) {
+  const { tenantId } = useTenant();
+  return useQuery({
+    queryKey: ["yt_competitors", tenantId, clientChannelId],
+    queryFn: async () => {
+      let query = supabase
+        .from("yt_competitor_tracking")
+        .select("*")
+        .eq("tenant_id", tenantId!)
+        .eq("is_active", true)
+        .order("competitor_subscribers", { ascending: false });
+      if (clientChannelId) query = query.eq("client_channel_id", clientChannelId);
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data || []) as YTCompetitorTracking[];
+    },
+    enabled: !!tenantId,
+  });
+}
+
+export function useYTAlerts(unreadOnly?: boolean) {
+  const { tenantId } = useTenant();
+  return useQuery({
+    queryKey: ["yt_alerts", tenantId, unreadOnly],
+    queryFn: async () => {
+      let query = supabase
+        .from("yt_competitor_alerts")
+        .select("*")
+        .eq("tenant_id", tenantId!)
+        .order("created_at", { ascending: false });
+      if (unreadOnly) query = query.eq("is_read", false);
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data || []) as YTCompetitorAlert[];
+    },
+    enabled: !!tenantId,
+  });
+}
+
+export function useMarkAlertRead() {
+  const queryClient = useQueryClient();
+  const { tenantId } = useTenant();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await supabase
+        .from("yt_competitor_alerts")
+        .update({ is_read: true })
+        .eq("id", id)
+        .eq("tenant_id", tenantId!)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["yt_alerts"] });
+    },
+  });
+}
+
+export function useDiscoverCompetitors() {
+  const { tenantId } = useTenant();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (params: { client_channel_id: string }) => {
+      const result = await callWebhook(WEBHOOKS.YOUTUBE_DISCOVER_COMPETITORS, params, tenantId!);
+      if (!result.success) throw new Error(result.error || "Discovery failed");
+      return result.data;
+    },
+    onError: (err: Error) => {
+      toast({ title: "Discovery Failed", description: err.message, variant: "destructive" });
+    },
+  });
+}
+
+export function useTrackCompetitor() {
+  const queryClient = useQueryClient();
+  const { tenantId } = useTenant();
+  return useMutation({
+    mutationFn: async (params: Partial<YTCompetitorTracking>) => {
+      const { data, error } = await supabase
+        .from("yt_competitor_tracking")
+        .insert({ ...params, tenant_id: tenantId!, is_active: true })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["yt_competitors"] });
+    },
+  });
+}
+
+export function useRemoveCompetitor() {
+  const queryClient = useQueryClient();
+  const { tenantId } = useTenant();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("yt_competitor_tracking")
+        .update({ is_active: false })
+        .eq("id", id)
+        .eq("tenant_id", tenantId!);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["yt_competitors"] });
+    },
+  });
+}
+
+// === REPORTS ===
+export function useYTReports(channelId?: string) {
+  const { tenantId } = useTenant();
+  return useQuery({
+    queryKey: ["yt_reports", tenantId, channelId],
+    queryFn: async () => {
+      let query = supabase
+        .from("yt_client_reports")
+        .select("*")
+        .eq("tenant_id", tenantId!)
+        .order("created_at", { ascending: false });
+      if (channelId) query = query.eq("channel_id", channelId);
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data || []) as YTClientReport[];
+    },
+    enabled: !!tenantId,
+  });
+}
+
+export function useTriggerReport() {
+  const { tenantId } = useTenant();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (params: { channel_id: string; report_type: string; period_start: string; period_end: string }) => {
+      const result = await callWebhook(WEBHOOKS.YOUTUBE_GENERATE_REPORT, params, tenantId!);
+      if (!result.success) throw new Error(result.error || "Report generation failed");
+      return result.data;
+    },
+    onSuccess: () => {
+      toast({ title: "Report Generated", description: "Client report is ready." });
+      queryClient.invalidateQueries({ queryKey: ["yt_reports"] });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Report Failed", description: err.message, variant: "destructive" });
+    },
+  });
+}
+
+// === CONTENT CALENDAR ===
+export function useYTCalendar(month?: string, channelId?: string) {
+  const { tenantId } = useTenant();
+  return useQuery({
+    queryKey: ["yt_calendar", tenantId, month, channelId],
+    queryFn: async () => {
+      let query = supabase
+        .from("yt_content_calendar")
+        .select("*")
+        .eq("tenant_id", tenantId!)
+        .order("planned_date", { ascending: true });
+      if (month) {
+        // month format: "2026-04"
+        const start = `${month}-01`;
+        const [year, mon] = month.split("-").map(Number);
+        const nextMonth = mon === 12 ? `${year + 1}-01-01` : `${year}-${String(mon + 1).padStart(2, "0")}-01`;
+        query = query.gte("planned_date", start).lt("planned_date", nextMonth);
+      }
+      if (channelId) query = query.eq("channel_id", channelId);
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data || []) as YTContentCalendarEntry[];
+    },
+    enabled: !!tenantId,
+  });
+}
+
+export function useCreateCalendarEntry() {
+  const queryClient = useQueryClient();
+  const { tenantId } = useTenant();
+  return useMutation({
+    mutationFn: async (params: Partial<YTContentCalendarEntry>) => {
+      const { data, error } = await supabase
+        .from("yt_content_calendar")
+        .insert({ ...params, tenant_id: tenantId! })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["yt_calendar"] });
+    },
+  });
+}
+
+export function useUpdateCalendarEntry() {
+  const queryClient = useQueryClient();
+  const { tenantId } = useTenant();
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: Partial<YTContentCalendarEntry> & { id: string }) => {
+      const { data, error } = await supabase
+        .from("yt_content_calendar")
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq("id", id)
+        .eq("tenant_id", tenantId!)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["yt_calendar"] });
+    },
+  });
+}
+
+export function useDeleteCalendarEntry() {
+  const queryClient = useQueryClient();
+  const { tenantId } = useTenant();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("yt_content_calendar")
+        .delete()
+        .eq("id", id)
+        .eq("tenant_id", tenantId!);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["yt_calendar"] });
+    },
+  });
+}

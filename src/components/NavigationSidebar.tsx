@@ -109,6 +109,8 @@ import {
   Wallet,
   LayoutTemplate,
   Flame,
+  Swords,
+  FileBarChart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -553,6 +555,9 @@ export function NavigationSidebar() {
       { title: "Channel Audit", url: "/youtube/audit", icon: ClipboardCheck },
       { title: "Trends", url: "/youtube/trends", icon: Flame },
       { title: "Script Writer", url: "/youtube/scripts", icon: FileText },
+      { title: "Competitors", url: "/youtube/competitors", icon: Swords },
+      { title: "Reports", url: "/youtube/reports", icon: FileBarChart },
+      { title: "Content Calendar", url: "/youtube/calendar", icon: CalendarDays },
     ],
   };
 

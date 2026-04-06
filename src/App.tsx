@@ -178,6 +178,9 @@ const YouTubeAnalytics = lazy(() => import("./pages/youtube/Analytics"));
 const YouTubeAudit = lazy(() => import("./pages/youtube/ChannelAudit"));
 const YouTubeTrends = lazy(() => import("./pages/youtube/Trends"));
 const YouTubeScripts = lazy(() => import("./pages/youtube/ScriptWriter"));
+const YouTubeCompetitors = lazy(() => import("./pages/youtube/Competitors"));
+const YouTubeReports = lazy(() => import("./pages/youtube/Reports"));
+const YouTubeCalendar = lazy(() => import("./pages/youtube/ContentCalendar"));
 
 // Communications Module
 const VoiceAIHub = lazy(() => import("./pages/communications/VoiceAIHub"));
@@ -1211,6 +1214,9 @@ const App = () => (
                   <Route path="/youtube/audit" element={<LazyPage><YouTubeAudit /></LazyPage>} />
                   <Route path="/youtube/trends" element={<LazyPage><YouTubeTrends /></LazyPage>} />
                   <Route path="/youtube/scripts" element={<LazyPage><YouTubeScripts /></LazyPage>} />
+                  <Route path="/youtube/competitors" element={<LazyPage><YouTubeCompetitors /></LazyPage>} />
+                  <Route path="/youtube/reports" element={<LazyPage><YouTubeReports /></LazyPage>} />
+                  <Route path="/youtube/calendar" element={<LazyPage><YouTubeCalendar /></LazyPage>} />
 
                   {/* Real Estate Module */}
                   <Route path="/realestate" element={<LazyPage><RealEstateDashboard /></LazyPage>} />
