@@ -573,3 +573,218 @@ export function useUpdateCampaignStatus() {
     },
   });
 }
+
+// === Phase 12: Audits, Trends, Scripts ===
+
+export interface YTChannelAudit {
+  id: string;
+  tenant_id: string;
+  channel_id: string | null;
+  snapshot_subscribers: number | null;
+  snapshot_videos: number | null;
+  snapshot_views: number | null;
+  branding_score: number;
+  has_custom_banner: boolean | null;
+  has_custom_avatar: boolean | null;
+  banner_quality: string | null;
+  avatar_quality: string | null;
+  branding_consistency: string | null;
+  branding_notes: string | null;
+  seo_score: number;
+  avg_title_length: number | null;
+  avg_description_length: number | null;
+  avg_tag_count: number | null;
+  titles_with_keywords_pct: number | null;
+  seo_issues: string[];
+  seo_recommendations: string[];
+  content_score: number;
+  upload_frequency: string | null;
+  avg_uploads_per_month: number | null;
+  niche_focus: string | null;
+  top_performing_topics: string[];
+  growth_score: number;
+  monthly_sub_growth_rate: number | null;
+  growth_trajectory: string | null;
+  estimated_days_to_100k: number | null;
+  engagement_score: number;
+  avg_likes_per_video: number | null;
+  avg_comments_per_video: number | null;
+  like_to_view_ratio: number | null;
+  overall_score: number;
+  overall_grade: string | null;
+  priority_recommendations: Array<{ priority: number; area: string; recommendation: string; impact: string }>;
+  executive_summary: string | null;
+  generated_at: string;
+  created_at: string;
+}
+
+export interface YTTrendingTopic {
+  id: string;
+  tenant_id: string;
+  topic: string;
+  niche: string;
+  trend_score: number;
+  velocity: string | null;
+  search_volume_change_pct: number | null;
+  youtube_trending: boolean;
+  related_videos_count: number | null;
+  avg_views_on_topic: number | null;
+  top_video_url: string | null;
+  top_video_views: number | null;
+  recommended_for_niches: string[];
+  suggested_title: string | null;
+  suggested_angle: string | null;
+  urgency: string | null;
+  detected_at: string;
+  expires_at: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface YTVideoScript {
+  id: string;
+  tenant_id: string;
+  channel_id: string | null;
+  title: string;
+  hook: string | null;
+  intro: string | null;
+  body_sections: Array<{ heading: string; content: string; duration_seconds: number }>;
+  outro: string | null;
+  cta: string | null;
+  target_duration_seconds: number | null;
+  actual_word_count: number | null;
+  niche: string | null;
+  topic: string | null;
+  tone: string;
+  suggested_title: string | null;
+  suggested_description: string | null;
+  suggested_tags: string[];
+  suggested_thumbnail_prompt: string | null;
+  source_type: string | null;
+  source_reference_id: string | null;
+  status: string;
+  sent_to_client: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// Audits
+export function useYTAudits(channelId?: string) {
+  const { tenantId } = useTenant();
+  return useQuery({
+    queryKey: ["yt_audits", tenantId, channelId],
+    queryFn: async () => {
+      let query = supabase
+        .from("yt_channel_audits")
+        .select("*")
+        .eq("tenant_id", tenantId!)
+        .order("created_at", { ascending: false });
+      if (channelId) query = query.eq("channel_id", channelId);
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data || []) as YTChannelAudit[];
+    },
+    enabled: !!tenantId,
+  });
+}
+
+export function useTriggerAudit() {
+  const { tenantId } = useTenant();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (params: { channel_id: string }) => {
+      const result = await callWebhook(WEBHOOKS.YOUTUBE_AUDIT, params, tenantId!);
+      if (!result.success) throw new Error(result.error || "Audit failed");
+      return result.data;
+    },
+    onSuccess: () => {
+      toast({ title: "Audit Started", description: "Channel audit is being generated." });
+      queryClient.invalidateQueries({ queryKey: ["yt_audits"] });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Audit Failed", description: err.message, variant: "destructive" });
+    },
+  });
+}
+
+// Trends
+export function useYTTrends(niche?: string) {
+  const { tenantId } = useTenant();
+  return useQuery({
+    queryKey: ["yt_trends", tenantId, niche],
+    queryFn: async () => {
+      let query = supabase
+        .from("yt_trending_topics")
+        .select("*")
+        .eq("tenant_id", tenantId!)
+        .eq("is_active", true)
+        .order("trend_score", { ascending: false });
+      if (niche) query = query.eq("niche", niche);
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data || []) as YTTrendingTopic[];
+    },
+    enabled: !!tenantId,
+  });
+}
+
+export function useTriggerTrendRefresh() {
+  const { tenantId } = useTenant();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async () => {
+      const result = await callWebhook(WEBHOOKS.YOUTUBE_TRENDS_REFRESH, {}, tenantId!);
+      if (!result.success) throw new Error(result.error || "Refresh failed");
+      return result.data;
+    },
+    onSuccess: () => {
+      toast({ title: "Trends Refreshed", description: "Latest trending topics fetched." });
+      queryClient.invalidateQueries({ queryKey: ["yt_trends"] });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Refresh Failed", description: err.message, variant: "destructive" });
+    },
+  });
+}
+
+// Scripts
+export function useYTScripts(channelId?: string) {
+  const { tenantId } = useTenant();
+  return useQuery({
+    queryKey: ["yt_scripts", tenantId, channelId],
+    queryFn: async () => {
+      let query = supabase
+        .from("yt_video_scripts")
+        .select("*")
+        .eq("tenant_id", tenantId!)
+        .order("created_at", { ascending: false });
+      if (channelId) query = query.eq("channel_id", channelId);
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data || []) as YTVideoScript[];
+    },
+    enabled: !!tenantId,
+  });
+}
+
+export function useTriggerScript() {
+  const { tenantId } = useTenant();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (params: { channel_id: string; topic: string; tone?: string; target_duration?: number }) => {
+      const result = await callWebhook(WEBHOOKS.YOUTUBE_GENERATE_SCRIPT, params, tenantId!);
+      if (!result.success) throw new Error(result.error || "Script generation failed");
+      return result.data;
+    },
+    onSuccess: () => {
+      toast({ title: "Script Generated", description: "AI script ready for review." });
+      queryClient.invalidateQueries({ queryKey: ["yt_scripts"] });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Script Failed", description: err.message, variant: "destructive" });
+    },
+  });
+}

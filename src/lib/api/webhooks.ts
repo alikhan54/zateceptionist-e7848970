@@ -168,6 +168,9 @@ export const WEBHOOKS = {
   YOUTUBE_GENERATE_ASSETS: "/youtube/generate-assets",
   YOUTUBE_GENERATE_SEO: "/youtube/generate-seo",
   YOUTUBE_SEND_OUTREACH: "/youtube/send-outreach",
+  YOUTUBE_AUDIT: "/youtube/audit-channel",
+  YOUTUBE_TRENDS_REFRESH: "/youtube/refresh-trends",
+  YOUTUBE_GENERATE_SCRIPT: "/youtube/generate-script",
 } as const;
 
 export type WebhookEndpoint = (typeof WEBHOOKS)[keyof typeof WEBHOOKS];
