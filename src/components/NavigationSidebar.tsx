@@ -111,6 +111,9 @@ import {
   Flame,
   Swords,
   FileBarChart,
+  FlaskConical,
+  UserCircle,
+  Plug,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -545,19 +548,30 @@ export function NavigationSidebar() {
     label: "YouTube Agency",
     collapsible: true,
     items: [
-      { title: "Channel Discovery", url: "/youtube/discovery", icon: Search },
-      { title: "Channel Pipeline", url: "/youtube/pipeline", icon: Users },
-      { title: "Asset Generator", url: "/youtube/assets", icon: Palette },
-      { title: "SEO Engine", url: "/youtube/seo", icon: TrendingUp },
-      { title: "Outreach Campaigns", url: "/youtube/outreach", icon: Send },
-      { title: "Payments", url: "/youtube/payments", icon: DollarSign },
-      { title: "Analytics", url: "/youtube/analytics", icon: BarChart3 },
-      { title: "Channel Audit", url: "/youtube/audit", icon: ClipboardCheck },
-      { title: "Trends", url: "/youtube/trends", icon: Flame },
-      { title: "Script Writer", url: "/youtube/scripts", icon: FileText },
-      { title: "Competitors", url: "/youtube/competitors", icon: Swords },
-      { title: "Reports", url: "/youtube/reports", icon: FileBarChart },
-      { title: "Content Calendar", url: "/youtube/calendar", icon: CalendarDays },
+      { title: "Core", url: "/youtube/discovery", icon: Search, children: [
+        { title: "Channel Discovery", url: "/youtube/discovery", icon: Search },
+        { title: "Channel Pipeline", url: "/youtube/pipeline", icon: Users },
+        { title: "Channel Audit", url: "/youtube/audit", icon: ClipboardCheck },
+      ]},
+      { title: "Content", url: "/youtube/assets", icon: Palette, children: [
+        { title: "Asset Generator", url: "/youtube/assets", icon: Palette },
+        { title: "SEO Engine", url: "/youtube/seo", icon: TrendingUp },
+        { title: "Script Writer", url: "/youtube/scripts", icon: FileText },
+        { title: "Trends", url: "/youtube/trends", icon: Flame },
+        { title: "Content Calendar", url: "/youtube/calendar", icon: CalendarDays },
+      ]},
+      { title: "Business", url: "/youtube/outreach", icon: Send, children: [
+        { title: "Outreach Campaigns", url: "/youtube/outreach", icon: Send },
+        { title: "Competitors", url: "/youtube/competitors", icon: Swords },
+        { title: "A/B Testing", url: "/youtube/ab-testing", icon: FlaskConical },
+        { title: "Reports", url: "/youtube/reports", icon: FileBarChart },
+        { title: "Payments", url: "/youtube/payments", icon: DollarSign },
+      ]},
+      { title: "Intelligence", url: "/youtube/analytics", icon: BarChart3, children: [
+        { title: "Analytics", url: "/youtube/analytics", icon: BarChart3 },
+        { title: "YouTube Connect", url: "/youtube/connect", icon: Plug },
+        { title: "Client Portal", url: "/youtube/portal", icon: UserCircle },
+      ]},
     ],
   };
 

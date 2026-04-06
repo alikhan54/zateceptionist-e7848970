@@ -1127,3 +1127,377 @@ export function useDeleteCalendarEntry() {
     },
   });
 }
+
+// =============================================================================
+// PHASE 14: Unit Economics, Client Portal, A/B Testing, YouTube Connect
+// =============================================================================
+
+export interface YTClientEconomics {
+  id: string;
+  tenant_id: string;
+  channel_id: string | null;
+  period_month: string;
+  revenue: number;
+  cost_api_calls: number;
+  cost_generation: number;
+  cost_outreach: number;
+  cost_specialist_hours: number;
+  cost_specialist_rate: number;
+  total_cost: number;
+  thumbnails_created: number;
+  seo_packages_created: number;
+  scripts_written: number;
+  outreach_messages_sent: number;
+  audits_run: number;
+  gross_profit: number;
+  profit_margin_pct: number;
+  months_as_client: number;
+  cumulative_revenue: number;
+  cumulative_cost: number;
+  ltv: number;
+  channel_name: string | null;
+  subscriber_count_at_period: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface YTPortalUser {
+  id: string;
+  tenant_id: string;
+  channel_id: string | null;
+  email: string;
+  password_hash: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  can_approve_assets: boolean;
+  can_view_reports: boolean;
+  can_view_seo: boolean;
+  can_view_calendar: boolean;
+  can_message_agency: boolean;
+  is_active: boolean;
+  last_login_at: string | null;
+  invite_sent_at: string | null;
+  invite_accepted_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface YTPortalMessage {
+  id: string;
+  tenant_id: string;
+  channel_id: string | null;
+  portal_user_id: string | null;
+  sender_type: string;
+  message: string;
+  attachment_type: string | null;
+  attachment_id: string | null;
+  is_read: boolean;
+  read_at: string | null;
+  created_at: string;
+}
+
+export interface YTThumbnailTest {
+  id: string;
+  tenant_id: string;
+  channel_id: string | null;
+  video_id: string | null;
+  video_title: string | null;
+  video_url: string | null;
+  variant_a_asset_id: string | null;
+  variant_a_description: string | null;
+  variant_a_image_url: string | null;
+  variant_b_asset_id: string | null;
+  variant_b_description: string | null;
+  variant_b_image_url: string | null;
+  variant_a_impressions: number | null;
+  variant_a_clicks: number | null;
+  variant_a_ctr: number | null;
+  variant_b_impressions: number | null;
+  variant_b_clicks: number | null;
+  variant_b_ctr: number | null;
+  winner: string | null;
+  ctr_lift_pct: number | null;
+  test_duration_days: number | null;
+  niche: string | null;
+  style_notes: string | null;
+  ai_analysis: string | null;
+  status: string;
+  started_at: string;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface YTOAuthConnection {
+  id: string;
+  tenant_id: string;
+  channel_id: string | null;
+  google_access_token: string | null;
+  google_refresh_token: string | null;
+  token_expires_at: string | null;
+  scopes: string[];
+  verified_channel_id: string | null;
+  verified_channel_name: string | null;
+  status: string;
+  connected_at: string | null;
+  last_synced_at: string | null;
+  last_error: string | null;
+  error_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface YTAnalyticsSnapshot {
+  id: string;
+  tenant_id: string;
+  channel_id: string | null;
+  snapshot_date: string;
+  period_type: string;
+  subscribers: number | null;
+  total_views: number | null;
+  impressions: number | null;
+  ctr: number | null;
+  avg_view_duration_seconds: number | null;
+  avg_view_percentage: number | null;
+  watch_time_hours: number | null;
+  estimated_revenue: number | null;
+  rpm: number | null;
+  cpm: number | null;
+  unique_viewers: number | null;
+  returning_viewers_pct: number | null;
+  traffic_sources: Record<string, unknown>;
+  top_videos: unknown[];
+  created_at: string;
+}
+
+// === UNIT ECONOMICS ===
+export function useYTEconomics(channelId?: string, month?: string) {
+  const { tenantId } = useTenant();
+  return useQuery({
+    queryKey: ["yt_economics", tenantId, channelId, month],
+    queryFn: async () => {
+      let query = supabase
+        .from("yt_client_economics")
+        .select("*")
+        .eq("tenant_id", tenantId!)
+        .order("profit_margin_pct", { ascending: false });
+      if (channelId) query = query.eq("channel_id", channelId);
+      if (month) query = query.eq("period_month", month);
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data || []) as YTClientEconomics[];
+    },
+    enabled: !!tenantId,
+  });
+}
+
+// === CLIENT PORTAL ===
+export function useYTPortalUsers(channelId?: string) {
+  const { tenantId } = useTenant();
+  return useQuery({
+    queryKey: ["yt_portal_users", tenantId, channelId],
+    queryFn: async () => {
+      let query = supabase
+        .from("yt_portal_users")
+        .select("*")
+        .eq("tenant_id", tenantId!)
+        .order("created_at", { ascending: false });
+      if (channelId) query = query.eq("channel_id", channelId);
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data || []) as YTPortalUser[];
+    },
+    enabled: !!tenantId,
+  });
+}
+
+export function useCreatePortalUser() {
+  const queryClient = useQueryClient();
+  const { tenantId } = useTenant();
+  return useMutation({
+    mutationFn: async (params: { email: string; channel_id: string; display_name?: string }) => {
+      const { data, error } = await supabase
+        .from("yt_portal_users")
+        .insert({
+          tenant_id: tenantId!,
+          email: params.email,
+          channel_id: params.channel_id,
+          display_name: params.display_name || params.email.split("@")[0],
+          password_hash: "$2b$10$placeholder_hash_pending_invite",
+          invite_sent_at: new Date().toISOString(),
+          is_active: true,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["yt_portal_users"] });
+    },
+  });
+}
+
+export function useYTPortalMessages(channelId?: string) {
+  const { tenantId } = useTenant();
+  return useQuery({
+    queryKey: ["yt_portal_messages", tenantId, channelId],
+    queryFn: async () => {
+      let query = supabase
+        .from("yt_portal_messages")
+        .select("*")
+        .eq("tenant_id", tenantId!)
+        .order("created_at", { ascending: false });
+      if (channelId) query = query.eq("channel_id", channelId);
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data || []) as YTPortalMessage[];
+    },
+    enabled: !!tenantId,
+  });
+}
+
+export function useSendPortalMessage() {
+  const queryClient = useQueryClient();
+  const { tenantId } = useTenant();
+  return useMutation({
+    mutationFn: async (params: { channel_id: string; portal_user_id: string; message: string }) => {
+      const { data, error } = await supabase
+        .from("yt_portal_messages")
+        .insert({
+          tenant_id: tenantId!,
+          channel_id: params.channel_id,
+          portal_user_id: params.portal_user_id,
+          sender_type: "agency",
+          message: params.message,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["yt_portal_messages"] });
+    },
+  });
+}
+
+export function useMarkPortalMessageRead() {
+  const queryClient = useQueryClient();
+  const { tenantId } = useTenant();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await supabase
+        .from("yt_portal_messages")
+        .update({ is_read: true, read_at: new Date().toISOString() })
+        .eq("id", id)
+        .eq("tenant_id", tenantId!)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["yt_portal_messages"] });
+    },
+  });
+}
+
+// === A/B TESTING ===
+export function useYTABTests(channelId?: string) {
+  const { tenantId } = useTenant();
+  return useQuery({
+    queryKey: ["yt_ab_tests", tenantId, channelId],
+    queryFn: async () => {
+      let query = supabase
+        .from("yt_thumbnail_tests")
+        .select("*")
+        .eq("tenant_id", tenantId!)
+        .order("created_at", { ascending: false });
+      if (channelId) query = query.eq("channel_id", channelId);
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data || []) as YTThumbnailTest[];
+    },
+    enabled: !!tenantId,
+  });
+}
+
+export function useCreateABTest() {
+  const queryClient = useQueryClient();
+  const { tenantId } = useTenant();
+  return useMutation({
+    mutationFn: async (params: Partial<YTThumbnailTest>) => {
+      const { data, error } = await supabase
+        .from("yt_thumbnail_tests")
+        .insert({ ...params, tenant_id: tenantId!, status: "active" })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["yt_ab_tests"] });
+    },
+  });
+}
+
+export function useUpdateABTest() {
+  const queryClient = useQueryClient();
+  const { tenantId } = useTenant();
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: Partial<YTThumbnailTest> & { id: string }) => {
+      const { data, error } = await supabase
+        .from("yt_thumbnail_tests")
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq("id", id)
+        .eq("tenant_id", tenantId!)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["yt_ab_tests"] });
+    },
+  });
+}
+
+// === YOUTUBE OAUTH + ANALYTICS ===
+export function useYTOAuthConnections(channelId?: string) {
+  const { tenantId } = useTenant();
+  return useQuery({
+    queryKey: ["yt_oauth_connections", tenantId, channelId],
+    queryFn: async () => {
+      let query = supabase
+        .from("yt_oauth_connections")
+        .select("*")
+        .eq("tenant_id", tenantId!)
+        .order("created_at", { ascending: false });
+      if (channelId) query = query.eq("channel_id", channelId);
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data || []) as YTOAuthConnection[];
+    },
+    enabled: !!tenantId,
+  });
+}
+
+export function useYTAnalyticsSnapshots(channelId?: string) {
+  const { tenantId } = useTenant();
+  return useQuery({
+    queryKey: ["yt_analytics_snapshots", tenantId, channelId],
+    queryFn: async () => {
+      let query = supabase
+        .from("yt_analytics_snapshots")
+        .select("*")
+        .eq("tenant_id", tenantId!)
+        .order("snapshot_date", { ascending: true });
+      if (channelId) query = query.eq("channel_id", channelId);
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data || []) as YTAnalyticsSnapshot[];
+    },
+    enabled: !!tenantId,
+  });
+}
