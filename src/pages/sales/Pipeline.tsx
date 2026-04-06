@@ -26,6 +26,7 @@ import {
   Filter,
   MoreVertical,
   Phone,
+  PhoneCall,
   Mail,
   Linkedin,
   Building2,
@@ -86,6 +87,25 @@ interface SalesLead {
   name: string | null;            // n8n may write full name here
   company: string | null;         // n8n may write company here
   ai_grade: string | null;        // AI enrichment may set grade here
+  // Intelligence fields written by sales workflows (Behavioral Scorer,
+  // Account Mapper, GDPR Consent Tracker, Phone Validator, etc.)
+  intent_score?: number | null;
+  intent_signals?: Array<{ type?: string; detail?: string; pts?: number }> | null;
+  behavioral_score?: number | null;
+  behavioral_signals?: unknown;
+  account_score?: number | null;
+  account_contacts?: number | null;
+  is_decision_maker?: boolean | null;
+  data_quality_score?: number | null;
+  tech_stack?: Array<{ category?: string; tool?: string; source?: string }> | null;
+  ai_sequence_context?: { personalized_opener?: string; value_proposition?: string } | null;
+  consent_status?: "opted_in" | "opted_out" | "unsubscribed" | "bounced" | "unknown" | null;
+  phone_type?: "mobile" | "landline" | "voip" | "invalid" | null;
+  linkedin_viewed_at?: string | null;
+  sms_sent_count?: number | null;
+  whatsapp_sent_count?: number | null;
+  call_count?: number | null;
+  emails_sent?: number | null;
 }
 
 // Alias for backward compatibility in this component
@@ -291,9 +311,38 @@ function ContactCard({ contact, deals = [], onSelect, onMoveStage }: ContactCard
                 {contact.company_name}
               </p>
             )}
+            {Array.isArray(contact.tech_stack) && contact.tech_stack.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {contact.tech_stack.slice(0, 3).map((t, i) => (
+                  <span
+                    key={i}
+                    className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground"
+                  >
+                    {t?.tool ?? "?"}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
-        <DropdownMenu>
+        <div className="flex items-center gap-1">
+          {typeof contact.intent_score === "number" && contact.intent_score > 0 && (
+            <Badge
+              className={`text-xs text-white ${
+                contact.intent_score >= 70
+                  ? "bg-red-500"
+                  : contact.intent_score >= 40
+                  ? "bg-orange-500"
+                  : contact.intent_score >= 20
+                  ? "bg-yellow-500"
+                  : "bg-gray-500"
+              }`}
+            >
+              {contact.intent_score >= 70 ? "🔥" : contact.intent_score >= 40 ? "🟠" : "⚪"}{" "}
+              {contact.intent_score}
+            </Badge>
+          )}
+          <DropdownMenu>
           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
             <Button variant="ghost" size="icon" className="h-6 w-6">
               <MoreVertical className="h-3 w-3" />
@@ -327,10 +376,11 @@ function ContactCard({ contact, deals = [], onSelect, onMoveStage }: ContactCard
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
+        </div>
       </div>
 
       {/* Score & Grade */}
-      <div className="flex items-center gap-2 mb-2">
+      <div className="flex items-center gap-2 mb-2 flex-wrap">
         <Badge className={`text-xs ${getGradeBadgeColor(contact.lead_grade)}`}>Grade {contact.lead_grade}</Badge>
         <div className="flex items-center gap-1 text-xs text-muted-foreground">
           {getTemperatureIcon(contact.lead_temperature)}
@@ -340,6 +390,15 @@ function ContactCard({ contact, deals = [], onSelect, onMoveStage }: ContactCard
           <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700">
             In Sequence
           </Badge>
+        )}
+        {contact.consent_status === "unsubscribed" && (
+          <Badge variant="destructive" className="text-xs">Unsubscribed</Badge>
+        )}
+        {contact.consent_status === "bounced" && (
+          <Badge variant="destructive" className="text-xs">Bounced</Badge>
+        )}
+        {contact.consent_status === "opted_out" && (
+          <Badge variant="destructive" className="text-xs">Opted Out</Badge>
         )}
       </div>
 
@@ -358,6 +417,21 @@ function ContactCard({ contact, deals = [], onSelect, onMoveStage }: ContactCard
           </span>
         )}
       </div>
+
+      {/* Multichannel touchpoints */}
+      {((contact.emails_sent ?? 0) > 0 ||
+        contact.linkedin_viewed_at ||
+        (contact.sms_sent_count ?? 0) > 0 ||
+        (contact.whatsapp_sent_count ?? 0) > 0 ||
+        (contact.call_count ?? 0) > 0) && (
+        <div className="flex gap-1.5 text-muted-foreground mb-2" title="Channels touched">
+          {(contact.emails_sent ?? 0) > 0 && <Mail className="w-3 h-3" />}
+          {contact.linkedin_viewed_at && <Linkedin className="w-3 h-3" />}
+          {(contact.sms_sent_count ?? 0) > 0 && <MessageSquare className="w-3 h-3" />}
+          {(contact.whatsapp_sent_count ?? 0) > 0 && <Phone className="w-3 h-3" />}
+          {(contact.call_count ?? 0) > 0 && <PhoneCall className="w-3 h-3" />}
+        </div>
+      )}
 
       {/* Deal Value (if any) */}
       {totalDealValue > 0 && (
@@ -727,6 +801,7 @@ export default function Pipeline() {
   const [showDetail, setShowDetail] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [temperatureFilter, setTemperatureFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<"lead_score" | "intent_score">("lead_score");
   const [dragOverStage, setDragOverStage] = useState<string | null>(null);
 
   // Fetch all leads from sales_leads table
@@ -983,8 +1058,15 @@ export default function Pipeline() {
       filtered = filtered.filter((c) => c.lead_temperature === temperatureFilter);
     }
 
-    return filtered;
-  }, [contacts, searchTerm, temperatureFilter]);
+    // Sort by selected key (DESC)
+    const sorted = [...filtered].sort((a, b) => {
+      const av = (sortBy === "intent_score" ? a.intent_score : a.lead_score) ?? 0;
+      const bv = (sortBy === "intent_score" ? b.intent_score : b.lead_score) ?? 0;
+      return bv - av;
+    });
+
+    return sorted;
+  }, [contacts, searchTerm, temperatureFilter, sortBy]);
 
   // Group by pipeline stage
   const contactsByStage = useMemo(() => {
@@ -1115,6 +1197,15 @@ export default function Pipeline() {
             <SelectItem value="HOT">🔥 Hot Only</SelectItem>
             <SelectItem value="WARM">🌡️ Warm Only</SelectItem>
             <SelectItem value="COLD">❄️ Cold Only</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={sortBy} onValueChange={(v) => setSortBy(v as "lead_score" | "intent_score")}>
+          <SelectTrigger className="w-48">
+            <SelectValue placeholder="Sort" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="lead_score">Sort by Lead Score</SelectItem>
+            <SelectItem value="intent_score">🔥 Sort by Intent</SelectItem>
           </SelectContent>
         </Select>
       </div>
