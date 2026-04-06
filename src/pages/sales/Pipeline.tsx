@@ -43,6 +43,8 @@ import {
   Activity,
   Clock,
   ArrowRight,
+  Sparkles,
+  Circle,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -98,7 +100,12 @@ interface SalesLead {
   is_decision_maker?: boolean | null;
   data_quality_score?: number | null;
   tech_stack?: Array<{ category?: string; tool?: string; source?: string }> | null;
-  ai_sequence_context?: { personalized_opener?: string; value_proposition?: string } | null;
+  ai_sequence_context?: {
+    personalized_opener?: string;
+    value_proposition?: string;
+    pain_point?: string;
+    [key: string]: unknown;
+  } | null;
   consent_status?: "opted_in" | "opted_out" | "unsubscribed" | "bounced" | "unknown" | null;
   phone_type?: "mobile" | "landline" | "voip" | "invalid" | null;
   linkedin_viewed_at?: string | null;
@@ -463,12 +470,122 @@ interface ContactDetailSheetProps {
   open: boolean;
   onClose: () => void;
   onMoveStage: (contactId: string, newStage: string) => void;
+  tenantId: string | null;
 }
 
-function ContactDetailSheet({ contact, deals, open, onClose, onMoveStage }: ContactDetailSheetProps) {
+interface TimelineItem {
+  id: string;
+  source: "email" | "multichannel";
+  channel: string | null;
+  status: string | null;
+  subject: string | null;
+  content: string | null;
+  date: string;
+  read_at: string | null;
+}
+
+function ContactDetailSheet({ contact, deals, open, onClose, onMoveStage, tenantId }: ContactDetailSheetProps) {
+  // Activity timeline (emails + multichannel) — must be declared before any
+  // early return so React hook order stays stable across re-renders.
+  const { data: timeline = [] } = useQuery<TimelineItem[]>({
+    queryKey: ["lead-timeline", contact?.id, tenantId],
+    enabled: !!contact?.id && !!tenantId,
+    staleTime: 30000,
+    queryFn: async () => {
+      if (!contact?.id || !tenantId) return [];
+      try {
+        const [emailRes, multiRes] = await Promise.all([
+          contact.email
+            ? supabase
+                .from("outbound_messages")
+                .select("id, channel, status, email_subject, content, recipient_identifier, sent_at, read_at, created_at")
+                .eq("tenant_id", tenantId)
+                .eq("recipient_identifier", contact.email)
+                .order("created_at", { ascending: false })
+                .limit(20)
+            : Promise.resolve({ data: [], error: null }),
+          supabase
+            .from("multichannel_outreach")
+            .select("id, channel, status, content, created_at, completed_at")
+            .eq("tenant_id", tenantId)
+            .eq("lead_id", contact.id)
+            .order("created_at", { ascending: false })
+            .limit(20),
+        ]);
+        if (emailRes.error) console.error("[Timeline] outbound_messages:", emailRes.error);
+        if (multiRes.error) console.error("[Timeline] multichannel_outreach:", multiRes.error);
+
+        const emails: TimelineItem[] = (emailRes.data || []).map((e: Record<string, unknown>) => ({
+          id: String(e.id),
+          source: "email",
+          channel: (e.channel as string) || "email",
+          status: (e.status as string) || null,
+          subject: (e.email_subject as string) || null,
+          content: (e.content as string) || null,
+          date: (e.sent_at as string) || (e.created_at as string),
+          read_at: (e.read_at as string) || null,
+        }));
+        const multi: TimelineItem[] = (multiRes.data || []).map((m: Record<string, unknown>) => ({
+          id: String(m.id),
+          source: "multichannel",
+          channel: (m.channel as string) || null,
+          status: (m.status as string) || null,
+          subject: null,
+          content: (m.content as string) || null,
+          date: (m.created_at as string),
+          read_at: null,
+        }));
+        return [...emails, ...multi].sort(
+          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+        );
+      } catch (err) {
+        console.error("[Timeline] query error:", err);
+        return [];
+      }
+    },
+  });
+
   if (!contact) return null;
 
   const contactDeals = deals.filter((d) => d.contact_id === contact.id);
+
+  const channelIcon = (ch: string | null) => {
+    switch (ch) {
+      case "email":
+        return <Mail className="w-4 h-4" />;
+      case "linkedin":
+      case "linkedin_view":
+        return <Linkedin className="w-4 h-4" />;
+      case "sms":
+        return <MessageSquare className="w-4 h-4" />;
+      case "whatsapp":
+        return <Phone className="w-4 h-4" />;
+      case "voice_call":
+      case "call":
+        return <PhoneCall className="w-4 h-4" />;
+      default:
+        return <Circle className="w-4 h-4" />;
+    }
+  };
+
+  const channelBorder = (ch: string | null) => {
+    switch (ch) {
+      case "email":
+        return "border-blue-500";
+      case "linkedin":
+      case "linkedin_view":
+        return "border-sky-500";
+      case "sms":
+        return "border-green-500";
+      case "whatsapp":
+        return "border-emerald-500";
+      case "voice_call":
+      case "call":
+        return "border-purple-500";
+      default:
+        return "border-border";
+    }
+  };
 
   return (
     <Sheet open={open} onOpenChange={(open) => !open && onClose()}>
@@ -597,6 +714,71 @@ function ContactDetailSheet({ contact, deals, open, onClose, onMoveStage }: Cont
                 <span>{contact.total_emails_sent} emails sent</span>
               </div>
             </div>
+          </div>
+
+          {/* AI Insights — only when ai_sequence_context has content */}
+          {contact.ai_sequence_context &&
+            Object.keys(contact.ai_sequence_context).length > 0 && (
+              <div className="p-3 rounded-lg bg-muted/50 border">
+                <h4 className="text-sm font-medium mb-2 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3" /> AI Insights
+                </h4>
+                {contact.ai_sequence_context.personalized_opener && (
+                  <p className="text-xs text-muted-foreground mb-1">
+                    <span className="font-medium">Opener:</span>{" "}
+                    {contact.ai_sequence_context.personalized_opener}
+                  </p>
+                )}
+                {contact.ai_sequence_context.value_proposition && (
+                  <p className="text-xs text-muted-foreground mb-1">
+                    <span className="font-medium">Value prop:</span>{" "}
+                    {contact.ai_sequence_context.value_proposition}
+                  </p>
+                )}
+                {contact.ai_sequence_context.pain_point && (
+                  <p className="text-xs text-muted-foreground">
+                    <span className="font-medium">Pain point:</span>{" "}
+                    {contact.ai_sequence_context.pain_point}
+                  </p>
+                )}
+              </div>
+            )}
+
+          {/* Multichannel Activity Timeline */}
+          <div className="space-y-3">
+            <Label className="text-sm font-medium flex items-center gap-2">
+              <Activity className="w-4 h-4" />
+              Activity Timeline
+            </Label>
+            {timeline.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No outreach activity yet.</p>
+            ) : (
+              <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+                {timeline.map((item) => (
+                  <div
+                    key={`${item.source}-${item.id}`}
+                    className={`flex gap-3 items-start pl-3 border-l-2 ${channelBorder(item.channel)}`}
+                  >
+                    <div className="mt-0.5 text-muted-foreground">{channelIcon(item.channel)}</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm truncate">
+                        {item.subject ||
+                          (item.content ? item.content.substring(0, 60) : null) ||
+                          item.channel ||
+                          "Activity"}
+                      </p>
+                      <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                        <span>{new Date(item.date).toLocaleDateString()}</span>
+                        {item.status && <span>· {item.status}</span>}
+                        {item.read_at && (
+                          <span className="text-green-500">· Read</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Quick Actions */}
@@ -1287,6 +1469,7 @@ export default function Pipeline() {
         open={showDetail}
         onClose={() => setShowDetail(false)}
         onMoveStage={handleMoveStage}
+        tenantId={tenantId}
       />
 
       {/* Add Contact Dialog */}
