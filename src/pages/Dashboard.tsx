@@ -23,6 +23,10 @@ import {
   Lightbulb,
   Phone,
   CreditCard,
+  Flame,
+  Mail,
+  Linkedin,
+  Activity,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -376,6 +380,89 @@ export default function Dashboard() {
     enabled: !!tenantId,
   });
 
+  // ============================================================
+  // AI INTELLIGENCE — Hot leads, signals, multichannel activity
+  // All three tables use SLUG-format tenant_id (sales_leads,
+  // lead_signals, multichannel_outreach)
+  // ============================================================
+
+  // Hot leads (intent_score >= 40, top 5 by score DESC)
+  const { data: hotLeads = [] } = useQuery({
+    queryKey: ['dashboard-hot-leads', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return [];
+      const { data, error } = await supabase
+        .from('sales_leads')
+        .select('id, company_name, contact_name, intent_score')
+        .eq('tenant_id', tenantId)
+        .neq('status', 'disqualified')
+        .gte('intent_score', 40)
+        .order('intent_score', { ascending: false })
+        .limit(5);
+      if (error) {
+        console.error('[Dashboard] hot-leads error:', error);
+        return [];
+      }
+      return data || [];
+    },
+    enabled: !!tenantId,
+    staleTime: 60000,
+  });
+
+  // Recent signals (funding/hiring) — top 5 by detected_at DESC
+  const { data: signals = [] } = useQuery({
+    queryKey: ['dashboard-recent-signals', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return [];
+      const { data, error } = await supabase
+        .from('lead_signals')
+        .select('id, signal_type, company_name, title, detected_at')
+        .eq('tenant_id', tenantId)
+        .order('detected_at', { ascending: false })
+        .limit(5);
+      if (error) {
+        console.error('[Dashboard] lead_signals error:', error);
+        return [];
+      }
+      return data || [];
+    },
+    enabled: !!tenantId,
+    staleTime: 60000,
+  });
+
+  // Channel activity counts from multichannel_outreach
+  // Channel values in DB: 'sms', 'whatsapp', 'linkedin_view', and 'email' (if logged)
+  const { data: channelActivity = [] } = useQuery({
+    queryKey: ['dashboard-channel-activity', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return [];
+      const { data, error } = await supabase
+        .from('multichannel_outreach')
+        .select('channel, status')
+        .eq('tenant_id', tenantId);
+      if (error) {
+        console.error('[Dashboard] multichannel_outreach error:', error);
+        return [];
+      }
+      return data || [];
+    },
+    enabled: !!tenantId,
+    staleTime: 60000,
+  });
+
+  const channelCounts = useMemo(() => {
+    const c = { email: 0, linkedin: 0, sms: 0, whatsapp: 0 };
+    for (const row of channelActivity as Array<{ channel?: string | null; status?: string | null }>) {
+      if (row.status !== 'sent') continue; // count only successful sends
+      const ch = row.channel || '';
+      if (ch === 'email') c.email += 1;
+      else if (ch === 'linkedin' || ch === 'linkedin_view') c.linkedin += 1;
+      else if (ch === 'sms') c.sms += 1;
+      else if (ch === 'whatsapp') c.whatsapp += 1;
+    }
+    return c;
+  }, [channelActivity]);
+
   return (
     <div className="space-y-6">
       <div>
@@ -567,6 +654,136 @@ export default function Dashboard() {
           )}
         </CardContent>
       </Card>
+
+      {/* AI Intelligence Section */}
+      <div>
+        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+          <Sparkles className="h-5 w-5 text-primary" />
+          AI Intelligence
+        </h2>
+        <div className="grid gap-4 md:grid-cols-3">
+          {/* Hot Leads */}
+          <Card className="animate-fade-in">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Flame className="w-4 h-4 text-orange-500" />
+                Hot Leads
+              </CardTitle>
+              <CardDescription>Intent score ≥ 40</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {hotLeads.length > 0 ? (
+                <div className="space-y-2">
+                  {hotLeads.slice(0, 5).map((lead) => (
+                    <div
+                      key={lead.id}
+                      className="flex items-center justify-between text-sm"
+                    >
+                      <span className="font-medium truncate mr-2">
+                        {lead.company_name || lead.contact_name || 'Unknown'}
+                      </span>
+                      <Badge
+                        className={`text-white shrink-0 ${
+                          (lead.intent_score ?? 0) >= 70
+                            ? 'bg-red-500'
+                            : (lead.intent_score ?? 0) >= 40
+                            ? 'bg-orange-500'
+                            : 'bg-yellow-500'
+                        }`}
+                      >
+                        {lead.intent_score}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No hot leads yet. Signals accumulate over time.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Recent Signals */}
+          <Card className="animate-fade-in" style={{ animationDelay: '0.1s' }}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Zap className="w-4 h-4 text-yellow-500" />
+                Recent Signals
+              </CardTitle>
+              <CardDescription>Funding & hiring intent</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {signals.length > 0 ? (
+                <div className="space-y-2">
+                  {signals.slice(0, 5).map((s) => (
+                    <div key={s.id} className="text-sm">
+                      <span
+                        className={
+                          s.signal_type === 'funding'
+                            ? 'text-green-500 font-medium'
+                            : 'text-blue-500 font-medium'
+                        }
+                      >
+                        {s.signal_type === 'funding' ? '💰' : '👥'} {s.company_name || 'Unknown'}
+                      </span>
+                      {s.title && (
+                        <p className="text-xs text-muted-foreground truncate">
+                          {s.title}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Signals scan every 6–8 hours.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Channel Activity */}
+          <Card className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Activity className="w-4 h-4 text-blue-500" />
+                Channel Activity
+              </CardTitle>
+              <CardDescription>Multichannel outreach (sent)</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="flex items-center gap-1">
+                  <Mail className="w-3 h-3" />
+                  <span className="text-muted-foreground">Email:</span>
+                  <span className="font-medium">{channelCounts.email}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Linkedin className="w-3 h-3" />
+                  <span className="text-muted-foreground">LinkedIn:</span>
+                  <span className="font-medium">{channelCounts.linkedin}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <MessageSquare className="w-3 h-3" />
+                  <span className="text-muted-foreground">SMS:</span>
+                  <span className="font-medium">{channelCounts.sms}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Phone className="w-3 h-3" />
+                  <span className="text-muted-foreground">WhatsApp:</span>
+                  <span className="font-medium">{channelCounts.whatsapp}</span>
+                </div>
+              </div>
+              {channelActivity.length === 0 && (
+                <p className="text-xs text-muted-foreground mt-3">
+                  No outreach activity logged yet.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }
