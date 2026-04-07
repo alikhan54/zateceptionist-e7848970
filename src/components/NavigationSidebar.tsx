@@ -429,6 +429,7 @@ export function NavigationSidebar() {
       { title: "Brand Voice", url: "/marketing/brand-voice", icon: Palette, children: [
         { title: "Playbooks", url: "/marketing/playbooks", icon: BookOpen },
       ]},
+      { title: "Influencer Hub", url: "/marketing/influencers", icon: Users },
       { title: "Voice Marketing", url: "/marketing/voice", icon: Phone },
       { title: "Autonomous Mode", url: "/marketing/autonomous", icon: Zap },
     ],
