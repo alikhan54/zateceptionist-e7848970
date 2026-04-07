@@ -729,28 +729,73 @@ export default function Inbox() {
         .eq("id", conversationId);
 
       // Call universal-outbound webhook to actually send (skip for internal notes)
+      // NOTE: conversations.contact_id references the CUSTOMERS table (legacy V3 Comm naming),
+      // NOT the contacts table. Look up in customers, then pick identifier by channel.
       if (!internal) {
-        // Get recipient identifier from the contact
         let recipientId = "";
+        let lookupError: string | null = null;
+
         if (conv.contact_id) {
-          try {
-            const { data: contact } = await supabase
-              .from("contacts")
-              .select("phone,email,whatsapp_number,facebook_id,instagram_id")
-              .eq("id", conv.contact_id)
-              .single();
-            if (contact) {
-              // Pick the right identifier based on channel
-              if (conv.channel === "email") recipientId = contact.email || "";
-              else if (conv.channel === "facebook") recipientId = contact.facebook_id || "";
-              else if (conv.channel === "instagram") recipientId = contact.instagram_id || "";
-              else recipientId = contact.whatsapp_number || contact.phone || "";
+          const { data: customer, error: lookupErr } = await supabase
+            .from("customers")
+            .select(
+              "phone_number,phone,email,whatsapp_id,facebook_id,instagram_id,telegram_id,twitter_id,linkedin_id,chat_session_id",
+            )
+            .eq("id", conv.contact_id)
+            .maybeSingle();
+
+          if (lookupErr) {
+            lookupError = `Customer lookup failed: ${lookupErr.message}`;
+          } else if (!customer) {
+            lookupError = "Customer record not found for this conversation";
+          } else {
+            // Channel-appropriate identifier lookup
+            switch (conv.channel) {
+              case "whatsapp":
+                recipientId =
+                  customer.whatsapp_id || customer.phone_number || customer.phone || "";
+                break;
+              case "sms":
+              case "voice":
+                recipientId = customer.phone_number || customer.phone || "";
+                break;
+              case "email":
+                recipientId = customer.email || "";
+                break;
+              case "facebook":
+                recipientId = customer.facebook_id || "";
+                break;
+              case "instagram":
+                recipientId = customer.instagram_id || "";
+                break;
+              case "telegram":
+                recipientId = customer.telegram_id || "";
+                break;
+              case "twitter":
+              case "x":
+                recipientId = customer.twitter_id || "";
+                break;
+              case "linkedin":
+                recipientId = customer.linkedin_id || "";
+                break;
+              case "web":
+              case "web_chat":
+                recipientId = customer.chat_session_id || "";
+                break;
+              default:
+                recipientId = customer.phone_number || customer.phone || "";
             }
-          } catch { /* fallback to empty */ }
+
+            if (!recipientId) {
+              lookupError = `This contact has no ${conv.channel} identifier. Message saved but not delivered.`;
+            }
+          }
+        } else {
+          lookupError = "Conversation has no linked contact. Message saved but not delivered.";
         }
 
         if (recipientId) {
-          await callWebhook(
+          const webhookResult = await callWebhook(
             "/universal-outbound",
             {
               conversation_id: conversationId,
@@ -760,6 +805,15 @@ export default function Inbox() {
             },
             tenantId!,
           );
+          if (!webhookResult.success) {
+            lookupError = `Delivery webhook failed: ${(webhookResult as { error?: unknown }).error ?? "unknown error"}`;
+          }
+        }
+
+        if (lookupError) {
+          // Surface to user — DB insert succeeded, only delivery failed = warning severity
+          toast.warning(lookupError);
+          console.warn("[Inbox] Send delivery issue:", lookupError);
         }
       }
 
