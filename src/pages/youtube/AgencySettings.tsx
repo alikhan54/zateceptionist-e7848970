@@ -7,7 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
-import { Settings, Mail, Target, Sliders, FileText, Save, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Settings, Mail, Target, Sliders, FileText, Save, Loader2, AlertCircle, CheckCircle2, Globe, Link as LinkIcon, Clock, DollarSign, TestTube, ExternalLink } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { useYTAgencySettings, useUpdateYTAgencySettings } from "@/hooks/useYouTubeAgency";
 
 const NICHE_OPTIONS = [
@@ -60,6 +63,27 @@ export default function AgencySettings() {
   const [smtpFromEmail, setSmtpFromEmail] = useState("");
   const [smtpFromName, setSmtpFromName] = useState("");
 
+  // Phase 15B: Multi-language templates
+  const [templateEn, setTemplateEn] = useState("");
+  const [templateFr, setTemplateFr] = useState("");
+  const [templateDe, setTemplateDe] = useState("");
+  const [templateEs, setTemplateEs] = useState("");
+  const [templateIt, setTemplateIt] = useState("");
+
+  // Phase 15B: Portfolio
+  const [portfolioUrl, setPortfolioUrl] = useState("");
+  const [portfolioTitle, setPortfolioTitle] = useState("");
+
+  // Phase 15B: Follow-up configuration
+  const [followupEnabled, setFollowupEnabled] = useState(false);
+  const [followupIntervals, setFollowupIntervals] = useState("4, 9, 16, 30, 60, 90, 120, 180");
+  const [followupMaxTouches, setFollowupMaxTouches] = useState(999);
+
+  // Phase 15B: Pricing
+  const [pricingCurrency, setPricingCurrency] = useState("USD");
+
+  const { toast } = useToast();
+
   // Sync from server data on load
   useEffect(() => {
     if (settings) {
@@ -79,6 +103,21 @@ export default function AgencySettings() {
       setSmtpUser(settings.smtp_user || "");
       setSmtpFromEmail(settings.smtp_from_email || "");
       setSmtpFromName(settings.smtp_from_name || "");
+      // Phase 15B fields
+      setTemplateEn(settings.yt_outreach_template_en || "");
+      setTemplateFr(settings.yt_outreach_template_fr || "");
+      setTemplateDe(settings.yt_outreach_template_de || "");
+      setTemplateEs(settings.yt_outreach_template_es || "");
+      setTemplateIt(settings.yt_outreach_template_it || "");
+      setPortfolioUrl(settings.yt_portfolio_url || "");
+      setPortfolioTitle(settings.yt_portfolio_title || "");
+      setFollowupEnabled(settings.yt_followup_enabled || false);
+      const intervals = settings.yt_followup_intervals_days;
+      if (Array.isArray(intervals) && intervals.length > 0) {
+        setFollowupIntervals(intervals.join(", "));
+      }
+      setFollowupMaxTouches(settings.yt_followup_max_touches || 999);
+      setPricingCurrency(settings.yt_pricing_currency || "USD");
     }
   }, [settings]);
 
@@ -115,6 +154,52 @@ export default function AgencySettings() {
       yt_outreach_template: outreachTemplate || null,
       yt_sender_name: senderName || null,
       yt_sender_signature: senderSignature || null,
+      yt_outreach_template_en: templateEn || null,
+      yt_outreach_template_fr: templateFr || null,
+      yt_outreach_template_de: templateDe || null,
+      yt_outreach_template_es: templateEs || null,
+      yt_outreach_template_it: templateIt || null,
+    });
+  };
+
+  const handleSavePortfolio = () => {
+    updateSettings.mutate({
+      yt_portfolio_url: portfolioUrl || null,
+      yt_portfolio_title: portfolioTitle || null,
+    });
+  };
+
+  const handleSaveFollowup = () => {
+    // Parse comma-separated intervals string into integer array
+    const intervalsArr = followupIntervals
+      .split(",")
+      .map((s) => parseInt(s.trim(), 10))
+      .filter((n) => !isNaN(n) && n > 0);
+    updateSettings.mutate({
+      yt_followup_enabled: followupEnabled,
+      yt_followup_intervals_days: intervalsArr,
+      yt_followup_max_touches: followupMaxTouches,
+    });
+  };
+
+  const handleSavePricing = () => {
+    updateSettings.mutate({
+      yt_pricing_currency: pricingCurrency,
+    });
+  };
+
+  const handleSendTestEmail = () => {
+    if (!smtpConfigured) {
+      toast({
+        title: "SMTP Not Configured",
+        description: "Configure SMTP credentials above before sending a test email.",
+        variant: "destructive",
+      });
+      return;
+    }
+    toast({
+      title: "Test Email Queued",
+      description: "Test email feature will fire to ali@zatesystems.com once the n8n /youtube/send-test-email webhook is wired.",
     });
   };
 
@@ -310,23 +395,33 @@ export default function AgencySettings() {
           <p className="text-xs text-muted-foreground">
             Password is set via secure environment variable. Contact admin to update.
           </p>
-          <Button onClick={handleSaveSMTP} disabled={updateSettings.isPending}>
-            {updateSettings.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            <Save className="h-4 w-4 mr-2" />
-            Save SMTP Settings
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={handleSaveSMTP} disabled={updateSettings.isPending}>
+              {updateSettings.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              <Save className="h-4 w-4 mr-2" />
+              Save SMTP Settings
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleSendTestEmail}
+              disabled={!smtpConfigured}
+            >
+              <TestTube className="h-4 w-4 mr-2" />
+              Send Test Email to ali@zatesystems.com
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Outreach Template Card */}
+      {/* Multi-Language Templates Card */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-indigo-500" />
-            Outreach Template
+            <Globe className="h-5 w-5 text-indigo-500" />
+            Multi-Language Outreach Templates
           </CardTitle>
           <CardDescription>
-            Variables available: {"{channel_name}"}, {"{niche}"}, {"{sub_count}"}, {"{recent_video_title}"}
+            Per-language email templates. Variables: {"{channel_name}"}, {"{carnegie_hook}"}, {"{niche}"}, {"{portfolio_url}"}, {"{sender_name}"}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -348,19 +443,234 @@ export default function AgencySettings() {
               />
             </div>
           </div>
-          <div>
-            <Label>Email Template</Label>
+
+          <Tabs defaultValue="en" className="w-full">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="en">English</TabsTrigger>
+              <TabsTrigger value="fr">Français</TabsTrigger>
+              <TabsTrigger value="de">Deutsch</TabsTrigger>
+              <TabsTrigger value="es">Español</TabsTrigger>
+              <TabsTrigger value="it">Italiano</TabsTrigger>
+            </TabsList>
+            <TabsContent value="en" className="mt-4">
+              <Label>English Template</Label>
+              <Textarea
+                value={templateEn}
+                onChange={(e) => setTemplateEn(e.target.value)}
+                placeholder="Subject: {channel_name} - quick offer&#10;&#10;Hi {channel_name}, {carnegie_hook}..."
+                rows={14}
+                className="font-mono text-xs"
+              />
+            </TabsContent>
+            <TabsContent value="fr" className="mt-4">
+              <Label>French Template</Label>
+              <Textarea
+                value={templateFr}
+                onChange={(e) => setTemplateFr(e.target.value)}
+                placeholder="Subject: {channel_name} - une offre rapide..."
+                rows={14}
+                className="font-mono text-xs"
+              />
+            </TabsContent>
+            <TabsContent value="de" className="mt-4">
+              <Label>German Template</Label>
+              <Textarea
+                value={templateDe}
+                onChange={(e) => setTemplateDe(e.target.value)}
+                placeholder="Subject: {channel_name} - ein schnelles Angebot..."
+                rows={14}
+                className="font-mono text-xs"
+              />
+            </TabsContent>
+            <TabsContent value="es" className="mt-4">
+              <Label>Spanish Template</Label>
+              <Textarea
+                value={templateEs}
+                onChange={(e) => setTemplateEs(e.target.value)}
+                placeholder="Subject: {channel_name} - una oferta rápida..."
+                rows={14}
+                className="font-mono text-xs"
+              />
+            </TabsContent>
+            <TabsContent value="it" className="mt-4">
+              <Label>Italian Template</Label>
+              <Textarea
+                value={templateIt}
+                onChange={(e) => setTemplateIt(e.target.value)}
+                placeholder="Subject: {channel_name} - un'offerta rapida..."
+                rows={14}
+                className="font-mono text-xs"
+              />
+            </TabsContent>
+          </Tabs>
+
+          <details>
+            <summary className="cursor-pointer text-sm text-muted-foreground">Legacy single template (fallback)</summary>
             <Textarea
               value={outreachTemplate}
               onChange={(e) => setOutreachTemplate(e.target.value)}
-              placeholder={"Hey {channel_name},\n\nLove your work in the {niche} space..."}
-              rows={10}
+              placeholder="Legacy fallback template (used if all language templates are empty)"
+              rows={6}
+              className="mt-2 font-mono text-xs"
             />
-          </div>
+          </details>
+
           <Button onClick={handleSaveTemplate} disabled={updateSettings.isPending}>
             {updateSettings.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             <Save className="h-4 w-4 mr-2" />
-            Save Template
+            Save All Templates
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Portfolio Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <LinkIcon className="h-5 w-5 text-cyan-500" />
+            Portfolio
+          </CardTitle>
+          <CardDescription>
+            Your work showcase URL — auto-injected into all outreach emails as {"{portfolio_url}"}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Portfolio URL</Label>
+              <Input
+                value={portfolioUrl}
+                onChange={(e) => setPortfolioUrl(e.target.value)}
+                placeholder="https://www.behance.net/gallery/..."
+              />
+            </div>
+            <div>
+              <Label>Portfolio Title (optional)</Label>
+              <Input
+                value={portfolioTitle}
+                onChange={(e) => setPortfolioTitle(e.target.value)}
+                placeholder="Thumbnail Portfolio"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={handleSavePortfolio} disabled={updateSettings.isPending}>
+              {updateSettings.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              <Save className="h-4 w-4 mr-2" />
+              Save Portfolio
+            </Button>
+            {portfolioUrl && (
+              <Button
+                variant="outline"
+                onClick={() => window.open(portfolioUrl, "_blank", "noopener,noreferrer")}
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Preview
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Follow-up Configuration Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5 text-violet-500" />
+            Follow-up Configuration
+          </CardTitle>
+          <CardDescription>
+            Infinite follow-up sequence with fresh AI-generated value content per touch
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-base">Follow-ups Enabled</Label>
+              <p className="text-sm text-muted-foreground">
+                Send automatic follow-ups until recipient explicitly replies "interested" or "not interested"
+              </p>
+            </div>
+            <Switch checked={followupEnabled} onCheckedChange={setFollowupEnabled} />
+          </div>
+
+          <div>
+            <Label>Follow-up Intervals (days, comma-separated)</Label>
+            <Input
+              value={followupIntervals}
+              onChange={(e) => setFollowupIntervals(e.target.value)}
+              placeholder="4, 9, 16, 30, 60, 90, 120, 180"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Day gaps between touches. After the last interval, follow-ups continue at the longest gap until max touches reached or recipient replies.
+            </p>
+          </div>
+
+          <div>
+            <Label>Max Touches</Label>
+            <Input
+              type="number"
+              value={followupMaxTouches}
+              onChange={(e) => setFollowupMaxTouches(parseInt(e.target.value) || 999)}
+              min={1}
+              max={999}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Hard cap on total touches per channel. Default 999 = effectively infinite.
+            </p>
+          </div>
+
+          <Button onClick={handleSaveFollowup} disabled={updateSettings.isPending}>
+            {updateSettings.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            <Save className="h-4 w-4 mr-2" />
+            Save Follow-up Settings
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Pricing Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <DollarSign className="h-5 w-5 text-emerald-500" />
+            Pricing
+          </CardTitle>
+          <CardDescription>
+            Currency for AI sales agent quote generation. Detailed pricing JSON managed in tenant_config.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label>Pricing Currency</Label>
+            <Select value={pricingCurrency} onValueChange={setPricingCurrency}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="USD">USD ($)</SelectItem>
+                <SelectItem value="EUR">EUR (€)</SelectItem>
+                <SelectItem value="GBP">GBP (£)</SelectItem>
+                <SelectItem value="AED">AED (د.إ)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {settings?.yt_pricing_json && Object.keys(settings.yt_pricing_json).length > 0 && (
+            <div>
+              <Label>Pricing JSON (read-only)</Label>
+              <pre className="mt-2 p-3 bg-muted rounded text-xs overflow-x-auto">
+                {JSON.stringify(settings.yt_pricing_json, null, 2)}
+              </pre>
+              <p className="text-xs text-muted-foreground mt-1">
+                Edit pricing structure directly via tenant_config or future structured editor.
+              </p>
+            </div>
+          )}
+
+          <Button onClick={handleSavePricing} disabled={updateSettings.isPending}>
+            {updateSettings.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            <Save className="h-4 w-4 mr-2" />
+            Save Pricing
           </Button>
         </CardContent>
       </Card>
