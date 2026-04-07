@@ -571,6 +571,7 @@ export function NavigationSidebar() {
         { title: "Analytics", url: "/youtube/analytics", icon: BarChart3 },
         { title: "YouTube Connect", url: "/youtube/connect", icon: Plug },
         { title: "Client Portal", url: "/youtube/portal", icon: UserCircle },
+        { title: "Agency Settings", url: "/youtube/settings", icon: Settings },
       ]},
     ],
   };

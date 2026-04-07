@@ -1501,3 +1501,66 @@ export function useYTAnalyticsSnapshots(channelId?: string) {
     enabled: !!tenantId,
   });
 }
+
+// === AGENCY SETTINGS (multi-tenant config) ===
+export interface YTAgencySettings {
+  yt_target_niches: string[];
+  yt_target_countries: string[];
+  yt_min_subscribers: number;
+  yt_max_subscribers: number;
+  yt_daily_discovery_enabled: boolean;
+  yt_daily_outreach_enabled: boolean;
+  yt_daily_outreach_limit: number;
+  yt_offer_description: string | null;
+  yt_pricing_json: Record<string, unknown>;
+  yt_outreach_template: string | null;
+  yt_sender_name: string | null;
+  yt_sender_signature: string | null;
+  smtp_host: string | null;
+  smtp_port: number | null;
+  smtp_user: string | null;
+  smtp_from_email: string | null;
+  smtp_from_name: string | null;
+}
+
+export function useYTAgencySettings() {
+  const { tenantId } = useTenant();
+  return useQuery({
+    queryKey: ["yt_agency_settings", tenantId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tenant_config")
+        .select("yt_target_niches, yt_target_countries, yt_min_subscribers, yt_max_subscribers, yt_daily_discovery_enabled, yt_daily_outreach_enabled, yt_daily_outreach_limit, yt_offer_description, yt_pricing_json, yt_outreach_template, yt_sender_name, yt_sender_signature, smtp_host, smtp_port, smtp_user, smtp_from_email, smtp_from_name")
+        .eq("tenant_id", tenantId!)
+        .maybeSingle();
+      if (error) throw error;
+      return (data || null) as YTAgencySettings | null;
+    },
+    enabled: !!tenantId,
+  });
+}
+
+export function useUpdateYTAgencySettings() {
+  const queryClient = useQueryClient();
+  const { tenantId } = useTenant();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (updates: Partial<YTAgencySettings>) => {
+      const { data, error } = await supabase
+        .from("tenant_config")
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq("tenant_id", tenantId!)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast({ title: "Settings Saved", description: "Configuration updated." });
+      queryClient.invalidateQueries({ queryKey: ["yt_agency_settings"] });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Save Failed", description: err.message, variant: "destructive" });
+    },
+  });
+}

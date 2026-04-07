@@ -184,6 +184,7 @@ const YouTubeCalendar = lazy(() => import("./pages/youtube/ContentCalendar"));
 const YouTubeABTesting = lazy(() => import("./pages/youtube/ABTesting"));
 const YouTubeConnect = lazy(() => import("./pages/youtube/YouTubeConnect"));
 const YouTubeClientPortal = lazy(() => import("./pages/youtube/ClientPortal"));
+const YouTubeAgencySettings = lazy(() => import("./pages/youtube/AgencySettings"));
 
 // Communications Module
 const VoiceAIHub = lazy(() => import("./pages/communications/VoiceAIHub"));
@@ -1223,6 +1224,7 @@ const App = () => (
                   <Route path="/youtube/ab-testing" element={<LazyPage><YouTubeABTesting /></LazyPage>} />
                   <Route path="/youtube/connect" element={<LazyPage><YouTubeConnect /></LazyPage>} />
                   <Route path="/youtube/portal" element={<LazyPage><YouTubeClientPortal /></LazyPage>} />
+                  <Route path="/youtube/settings" element={<LazyPage><YouTubeAgencySettings /></LazyPage>} />
 
                   {/* Real Estate Module */}
                   <Route path="/realestate" element={<LazyPage><RealEstateDashboard /></LazyPage>} />
