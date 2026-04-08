@@ -121,15 +121,16 @@ export default function AEODashboard() {
     enabled: !!tenantConfig?.id,
   });
 
-  // Query library
+  // Query library — shared cross-tenant table scoped by industry (no tenant_id column)
   const { data: queries = [], isLoading: loadingQueries } = useQuery({
-    queryKey: ['aeo_query_library', tenantConfig?.id],
+    queryKey: ['aeo_query_library', tenantConfig?.industry],
     queryFn: async () => {
       if (!tenantConfig?.id) return [];
       const { data } = await (supabase as any)
         .from('aeo_query_library')
         .select('*')
-        .eq('tenant_id', tenantConfig.id)
+        .eq('industry', tenantConfig?.industry || 'technology')
+        .eq('is_active', true)
         .order('priority', { ascending: false });
       return data || [];
     },
@@ -141,7 +142,7 @@ export default function AEODashboard() {
     mutationFn: async () => {
       if (!tenantConfig?.id) throw new Error('No tenant');
       setRunning(true);
-      return await callWebhook('/aeo/analyze', { tenant_id: tenantConfig.id }, tenantConfig.id);
+      return await callWebhook('/aeo-intelligence', { tenant_id: tenantConfig.id, action: 'analyze' }, tenantConfig.id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['aeo_brand_presence'] });
@@ -159,8 +160,9 @@ export default function AEODashboard() {
   const optimizeContent = useMutation({
     mutationFn: async () => {
       if (!tenantConfig?.id) throw new Error('No tenant');
-      return await callWebhook('/aeo/optimize-content', {
+      return await callWebhook('/aeo-intelligence', {
         tenant_id: tenantConfig.id,
+        action: 'optimize-content',
         url: analyzeUrl,
         title: analyzeTitle,
         content: analyzeContent,
@@ -197,15 +199,16 @@ export default function AEODashboard() {
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
-  // Add query
+  // Add query — industry-scoped, no tenant_id column
   const addQuery = useMutation({
     mutationFn: async () => {
       if (!tenantConfig?.id) throw new Error('No tenant');
       const { error } = await (supabase as any).from('aeo_query_library').insert({
-        tenant_id: tenantConfig.id,
+        industry: tenantConfig?.industry || 'technology',
         query_template: queryTemplate,
         category: queryCategory,
         priority: 5,
+        is_active: true,
       });
       if (error) throw error;
     },
