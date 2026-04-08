@@ -588,17 +588,18 @@ export default function Inbox() {
     const phone = c?.phone || c?.phone_number || conv.customer_phone;
     if (phone) return phone;
 
-    // Priority 6: For Facebook/Instagram - show platform + partial ID
-    if (conv.channel === "facebook" && c?.facebook_id) {
-      return `FB User ...${c.facebook_id.slice(-6)}`;
-    }
-    if (conv.channel === "instagram" && c?.instagram_id) {
-      return `IG User ...${c.instagram_id.slice(-6)}`;
-    }
+    // Priority 6: Any available platform identifier (channel-agnostic)
+    // Handles the case where a customer has an identifier that doesn't match
+    // the conversation's channel label (e.g. WhatsApp conv but customer only has facebook_id).
+    if (c?.whatsapp_id) return `WA ...${c.whatsapp_id.slice(-6)}`;
+    if (c?.facebook_id) return `FB ...${c.facebook_id.slice(-6)}`;
+    if (c?.instagram_id) return `IG ...${c.instagram_id.slice(-6)}`;
+    const telegramId = (c as { telegram_id?: string } | undefined)?.telegram_id;
+    if (telegramId) return `TG ...${telegramId.slice(-6)}`;
 
-    // Fallback with channel context
-    const channelName = ALL_CHANNELS[conv.channel]?.name || conv.channel;
-    return `${channelName} Contact`;
+    // Fallback: ticket number (stable, unique, operator-friendly)
+    if (conv.ticket_number) return conv.ticket_number;
+    return `Conversation #${conv.id.slice(-6)}`;
   }, []);
 
   // ISSUE 7 FIX: Get phone from correct field
