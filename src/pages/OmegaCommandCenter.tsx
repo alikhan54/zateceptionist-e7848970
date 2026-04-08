@@ -19,6 +19,7 @@ import { PageWrapper } from "@/components/shared/PageWrapper";
 import { callWebhook, WEBHOOKS } from "@/lib/api/webhooks";
 import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { sanitizeResponse } from "@/lib/security/sanitizeResponse";
 
 const AGENT_COLORS: Record<string, string> = {
   OMEGA: "bg-violet-500/15 text-violet-400 border-violet-500/30",
@@ -185,14 +186,15 @@ function ChatTab({ tenantId, tenantUuid }: { tenantId: string; tenantUuid: strin
       const data = res.data as any;
       if (res.success && data) {
         const responseText = data.response || data.message || data.error || "OMEGA returned an unexpected response. Please try again.";
+        const safeText = sanitizeResponse(responseText);
         setMessages(prev => [...prev, {
           role: "assistant",
-          content: responseText,
+          content: safeText,
           agent_used: data.agent_used,
           execution_time_ms: data.execution_time_ms,
           timestamp: new Date(),
         }]);
-        speakResponse(responseText);
+        speakResponse(safeText);
       } else {
         setMessages(prev => [...prev, {
           role: "assistant",
