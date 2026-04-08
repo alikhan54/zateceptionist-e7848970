@@ -23,6 +23,7 @@ const PLATFORM_COLORS: Record<string, string> = {
   perplexity: 'bg-purple-100 text-purple-800',
   claude: 'bg-amber-100 text-amber-800',
   copilot: 'bg-indigo-100 text-indigo-800',
+  ollama: 'bg-amber-100 text-amber-800',
 };
 
 const SENTIMENT_COLORS: Record<string, string> = {
