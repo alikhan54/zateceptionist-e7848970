@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -138,6 +138,31 @@ export default function AEODashboard() {
     enabled: !!tenantConfig?.id,
   });
 
+  // Realtime subscription — auto-refresh when bridge workflow scores a new blog
+  useEffect(() => {
+    if (!tenantConfig?.id) return;
+    const channel = (supabase as any)
+      .channel(`aeo-content-${tenantConfig.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'aeo_content_scores',
+          filter: `tenant_id=eq.${tenantConfig.id}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['aeo_content_scores', tenantConfig.id] });
+          queryClient.invalidateQueries({ queryKey: ['aeo_entity_graph', tenantConfig.id] });
+          queryClient.invalidateQueries({ queryKey: ['aeo_schema_registry', tenantConfig.id] });
+        }
+      )
+      .subscribe();
+    return () => {
+      (supabase as any).removeChannel(channel);
+    };
+  }, [tenantConfig?.id, queryClient]);
+
   // Run AEO analysis
   const runAnalysis = useMutation({
     mutationFn: async () => {
@@ -161,9 +186,9 @@ export default function AEODashboard() {
   const optimizeContent = useMutation({
     mutationFn: async () => {
       if (!tenantConfig?.id) throw new Error('No tenant');
-      return await callWebhook('/aeo-intelligence', {
+      return await callWebhook('/aeo/optimize-content', {
         tenant_id: tenantConfig.id,
-        action: 'optimize-content',
+        content_type: 'manual_url',
         url: analyzeUrl,
         title: analyzeTitle,
         content: analyzeContent,

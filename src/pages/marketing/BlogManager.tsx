@@ -116,7 +116,7 @@ export default function BlogManager() {
           }).eq("id", post.id);
         }
         queryClient.invalidateQueries({ queryKey: ["blog_posts"] });
-        toast({ title: "✅ Blog Content Generated!" });
+        toast({ title: "Post published! AEO scoring started." });
         logSystemEvent({ tenantId: tenantConfig?.id || '', eventType: 'blog_generated', sourceModule: 'marketing', eventData: { blog_title: post.title, blog_id: post.id } });
 
         // Auto-repurpose on publish — fire-and-forget
