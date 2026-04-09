@@ -210,16 +210,21 @@ export function useAdminStats() {
 // Mutation to create audit log
 export function useCreateAuditLog() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (log: Omit<AuditLog, 'id' | 'created_at'>) => {
       const { data, error } = await supabase
         .from('audit_logs')
         .insert(log)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) {
+        throw new Error(
+          "Audit log insert affected 0 rows. Your session may be missing tenant_id, or the RLS INSERT policy on audit_logs may be misconfigured."
+        );
+      }
       return data;
     },
     onSuccess: () => {
@@ -229,9 +234,16 @@ export function useCreateAuditLog() {
 }
 
 // Mutation to update tenant status
+//
+// NOTE: This path will return 0 rows for cross-tenant admin operations because
+// the `rls_tenant_update_tenant_config` policy only allows an authenticated user
+// to update THEIR OWN tenant row. Cross-tenant admin writes must be routed
+// through a backend service_role endpoint (not browser). This hook preserves
+// the existing behavior for same-tenant writes and throws a loud, actionable
+// error for cross-tenant attempts instead of the opaque PGRST116.
 export function useUpdateTenantStatus() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async ({ tenantId, status }: { tenantId: string; status: string }) => {
       const { data, error } = await supabase
@@ -239,9 +251,14 @@ export function useUpdateTenantStatus() {
         .update({ subscription_status: status, updated_at: new Date().toISOString() })
         .eq('tenant_id', tenantId)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) {
+        throw new Error(
+          "Tenant status update affected 0 rows. Cross-tenant admin writes are not supported from the browser — use a backend service_role endpoint or Supabase Studio."
+        );
+      }
       return data;
     },
     onSuccess: () => {
@@ -253,7 +270,7 @@ export function useUpdateTenantStatus() {
 // Mutation to update user active status
 export function useUpdateUserStatus() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async ({ userId, isActive }: { userId: string; isActive: boolean }) => {
       const { data, error } = await supabase
@@ -261,9 +278,14 @@ export function useUpdateUserStatus() {
         .update({ is_active: isActive })
         .eq('id', userId)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) {
+        throw new Error(
+          "User status update affected 0 rows. The user may not exist, or the RLS policy may be blocking cross-tenant writes."
+        );
+      }
       return data;
     },
     onSuccess: () => {

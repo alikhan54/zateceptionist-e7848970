@@ -55,15 +55,23 @@ export function AIControlCenter() {
 
   const handleModeChange = async (newMode: AIMode) => {
     setMode(newMode);
-    
+
     if (tenantId) {
-      const { error } = await supabase
+      // C.5 — add .select() + row-affected check.
+      const { data: rows, error } = await supabase
         .from('tenant_config')
         .update({ ai_mode: newMode })
-        .eq('tenant_id', tenantId);
-      
+        .eq('tenant_id', tenantId)
+        .select();
+
       if (error) {
         toast({ title: 'Error', description: 'Failed to update AI mode', variant: 'destructive' });
+      } else if (!rows || rows.length === 0) {
+        toast({
+          title: 'AI Mode Update Failed',
+          description: '0 rows affected. Your session may be missing tenant_id or the RLS UPDATE policy may be misconfigured.',
+          variant: 'destructive',
+        });
       } else {
         toast({ title: 'AI Mode Updated', description: `Switched to ${newMode} mode` });
       }
@@ -73,12 +81,25 @@ export function AIControlCenter() {
   const toggleModule = async (module: keyof ModuleSettings) => {
     const newModules = { ...modules, [module]: !modules[module] };
     setModules(newModules);
-    
+
     if (tenantId) {
-      await supabase
+      // C.5 — previously this update had no error handling AT ALL (neither
+      // `error` nor `data` was destructured). Adding row check + error toast.
+      const { data: rows, error } = await supabase
         .from('tenant_config')
         .update({ ai_modules_enabled: newModules })
-        .eq('tenant_id', tenantId);
+        .eq('tenant_id', tenantId)
+        .select();
+
+      if (error) {
+        toast({ title: 'Error', description: 'Failed to toggle module', variant: 'destructive' });
+      } else if (!rows || rows.length === 0) {
+        toast({
+          title: 'Module Toggle Failed',
+          description: '0 rows affected. Your session may be missing tenant_id or the RLS UPDATE policy may be misconfigured.',
+          variant: 'destructive',
+        });
+      }
     }
   };
 

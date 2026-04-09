@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,9 +10,18 @@ import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, Mail, Target, Sliders, FileText, Save, Loader2, AlertCircle, CheckCircle2, Globe, Link as LinkIcon, Clock, DollarSign, TestTube, ExternalLink } from "lucide-react";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Settings, Mail, Target, Sliders, FileText, Save, Loader2, AlertCircle, CheckCircle2, XCircle, Globe, Link as LinkIcon, Clock, DollarSign, TestTube, ExternalLink, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useYTAgencySettings, useUpdateYTAgencySettings } from "@/hooks/useYouTubeAgency";
+import { supabase, N8N_WEBHOOK_BASE } from "@/integrations/supabase/client";
+import {
+  SMTP_PROVIDERS,
+  getSmtpProvider,
+  detectSmtpProviderFromEmail,
+  deriveSecureModeFromPort,
+  type SmtpSecureMode,
+} from "@/lib/smtp-providers";
 
 const NICHE_OPTIONS = [
   "crypto", "trading", "real_estate", "automotive",
@@ -60,8 +70,18 @@ export default function AgencySettings() {
   const [smtpHost, setSmtpHost] = useState("");
   const [smtpPort, setSmtpPort] = useState<number | "">("");
   const [smtpUser, setSmtpUser] = useState("");
+  // NOTE: smtpPass is intentionally NOT initialized from settings.smtp_pass.
+  // The existing password (if any) is never displayed in the UI. Leaving
+  // the field blank on save preserves the existing DB value (see handleSaveSMTP).
+  const [smtpPass, setSmtpPass] = useState("");
   const [smtpFromEmail, setSmtpFromEmail] = useState("");
   const [smtpFromName, setSmtpFromName] = useState("");
+  // C.4c — SMTP test button state machine
+  const [smtpTestState, setSmtpTestState] = useState<"idle" | "sending" | "success" | "error">("idle");
+  // C.11 — provider preset + secure mode (backfilled by C.10 migration)
+  const [smtpProvider, setSmtpProvider] = useState<string>("custom");
+  const [smtpSecureMode, setSmtpSecureMode] = useState<SmtpSecureMode>("auto");
+  const [detectedProvider, setDetectedProvider] = useState<string | null>(null);
 
   // Phase 15B: Multi-language templates
   const [templateEn, setTemplateEn] = useState("");
@@ -103,6 +123,9 @@ export default function AgencySettings() {
       setSmtpUser(settings.smtp_user || "");
       setSmtpFromEmail(settings.smtp_from_email || "");
       setSmtpFromName(settings.smtp_from_name || "");
+      // C.11 — hydrate provider preset fields
+      setSmtpProvider(settings.smtp_provider || "custom");
+      setSmtpSecureMode((settings.smtp_secure_mode as SmtpSecureMode) || "auto");
       // Phase 15B fields
       setTemplateEn(settings.yt_outreach_template_en || "");
       setTemplateFr(settings.yt_outreach_template_fr || "");
@@ -140,12 +163,28 @@ export default function AgencySettings() {
   };
 
   const handleSaveSMTP = () => {
-    updateSettings.mutate({
+    // Build payload without smtp_pass by default. Only include it when the
+    // user has actually typed something — an empty password field means
+    // "preserve the existing DB value", not "clear it to empty string".
+    const payload: Record<string, unknown> = {
       smtp_host: smtpHost || null,
       smtp_port: typeof smtpPort === "number" ? smtpPort : null,
       smtp_user: smtpUser || null,
       smtp_from_email: smtpFromEmail || null,
       smtp_from_name: smtpFromName || null,
+      // C.11 — persist provider preset + secure mode
+      smtp_provider: smtpProvider || "custom",
+      smtp_secure_mode: smtpSecureMode || "auto",
+    };
+    if (smtpPass !== "") {
+      payload.smtp_pass = smtpPass;
+    }
+    updateSettings.mutate(payload, {
+      onSuccess: () => {
+        // Clear the password field after successful save so it doesn't linger.
+        // The existing hook's onSuccess already shows the toast and invalidates queries.
+        setSmtpPass("");
+      },
     });
   };
 
@@ -188,19 +227,98 @@ export default function AgencySettings() {
     });
   };
 
-  const handleSendTestEmail = () => {
-    if (!smtpConfigured) {
+  // C.11 — Handle provider dropdown change: pre-fill host/port/secure_mode
+  // with provider defaults, but ONLY if those fields are currently empty.
+  const handleProviderChange = (newProviderId: string) => {
+    const preset = getSmtpProvider(newProviderId);
+    setSmtpProvider(newProviderId);
+    setSmtpSecureMode(preset.secure_mode);
+    if (!smtpHost || smtpHost.trim() === "") {
+      setSmtpHost(preset.host);
+    }
+    if (!smtpPort || smtpPort === "") {
+      setSmtpPort(preset.port);
+    }
+  };
+
+  // C.11 — Smart auto-detect: when user types from_email and provider is still
+  // 'custom', suggest a provider based on the email domain.
+  useEffect(() => {
+    if (smtpProvider !== "custom" || !smtpFromEmail) {
+      setDetectedProvider(null);
+      return;
+    }
+    const detected = detectSmtpProviderFromEmail(smtpFromEmail);
+    setDetectedProvider(detected && detected !== smtpProvider ? detected : null);
+  }, [smtpFromEmail, smtpProvider]);
+
+  // C.4c — Real Send Test Email implementation.
+  // Posts typed (not saved) credentials to the "420 SMTP Test v1.0" n8n
+  // workflow. ZERO DB side effects. Password never persisted or logged.
+  const handleSendTestEmail = async () => {
+    if (!smtpHost || !smtpPort || !smtpUser || !smtpPass || !smtpFromEmail) {
       toast({
         title: "SMTP Not Configured",
-        description: "Configure SMTP credentials above before sending a test email.",
+        description: "Fill in all SMTP fields (including password) before testing.",
         variant: "destructive",
       });
       return;
     }
-    toast({
-      title: "Test Email Queued",
-      description: "Test email feature will fire to ali@zatesystems.com once the n8n /youtube/send-test-email webhook is wired.",
-    });
+    setSmtpTestState("sending");
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const testRecipient = user?.email;
+      if (!testRecipient) {
+        throw new Error("Could not determine your email from the current session.");
+      }
+
+      const port = typeof smtpPort === "number" ? smtpPort : parseInt(String(smtpPort), 10);
+      // C.11 — use the explicitly-selected secure_mode from state; fall back
+      // to port-based derivation if it's still 'auto'
+      const secureMode: SmtpSecureMode =
+        smtpSecureMode !== "auto" ? smtpSecureMode : deriveSecureModeFromPort(port);
+
+      const res = await fetch(`${N8N_WEBHOOK_BASE}/smtp-test`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          host: smtpHost,
+          port,
+          user: smtpUser,
+          password: smtpPass,
+          secure_mode: secureMode,
+          from_email: smtpFromEmail,
+          test_recipient: testRecipient,
+        }),
+      });
+
+      const result = await res.json();
+
+      if (result.success) {
+        setSmtpTestState("success");
+        toast({
+          title: "✅ Test email sent",
+          description: `Check your inbox at ${testRecipient}`,
+        });
+      } else {
+        setSmtpTestState("error");
+        toast({
+          title: "❌ Test failed",
+          description: result.error || "Unknown error",
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      setSmtpTestState("error");
+      const msg = err instanceof Error ? err.message : "Network error";
+      toast({
+        title: "❌ Test failed",
+        description: msg,
+        variant: "destructive",
+      });
+    } finally {
+      setTimeout(() => setSmtpTestState("idle"), 5000);
+    }
   };
 
   const handleSaveAutomation = () => {
@@ -347,6 +465,46 @@ export default function AgencySettings() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* C.9 — SMTP managed centrally banner. Informational only, form
+              below remains functional for backwards compatibility. */}
+          <Alert className="border-blue-500/50 bg-blue-500/10">
+            <Info className="h-4 w-4 text-blue-600" />
+            <AlertTitle>SMTP managed centrally</AlertTitle>
+            <AlertDescription>
+              Your sending domain credentials are configured in
+              <Link to="/settings" className="underline mx-1 font-medium">
+                Settings → Integrations → Email
+              </Link>
+              . This form remains functional for backwards compatibility,
+              but the central settings are the source of truth.
+            </AlertDescription>
+          </Alert>
+
+          {/* C.11 — Provider dropdown with auto pre-fill */}
+          <div>
+            <Label>SMTP Provider</Label>
+            <Select value={smtpProvider} onValueChange={handleProviderChange}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {SMTP_PROVIDERS.map(p => (
+                  <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">
+              {getSmtpProvider(smtpProvider).helper}
+            </p>
+            {detectedProvider && (
+              <button
+                type="button"
+                className="text-xs text-blue-600 hover:underline mt-1"
+                onClick={() => handleProviderChange(detectedProvider)}
+              >
+                Detected: {getSmtpProvider(detectedProvider).label}. Apply preset?
+              </button>
+            )}
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>SMTP Host</Label>
@@ -361,7 +519,14 @@ export default function AgencySettings() {
               <Input
                 type="number"
                 value={smtpPort}
-                onChange={(e) => setSmtpPort(e.target.value ? parseInt(e.target.value) : "")}
+                onChange={(e) => {
+                  const newPort = e.target.value ? parseInt(e.target.value) : "";
+                  setSmtpPort(newPort);
+                  // C.11 — derive secure_mode from port only when provider is 'custom'
+                  if (smtpProvider === "custom" && typeof newPort === "number") {
+                    setSmtpSecureMode(deriveSecureModeFromPort(newPort));
+                  }
+                }}
                 placeholder="587"
               />
             </div>
@@ -373,6 +538,19 @@ export default function AgencySettings() {
               onChange={(e) => setSmtpUser(e.target.value)}
               placeholder="you@yourdomain.com"
             />
+          </div>
+          <div>
+            <Label>SMTP Password</Label>
+            <Input
+              type="password"
+              value={smtpPass}
+              onChange={(e) => setSmtpPass(e.target.value)}
+              placeholder="Leave blank to keep current password"
+              autoComplete="new-password"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Stored in tenant_config. Will not be displayed once saved. Leave blank to preserve existing value.
+            </p>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -392,9 +570,6 @@ export default function AgencySettings() {
               />
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Password is set via secure environment variable. Contact admin to update.
-          </p>
           <div className="flex gap-2">
             <Button onClick={handleSaveSMTP} disabled={updateSettings.isPending}>
               {updateSettings.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
@@ -404,10 +579,31 @@ export default function AgencySettings() {
             <Button
               variant="outline"
               onClick={handleSendTestEmail}
-              disabled={!smtpConfigured}
+              disabled={
+                !smtpHost ||
+                !smtpPort ||
+                !smtpUser ||
+                !smtpPass ||
+                !smtpFromEmail ||
+                smtpTestState === "sending"
+              }
+              title={
+                !smtpPass
+                  ? "Type a password to enable Send Test"
+                  : "Send a test email to your account"
+              }
             >
-              <TestTube className="h-4 w-4 mr-2" />
-              Send Test Email to ali@zatesystems.com
+              {smtpTestState === "sending" && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {smtpTestState === "success" && <CheckCircle2 className="h-4 w-4 mr-2 text-green-600" />}
+              {smtpTestState === "error" && <XCircle className="h-4 w-4 mr-2 text-red-600" />}
+              {smtpTestState === "idle" && <TestTube className="h-4 w-4 mr-2" />}
+              {smtpTestState === "sending"
+                ? "Sending..."
+                : smtpTestState === "success"
+                ? "Test sent ✓"
+                : smtpTestState === "error"
+                ? "Test failed"
+                : "Send Test Email"}
             </Button>
           </div>
         </CardContent>

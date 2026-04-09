@@ -46,6 +46,7 @@ export interface TenantConfig {
   smtp_host?: string | null;
   smtp_port?: number | null;
   smtp_user?: string | null;
+  smtp_pass?: string | null;
   smtp_from_email?: string | null;
   smtp_from_name?: string | null;
   automation_mode?: string | null;

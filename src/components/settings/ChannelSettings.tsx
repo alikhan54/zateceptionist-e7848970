@@ -236,15 +236,25 @@ export function ChannelSettings() {
         }
       });
 
-      const { error } = await supabase
+      // C.5 — add .select() to verify the update actually touched a row.
+      const { data: rows, error } = await supabase
         .from("tenant_config")
         .update(updateData)
-        .eq("tenant_id", tenantId);
+        .eq("tenant_id", tenantId)
+        .select();
 
       if (error) throw error;
+      if (!rows || rows.length === 0) {
+        toast({
+          title: "Save failed",
+          description: "0 rows affected. Your session may be missing tenant_id or the RLS UPDATE policy may be misconfigured.",
+          variant: "destructive",
+        });
+        return;
+      }
 
       await refreshConfig();
-      
+
       toast({
         title: "Channel configured",
         description: `${configuring.name} has been configured successfully.`,
@@ -267,15 +277,25 @@ export function ChannelSettings() {
     if (!tenantId) return;
 
     try {
-      const { error } = await supabase
+      // C.5 — add .select() to verify the update actually touched a row.
+      const { data: rows, error } = await supabase
         .from("tenant_config")
         .update({ [channel.enabledKey]: false })
-        .eq("tenant_id", tenantId);
+        .eq("tenant_id", tenantId)
+        .select();
 
       if (error) throw error;
+      if (!rows || rows.length === 0) {
+        toast({
+          title: "Disable failed",
+          description: "0 rows affected. Your session may be missing tenant_id or the RLS UPDATE policy may be misconfigured.",
+          variant: "destructive",
+        });
+        return;
+      }
 
       await refreshConfig();
-      
+
       toast({
         title: "Channel disabled",
         description: `${channel.name} has been disabled.`,

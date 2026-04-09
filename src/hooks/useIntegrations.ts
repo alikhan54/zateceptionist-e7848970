@@ -108,12 +108,19 @@ export function useIntegrations() {
       }
 
       if (Object.keys(configUpdates).length > 0) {
-        const { error: configError } = await supabase
+        // C.5 — add .select() + row-affected check.
+        const { data: configRows, error: configError } = await supabase
           .from('tenant_config')
           .update(configUpdates)
-          .eq('tenant_id', tenantId);
+          .eq('tenant_id', tenantId)
+          .select();
 
         if (configError) throw configError;
+        if (!configRows || configRows.length === 0) {
+          throw new Error(
+            '0 rows affected. Your session may be missing tenant_id or the RLS UPDATE policy may be misconfigured.'
+          );
+        }
       }
 
       await refreshConfig();

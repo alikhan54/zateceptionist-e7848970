@@ -129,12 +129,20 @@ export function useIntegrationsV2() {
         },
       };
 
-      const { error } = await supabase
+      // C.5 — add .select() + row-affected check. Errors thrown here flow to
+      // the mutation's onError handler which displays the toast.
+      const { data: rows, error } = await supabase
         .from('tenant_config')
         .update(updatePayload)
-        .eq('id', tenantConfig.id);
+        .eq('id', tenantConfig.id)
+        .select();
 
       if (error) throw error;
+      if (!rows || rows.length === 0) {
+        throw new Error(
+          '0 rows affected. Your session may be missing tenant_id or the RLS UPDATE policy may be misconfigured.'
+        );
+      }
 
       // Log the connection (don't fail if logging fails)
       try {
@@ -200,12 +208,19 @@ export function useIntegrationsV2() {
         [integrationId]: undefined,
       };
 
-      const { error } = await supabase
+      // C.5 — add .select() + row-affected check.
+      const { data: rows, error } = await supabase
         .from('tenant_config')
         .update(updatePayload)
-        .eq('id', tenantConfig.id);
+        .eq('id', tenantConfig.id)
+        .select();
 
       if (error) throw error;
+      if (!rows || rows.length === 0) {
+        throw new Error(
+          '0 rows affected. Your session may be missing tenant_id or the RLS UPDATE policy may be misconfigured.'
+        );
+      }
 
       // Log the disconnection (don't fail if logging fails)
       try {
@@ -283,8 +298,10 @@ export function useIntegrationsV2() {
       if (!tenantConfig?.id) throw new Error('No tenant configured');
 
       const currentSettings = (tenantConfig as any)?.integration_settings || {};
-      
-      const { error } = await supabase
+
+      // C.5 — add .select() + row-affected check. JSONB update must still
+      // succeed on the row level, so the check logic is identical.
+      const { data: rows, error } = await supabase
         .from('tenant_config')
         .update({
           integration_settings: {
@@ -296,14 +313,27 @@ export function useIntegrationsV2() {
           },
           updated_at: new Date().toISOString(),
         })
-        .eq('id', tenantConfig.id);
+        .eq('id', tenantConfig.id)
+        .select();
 
       if (error) throw error;
+      if (!rows || rows.length === 0) {
+        throw new Error(
+          '0 rows affected. Your session may be missing tenant_id or the RLS UPDATE policy may be misconfigured.'
+        );
+      }
       await refreshConfig();
     },
     onSuccess: () => {
       toast({ title: 'Settings Updated' });
       queryClient.invalidateQueries({ queryKey: ['integrations-v2'] });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Settings Update Failed',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive',
+      });
     },
   });
 

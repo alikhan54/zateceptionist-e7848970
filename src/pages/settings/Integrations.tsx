@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useIntegrationsV2, IntegrationWithStatus } from '@/hooks/useIntegrationsV2';
 import { IntegrationCard, IntegrationDialog } from '@/components/integrations';
@@ -17,13 +17,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import {
   Search, LayoutGrid, List, ChevronDown, Plug, Sparkles, Activity, CreditCard,
   MessageSquare, Calendar, Users, Headphones, ShoppingCart, Brain, Zap, BarChart3,
   FileText, Filter, X, Save, CheckCircle, XCircle, Eye, EyeOff, Globe, ExternalLink,
-  Target,
+  Target, Loader2, Send, AlertTriangle,
 } from 'lucide-react';
+import { N8N_WEBHOOK_BASE } from '@/integrations/supabase/client';
+import {
+  SMTP_PROVIDERS,
+  getSmtpProvider,
+  detectSmtpProviderFromEmail,
+  deriveSecureModeFromPort,
+  type SmtpSecureMode,
+} from '@/lib/smtp-providers';
 import { cn } from '@/lib/utils';
 
 const CATEGORY_ICONS: Record<IntegrationCategory, React.ComponentType<{ className?: string }>> = {
@@ -42,6 +51,23 @@ function MarketingConnections() {
   const [lastSaved, setLastSaved] = useState<Record<string, string>>({});
   const [testing, setTesting] = useState<string | null>(null);
   const [showTokens, setShowTokens] = useState<Record<string, boolean>>({});
+  // C.4b — SMTP test state
+  // smtpPassDirty ensures the "Send Test" button only enables once the user
+  // has TYPED a password this session. The email.smtp_pass field hydrates from
+  // tenantConfig on mount (legacy behavior), so without this flag the button
+  // would let users test with saved-but-potentially-stale credentials without
+  // re-entering them.
+  const [smtpPassDirty, setSmtpPassDirty] = useState(false);
+  const [smtpTestState, setSmtpTestState] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
+  // C.5.6 — rotator-aware warning banner state.
+  // rotationEnabled is true only when this tenant has at least one active
+  // sending_accounts row. Such tenants have their tenant_config.smtp_* fields
+  // automatically overwritten every 30 minutes by the SMTP Config Rotator
+  // (workflow Vz0NMeFStnfKvxwU). Manual saves here will be reverted.
+  const [rotationEnabled, setRotationEnabled] = useState(false);
+  const [rotationBannerDismissed, setRotationBannerDismissed] = useState(
+    () => typeof window !== 'undefined' && window.sessionStorage.getItem('c56_rotation_banner_dismissed') === '1'
+  );
 
   // State for all fields — initialized from tenantConfig
   const tc = tenantConfig as any;
@@ -56,6 +82,9 @@ function MarketingConnections() {
     smtp_user: tc?.smtp_user || '', smtp_pass: tc?.smtp_pass || '',
     smtp_from_email: tc?.smtp_from_email || '', smtp_from_name: tc?.smtp_from_name || '',
     resend_api_key: tc?.resend_api_key || '',
+    // C.11 — provider preset + secure mode (backfilled by C.10 migration)
+    smtp_provider: tc?.smtp_provider || 'custom',
+    smtp_secure_mode: (tc?.smtp_secure_mode || 'auto') as SmtpSecureMode,
   });
   const [whatsappProvider, setWhatsappProvider] = useState(tc?.whatsapp_provider || 'cloud_api');
   const [whatsapp, setWhatsapp] = useState({
@@ -79,18 +108,161 @@ function MarketingConnections() {
     google_refresh_token: tc?.google_refresh_token || '',
   });
 
+  // C.5.6 — Query sending_accounts on mount to detect rotation-enabled tenants.
+  // If the current tenant has at least 1 active sending_accounts row, the SMTP
+  // Rotator (workflow Vz0NMeFStnfKvxwU) will overwrite manual saves every 30 min.
+  useEffect(() => {
+    const tenantId = tc?.tenant_id || tenantConfig?.tenant_id;
+    if (!tenantId) {
+      setRotationEnabled(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { count, error } = await supabase
+        .from('sending_accounts')
+        .select('*', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId)
+        .eq('is_active', true);
+      if (cancelled) return;
+      if (error) {
+        // On error, hide the banner (false negative is safer than false positive)
+        setRotationEnabled(false);
+        return;
+      }
+      setRotationEnabled((count ?? 0) >= 1);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tc?.tenant_id, tenantConfig?.tenant_id]);
+
+  const dismissRotationBanner = () => {
+    setRotationBannerDismissed(true);
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.setItem('c56_rotation_banner_dismissed', '1');
+    }
+  };
+
+  // C.11 — Handle provider dropdown change: pre-fill host/port/secure_mode
+  // with provider defaults, but ONLY if those fields are currently empty.
+  // This prevents clobbering manual edits without confirmation.
+  const handleProviderChange = (newProviderId: string) => {
+    const preset = getSmtpProvider(newProviderId);
+    setEmail(p => ({
+      ...p,
+      smtp_provider: newProviderId,
+      smtp_secure_mode: preset.secure_mode,
+      // Only pre-fill host if the existing host is empty (no clobber)
+      smtp_host: p.smtp_host && p.smtp_host.trim() !== '' ? p.smtp_host : preset.host,
+      // Same for port — only pre-fill if empty
+      smtp_port: p.smtp_port && String(p.smtp_port).trim() !== '' ? p.smtp_port : String(preset.port),
+    }));
+  };
+
+  // C.11 — Smart auto-detect: when user types from_email and provider is still
+  // 'custom', suggest a provider based on the email domain. Shown as a link,
+  // never auto-applied without user click (prevents re-render loops).
+  const [detectedProvider, setDetectedProvider] = useState<string | null>(null);
+  useEffect(() => {
+    if (email.smtp_provider !== 'custom' || !email.smtp_from_email) {
+      setDetectedProvider(null);
+      return;
+    }
+    const detected = detectSmtpProviderFromEmail(email.smtp_from_email);
+    // Only suggest if different from current provider
+    setDetectedProvider(detected && detected !== email.smtp_provider ? detected : null);
+  }, [email.smtp_from_email, email.smtp_provider]);
+
   const saveSection = async (section: string, data: Record<string, any>) => {
     if (!tenantConfig?.id) return;
     setSaving(section);
     try {
-      const { error } = await supabase.from('tenant_config').update(data).eq('id', tenantConfig.id);
+      // C.5 — add .select() so we can verify the update actually touched a row.
+      // Without this, RLS silently returning 0 rows would still show a
+      // "Settings saved!" toast even though nothing persisted.
+      const { data: rows, error } = await supabase
+        .from('tenant_config')
+        .update(data)
+        .eq('id', tenantConfig.id)
+        .select();
       if (error) throw error;
+      if (!rows || rows.length === 0) {
+        toast({
+          title: 'Save failed',
+          description: '0 rows affected. Your session may be missing tenant_id or the RLS UPDATE policy may be misconfigured.',
+          variant: 'destructive',
+        });
+        return;
+      }
       setLastSaved(prev => ({ ...prev, [section]: new Date().toLocaleString() }));
       toast({ title: '✅ Settings saved!' });
     } catch (err: any) {
       toast({ title: 'Error', description: err.message, variant: 'destructive' });
     } finally {
       setSaving(null);
+    }
+  };
+
+  // C.4b — Send Test Email to verify SMTP credentials before saving.
+  // Posts to the "420 SMTP Test v1.0" n8n workflow (/webhook/smtp-test) with
+  // the CURRENT form values (not the saved ones). The backend workflow has
+  // zero DB side effects and never persists the password.
+  const sendSmtpTest = async () => {
+    setSmtpTestState('sending');
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const testRecipient = user?.email;
+      if (!testRecipient) {
+        throw new Error('Could not determine your email from the current session.');
+      }
+
+      const port = parseInt(String(email.smtp_port), 10);
+      let secureMode: 'ssl' | 'starttls' | 'none' | 'auto' = 'auto';
+      if (port === 465) secureMode = 'ssl';
+      else if (port === 587) secureMode = 'starttls';
+      else if (port === 25) secureMode = 'none';
+
+      const res = await fetch(`${N8N_WEBHOOK_BASE}/smtp-test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          host: email.smtp_host,
+          port,
+          user: email.smtp_user,
+          password: email.smtp_pass,
+          secure_mode: secureMode,
+          from_email: email.smtp_from_email || email.smtp_user,
+          test_recipient: testRecipient,
+        }),
+      });
+
+      const result = await res.json();
+
+      if (result.success) {
+        setSmtpTestState('success');
+        toast({
+          title: '✅ Test email sent',
+          description: `Check your inbox at ${testRecipient}`,
+        });
+      } else {
+        setSmtpTestState('error');
+        toast({
+          title: '❌ Test failed',
+          description: result.error || 'Unknown error',
+          variant: 'destructive',
+        });
+      }
+    } catch (err: any) {
+      setSmtpTestState('error');
+      toast({
+        title: '❌ Test failed',
+        description: err.message || 'Network error',
+        variant: 'destructive',
+      });
+    } finally {
+      // Reset to idle after 5 seconds so the user can re-test
+      setTimeout(() => setSmtpTestState('idle'), 5000);
     }
   };
 
@@ -188,6 +360,40 @@ function MarketingConnections() {
 
         {/* EMAIL */}
         <TabsContent value="email">
+          {/* C.5.6 — Rotator-aware warning banner. Only renders when the current
+              tenant has at least one active sending_accounts row, because those
+              tenants get their tenant_config.smtp_* fields overwritten every
+              30 min by the SMTP Config Rotator workflow. */}
+          {rotationEnabled && !rotationBannerDismissed && (
+            <Alert className="mb-4 border-yellow-500/50 bg-yellow-500/10">
+              <AlertTriangle className="h-4 w-4 text-yellow-600" />
+              <AlertTitle>SMTP managed by Sending Account Rotator</AlertTitle>
+              <AlertDescription>
+                <p className="mb-2">
+                  This tenant has active sending accounts. Manual SMTP changes here
+                  will be <strong>overwritten within 30 minutes</strong> by the
+                  Sending Account Rotator. To edit credentials permanently, use the
+                  Sending Accounts tab in Settings.
+                </p>
+                <div className="flex gap-2 mt-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => { window.location.href = '/settings'; }}
+                  >
+                    Open Settings → Sending Accounts
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={dismissRotationBanner}
+                  >
+                    Dismiss
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center justify-between">
@@ -207,13 +413,49 @@ function MarketingConnections() {
                 </Select>
               </div>
               {emailProvider === 'smtp' ? (
-                <div className="grid md:grid-cols-2 gap-3">
-                  <div className="space-y-1.5"><Label className="text-xs">SMTP Host</Label><Input value={email.smtp_host} onChange={e => setEmail(p => ({ ...p, smtp_host: e.target.value }))} placeholder="smtp.gmail.com" /></div>
-                  <div className="space-y-1.5"><Label className="text-xs">Port</Label><Input value={email.smtp_port} onChange={e => setEmail(p => ({ ...p, smtp_port: e.target.value }))} placeholder="587" /></div>
-                  <div className="space-y-1.5"><Label className="text-xs">Username</Label><Input value={email.smtp_user} onChange={e => setEmail(p => ({ ...p, smtp_user: e.target.value }))} /></div>
-                  <div className="space-y-1.5"><Label className="text-xs">Password</Label><Input type="password" value={email.smtp_pass} onChange={e => setEmail(p => ({ ...p, smtp_pass: e.target.value }))} /></div>
-                  <div className="space-y-1.5"><Label className="text-xs">From Email</Label><Input value={email.smtp_from_email} onChange={e => setEmail(p => ({ ...p, smtp_from_email: e.target.value }))} placeholder="noreply@company.com" /></div>
-                  <div className="space-y-1.5"><Label className="text-xs">From Name</Label><Input value={email.smtp_from_name} onChange={e => setEmail(p => ({ ...p, smtp_from_name: e.target.value }))} placeholder="My Company" /></div>
+                <div className="space-y-3">
+                  {/* C.11 — Provider dropdown with auto pre-fill */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">SMTP Provider</Label>
+                    <Select value={email.smtp_provider} onValueChange={handleProviderChange}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {SMTP_PROVIDERS.map(p => (
+                          <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {getSmtpProvider(email.smtp_provider).helper}
+                    </p>
+                    {detectedProvider && (
+                      <button
+                        type="button"
+                        className="text-xs text-blue-600 hover:underline"
+                        onClick={() => handleProviderChange(detectedProvider)}
+                      >
+                        Detected: {getSmtpProvider(detectedProvider).label}. Apply preset?
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-3">
+                    <div className="space-y-1.5"><Label className="text-xs">SMTP Host</Label><Input value={email.smtp_host} onChange={e => setEmail(p => ({ ...p, smtp_host: e.target.value }))} placeholder="smtp.gmail.com" /></div>
+                    <div className="space-y-1.5"><Label className="text-xs">Port</Label><Input value={email.smtp_port} onChange={e => {
+                      const newPort = e.target.value;
+                      setEmail(p => ({
+                        ...p,
+                        smtp_port: newPort,
+                        // C.11 — derive secure_mode from port only when provider is 'custom'
+                        // or 'auto', otherwise trust the provider preset
+                        smtp_secure_mode: p.smtp_provider === 'custom' ? deriveSecureModeFromPort(newPort) : p.smtp_secure_mode,
+                      }));
+                    }} placeholder="587" /></div>
+                    <div className="space-y-1.5"><Label className="text-xs">Username</Label><Input value={email.smtp_user} onChange={e => setEmail(p => ({ ...p, smtp_user: e.target.value }))} /></div>
+                    <div className="space-y-1.5"><Label className="text-xs">Password</Label><Input type="password" value={email.smtp_pass} onChange={e => { setEmail(p => ({ ...p, smtp_pass: e.target.value })); setSmtpPassDirty(true); }} /></div>
+                    <div className="space-y-1.5"><Label className="text-xs">From Email</Label><Input value={email.smtp_from_email} onChange={e => setEmail(p => ({ ...p, smtp_from_email: e.target.value }))} placeholder="noreply@company.com" /></div>
+                    <div className="space-y-1.5"><Label className="text-xs">From Name</Label><Input value={email.smtp_from_name} onChange={e => setEmail(p => ({ ...p, smtp_from_name: e.target.value }))} placeholder="My Company" /></div>
+                  </div>
                 </div>
               ) : (
                 <div className="grid md:grid-cols-2 gap-3">
@@ -221,7 +463,40 @@ function MarketingConnections() {
                   <div className="space-y-1.5"><Label className="text-xs">From Email</Label><Input value={email.smtp_from_email} onChange={e => setEmail(p => ({ ...p, smtp_from_email: e.target.value }))} placeholder="noreply@company.com" /></div>
                 </div>
               )}
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-2">
+                {emailProvider === 'smtp' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={sendSmtpTest}
+                    disabled={
+                      smtpTestState === 'sending' ||
+                      !email.smtp_host ||
+                      !email.smtp_port ||
+                      !email.smtp_user ||
+                      !email.smtp_pass ||
+                      !smtpPassDirty ||
+                      !email.smtp_from_email
+                    }
+                    title={
+                      !smtpPassDirty
+                        ? 'Type a password to enable Send Test'
+                        : 'Send a test email to your account'
+                    }
+                  >
+                    {smtpTestState === 'sending' && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                    {smtpTestState === 'success' && <CheckCircle className="h-3 w-3 mr-1 text-green-600" />}
+                    {smtpTestState === 'error' && <XCircle className="h-3 w-3 mr-1 text-red-600" />}
+                    {smtpTestState === 'idle' && <Send className="h-3 w-3 mr-1" />}
+                    {smtpTestState === 'sending'
+                      ? 'Sending...'
+                      : smtpTestState === 'success'
+                      ? 'Test sent ✓'
+                      : smtpTestState === 'error'
+                      ? 'Test failed'
+                      : 'Send Test Email'}
+                  </Button>
+                )}
                 <SaveButton section="email" data={{ email_provider: emailProvider, ...email }} />
               </div>
             </CardContent>

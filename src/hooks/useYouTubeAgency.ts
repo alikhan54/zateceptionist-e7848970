@@ -1521,6 +1521,9 @@ export interface YTAgencySettings {
   smtp_user: string | null;
   smtp_from_email: string | null;
   smtp_from_name: string | null;
+  // C.10/C.11 provider preset fields
+  smtp_provider: string | null;
+  smtp_secure_mode: string | null;
   // Phase 15B additions:
   yt_outreach_template_en: string | null;
   yt_outreach_template_fr: string | null;
@@ -1544,7 +1547,7 @@ export function useYTAgencySettings() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tenant_config")
-        .select("yt_target_niches, yt_target_countries, yt_min_subscribers, yt_max_subscribers, yt_daily_discovery_enabled, yt_daily_outreach_enabled, yt_daily_outreach_limit, yt_offer_description, yt_pricing_json, yt_outreach_template, yt_sender_name, yt_sender_signature, smtp_host, smtp_port, smtp_user, smtp_from_email, smtp_from_name, yt_outreach_template_en, yt_outreach_template_fr, yt_outreach_template_de, yt_outreach_template_es, yt_outreach_template_it, yt_portfolio_url, yt_portfolio_title, yt_followup_enabled, yt_followup_intervals_days, yt_followup_max_touches, yt_pricing_currency, yt_language_strategy, yt_supported_languages")
+        .select("yt_target_niches, yt_target_countries, yt_min_subscribers, yt_max_subscribers, yt_daily_discovery_enabled, yt_daily_outreach_enabled, yt_daily_outreach_limit, yt_offer_description, yt_pricing_json, yt_outreach_template, yt_sender_name, yt_sender_signature, smtp_host, smtp_port, smtp_user, smtp_from_email, smtp_from_name, smtp_provider, smtp_secure_mode, yt_outreach_template_en, yt_outreach_template_fr, yt_outreach_template_de, yt_outreach_template_es, yt_outreach_template_it, yt_portfolio_url, yt_portfolio_title, yt_followup_enabled, yt_followup_intervals_days, yt_followup_max_touches, yt_pricing_currency, yt_language_strategy, yt_supported_languages")
         .eq("tenant_id", tenantId!)
         .maybeSingle();
       if (error) throw error;
@@ -1565,8 +1568,13 @@ export function useUpdateYTAgencySettings() {
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq("tenant_id", tenantId!)
         .select()
-        .single();
+        .maybeSingle();
       if (error) throw error;
+      if (!data) {
+        throw new Error(
+          "Save failed: 0 rows affected. Your session may be missing tenant_id, or the RLS UPDATE policy may be misconfigured."
+        );
+      }
       return data;
     },
     onSuccess: () => {
