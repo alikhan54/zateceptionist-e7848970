@@ -54,6 +54,15 @@ const TREND_ICONS: Record<string, any> = {
   new: { icon: Plus, color: 'text-blue-500', bg: 'bg-blue-50' },
 };
 
+const toArray = (v: any): any[] => {
+  if (Array.isArray(v)) return v;
+  if (typeof v === 'string') {
+    try { const p = JSON.parse(v); return Array.isArray(p) ? p : []; }
+    catch { return []; }
+  }
+  return [];
+};
+
 export default function SEODashboard() {
   const { tenantConfig } = useTenant();
   const { toast } = useToast();
@@ -345,11 +354,11 @@ export default function SEODashboard() {
                           )}
                         </div>
 
-                        {(cs.issues || []).length > 0 && (
+                        {toArray(cs.issues).length > 0 && (
                           <div className="mt-3 pt-3 border-t">
                             <p className="text-xs font-medium mb-1 text-red-600">Issues:</p>
                             <ul className="text-xs text-muted-foreground space-y-0.5">
-                              {(cs.issues as any[]).slice(0, 3).map((issue: any, i: number) => (
+                              {toArray(cs.issues).slice(0, 3).map((issue: any, i: number) => (
                                 <li key={i} className="flex items-center gap-1">
                                   <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />
                                   {typeof issue === 'string' ? issue : issue.message || JSON.stringify(issue)}
@@ -359,11 +368,11 @@ export default function SEODashboard() {
                           </div>
                         )}
 
-                        {(cs.suggestions || []).length > 0 && (
+                        {toArray(cs.suggestions).length > 0 && (
                           <div className="mt-2">
                             <p className="text-xs font-medium mb-1 text-green-600">Suggestions:</p>
                             <ul className="text-xs text-muted-foreground space-y-0.5">
-                              {(cs.suggestions as any[]).slice(0, 3).map((sug: any, i: number) => (
+                              {toArray(cs.suggestions).slice(0, 3).map((sug: any, i: number) => (
                                 <li key={i} className="flex items-center gap-1">
                                   <CheckCircle className="h-3 w-3 text-green-500 shrink-0" />
                                   {typeof sug === 'string' ? sug : sug.message || JSON.stringify(sug)}
