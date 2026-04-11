@@ -43,20 +43,21 @@ const WARMUP_SCHEDULE = [
 interface WarmupStatus {
   id: string;
   tenant_id: string;
-  status: "warming" | "active" | "throttled";
+  status: "warming" | "active" | "throttled" | "completed";
   current_day: number;
   daily_limit: number;
-  sent_today: number;
-  domain_health: number;
+  emails_sent_today: number;
+  domain_health?: string;       // textual stage label, e.g. "warming"
+  health_score: number;         // numeric 0–100, used by Progress bar
   bounce_rate: number;
 }
 
 interface DailyLog {
   log_date: string;
-  sent: number;
-  bounced: number;
-  opened: number;
-  daily_limit: number;
+  emails_sent: number;
+  emails_bounced: number;
+  emails_opened: number;
+  daily_limit_active: number;
 }
 
 export default function EmailWarmup() {
@@ -110,10 +111,10 @@ export default function EmailWarmup() {
     }
     return [...dailyLogs].reverse().map((l) => ({
       date: new Date(l.log_date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-      sent: l.sent,
-      bounced: l.bounced,
-      opened: l.opened,
-      dailyLimit: l.daily_limit,
+      sent: l.emails_sent,
+      bounced: l.emails_bounced,
+      opened: l.emails_opened,
+      dailyLimit: l.daily_limit_active,
     }));
   }, [dailyLogs]);
 
@@ -143,8 +144,8 @@ export default function EmailWarmup() {
   const status = warmupStatus?.status ?? "warming";
   const currentDay = warmupStatus?.current_day ?? 1;
   const dailyLimit = warmupStatus?.daily_limit ?? 5;
-  const sentToday = warmupStatus?.sent_today ?? 0;
-  const domainHealth = warmupStatus?.domain_health ?? 50;
+  const sentToday = warmupStatus?.emails_sent_today ?? 0;
+  const domainHealth = warmupStatus?.health_score ?? 50;
   const bounceRate = warmupStatus?.bounce_rate ?? 0;
 
   const statusConfig = {

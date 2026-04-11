@@ -129,7 +129,7 @@ export default function PredictiveScoring() {
   const totalScored = (predictions || []).length;
   const hiddenGemsCount = (predictions || []).filter((p: any) => p.is_hidden_gem).length;
   const falsePositivesCount = (predictions || []).filter((p: any) => p.is_false_positive).length;
-  const accuracy = model?.accuracy_percentage ?? 0;
+  const accuracy = Math.round((model?.accuracy ?? 0) * 100);
 
   const hiddenGems = (predictions || []).filter((p: any) => p?.is_hidden_gem).slice(0, 5);
   const falsePositives = (predictions || []).filter((p: any) => p?.is_false_positive).slice(0, 5);
@@ -186,11 +186,11 @@ export default function PredictiveScoring() {
               </div>
               <div>
                 <span className="text-muted-foreground">Samples</span>
-                <p className="font-medium">{model.training_samples_count?.toLocaleString() ?? "—"} <span className="text-xs text-muted-foreground">({model.positive_samples ?? 0}+ / {model.negative_samples ?? 0}-)</span></p>
+                <p className="font-medium">{model.training_samples?.toLocaleString() ?? "—"} <span className="text-xs text-muted-foreground">({model.positive_samples ?? 0}+ / {model.negative_samples ?? 0}-)</span></p>
               </div>
               <div>
                 <span className="text-muted-foreground">Last Run</span>
-                <p className="font-medium">{model.last_prediction_run ? format(new Date(model.last_prediction_run), "MMM d, HH:mm") : "—"}</p>
+                <p className="font-medium">{model.last_prediction_at ? format(new Date(model.last_prediction_at), "MMM d, HH:mm") : "—"}</p>
               </div>
             </div>
           </CardContent>
@@ -297,15 +297,15 @@ export default function PredictiveScoring() {
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
-                          {(p.top_positive_features || []).slice(0, 3).map((f: string, i: number) => (
-                            <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400">{f}</span>
+                          {(p.top_positive_features || []).slice(0, 3).map((f: any, i: number) => (
+                            <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400">{typeof f === 'string' ? f : (f?.feature ?? '—')}</span>
                           ))}
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
-                          {(p.top_negative_features || []).slice(0, 3).map((f: string, i: number) => (
-                            <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400">{f}</span>
+                          {(p.top_negative_features || []).slice(0, 3).map((f: any, i: number) => (
+                            <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400">{typeof f === 'string' ? f : (f?.feature ?? '—')}</span>
                           ))}
                         </div>
                       </TableCell>
@@ -370,8 +370,8 @@ export default function PredictiveScoring() {
                     <p className="font-medium">{lead?.company || lead?.name || "Unknown"}</p>
                     <p className="text-xs text-muted-foreground">ML: {p.ml_predicted_score} vs Rule: {p.rule_based_score}</p>
                     <div className="flex flex-wrap gap-1 mt-1">
-                      {(p.top_positive_features || []).slice(0, 3).map((f: string, i: number) => (
-                        <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400">{f}</span>
+                      {(p.top_positive_features || []).slice(0, 3).map((f: any, i: number) => (
+                        <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400">{typeof f === 'string' ? f : (f?.feature ?? '—')}</span>
                       ))}
                     </div>
                   </div>
@@ -397,8 +397,8 @@ export default function PredictiveScoring() {
                     <p className="font-medium">{lead?.company || lead?.name || "Unknown"}</p>
                     <p className="text-xs text-muted-foreground">ML: {p.ml_predicted_score} vs Rule: {p.rule_based_score}</p>
                     <div className="flex flex-wrap gap-1 mt-1">
-                      {(p.top_negative_features || []).slice(0, 3).map((f: string, i: number) => (
-                        <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400">{f}</span>
+                      {(p.top_negative_features || []).slice(0, 3).map((f: any, i: number) => (
+                        <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400">{typeof f === 'string' ? f : (f?.feature ?? '—')}</span>
                       ))}
                     </div>
                   </div>
