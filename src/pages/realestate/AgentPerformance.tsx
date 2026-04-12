@@ -3,8 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { useAgentPerformance } from "@/hooks/useAgentPerformance";
 import { Users, TrendingUp, DollarSign, Home, BarChart3, ArrowUp, ArrowDown, Minus } from "lucide-react";
 import { RTLWrapper } from "@/components/realestate/RTLWrapper";
+import { useCurrency } from "@/hooks/useCurrency";
 
-const formatAED = (amount: number) => `AED ${amount.toLocaleString()}`;
 
 function TrendIcon({ current, previous }: { current: number; previous: number }) {
   if (current > previous) return <ArrowUp className="h-3 w-3 text-green-600" />;
@@ -13,6 +13,7 @@ function TrendIcon({ current, previous }: { current: number; previous: number })
 }
 
 export default function AgentPerformance() {
+  const { formatPrice } = useCurrency();
   const { metrics, isLoading, error, totals } = useAgentPerformance();
 
   return (
@@ -51,7 +52,7 @@ export default function AgentPerformance() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{isLoading ? "..." : formatAED(totals.totalCommission)}</div>
+            <div className="text-2xl font-bold">{isLoading ? "..." : formatPrice(totals.totalCommission)}</div>
             <p className="text-xs text-muted-foreground">Team total</p>
           </CardContent>
         </Card>
@@ -131,7 +132,7 @@ export default function AgentPerformance() {
                           {agent.conversion_rate}%
                         </Badge>
                       </td>
-                      <td className="py-3 text-right font-medium">{formatAED(agent.total_commission)}</td>
+                      <td className="py-3 text-right font-medium">{formatPrice(agent.total_commission)}</td>
                     </tr>
                   ))}
                 </tbody>

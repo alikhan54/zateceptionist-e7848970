@@ -10,8 +10,8 @@ import { useRealEstateRoadShows, RERoadShow } from "@/hooks/useRealEstateRoadSho
 import { useToast } from "@/hooks/use-toast";
 import { MapPin, Plus, Users, Eye, Handshake, DollarSign, TrendingUp, Calendar } from "lucide-react";
 import { RTLWrapper } from "@/components/realestate/RTLWrapper";
+import { useCurrency } from "@/hooks/useCurrency";
 
-const formatAED = (amount: number) => `AED ${amount.toLocaleString()}`;
 
 const statusColors: Record<string, string> = {
   planning: "bg-gray-100 text-gray-800",
@@ -31,6 +31,7 @@ const typeLabels: Record<string, string> = {
 };
 
 export default function RoadShowManager() {
+  const { formatPrice } = useCurrency();
   const [statusFilter, setStatusFilter] = useState<string>("");
   const { roadShows, isLoading, stats, createRoadShow } = useRealEstateRoadShows({
     status: statusFilter || undefined,
@@ -191,19 +192,19 @@ export default function RoadShowManager() {
                     {show.total_deal_value > 0 && (
                       <div className="flex items-center justify-between">
                         <span className="text-muted-foreground">Deal Value</span>
-                        <span className="font-semibold text-green-700">{formatAED(show.total_deal_value)}</span>
+                        <span className="font-semibold text-green-700">{formatPrice(show.total_deal_value)}</span>
                       </div>
                     )}
                     {show.budget && (
                       <div className="flex items-center justify-between">
                         <span className="text-muted-foreground">Budget</span>
-                        <span>{formatAED(show.budget)}</span>
+                        <span>{formatPrice(show.budget)}</span>
                       </div>
                     )}
                     {show.actual_cost && (
                       <div className="flex items-center justify-between">
                         <span className="text-muted-foreground">Actual Cost</span>
-                        <span>{formatAED(show.actual_cost)}</span>
+                        <span>{formatPrice(show.actual_cost)}</span>
                       </div>
                     )}
                     {show.actual_cost && show.total_deal_value > 0 && (

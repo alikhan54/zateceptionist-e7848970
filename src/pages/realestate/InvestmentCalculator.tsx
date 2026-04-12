@@ -7,10 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calculator, TrendingUp, DollarSign, BarChart3 } from "lucide-react";
 import { RTLWrapper } from "@/components/realestate/RTLWrapper";
+import { useCurrency } from "@/hooks/useCurrency";
 import { useREIntelligence } from "@/hooks/useREIntelligence";
 import { toast } from "sonner";
 
-const formatAED = (amount: number) => `AED ${amount.toLocaleString()}`;
 
 const regions = [
   { code: "uae", label: "UAE (Dubai)" },
@@ -39,6 +39,7 @@ interface YieldResult {
 
 export default function InvestmentCalculator() {
   const { calculateYield, isLoading } = useREIntelligence();
+  const { formatPrice } = useCurrency();
   const [result, setResult] = useState<YieldResult | null>(null);
 
   const [form, setForm] = useState({
@@ -164,7 +165,7 @@ export default function InvestmentCalculator() {
                 {yields.annual_net_income != null && (
                   <div className="mt-4 text-center p-3 bg-gray-50 rounded-lg">
                     <p className="text-sm text-muted-foreground">Annual Net Income</p>
-                    <p className="text-xl font-bold">{formatAED(yields.annual_net_income)}</p>
+                    <p className="text-xl font-bold">{formatPrice(yields.annual_net_income)}</p>
                   </div>
                 )}
               </CardContent>
@@ -182,7 +183,7 @@ export default function InvestmentCalculator() {
                     {Object.entries(yields.cost_breakdown).map(([key, value]) => (
                       <div key={key} className="flex justify-between items-center py-1 border-b last:border-0">
                         <span className="text-sm capitalize">{key.replace(/_/g, " ")}</span>
-                        <span className="text-sm font-medium">{formatAED(value as number)}</span>
+                        <span className="text-sm font-medium">{formatPrice(value as number)}</span>
                       </div>
                     ))}
                   </div>
@@ -217,7 +218,7 @@ export default function InvestmentCalculator() {
                 return (
                   <div key={scenario} className={`p-4 rounded-lg bg-${colors[scenario]}-50 border border-${colors[scenario]}-200`}>
                     <Badge variant="outline" className="mb-2">{labels[scenario]}</Badge>
-                    <p className="text-2xl font-bold">{formatAED(p.total_return)}</p>
+                    <p className="text-2xl font-bold">{formatPrice(p.total_return)}</p>
                     <p className="text-sm text-muted-foreground">Total Return</p>
                     <p className="text-lg font-semibold mt-2">{p.annual_avg?.toFixed(1)}%</p>
                     <p className="text-sm text-muted-foreground">Avg Annual Return</p>

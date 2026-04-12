@@ -8,10 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { DollarSign, Building2, Globe, Award, Calculator, Loader2, CheckCircle, XCircle } from "lucide-react";
 import { RTLWrapper } from "@/components/realestate/RTLWrapper";
+import { useCurrency } from "@/hooks/useCurrency";
 import { useMortgageCalculator, MortgageParams, MortgageResult, BankOffer } from "@/hooks/useMortgageCalculator";
 import { toast } from "sonner";
 
-const formatAED = (n: number) => `AED ${n.toLocaleString()}`;
 
 const NATIONALITIES = [
   { code: "AE", name: "UAE National" },
@@ -27,6 +27,7 @@ const NATIONALITIES = [
 export default function MortgageCalculator() {
   const { calculate, result, isCalculating, reset } = useMortgageCalculator();
 
+  const { formatPrice } = useCurrency();
   const [propertyValue, setPropertyValue] = useState(2000000);
   const [nationality, setNationality] = useState("PK");
   const [residency, setResidency] = useState("non_resident");
@@ -68,7 +69,7 @@ export default function MortgageCalculator() {
                 <Label>Property Value (AED)</Label>
                 <div className="mt-2">
                   <Slider value={[propertyValue]} onValueChange={([v]) => setPropertyValue(v)} min={500000} max={20000000} step={100000} />
-                  <p className="text-sm font-medium mt-1">{formatAED(propertyValue)}</p>
+                  <p className="text-sm font-medium mt-1">{formatPrice(propertyValue)}</p>
                 </div>
               </div>
               <div>
@@ -111,7 +112,7 @@ export default function MortgageCalculator() {
               <div>
                 <Label>Down Payment (%)</Label>
                 <Slider value={[downPct]} onValueChange={([v]) => setDownPct(v)} min={10} max={50} step={5} />
-                <p className="text-sm mt-1">{downPct}% = {formatAED(Math.round(propertyValue * downPct / 100))}</p>
+                <p className="text-sm mt-1">{downPct}% = {formatPrice(Math.round(propertyValue * downPct / 100))}</p>
               </div>
               <Button onClick={handleCalculate} disabled={isCalculating} className="w-full">
                 {isCalculating ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Calculating...</> : <><Calculator className="h-4 w-4 mr-2" />Calculate Mortgage</>}
@@ -132,20 +133,20 @@ export default function MortgageCalculator() {
                     <div className="grid gap-3 md:grid-cols-4">
                       <div className="bg-blue-50 p-3 rounded text-center">
                         <div className="text-xs text-muted-foreground">Down Payment</div>
-                        <div className="font-bold">{formatAED(result.financing.down_payment_aed)}</div>
+                        <div className="font-bold">{formatPrice(result.financing.down_payment_aed)}</div>
                         <div className="text-xs">{result.financing.down_payment_pct}%</div>
                       </div>
                       <div className="bg-green-50 p-3 rounded text-center">
                         <div className="text-xs text-muted-foreground">Loan Amount</div>
-                        <div className="font-bold">{formatAED(result.financing.loan_amount_aed)}</div>
+                        <div className="font-bold">{formatPrice(result.financing.loan_amount_aed)}</div>
                       </div>
                       <div className="bg-yellow-50 p-3 rounded text-center">
                         <div className="text-xs text-muted-foreground">DLD Fee (4%)</div>
-                        <div className="font-bold">{formatAED(result.financing.dld_fee_aed)}</div>
+                        <div className="font-bold">{formatPrice(result.financing.dld_fee_aed)}</div>
                       </div>
                       <div className="bg-red-50 p-3 rounded text-center">
                         <div className="text-xs text-muted-foreground">Total Upfront</div>
-                        <div className="font-bold">{formatAED(result.financing.total_upfront_aed)}</div>
+                        <div className="font-bold">{formatPrice(result.financing.total_upfront_aed)}</div>
                       </div>
                     </div>
                     {result.financing.min_down_note && (
@@ -179,8 +180,8 @@ export default function MortgageCalculator() {
                                 <div className="flex justify-between"><span>Fixed Rate</span><span className="font-bold">{b.fixed_rate}% ({b.fixed_period_years}yr)</span></div>
                                 <div className="flex justify-between"><span>Variable</span><span>{b.variable_rate}%</span></div>
                                 <div className="flex justify-between"><span>Tenure</span><span>{b.tenure_years} years</span></div>
-                                <div className="flex justify-between border-t pt-1 mt-1"><span className="font-medium">Monthly EMI</span><span className="font-bold text-blue-600">{formatAED(b.monthly_emi_aed)}</span></div>
-                                <div className="flex justify-between text-xs text-muted-foreground"><span>Total Interest</span><span>{formatAED(b.total_interest_aed)}</span></div>
+                                <div className="flex justify-between border-t pt-1 mt-1"><span className="font-medium">Monthly EMI</span><span className="font-bold text-blue-600">{formatPrice(b.monthly_emi_aed)}</span></div>
+                                <div className="flex justify-between text-xs text-muted-foreground"><span>Total Interest</span><span>{formatPrice(b.total_interest_aed)}</span></div>
                               </div>
                             ) : (
                               <p className="text-xs text-red-500">{b.ineligibility_reason}</p>

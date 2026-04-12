@@ -2,11 +2,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DollarSign, TrendingUp, TrendingDown, Home, Calendar, AlertTriangle } from "lucide-react";
 import { RTLWrapper } from "@/components/realestate/RTLWrapper";
+import { useCurrency } from "@/hooks/useCurrency";
 import { useInvestorPortfolio } from "@/hooks/useInvestorPortfolio";
 
-const formatAED = (n: number) => `AED ${Math.round(n).toLocaleString()}`;
 
 export default function InvestorPortfolio() {
+  const { formatPrice } = useCurrency();
   const { properties, isLoading, error, stats } = useInvestorPortfolio();
 
   return (
@@ -31,7 +32,7 @@ export default function InvestorPortfolio() {
               <CardTitle className="text-sm font-medium">Total Value</CardTitle>
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent><div className="text-2xl font-bold">{isLoading ? "..." : formatAED(stats.totalCurrentValue)}</div></CardContent>
+            <CardContent><div className="text-2xl font-bold">{isLoading ? "..." : formatPrice(stats.totalCurrentValue)}</div></CardContent>
           </Card>
           <Card className={stats.totalGain >= 0 ? "" : "border-red-200"}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -40,7 +41,7 @@ export default function InvestorPortfolio() {
             </CardHeader>
             <CardContent>
               <div className={`text-2xl font-bold ${stats.totalGain >= 0 ? "text-green-600" : "text-red-600"}`}>{isLoading ? "..." : `${stats.totalROIPct}%`}</div>
-              <p className="text-xs text-muted-foreground">{formatAED(stats.totalGain)} gain</p>
+              <p className="text-xs text-muted-foreground">{formatPrice(stats.totalGain)} gain</p>
             </CardContent>
           </Card>
           <Card>
@@ -48,7 +49,7 @@ export default function InvestorPortfolio() {
               <CardTitle className="text-sm font-medium">Monthly Rental</CardTitle>
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent><div className="text-2xl font-bold">{isLoading ? "..." : formatAED(stats.monthlyRental)}</div></CardContent>
+            <CardContent><div className="text-2xl font-bold">{isLoading ? "..." : formatPrice(stats.monthlyRental)}</div></CardContent>
           </Card>
         </div>
 
@@ -71,7 +72,7 @@ export default function InvestorPortfolio() {
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="font-medium">{p.property_description || "Investment Property"}</p>
-                      <p className="text-xs text-muted-foreground">Purchased: {new Date(p.purchase_date).toLocaleDateString()} • {formatAED(p.purchase_price_aed)}</p>
+                      <p className="text-xs text-muted-foreground">Purchased: {new Date(p.purchase_date).toLocaleDateString()} • {formatPrice(p.purchase_price_aed)}</p>
                     </div>
                     {p.is_rented && <Badge className="bg-green-100 text-green-800">Rented</Badge>}
                   </div>
@@ -79,7 +80,7 @@ export default function InvestorPortfolio() {
                   <div className="grid grid-cols-3 gap-2 text-center text-xs">
                     <div className="bg-muted/50 p-2 rounded">
                       <div className="text-muted-foreground">Current Value</div>
-                      <div className="font-bold">{p.current_estimated_value_aed ? formatAED(p.current_estimated_value_aed) : "TBD"}</div>
+                      <div className="font-bold">{p.current_estimated_value_aed ? formatPrice(p.current_estimated_value_aed) : "TBD"}</div>
                     </div>
                     <div className={`p-2 rounded ${(p.capital_gain_pct || 0) >= 0 ? "bg-green-50" : "bg-red-50"}`}>
                       <div className="text-muted-foreground">Capital Gain</div>
@@ -92,7 +93,7 @@ export default function InvestorPortfolio() {
                   </div>
 
                   {p.is_rented && p.monthly_rent_aed && (
-                    <div className="text-sm"><span className="text-muted-foreground">Monthly rent:</span> {formatAED(p.monthly_rent_aed)}</div>
+                    <div className="text-sm"><span className="text-muted-foreground">Monthly rent:</span> {formatPrice(p.monthly_rent_aed)}</div>
                   )}
 
                   {p.home_currency && p.current_value_home && (

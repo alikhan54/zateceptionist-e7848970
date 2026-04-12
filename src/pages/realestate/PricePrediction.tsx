@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Sparkles, TrendingUp, TrendingDown, Minus, Clock, Target, DollarSign, BarChart3, Loader2 } from "lucide-react";
 import { RTLWrapper } from "@/components/realestate/RTLWrapper";
+import { useCurrency } from "@/hooks/useCurrency";
 import { useTenant } from "@/contexts/TenantContext";
 import { callWebhook } from "@/integrations/supabase/client";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,9 +38,7 @@ const VIEW_TYPES = ["sea", "city", "garden", "pool", "community", "none"];
 const CONDITIONS = ["new", "excellent", "good", "fair", "needs_renovation"];
 const FURNISHINGS = ["furnished", "semi_furnished", "unfurnished"];
 
-function formatAED(value: number): string {
-  return `AED ${value.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
-}
+// formatPrice is provided by useCurrency hook inside the component
 
 function getPositionColor(position: string): string {
   switch (position) {
@@ -63,6 +62,7 @@ function getStrategyBadge(strategy: string) {
 
 export default function PricePrediction() {
   const { tenantId } = useTenant();
+  const { formatPrice } = useCurrency();
   const [communities, setCommunities] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [prediction, setPrediction] = useState<Prediction | null>(null);
@@ -288,19 +288,19 @@ export default function PricePrediction() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-center mb-4">
-                      <p className="text-3xl font-bold text-purple-700">{formatAED(prediction.predicted_price_mid)}</p>
+                      <p className="text-3xl font-bold text-purple-700">{formatPrice(prediction.predicted_price_mid)}</p>
                       <p className="text-sm text-muted-foreground">
-                        {formatAED(prediction.predicted_price_low)} — {formatAED(prediction.predicted_price_high)}
+                        {formatPrice(prediction.predicted_price_low)} — {formatPrice(prediction.predicted_price_high)}
                       </p>
                     </div>
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <div>
                         <span className="text-muted-foreground">Price/sqft:</span>
-                        <span className="ml-1 font-medium">AED {prediction.predicted_price_per_sqft?.toLocaleString()}</span>
+                        <span className="ml-1 font-medium">{formatPrice(prediction.predicted_price_per_sqft || 0)}</span>
                       </div>
                       <div>
                         <span className="text-muted-foreground">Community avg:</span>
-                        <span className="ml-1 font-medium">AED {prediction.community_avg_price_sqft?.toLocaleString()}</span>
+                        <span className="ml-1 font-medium">{formatPrice(prediction.community_avg_price_sqft || 0)}</span>
                       </div>
                       <div>
                         <span className="text-muted-foreground">Position:</span>
@@ -335,7 +335,7 @@ export default function PricePrediction() {
                       </Badge>
                       <div className="mt-2 text-sm">
                         <Target className="h-3 w-3 inline mr-1" />
-                        List at {formatAED(prediction.optimal_listing_price)}
+                        List at {formatPrice(prediction.optimal_listing_price)}
                       </div>
                     </CardContent>
                   </Card>

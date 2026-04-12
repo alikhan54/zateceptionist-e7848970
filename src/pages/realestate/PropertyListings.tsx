@@ -10,10 +10,10 @@ import { useRealEstateListings, REListing } from "@/hooks/useRealEstateListings"
 import { useToast } from "@/hooks/use-toast";
 import { Home, Search, Plus, Bed, Bath, Car, MapPin, DollarSign, Building2, FileText } from "lucide-react";
 import { RTLWrapper } from "@/components/realestate/RTLWrapper";
+import { useCurrency } from "@/hooks/useCurrency";
 import { callWebhook } from "@/lib/webhook";
 import { useTenant } from "@/contexts/TenantContext";
 
-const formatAED = (amount: number) => `AED ${amount.toLocaleString()}`;
 
 const statusColors: Record<string, string> = {
   active: "bg-green-100 text-green-800",
@@ -31,6 +31,7 @@ export default function PropertyListings() {
   const { listings, isLoading, stats, createListing } = useRealEstateListings(searchTerm, filters);
   const { toast } = useToast();
   const { tenantId } = useTenant();
+  const { formatPrice } = useCurrency();
   const [generatingProposal, setGeneratingProposal] = useState<string | null>(null);
 
   const handleGenerateProposal = async (listingId: string) => {
@@ -171,7 +172,7 @@ export default function PropertyListings() {
         <Card><CardContent className="pt-4"><div className="text-2xl font-bold">{stats.activeListings}</div><p className="text-xs text-muted-foreground">Active Listings</p></CardContent></Card>
         <Card><CardContent className="pt-4"><div className="text-2xl font-bold">{stats.forSale}</div><p className="text-xs text-muted-foreground">For Sale</p></CardContent></Card>
         <Card><CardContent className="pt-4"><div className="text-2xl font-bold">{stats.forRent}</div><p className="text-xs text-muted-foreground">For Rent</p></CardContent></Card>
-        <Card><CardContent className="pt-4"><div className="text-2xl font-bold">{formatAED(stats.avgPricePerSqft)}/sqft</div><p className="text-xs text-muted-foreground">Avg Price</p></CardContent></Card>
+        <Card><CardContent className="pt-4"><div className="text-2xl font-bold">{formatPrice(stats.avgPricePerSqft)}/sqft</div><p className="text-xs text-muted-foreground">Avg Price</p></CardContent></Card>
       </div>
 
       {/* Listings Grid */}
@@ -197,7 +198,7 @@ export default function PropertyListings() {
               <CardContent className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-lg font-bold text-primary">
-                    {formatAED(listing.price)}{listing.purpose === "rent" ? "/yr" : ""}
+                    {formatPrice(listing.price)}{listing.purpose === "rent" ? "/yr" : ""}
                   </span>
                   {listing.reference_number && <span className="text-xs text-muted-foreground">{listing.reference_number}</span>}
                 </div>

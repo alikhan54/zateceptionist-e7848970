@@ -6,12 +6,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useRealEstateDeals } from "@/hooks/useRealEstateDeals";
 import { Handshake, DollarSign, FileCheck, AlertCircle, CheckCircle2, Clock, ShieldAlert } from "lucide-react";
 import { RTLWrapper } from "@/components/realestate/RTLWrapper";
+import { useCurrency } from "@/hooks/useCurrency";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
-const formatAED = (amount: number) => `AED ${amount.toLocaleString()}`;
 
 const stageLabels: Record<string, string> = {
   offer: "Offer", negotiation: "Negotiation", mou_signing: "MOU Signing",
@@ -32,6 +32,7 @@ const dealTypeLabels: Record<string, string> = {
 
 export default function DealPipeline() {
   const { tenantId } = useTenant();
+  const { formatPrice } = useCurrency();
   const [stageFilter, setStageFilter] = useState<string>("");
   const [typeFilter, setTypeFilter] = useState<string>("");
 
@@ -97,8 +98,8 @@ export default function DealPipeline() {
 
       <div className="grid gap-4 md:grid-cols-4">
         <Card><CardContent className="pt-4"><div className="text-2xl font-bold">{stats.activeDeals}</div><p className="text-xs text-muted-foreground">Active Deals</p></CardContent></Card>
-        <Card><CardContent className="pt-4"><div className="text-2xl font-bold">{formatAED(stats.pipelineValue)}</div><p className="text-xs text-muted-foreground">Pipeline Value</p></CardContent></Card>
-        <Card><CardContent className="pt-4"><div className="text-2xl font-bold">{formatAED(stats.totalCommission)}</div><p className="text-xs text-muted-foreground">Total Commission</p></CardContent></Card>
+        <Card><CardContent className="pt-4"><div className="text-2xl font-bold">{formatPrice(stats.pipelineValue)}</div><p className="text-xs text-muted-foreground">Pipeline Value</p></CardContent></Card>
+        <Card><CardContent className="pt-4"><div className="text-2xl font-bold">{formatPrice(stats.totalCommission)}</div><p className="text-xs text-muted-foreground">Total Commission</p></CardContent></Card>
         <Card><CardContent className="pt-4"><div className="text-2xl font-bold">{stats.completedDeals}</div><p className="text-xs text-muted-foreground">Completed</p></CardContent></Card>
       </div>
 
@@ -116,7 +117,7 @@ export default function DealPipeline() {
               <div className="flex items-center gap-2 mb-3">
                 <Badge className={`${stageColors[stage]} text-sm`}>{stageLabels[stage]}</Badge>
                 <span className="text-sm text-muted-foreground">
-                  {deals.filter(d => d.stage === stage).length} deal{deals.filter(d => d.stage === stage).length !== 1 ? "s" : ""} &middot; {formatAED(deals.filter(d => d.stage === stage).reduce((s, d) => s + (d.agreed_price || d.offer_price || 0), 0))}
+                  {deals.filter(d => d.stage === stage).length} deal{deals.filter(d => d.stage === stage).length !== 1 ? "s" : ""} &middot; {formatPrice(deals.filter(d => d.stage === stage).reduce((s, d) => s + (d.agreed_price || d.offer_price || 0), 0))}
                 </span>
               </div>
               <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
@@ -151,9 +152,9 @@ export default function DealPipeline() {
                       </div>
 
                       <div className="space-y-1">
-                        {deal.asking_price && <p className="text-xs text-muted-foreground">Asking: {formatAED(deal.asking_price)}</p>}
-                        {deal.offer_price && <p className="text-xs text-muted-foreground">Offer: {formatAED(deal.offer_price)}</p>}
-                        {deal.agreed_price && <p className="text-sm font-semibold text-green-700">Agreed: {formatAED(deal.agreed_price)}</p>}
+                        {deal.asking_price && <p className="text-xs text-muted-foreground">Asking: {formatPrice(deal.asking_price)}</p>}
+                        {deal.offer_price && <p className="text-xs text-muted-foreground">Offer: {formatPrice(deal.offer_price)}</p>}
+                        {deal.agreed_price && <p className="text-sm font-semibold text-green-700">Agreed: {formatPrice(deal.agreed_price)}</p>}
                       </div>
 
                       {/* RERA Compliance */}
@@ -172,7 +173,7 @@ export default function DealPipeline() {
                       {/* Commission */}
                       {deal.commission_amount && (
                         <div className="flex items-center justify-between text-xs border-t pt-2">
-                          <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" /> Commission: {formatAED(deal.commission_amount)}</span>
+                          <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" /> Commission: {formatPrice(deal.commission_amount)}</span>
                           <Badge variant={deal.commission_status === "paid" ? "default" : "outline"}>{deal.commission_status}</Badge>
                         </div>
                       )}

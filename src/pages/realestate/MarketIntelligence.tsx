@@ -7,6 +7,7 @@ import { TrendingUp, TrendingDown, Minus, BarChart3, MapPin } from "lucide-react
 import { useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RTLWrapper } from "@/components/realestate/RTLWrapper";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface MarketRecord {
   id: string;
@@ -25,7 +26,6 @@ interface MarketRecord {
   period: string;
 }
 
-const formatAED = (n: number) => `AED ${n.toLocaleString()}`;
 
 function YieldBadge({ yield_pct }: { yield_pct: number }) {
   if (yield_pct >= 7) return <Badge className="bg-green-100 text-green-800">{yield_pct.toFixed(1)}%</Badge>;
@@ -55,6 +55,7 @@ type SortKey = "community" | "avg_price_sqft" | "gross_yield" | "demand_score" |
 
 export default function MarketIntelligence() {
   const { tenantId } = useTenant();
+  const { formatPrice } = useCurrency();
   const [sortBy, setSortBy] = useState<SortKey>("gross_yield");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -183,7 +184,7 @@ export default function MarketIntelligence() {
                     <tr key={r.id} className="border-b hover:bg-muted/30">
                       <td className="p-3 font-medium">{r.community}</td>
                       <td className="p-3"><Badge variant="outline" className="capitalize">{r.property_type}</Badge></td>
-                      <td className="p-3 text-right">{formatAED(r.data.avg_price_sqft)}</td>
+                      <td className="p-3 text-right">{formatPrice(r.data.avg_price_sqft)}</td>
                       <td className="p-3 text-right"><YieldBadge yield_pct={r.data.gross_yield} /></td>
                       <td className="p-3"><DemandBar score={r.data.demand_score} /></td>
                       <td className="p-3 text-center"><TrendIndicator pct={r.data.price_trend_pct} /></td>

@@ -10,8 +10,8 @@ import { useRealEstateClients, REClient } from "@/hooks/useRealEstateClients";
 import { useToast } from "@/hooks/use-toast";
 import { Users, Search, Plus, Phone, Mail, Globe, Star, DollarSign } from "lucide-react";
 import { RTLWrapper } from "@/components/realestate/RTLWrapper";
+import { useCurrency } from "@/hooks/useCurrency";
 
-const formatAED = (amount: number) => `AED ${amount.toLocaleString()}`;
 
 const tierColors: Record<string, string> = {
   vip: "bg-amber-100 text-amber-800",
@@ -21,6 +21,7 @@ const tierColors: Record<string, string> = {
 };
 
 export default function ClientManagement() {
+  const { formatPrice } = useCurrency();
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState<{ client_type?: string; client_tier?: string }>({});
   const [showAdd, setShowAdd] = useState(false);
@@ -135,7 +136,7 @@ export default function ClientManagement() {
                 {(client.budget_min || client.budget_max) && (
                   <div className="flex items-center gap-1 text-sm">
                     <DollarSign className="h-3 w-3 text-muted-foreground" />
-                    <span>Budget: {client.budget_min ? formatAED(client.budget_min) : "?"} - {client.budget_max ? formatAED(client.budget_max) : "?"}</span>
+                    <span>Budget: {client.budget_min ? formatPrice(client.budget_min) : "?"} - {client.budget_max ? formatPrice(client.budget_max) : "?"}</span>
                   </div>
                 )}
                 {client.preferred_areas?.length > 0 && (

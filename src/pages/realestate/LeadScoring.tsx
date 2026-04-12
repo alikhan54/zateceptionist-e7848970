@@ -5,9 +5,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress";
 import { Users, Target, TrendingUp, Award, ChevronDown, ChevronUp, Globe } from "lucide-react";
 import { RTLWrapper } from "@/components/realestate/RTLWrapper";
+import { useCurrency } from "@/hooks/useCurrency";
 import { useRELeadScores, LeadScore } from "@/hooks/useRELeadScores";
 
-const formatAED = (n: number) => `AED ${n.toLocaleString()}`;
 
 const gradeColors: Record<string, string> = {
   A: "bg-green-100 text-green-800 border-green-300",
@@ -36,6 +36,7 @@ function ScoreBar({ label, score, color }: { label: string; score: number; color
 
 export default function LeadScoring() {
   const { scores, isLoading, error, stats } = useRELeadScores();
+  const { formatPrice } = useCurrency();
   const [gradeFilter, setGradeFilter] = useState<string>("all");
   const [urgencyFilter, setUrgencyFilter] = useState<string>("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -171,7 +172,7 @@ export default function LeadScoring() {
                           <tr key={s.id} className="border-b hover:bg-muted/30 cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : s.id)}>
                             <td className="p-3 font-medium">{s.client_name}</td>
                             <td className="p-3">{s.client_nationality || "-"}</td>
-                            <td className="p-3 text-right">{s.client_budget_max ? formatAED(s.client_budget_max) : "-"}</td>
+                            <td className="p-3 text-right">{s.client_budget_max ? formatPrice(s.client_budget_max) : "-"}</td>
                             <td className="p-3 text-center">
                               <span className="font-bold">{s.purchase_probability}%</span>
                               {s.score_change !== 0 && (

@@ -8,9 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Brain, DollarSign, Lightbulb, CheckCircle, BookOpen } from "lucide-react";
 import { useREIntelligence } from "@/hooks/useREIntelligence";
 import { RTLWrapper } from "@/components/realestate/RTLWrapper";
+import { useCurrency } from "@/hooks/useCurrency";
 import { toast } from "sonner";
 
-const formatAED = (amount: number) => `AED ${amount.toLocaleString()}`;
 
 interface DealAdviceResult {
   fee_breakdown?: Record<string, number>;
@@ -24,6 +24,7 @@ interface DealAdviceResult {
 
 export default function DealAdvisor() {
   const { getDealAdvice, isLoading } = useREIntelligence();
+  const { formatPrice } = useCurrency();
   const [result, setResult] = useState<DealAdviceResult | null>(null);
 
   const [form, setForm] = useState({
@@ -145,13 +146,13 @@ export default function DealAdvisor() {
                       {Object.entries(result.fee_breakdown).map(([key, value]) => (
                         <div key={key} className="flex justify-between items-center py-2 border-b last:border-0">
                           <span className="text-sm capitalize">{key.replace(/_/g, " ")}</span>
-                          <span className="text-sm font-medium">{formatAED(value)}</span>
+                          <span className="text-sm font-medium">{formatPrice(value)}</span>
                         </div>
                       ))}
                       {result.total_transaction_cost != null && (
                         <div className="flex justify-between items-center py-2 font-bold text-base">
                           <span>Total Transaction Cost</span>
-                          <span>{formatAED(result.total_transaction_cost)}</span>
+                          <span>{formatPrice(result.total_transaction_cost)}</span>
                         </div>
                       )}
                     </div>

@@ -9,8 +9,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
 import { Building2, Users, DollarSign, Calendar, TrendingUp, Home, Handshake, Target, Sparkles, AlertTriangle, Link2 } from "lucide-react";
 import { RTLWrapper } from "@/components/realestate/RTLWrapper";
-
-const formatAED = (amount: number) => `AED ${amount.toLocaleString()}`;
+import { useCurrency } from "@/hooks/useCurrency";
+import { useCountry } from "@/hooks/useCountry";
 
 const stageLabels: Record<string, string> = {
   offer: "Offer",
@@ -36,6 +36,8 @@ const stageColors: Record<string, string> = {
 
 export default function RealEstateDashboard() {
   const { tenantId } = useTenant();
+  const { formatPrice, formatPricePerUnit } = useCurrency();
+  const { unit } = useCountry();
   const { stats: listingStats, isLoading: listingsLoading, error: listingsError } = useRealEstateListings();
   const { clients, stats: clientStats, isLoading: clientsLoading, error: clientsError } = useRealEstateClients();
   const { deals, stats: dealStats, isLoading: dealsLoading, error: dealsError } = useRealEstateDeals();
@@ -124,7 +126,7 @@ export default function RealEstateDashboard() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{isLoading ? "..." : formatAED(dealStats.pipelineValue)}</div>
+            <div className="text-2xl font-bold">{isLoading ? "..." : formatPrice(dealStats.pipelineValue)}</div>
             <p className="text-xs text-muted-foreground">{dealStats.activeDeals} active deals</p>
           </CardContent>
         </Card>
@@ -135,8 +137,8 @@ export default function RealEstateDashboard() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{isLoading ? "..." : formatAED(dealStats.totalCommission)}</div>
-            <p className="text-xs text-muted-foreground">{formatAED(dealStats.commissionPending)} pending</p>
+            <div className="text-2xl font-bold">{isLoading ? "..." : formatPrice(dealStats.totalCommission)}</div>
+            <p className="text-xs text-muted-foreground">{formatPrice(dealStats.commissionPending)} pending</p>
           </CardContent>
         </Card>
       </div>
@@ -156,11 +158,11 @@ export default function RealEstateDashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Price/sqft</CardTitle>
+            <CardTitle className="text-sm font-medium">{`Avg Price/${unit}`}</CardTitle>
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{isLoading ? "..." : formatAED(listingStats.avgPricePerSqft)}</div>
+            <div className="text-2xl font-bold">{isLoading ? "..." : formatPrice(listingStats.avgPricePerSqft)}</div>
             <p className="text-xs text-muted-foreground">Across {listingStats.communities.length} communities</p>
           </CardContent>
         </Card>
@@ -171,7 +173,7 @@ export default function RealEstateDashboard() {
             <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{isLoading ? "..." : formatAED(listingStats.totalValue)}</div>
+            <div className="text-2xl font-bold">{isLoading ? "..." : formatPrice(listingStats.totalValue)}</div>
             <p className="text-xs text-muted-foreground">{listingStats.totalListings} total listings</p>
           </CardContent>
         </Card>
@@ -192,7 +194,7 @@ export default function RealEstateDashboard() {
                   <Badge className={stageColors[p.stage] || "bg-gray-100 text-gray-800"}>{stageLabels[p.stage] || p.stage}</Badge>
                   <span className="text-sm text-muted-foreground">{p.count} deal{p.count !== 1 ? "s" : ""}</span>
                 </div>
-                <span className="text-sm font-medium">{formatAED(p.value)}</span>
+                <span className="text-sm font-medium">{formatPrice(p.value)}</span>
               </div>
             ))}
             {dealStats.pipeline.every(p => p.count === 0) && (

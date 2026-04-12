@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Globe2, DollarSign, Shield, FileText, Clock, Building2, Landmark, CreditCard, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { RTLWrapper } from "@/components/realestate/RTLWrapper";
+import { useCurrency } from "@/hooks/useCurrency";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -63,6 +64,7 @@ interface CrossBorderResult {
 
 const CrossBorderAdvisor = () => {
   const { toast } = useToast();
+  const { formatPrice } = useCurrency();
   const [buyerCountry, setBuyerCountry] = useState("pk");
   const [targetCountry, setTargetCountry] = useState("ae");
   const [propertyPrice, setPropertyPrice] = useState("2000000");
@@ -105,7 +107,6 @@ const CrossBorderAdvisor = () => {
     }
   };
 
-  const formatAED = (n: number) => `AED ${n.toLocaleString()}`;
   const buyerFlag = COUNTRIES.find((c) => c.code === buyerCountry)?.flag || "";
   const targetFlag = COUNTRIES.find((c) => c.code === targetCountry)?.flag || "";
 
@@ -183,12 +184,12 @@ const CrossBorderAdvisor = () => {
                   <CardTitle className="text-sm flex items-center gap-2"><DollarSign className="h-4 w-4" /> Cost Breakdown</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm">
-                  <div className="flex justify-between"><span>Property Price</span><span className="font-medium">{formatAED(result.costs.property_price)}</span></div>
-                  <div className="flex justify-between"><span>Transfer Fee (4%)</span><span>{formatAED(result.costs.transfer_fee)}</span></div>
-                  <div className="flex justify-between"><span>Agent Commission (2%)</span><span>{formatAED(result.costs.agent_commission)}</span></div>
-                  <div className="flex justify-between"><span>VAT on Commission</span><span>{formatAED(result.costs.vat_on_commission)}</span></div>
+                  <div className="flex justify-between"><span>Property Price</span><span className="font-medium">{formatPrice(result.costs.property_price)}</span></div>
+                  <div className="flex justify-between"><span>Transfer Fee (4%)</span><span>{formatPrice(result.costs.transfer_fee)}</span></div>
+                  <div className="flex justify-between"><span>Agent Commission (2%)</span><span>{formatPrice(result.costs.agent_commission)}</span></div>
+                  <div className="flex justify-between"><span>VAT on Commission</span><span>{formatPrice(result.costs.vat_on_commission)}</span></div>
                   <Separator />
-                  <div className="flex justify-between font-bold"><span>Total Buyer Cost</span><span className="text-blue-600">{formatAED(result.costs.total_buyer_cost)}</span></div>
+                  <div className="flex justify-between font-bold"><span>Total Buyer Cost</span><span className="text-blue-600">{formatPrice(result.costs.total_buyer_cost)}</span></div>
                   {result.costs.fee_breakdown && (
                     <div className="mt-3 pt-3 border-t space-y-1">
                       {Object.entries(result.costs.fee_breakdown).map(([key, val]) => (
@@ -237,7 +238,7 @@ const CrossBorderAdvisor = () => {
                   </div>
                   <div className="flex justify-between"><span>Program</span><Badge>{result.visa.program}</Badge></div>
                   {result.visa.duration && <div className="flex justify-between"><span>Duration</span><span>{result.visa.duration}</span></div>}
-                  {result.visa.minimum && <div className="flex justify-between"><span>Minimum</span><span>{formatAED(result.visa.minimum)}</span></div>}
+                  {result.visa.minimum && <div className="flex justify-between"><span>Minimum</span><span>{formatPrice(result.visa.minimum)}</span></div>}
                   {result.residency_path && <p className="text-xs text-muted-foreground mt-2">{result.residency_path}</p>}
                 </CardContent>
               </Card>

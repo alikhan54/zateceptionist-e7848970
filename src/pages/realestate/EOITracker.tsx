@@ -10,8 +10,8 @@ import { useRealEstateEOI, REEOI } from "@/hooks/useRealEstateEOI";
 import { useToast } from "@/hooks/use-toast";
 import { FileCheck, Plus, CheckCircle2, Clock, DollarSign, AlertCircle, ArrowRight } from "lucide-react";
 import { RTLWrapper } from "@/components/realestate/RTLWrapper";
+import { useCurrency } from "@/hooks/useCurrency";
 
-const formatAED = (amount: number) => `AED ${amount.toLocaleString()}`;
 
 const statusColors: Record<string, string> = {
   submitted: "bg-blue-100 text-blue-800",
@@ -34,6 +34,7 @@ const statusLabels: Record<string, string> = {
 };
 
 export default function EOITracker() {
+  const { formatPrice } = useCurrency();
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [projectFilter, setProjectFilter] = useState<string>("");
   const { eois, isLoading, stats, projects, createEOI, updateEOI } = useRealEstateEOI({
@@ -158,7 +159,7 @@ export default function EOITracker() {
         <Card><CardContent className="pt-4"><div className="text-2xl font-bold">{stats.totalEOIs}</div><p className="text-xs text-muted-foreground">Total EOIs</p></CardContent></Card>
         <Card><CardContent className="pt-4"><div className="text-2xl font-bold">{stats.approved + stats.allocated}</div><p className="text-xs text-muted-foreground">Active</p></CardContent></Card>
         <Card><CardContent className="pt-4"><div className="text-2xl font-bold">{stats.converted}</div><p className="text-xs text-muted-foreground">Converted to Deal</p></CardContent></Card>
-        <Card><CardContent className="pt-4"><div className="text-2xl font-bold">{formatAED(stats.totalEOIValue)}</div><p className="text-xs text-muted-foreground">Total EOI Value</p></CardContent></Card>
+        <Card><CardContent className="pt-4"><div className="text-2xl font-bold">{formatPrice(stats.totalEOIValue)}</div><p className="text-xs text-muted-foreground">Total EOI Value</p></CardContent></Card>
       </div>
 
       {isLoading ? <p className="text-muted-foreground">Loading...</p> : eois.length === 0 ? (
@@ -187,8 +188,8 @@ export default function EOITracker() {
                       </div>
 
                       <div className="space-y-1">
-                        {eoi.budget_max && <p className="text-xs text-muted-foreground">Budget: {formatAED(eoi.budget_max)}</p>}
-                        {eoi.eoi_amount && <p className="text-sm font-semibold">EOI: {formatAED(eoi.eoi_amount)}</p>}
+                        {eoi.budget_max && <p className="text-xs text-muted-foreground">Budget: {formatPrice(eoi.budget_max)}</p>}
+                        {eoi.eoi_amount && <p className="text-sm font-semibold">EOI: {formatPrice(eoi.eoi_amount)}</p>}
                         {eoi.allocated_unit && <p className="text-xs text-green-700 font-medium">Unit: {eoi.allocated_unit}</p>}
                         {eoi.priority_number && <p className="text-xs text-muted-foreground">Priority #{eoi.priority_number}</p>}
                       </div>

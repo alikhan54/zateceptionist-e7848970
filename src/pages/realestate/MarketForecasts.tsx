@@ -4,9 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TrendingUp, TrendingDown, Minus, Target, AlertTriangle, BarChart3, LineChart } from "lucide-react";
 import { RTLWrapper } from "@/components/realestate/RTLWrapper";
+import { useCurrency } from "@/hooks/useCurrency";
 import { useMarketForecasts, MarketForecast } from "@/hooks/useMarketForecasts";
 
-const formatAED = (n: number) => `AED ${Math.round(n).toLocaleString()}`;
 
 const trendIcon = (dir: string) => {
   if (dir === "strong_up" || dir === "up") return <TrendingUp className="h-4 w-4 text-green-600" />;
@@ -22,6 +22,7 @@ const recColors: Record<string, string> = {
 
 export default function MarketForecasts() {
   const { forecasts, isLoading, error, locations, getForLocation } = useMarketForecasts();
+  const { formatPrice } = useCurrency();
   const [selectedLocation, setSelectedLocation] = useState<string>("all");
 
   const displayed = selectedLocation === "all" ? forecasts : getForLocation(selectedLocation);
@@ -74,7 +75,7 @@ export default function MarketForecasts() {
                         </div>
                         {trendIcon(f.trend_direction)}
                       </div>
-                      <div className="text-lg font-bold">{formatAED(f.current_value)}/sqft</div>
+                      <div className="text-lg font-bold">{formatPrice(f.current_value)}/sqft</div>
                       <div className="grid grid-cols-3 gap-2 mt-3 text-xs">
                         <div className="text-center">
                           <div className={f.forecast_3m_change_pct >= 0 ? "text-green-600 font-bold" : "text-red-600 font-bold"}>
@@ -126,21 +127,21 @@ export default function MarketForecasts() {
                       <div className="grid gap-4 md:grid-cols-4">
                         <div className="bg-muted/50 p-3 rounded text-center">
                           <div className="text-xs text-muted-foreground">Current</div>
-                          <div className="font-bold">{formatAED(f.current_value)}</div>
+                          <div className="font-bold">{formatPrice(f.current_value)}</div>
                         </div>
                         <div className={`p-3 rounded text-center ${f.forecast_3m_change_pct >= 0 ? "bg-green-50" : "bg-red-50"}`}>
                           <div className="text-xs text-muted-foreground">3 Months</div>
-                          <div className="font-bold">{formatAED(f.forecast_3m)}</div>
+                          <div className="font-bold">{formatPrice(f.forecast_3m)}</div>
                           <div className={`text-xs ${f.forecast_3m_change_pct >= 0 ? "text-green-600" : "text-red-600"}`}>{f.forecast_3m_change_pct >= 0 ? "+" : ""}{f.forecast_3m_change_pct}%</div>
                         </div>
                         <div className={`p-3 rounded text-center ${f.forecast_6m_change_pct >= 0 ? "bg-green-50" : "bg-red-50"}`}>
                           <div className="text-xs text-muted-foreground">6 Months</div>
-                          <div className="font-bold">{formatAED(f.forecast_6m)}</div>
+                          <div className="font-bold">{formatPrice(f.forecast_6m)}</div>
                           <div className={`text-xs ${f.forecast_6m_change_pct >= 0 ? "text-green-600" : "text-red-600"}`}>{f.forecast_6m_change_pct >= 0 ? "+" : ""}{f.forecast_6m_change_pct}%</div>
                         </div>
                         <div className={`p-3 rounded text-center ${f.forecast_12m_change_pct >= 0 ? "bg-green-50" : "bg-red-50"}`}>
                           <div className="text-xs text-muted-foreground">12 Months</div>
-                          <div className="font-bold">{formatAED(f.forecast_12m)}</div>
+                          <div className="font-bold">{formatPrice(f.forecast_12m)}</div>
                           <div className={`text-xs ${f.forecast_12m_change_pct >= 0 ? "text-green-600" : "text-red-600"}`}>{f.forecast_12m_change_pct >= 0 ? "+" : ""}{f.forecast_12m_change_pct}%</div>
                         </div>
                       </div>

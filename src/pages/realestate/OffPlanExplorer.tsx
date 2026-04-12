@@ -8,11 +8,11 @@ import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Building2, MapPin, Calendar, TrendingUp, DollarSign, Users, ChevronDown, ChevronUp, Sparkles, Loader2 } from "lucide-react";
 import { RTLWrapper } from "@/components/realestate/RTLWrapper";
+import { useCurrency } from "@/hooks/useCurrency";
 import { useOffPlanProjects, OffPlanProject, OffPlanMatch } from "@/hooks/useOffPlanProjects";
 import { useRealEstateClients } from "@/hooks/useRealEstateClients";
 import { toast } from "sonner";
 
-const formatAED = (n: number) => `AED ${Number(n).toLocaleString()}`;
 
 const statusColors: Record<string, string> = {
   announced: "bg-gray-100 text-gray-700",
@@ -27,6 +27,7 @@ const statusColors: Record<string, string> = {
 export default function OffPlanExplorer() {
   const { projects, isLoading, stats, matchToClient, isMatching, matchResults } = useOffPlanProjects();
   const { clients } = useRealEstateClients();
+  const { formatPrice } = useCurrency();
   const [locationFilter, setLocationFilter] = useState("all");
   const [developerFilter, setDeveloperFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -69,7 +70,7 @@ export default function OffPlanExplorer() {
                   <SelectContent>
                     {(clients || []).map((c: any) => (
                       <SelectItem key={c.id} value={c.id}>
-                        {c.full_name || `${c.first_name} ${c.last_name}`} — {c.nationality || "?"} — {c.budget_max ? formatAED(c.budget_max) : "No budget"}
+                        {c.full_name || `${c.first_name} ${c.last_name}`} — {c.nationality || "?"} — {c.budget_max ? formatPrice(c.budget_max) : "No budget"}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -87,7 +88,7 @@ export default function OffPlanExplorer() {
                             <div>
                               <p className="font-medium">{m.project.project_name}</p>
                               <p className="text-xs text-muted-foreground">{m.project.developer_name} — {m.project.location}</p>
-                              <p className="text-xs mt-1">{formatAED(m.project.price_range_min)} - {formatAED(m.project.price_range_max)}</p>
+                              <p className="text-xs mt-1">{formatPrice(m.project.price_range_min)} - {formatPrice(m.project.price_range_max)}</p>
                             </div>
                             <Badge className={m.match_score >= 70 ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}>{m.match_score}%</Badge>
                           </div>
@@ -198,7 +199,7 @@ export default function OffPlanExplorer() {
                       <MapPin className="h-3 w-3" />{p.location}
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span>{formatAED(p.price_range_min)} - {formatAED(p.price_range_max)}</span>
+                      <span>{formatPrice(p.price_range_min)} - {formatPrice(p.price_range_max)}</span>
                     </div>
                     <div className="space-y-1">
                       <div className="flex justify-between text-xs">
