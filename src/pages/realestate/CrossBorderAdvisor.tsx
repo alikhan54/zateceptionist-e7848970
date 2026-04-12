@@ -9,8 +9,9 @@ import { Separator } from "@/components/ui/separator";
 import { Globe2, DollarSign, Shield, FileText, Clock, Building2, Landmark, CreditCard, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { RTLWrapper } from "@/components/realestate/RTLWrapper";
 import { useCurrency } from "@/hooks/useCurrency";
+import { useTenant } from "@/contexts/TenantContext";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+
 
 const COUNTRIES = [
   { code: "pk", name: "Pakistan", flag: "🇵🇰" },
@@ -65,6 +66,7 @@ interface CrossBorderResult {
 const CrossBorderAdvisor = () => {
   const { toast } = useToast();
   const { formatPrice } = useCurrency();
+  const { tenantId } = useTenant();
   const [buyerCountry, setBuyerCountry] = useState("pk");
   const [targetCountry, setTargetCountry] = useState("ae");
   const [propertyPrice, setPropertyPrice] = useState("2000000");
@@ -80,9 +82,6 @@ const CrossBorderAdvisor = () => {
     setLoading(true);
     setResult(null);
     try {
-      const { data: tenantData } = await supabase.from("tenant_config" as any).select("tenant_id").limit(1).single();
-      const tenantId = (tenantData as any)?.tenant_id || "aamerah";
-
       const baseUrl = window.location.hostname === "localhost" ? "http://localhost:5678" : "https://webhooks.zatesystems.com";
       const resp = await fetch(`${baseUrl}/webhook/re-cross-border-analysis`, {
         method: "POST",
