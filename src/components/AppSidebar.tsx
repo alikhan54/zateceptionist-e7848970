@@ -187,6 +187,7 @@ const analyticsNavItems = [
   { title: "Reports", url: "/analytics/reports", icon: BarChart3 },
   { title: "AI Insights", url: "/analytics/ai-insights", icon: Lightbulb },
   { title: "Predictions", url: "/analytics/predictions", icon: TrendingDown },
+  { title: "Autonomous Health", url: "/analytics/autonomous-health", icon: ShieldCheck },
 ];
 
 // ========================================
