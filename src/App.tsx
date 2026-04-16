@@ -199,6 +199,7 @@ const RealtimeDashboard = lazy(() => import("./pages/analytics/Realtime"));
 const CustomReports = lazy(() => import("./pages/analytics/Reports"));
 const AIInsights = lazy(() => import("./pages/analytics/AIInsights"));
 const Predictions = lazy(() => import("./pages/analytics/Predictions"));
+const AutonomousHealth = lazy(() => import("./pages/analytics/AutonomousHealth"));
 
 // Settings Module
 const GeneralSettings = lazy(() => import("./pages/settings/General"));
@@ -1338,6 +1339,14 @@ const App = () => (
                     element={
                       <LazyPage>
                         <Predictions />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/analytics/autonomous-health"
+                    element={
+                      <LazyPage>
+                        <AutonomousHealth />
                       </LazyPage>
                     }
                   />
