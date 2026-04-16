@@ -640,6 +640,7 @@ export function NavigationSidebar() {
       { title: "AI Insights", url: "/analytics/ai-insights", icon: Sparkles },
       { title: "Predictions", url: "/analytics/predictions", icon: TrendingUp },
       { title: "Intelligence Hub", url: "/intelligence", icon: Brain },
+      { title: "Autonomous Health", url: "/analytics/autonomous-health", icon: ShieldCheck },
     ],
   };
 
