@@ -114,6 +114,9 @@ import {
   FlaskConical,
   UserCircle,
   Plug,
+  Microscope,
+  Wrench,
+  Ship,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -150,7 +153,7 @@ export function NavigationSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, isAdmin, isMasterAdmin, authUser, hasPermission } = useAuth();
-  const { tenantConfig, translate, tenantId, setTenantId, isRestaurant, isBankingCollections, isHealthcareClinic, isConstructionEstimation, isRealEstate, isYouTubeAgency } = useTenant();
+  const { tenantConfig, translate, tenantId, setTenantId, isRestaurant, isBankingCollections, isHealthcareClinic, isConstructionEstimation, isRealEstate, isYouTubeAgency, isLaboratoryInstruments } = useTenant();
   const { isEnabled } = useFeatureFlags();
   const { toast } = useToast();
 
@@ -501,6 +504,20 @@ export function NavigationSidebar() {
         { title: "Agent Network", url: "/operations/agents", icon: Network },
         { title: "AI Intelligence", url: "/operations/ai-intelligence", icon: Brain },
       ]},
+    ],
+  };
+
+  const tenderOpsSection: NavSection = {
+    label: "Tender Operations",
+    collapsible: true,
+    items: [
+      { title: "Tender Dashboard", url: "/tenders", icon: Target },
+      { title: "All Tenders", url: "/tenders/list", icon: FileText },
+      { title: "Payments", url: "/tenders/payments", icon: DollarSign },
+      { title: "Security Deposits", url: "/tenders/deposits", icon: Shield },
+      { title: "Instruments", url: "/tenders/instruments", icon: Microscope },
+      { title: "Field Service", url: "/tenders/field-service", icon: Wrench },
+      { title: "AMC Contracts", url: "/tenders/amc", icon: FileCheck },
     ],
   };
 
@@ -943,6 +960,11 @@ export function NavigationSidebar() {
         {/* Operations Section (general: Vendors, Expenses, Invoices) */}
         {canAccessSection(operationsSection) && (
           <CollapsibleSection section={operationsSection} sectionKey="operations" />
+        )}
+
+        {/* Tender Operations Section (laboratory_instruments industry only) */}
+        {isLaboratoryInstruments && canAccessSection(tenderOpsSection) && (
+          <CollapsibleSection section={tenderOpsSection} sectionKey="tender-ops" />
         )}
 
         {/* Communications Section */}

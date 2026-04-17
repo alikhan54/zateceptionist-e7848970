@@ -115,6 +115,15 @@ const Production = lazy(() => import("./pages/operations/Production"));
 const Budgets = lazy(() => import("./pages/operations/Budgets"));
 const AgentNetwork = lazy(() => import("./pages/operations/AgentNetwork"));
 
+// Tender Operations (laboratory_instruments industry)
+const TenderDashboard = lazy(() => import("./pages/tenders/TenderDashboard"));
+const TendersList = lazy(() => import("./pages/tenders/TendersList"));
+const TenderPayments = lazy(() => import("./pages/tenders/TenderPayments"));
+const SecurityDeposits = lazy(() => import("./pages/tenders/SecurityDeposits"));
+const Instruments = lazy(() => import("./pages/tenders/Instruments"));
+const FieldService = lazy(() => import("./pages/tenders/FieldService"));
+const AMCContracts = lazy(() => import("./pages/tenders/AMCContracts"));
+
 // Collections Module
 const CollectionsDashboard = lazy(() => import("./pages/collections/CollectionsDashboard"));
 const PTTracker = lazy(() => import("./pages/collections/PTTracker"));
@@ -1078,6 +1087,15 @@ const App = () => (
                       </LazyPage>
                     }
                   />
+
+                  {/* Tender Operations (laboratory_instruments industry) */}
+                  <Route path="/tenders" element={<LazyPage><TenderDashboard /></LazyPage>} />
+                  <Route path="/tenders/list" element={<LazyPage><TendersList /></LazyPage>} />
+                  <Route path="/tenders/payments" element={<LazyPage><TenderPayments /></LazyPage>} />
+                  <Route path="/tenders/deposits" element={<LazyPage><SecurityDeposits /></LazyPage>} />
+                  <Route path="/tenders/instruments" element={<LazyPage><Instruments /></LazyPage>} />
+                  <Route path="/tenders/field-service" element={<LazyPage><FieldService /></LazyPage>} />
+                  <Route path="/tenders/amc" element={<LazyPage><AMCContracts /></LazyPage>} />
 
                   {/* OPS Module — Phases 20-30 */}
                   <Route path="/operations/command-center" element={<LazyPage><OpsCommandCenter /></LazyPage>} />

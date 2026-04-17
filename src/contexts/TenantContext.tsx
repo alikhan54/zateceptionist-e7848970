@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 
-export type IndustryType = "healthcare" | "healthcare_clinic" | "healthcare_staffing" | "real_estate" | "restaurant" | "salon" | "banking_collections" | "construction_estimation" | "youtube_agency" | "technology" | "legal" | "fitness" | "education" | "automotive" | "professional" | "retail" | "general";
+export type IndustryType = "healthcare" | "healthcare_clinic" | "healthcare_staffing" | "real_estate" | "restaurant" | "salon" | "banking_collections" | "construction_estimation" | "youtube_agency" | "technology" | "legal" | "fitness" | "education" | "automotive" | "professional" | "retail" | "laboratory_instruments" | "general";
 
 export interface TenantConfig {
   id: string;
@@ -263,6 +263,20 @@ const industryVocabulary: Partial<Record<IndustryType, Record<string, string>>> 
     lead: "Lead",
     leads: "Leads",
   },
+  laboratory_instruments: {
+    customer: "Client",
+    customers: "Clients",
+    appointment: "Service Visit",
+    appointments: "Service Visits",
+    product: "Instrument",
+    products: "Instruments",
+    staff: "Engineer",
+    staffs: "Engineers",
+    deal: "Tender",
+    deals: "Tenders",
+    lead: "Prospect",
+    leads: "Prospects",
+  },
 };
 
 // Industry-specific deal stages
@@ -352,6 +366,21 @@ const industryDealStages: Partial<Record<IndustryType, string[]>> & { general: s
     "Closed Won",
     "Closed Lost",
   ],
+  laboratory_instruments: [
+    "Discovered",
+    "Evaluating",
+    "Bid Prep",
+    "Submitted",
+    "Technical Eval",
+    "Financial Eval",
+    "Awarded",
+    "PO Received",
+    "Delivering",
+    "Installing",
+    "Completed",
+    "Closed",
+    "Lost",
+  ],
   general: ["Lead", "Qualified", "Proposal", "Negotiation", "Won", "Lost"],
 };
 
@@ -379,6 +408,7 @@ interface TenantContextType {
   isConstructionEstimation: boolean;
   isHealthcareStaffing: boolean;
   isYouTubeAgency: boolean;
+  isLaboratoryInstruments: boolean;
   refreshConfig: () => Promise<void>;
 }
 
@@ -580,6 +610,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const isConstructionEstimation = industry === "construction_estimation" || (industry as string) === "construction";
   const isHealthcareStaffing = industry === "healthcare_staffing";
   const isYouTubeAgency = industry === "youtube_agency";
+  const isLaboratoryInstruments = industry === "laboratory_instruments";
 
   useEffect(() => {
     fetchTenantConfig();
@@ -609,6 +640,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         isConstructionEstimation,
         isHealthcareStaffing,
         isYouTubeAgency,
+        isLaboratoryInstruments,
         refreshConfig: fetchTenantConfig,
       }}
     >
