@@ -357,6 +357,7 @@ export function NavigationSidebar() {
       { title: "My Inbox", url: "/inbox", icon: MessageSquare },
       { title: "My Calendar", url: "/appointments", icon: Calendar },
       { title: "My Customers", url: "/customers", icon: Users },
+      { title: "Services", url: "/services", icon: Package },
     ],
   };
 

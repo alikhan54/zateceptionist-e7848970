@@ -87,7 +87,7 @@ export default function MarketingSequences() {
       const { data } = await supabase
         .from('sales_leads')
         .select('id, contact_name, email, phone, temperature, lead_score')
-        .eq('tenant_id', slug)
+        .eq('tenant_id', tenantConfig?.id)
         .eq('temperature', 'hot')
         .in('lead_status', ['new', 'qualified', 'contacted'])
         .order('lead_score', { ascending: false })

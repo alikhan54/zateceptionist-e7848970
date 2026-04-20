@@ -515,7 +515,7 @@ export default function VoicePhoneNumbers() {
     queryKey: ["voice-phone-lead-countries", tenantId],
     queryFn: async () => {
       if (!tenantId) return [];
-      const { data } = await supabase.from("sales_leads").select("country").eq("tenant_id", tenantId);
+      const { data } = await supabase.from("sales_leads").select("country").eq("tenant_id", tenantConfig?.id);
       if (!data) return [];
       const counts: Record<string, number> = {};
       data.forEach((l: any) => {

@@ -64,7 +64,7 @@ export default function MarketingAnalytics() {
       const { count } = await supabase
         .from('system_events')
         .select('*', { count: 'exact', head: true })
-        .eq('tenant_id', slug)
+        .eq('tenant_id', tenantConfig?.id)
         .gte('created_at', periodStart.toISOString());
       return count || 0;
     },

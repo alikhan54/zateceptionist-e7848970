@@ -16,9 +16,10 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
 export function useCurrency() {
   const { tenantConfig } = useTenant();
 
-  const currency = tenantConfig?.currency || "AED";
-  const country = tenantConfig?.country || "AE";
-  const symbol = CURRENCY_SYMBOLS[currency] || currency;
+  // Read from tenant_config.currency; if not set, display numeric value only (no hardcoded AED fallback)
+  const currency = tenantConfig?.currency || "";
+  const country = tenantConfig?.country || "";
+  const symbol = currency ? (CURRENCY_SYMBOLS[currency] || currency) : "";
 
   const formatPrice = (amount: number | null | undefined): string => {
     if (amount === null || amount === undefined || isNaN(amount)) return `${symbol} 0`;

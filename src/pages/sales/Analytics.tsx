@@ -83,7 +83,7 @@ export default function SalesAnalytics() {
       const { data, error } = await supabase
         .from('sales_leads')
         .select('id, lead_status, pipeline_stage, source, lead_temperature, temperature, sequence_status, created_at, intent_score, behavioral_score, data_quality_score, consent_status, phone_type, phone, lead_score')
-        .eq('tenant_id', tenantId);
+        .eq('tenant_id', tenantConfig?.id);
       if (error) { console.warn("Query error:", error.message); return []; }
       return data || [];
     },

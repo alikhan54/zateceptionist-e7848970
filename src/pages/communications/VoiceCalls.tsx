@@ -38,7 +38,7 @@ const COUNTRY_FLAGS: Record<string, string> = {
 };
 
 export default function VoiceCalls() {
-  const { tenantId } = useTenant();
+  const { tenantId, tenantConfig } = useTenant();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [expandedCall, setExpandedCall] = useState<string | null>(null);
@@ -138,7 +138,7 @@ export default function VoiceCalls() {
       const { data } = await supabase
         .from("sales_leads")
         .select("country")
-        .eq("tenant_id", tenantId);
+        .eq("tenant_id", tenantConfig?.id);
       if (!data) return [];
       const counts: Record<string, number> = {};
       data.forEach((l: any) => {

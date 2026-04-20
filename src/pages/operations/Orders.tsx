@@ -199,7 +199,7 @@ export default function Orders() {
                         </p>
                         <div className="flex items-center gap-3 mt-1 text-sm">
                           <span className="font-medium">
-                            {order.total} {order.currency || "AED"}
+                            {order.total} {order.currency || ""}
                           </span>
                           <span className="text-muted-foreground">
                             {order.payment_method === "cash" ? "Cash" : "Card"}

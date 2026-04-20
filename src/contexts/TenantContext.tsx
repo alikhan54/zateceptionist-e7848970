@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 
-export type IndustryType = "healthcare" | "healthcare_clinic" | "healthcare_staffing" | "real_estate" | "restaurant" | "salon" | "banking_collections" | "construction_estimation" | "youtube_agency" | "technology" | "legal" | "fitness" | "education" | "automotive" | "professional" | "retail" | "laboratory_instruments" | "general";
+export type IndustryType = "healthcare" | "healthcare_clinic" | "healthcare_staffing" | "real_estate" | "restaurant" | "salon" | "banking_collections" | "construction_estimation" | "youtube_agency" | "technology" | "legal" | "fitness" | "education" | "automotive" | "professional" | "retail" | "laboratory_instruments" | "roofing" | "general";
 
 export interface TenantConfig {
   id: string;
@@ -249,6 +249,20 @@ const industryVocabulary: Partial<Record<IndustryType, Record<string, string>>> 
     lead: "Lead",
     leads: "Leads",
   },
+  roofing: {
+    customer: "Homeowner",
+    customers: "Homeowners",
+    appointment: "Inspection",
+    appointments: "Inspections",
+    product: "Roofing System",
+    products: "Roofing Systems",
+    staff: "Roofer",
+    staffs: "Roofers",
+    deal: "Project",
+    deals: "Projects",
+    lead: "Inquiry",
+    leads: "Inquiries",
+  },
   general: {
     customer: "Customer",
     customers: "Customers",
@@ -379,6 +393,19 @@ const industryDealStages: Partial<Record<IndustryType, string[]>> & { general: s
     "Installing",
     "Completed",
     "Closed",
+    "Lost",
+  ],
+  roofing: [
+    "New Inquiry",
+    "Inspection Scheduled",
+    "Inspection Complete",
+    "Estimate Sent",
+    "Insurance Claim Filed",
+    "Approved",
+    "Scheduled for Install",
+    "In Progress",
+    "Completed",
+    "Warranty Active",
     "Lost",
   ],
   general: ["Lead", "Qualified", "Proposal", "Negotiation", "Won", "Lost"],

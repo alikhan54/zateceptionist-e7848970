@@ -474,7 +474,7 @@ function MessageBubble({ message }: MessageBubbleProps) {
 // ============================================================================
 
 export default function Inbox() {
-  const { tenantId } = useTenant();
+  const { tenantId, tenantConfig } = useTenant();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -514,7 +514,7 @@ export default function Inbox() {
             )
           `,
           )
-          .eq("tenant_id", tenantId)
+          .eq("tenant_id", tenantConfig?.id)
           .order("last_message_at", { ascending: false, nullsFirst: false });
 
         // Apply filters

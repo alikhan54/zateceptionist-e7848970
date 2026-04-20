@@ -22,6 +22,7 @@ const CustomersPage = lazy(() => import("./pages/Customers"));
 const InboxPage = lazy(() => import("./pages/Inbox"));
 const AppointmentsPage = lazy(() => import("./pages/Appointments"));
 const TasksPage = lazy(() => import("./pages/Tasks"));
+const ServicesPage = lazy(() => import("./pages/services/ServicesPage"));
 
 // Sales Module
 const SalesDashboard = lazy(() => import("./pages/sales/Dashboard"));
@@ -455,6 +456,14 @@ const App = () => (
                     element={
                       <LazyPage>
                         <TasksPage />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/services"
+                    element={
+                      <LazyPage>
+                        <ServicesPage />
                       </LazyPage>
                     }
                   />

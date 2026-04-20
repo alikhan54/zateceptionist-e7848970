@@ -67,7 +67,7 @@ const COUNTRY_NAMES: Record<string, string> = {
 };
 
 export default function PhoneNumbers() {
-  const { tenantId } = useTenant();
+  const { tenantId, tenantConfig } = useTenant();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showAddForm, setShowAddForm] = useState(false);
@@ -170,7 +170,7 @@ export default function PhoneNumbers() {
       const { data } = await supabase
         .from("sales_leads")
         .select("country")
-        .eq("tenant_id", tenantId);
+        .eq("tenant_id", tenantConfig?.id);
       if (!data) return [];
       const counts: Record<string, number> = {};
       data.forEach((l: any) => {

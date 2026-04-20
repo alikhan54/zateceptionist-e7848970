@@ -252,7 +252,7 @@ export default function MenuEditor() {
                     )}
                   </div>
                   <p className="font-bold text-lg whitespace-nowrap ml-2">
-                    {item.price} {item.currency || "AED"}
+                    {item.price} {item.currency || ""}
                   </p>
                 </div>
 

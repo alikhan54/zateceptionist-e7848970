@@ -1002,7 +1002,7 @@ export default function Pipeline() {
       const { data, error } = await supabase
         .from("sales_leads")
         .select("*")
-        .eq("tenant_id", tenantId) // SLUG — sales_leads uses TEXT tenant_id
+        .eq("tenant_id", tenantConfig?.id) // SLUG — sales_leads uses TEXT tenant_id
         .not("lead_status", "eq", "lost")
         .order("lead_score", { ascending: false, nullsFirst: false });
 
@@ -1136,7 +1136,7 @@ export default function Pipeline() {
           updated_at: new Date().toISOString(),
         })
         .eq("id", contactId)
-        .eq("tenant_id", tenantId) // SLUG — sales_leads uses TEXT tenant_id
+        .eq("tenant_id", tenantConfig?.id) // SLUG — sales_leads uses TEXT tenant_id
         .select("id, lead_status, status, pipeline_stage")
         .single();
 

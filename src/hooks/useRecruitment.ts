@@ -411,7 +411,7 @@ export function useCreateJob() {
           required_experience_years: jobData.required_experience_years,
           salary_min: jobData.salary_min,
           salary_max: jobData.salary_max,
-          salary_currency: jobData.salary_currency || 'AED',
+          salary_currency: jobData.salary_currency || tenantConfig?.currency || '',
           employment_type: jobData.employment_type || 'full_time',
           work_location: jobData.work_location || 'office',
           location_city: jobData.location_city,

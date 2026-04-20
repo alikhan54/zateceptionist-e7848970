@@ -49,7 +49,7 @@ export function MergeConversationDialog({
       const { data } = await supabase
         .from("conversations")
         .select("id, ticket_number, channel, status, last_message_text, message_count, created_at")
-        .eq("tenant_id", tenantId)
+        .eq("tenant_id", tenantConfig?.id)
         .neq("id", conversationId)
         .neq("status", "merged")
         .or(`ticket_number.ilike.%${search}%,last_message_text.ilike.%${search}%`)

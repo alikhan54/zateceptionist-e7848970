@@ -57,7 +57,7 @@ class ScoringErrorBoundary extends Component<{ children: ReactNode }, { hasError
 }
 
 export default function PredictiveScoring() {
-  const { tenantId } = useTenant();
+  const { tenantId, tenantConfig } = useTenant();
   const [sortBy, setSortBy] = useState("combined_score");
   const [filterGrade, setFilterGrade] = useState("all");
   const [filterHiddenGem, setFilterHiddenGem] = useState(false);
@@ -105,7 +105,7 @@ export default function PredictiveScoring() {
       const { data, error } = await supabase
         .from("sales_leads")
         .select("id, contact_name, company_name, name, company")
-        .eq("tenant_id", tenantId)
+        .eq("tenant_id", tenantConfig?.id)
         .in("id", leadIds);
       if (error) return {};
       const map: Record<string, any> = {};

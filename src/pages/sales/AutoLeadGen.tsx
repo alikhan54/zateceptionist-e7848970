@@ -371,25 +371,25 @@ export default function LeadDiscovery() {
       const { count: total } = await supabase
         .from("sales_leads")
         .select("*", { count: "exact", head: true })
-        .eq("tenant_id", tenantId); // SLUG — sales_leads uses TEXT tenant_id
+        .eq("tenant_id", tenantConfig?.id); // SLUG — sales_leads uses TEXT tenant_id
 
       const today = new Date().toISOString().split("T")[0];
       const { count: todayCount } = await supabase
         .from("sales_leads")
         .select("*", { count: "exact", head: true })
-        .eq("tenant_id", tenantId) // SLUG
+        .eq("tenant_id", tenantConfig?.id) // SLUG
         .gte("created_at", today);
 
       const { count: inSequences } = await supabase
         .from("sales_leads")
         .select("*", { count: "exact", head: true })
-        .eq("tenant_id", tenantId) // SLUG
+        .eq("tenant_id", tenantConfig?.id) // SLUG
         .not("sequence_id", "is", null);
 
       const { count: converted } = await supabase
         .from("sales_leads")
         .select("*", { count: "exact", head: true })
-        .eq("tenant_id", tenantId) // SLUG
+        .eq("tenant_id", tenantConfig?.id) // SLUG
         .eq("lead_status", "converted");
 
       const convRate = total && total > 0 ? (((converted || 0) / total) * 100).toFixed(0) : "0";
@@ -855,7 +855,7 @@ export default function LeadDiscovery() {
       const { data: existingLeads } = await supabase
         .from("sales_leads")
         .select("email")
-        .eq("tenant_id", tenantId)
+        .eq("tenant_id", tenantConfig?.id)
         .not("email", "is", null);
       const existingEmails = new Set((existingLeads || []).map((l: any) => l.email?.toLowerCase()));
 

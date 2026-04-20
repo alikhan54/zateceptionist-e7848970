@@ -7,6 +7,7 @@ import React, { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
+import { useCurrency } from "@/hooks/useCurrency";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -83,6 +84,7 @@ const PIPELINE_STAGES: PipelineStage[] = [
 export default function SalesDashboard() {
   // CRITICAL: Get both tenantId (slug) and tenantConfig (full object with UUID)
   const { tenantId, tenantConfig } = useTenant();
+  const { symbol: currencySymbol, formatPrice } = useCurrency();
   // tenantId (SLUG) for sales_leads and deals; tenantUuid only for UUID-typed tables
   const tenantUuid = tenantConfig?.id;
   
@@ -110,7 +112,7 @@ export default function SalesDashboard() {
       const { data, error } = await supabase
         .from("sales_leads")
         .select("id, lead_score, score, lead_temperature, temperature, lead_grade, lead_status, status, pipeline_stage, sequence_status, source, created_at")
-        .eq("tenant_id", tenantId); // SLUG — sales_leads uses TEXT tenant_id
+        .eq("tenant_id", tenantConfig?.id); // SLUG — sales_leads uses TEXT tenant_id
       if (error) {
         console.error("[SalesDashboard] Error fetching sales_leads:", error);
         throw error;
@@ -186,7 +188,7 @@ export default function SalesDashboard() {
         const { data: leads } = await supabase
           .from("sales_leads")
           .select("emails_sent, calls_made, whatsapp_sent")
-          .eq("tenant_id", tenantId);
+          .eq("tenant_id", tenantConfig?.id);
 
         const emailsSent = leads?.reduce((sum, l) => sum + (l.emails_sent || 0), 0) || 0;
         const callsMade = leads?.reduce((sum, l) => sum + (l.calls_made || 0), 0) || 0;
@@ -720,17 +722,17 @@ export default function SalesDashboard() {
           <div className="grid grid-cols-3 gap-6 text-center">
             <div>
               <p className="text-sm text-blue-600 font-medium">Pipeline Value</p>
-              <p className="text-2xl font-bold text-blue-800">{metrics.pipelineValue.toLocaleString()} AED</p>
+              <p className="text-2xl font-bold text-blue-800">{metrics.pipelineValue.toLocaleString()} {currencySymbol}</p>
             </div>
             <div>
               <p className="text-sm text-blue-600 font-medium">Weighted Value</p>
               <p className="text-2xl font-bold text-blue-800">
-                {Math.round(metrics.weightedValue).toLocaleString()} AED
+                {Math.round(metrics.weightedValue).toLocaleString()} {currencySymbol}
               </p>
             </div>
             <div>
               <p className="text-sm text-green-600 font-medium">Won This Month</p>
-              <p className="text-2xl font-bold text-green-700">{metrics.wonValue.toLocaleString()} AED</p>
+              <p className="text-2xl font-bold text-green-700">{metrics.wonValue.toLocaleString()} {currencySymbol}</p>
             </div>
           </div>
         </CardContent>

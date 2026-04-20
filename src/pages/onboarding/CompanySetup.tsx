@@ -28,8 +28,18 @@ const SESSION_KEY = '420_onboarding_progress';
 export default function CompanySetup() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { tenantId } = useTenant();
+  const { tenantId, tenantConfig } = useTenant();
   const { toast } = useToast();
+
+  // Skip-gate: if this tenant already completed onboarding, redirect to dashboard.
+  // Prevents wizard re-entry from overwriting existing tenant_config with form defaults.
+  useEffect(() => {
+    if (tenantConfig?.onboarding_completed === true) {
+      console.log('[CompanySetup] onboarding already completed for tenant:', tenantConfig.tenant_id, '- redirecting to /');
+      localStorage.removeItem(SESSION_KEY);
+      navigate('/', { replace: true });
+    }
+  }, [tenantConfig?.onboarding_completed, navigate]);
 
   // Load saved state from localStorage for resume capability
   const [data, setData] = useState<OnboardingData>(() => {

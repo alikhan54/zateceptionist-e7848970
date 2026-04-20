@@ -81,7 +81,7 @@ export default function VoiceOverview() {
       const { data, error } = await supabase
         .from("sales_leads")
         .select("calls_made")
-        .eq("tenant_id", tenantId);
+        .eq("tenant_id", tenantConfig?.id);
       if (error) return 0;
       return (data || []).reduce((sum: number, l: any) => sum + (l.calls_made || 0), 0);
     },
@@ -126,7 +126,7 @@ export default function VoiceOverview() {
       const { data } = await supabase
         .from("sales_leads")
         .select("country")
-        .eq("tenant_id", tenantId);
+        .eq("tenant_id", tenantConfig?.id);
       if (!data) return [];
       const counts: Record<string, number> = {};
       data.forEach((l: any) => {

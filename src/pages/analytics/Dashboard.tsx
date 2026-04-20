@@ -21,7 +21,7 @@ const COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3
 export default function AnalyticsDashboard() {
   const [period, setPeriod] = useState<'7d' | '30d' | '90d'>('30d');
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
-  const { tenantId } = useTenant();
+  const { tenantId, tenantConfig } = useTenant();
   const { data: revenueData, isLoading: revenueLoading } = useRevenueAnalytics(period);
   const { data: channelData } = useChannelAnalytics();
   const { data: funnelData } = useConversionFunnel();
@@ -42,7 +42,7 @@ export default function AnalyticsDashboard() {
       const { data } = await supabase
         .from('sales_leads')
         .select('temperature')
-        .eq('tenant_id', tenantId);
+        .eq('tenant_id', tenantConfig?.id);
       const counts = { hot: 0, warm: 0, cold: 0 };
       (data || []).forEach((l: any) => {
         const t = (l.temperature || 'cold').toLowerCase();

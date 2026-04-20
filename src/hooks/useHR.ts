@@ -1170,7 +1170,7 @@ export function useCompensationOverview() {
         totalPayroll,
         avgSalary: Math.round(totalPayroll / emps.length),
         medianSalary: Math.round(medianSalary),
-        currency: emps[0]?.salary_currency || 'AED',
+        currency: emps[0]?.salary_currency || tenantConfig?.currency || '',
         byDepartment,
         byType,
       } as CompensationStats;

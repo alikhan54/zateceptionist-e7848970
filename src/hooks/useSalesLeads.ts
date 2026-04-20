@@ -40,14 +40,14 @@ export function useSalesLeads(options?: { status?: string; source?: string; assi
     error,
     refetch,
   } = useQuery({
-    queryKey: ['sales-leads', tenantId, options?.status, options?.source, options?.assignedTo],
+    queryKey: ['sales-leads', tenantConfig?.id, options?.status, options?.source, options?.assignedTo],
     queryFn: async () => {
-      if (!tenantId) return [];
+      if (!tenantConfig?.id) return [];
       
       let query = supabase
         .from('sales_leads')
         .select('*')
-        .eq('tenant_id', tenantId) // SLUG — sales_leads uses TEXT tenant_id
+        .eq('tenant_id', tenantConfig?.id) // SLUG — sales_leads uses TEXT tenant_id
         .order('score', { ascending: false });
 
       if (options?.status) {
@@ -64,7 +64,7 @@ export function useSalesLeads(options?: { status?: string; source?: string; assi
       if (error) throw error;
       return data as SalesLead[];
     },
-    enabled: !!tenantId,
+    enabled: !!tenantConfig?.id,
   });
 
   const addLead = useMutation({
@@ -102,7 +102,7 @@ export function useSalesLeads(options?: { status?: string; source?: string; assi
         .from('sales_leads')
         .update(syncedUpdates)
         .eq('id', id)
-        .eq('tenant_id', tenantId) // SLUG — sales_leads uses TEXT tenant_id
+        .eq('tenant_id', tenantConfig?.id) // SLUG — sales_leads uses TEXT tenant_id
         .select()
         .single();
 
@@ -122,7 +122,7 @@ export function useSalesLeads(options?: { status?: string; source?: string; assi
         .from('sales_leads')
         .delete()
         .eq('id', id)
-        .eq('tenant_id', tenantId); // SLUG — sales_leads uses TEXT tenant_id
+        .eq('tenant_id', tenantConfig?.id); // SLUG — sales_leads uses TEXT tenant_id
 
       if (error) throw error;
     },
@@ -145,7 +145,7 @@ export function useSalesLeads(options?: { status?: string; source?: string; assi
           updated_at: new Date().toISOString(),
         })
         .eq('id', leadId)
-        .eq('tenant_id', tenantId) // SLUG — sales_leads uses TEXT tenant_id
+        .eq('tenant_id', tenantConfig?.id) // SLUG — sales_leads uses TEXT tenant_id
         .select()
         .single();
 
@@ -168,7 +168,7 @@ export function useSalesLeads(options?: { status?: string; source?: string; assi
           updated_at: new Date().toISOString(),
         })
         .eq('id', leadId)
-        .eq('tenant_id', tenantId) // SLUG — sales_leads uses TEXT tenant_id
+        .eq('tenant_id', tenantConfig?.id) // SLUG — sales_leads uses TEXT tenant_id
         .select()
         .single();
 
@@ -191,7 +191,7 @@ export function useSalesLeads(options?: { status?: string; source?: string; assi
           updated_at: new Date().toISOString(),
         })
         .eq('id', leadId)
-        .eq('tenant_id', tenantId) // SLUG — sales_leads uses TEXT tenant_id
+        .eq('tenant_id', tenantConfig?.id) // SLUG — sales_leads uses TEXT tenant_id
         .select()
         .single();
 
@@ -216,7 +216,7 @@ export function useSalesLeads(options?: { status?: string; source?: string; assi
           updated_at: new Date().toISOString(),
         })
         .eq('id', leadId)
-        .eq('tenant_id', tenantId) // SLUG — sales_leads uses TEXT tenant_id
+        .eq('tenant_id', tenantConfig?.id) // SLUG — sales_leads uses TEXT tenant_id
         .select()
         .single();
 
@@ -237,7 +237,7 @@ export function useSalesLeads(options?: { status?: string; source?: string; assi
         .from('sales_leads')
         .select('sequence_step')
         .eq('id', leadId)
-        .eq('tenant_id', tenantId) // SLUG — sales_leads uses TEXT tenant_id
+        .eq('tenant_id', tenantConfig?.id) // SLUG — sales_leads uses TEXT tenant_id
         .single();
 
       if (fetchError) throw fetchError;
@@ -250,7 +250,7 @@ export function useSalesLeads(options?: { status?: string; source?: string; assi
           updated_at: new Date().toISOString(),
         })
         .eq('id', leadId)
-        .eq('tenant_id', tenantId) // SLUG — sales_leads uses TEXT tenant_id
+        .eq('tenant_id', tenantConfig?.id) // SLUG — sales_leads uses TEXT tenant_id
         .select()
         .single();
 
@@ -288,7 +288,7 @@ export function useSalesLeads(options?: { status?: string; source?: string; assi
           updated_at: new Date().toISOString(),
         })
         .eq('id', leadId)
-        .eq('tenant_id', tenantId) // SLUG — sales_leads uses TEXT tenant_id
+        .eq('tenant_id', tenantConfig?.id) // SLUG — sales_leads uses TEXT tenant_id
         .select()
         .single();
 
@@ -329,7 +329,7 @@ export function useLeadsByScore(minScore = 0) {
       const { data, error } = await supabase
         .from('sales_leads')
         .select('*')
-        .eq('tenant_id', tenantId) // SLUG — sales_leads uses TEXT tenant_id
+        .eq('tenant_id', tenantConfig?.id) // SLUG — sales_leads uses TEXT tenant_id
         .gte('score', minScore)
         .not('status', 'in', '("won","lost")')
         .order('score', { ascending: false });

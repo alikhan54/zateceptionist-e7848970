@@ -37,7 +37,7 @@ interface ImportResult {
 }
 
 export default function AccountImport() {
-  const { tenantId } = useTenant();
+  const { tenantId, tenantConfig } = useTenant();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -102,7 +102,7 @@ export default function AccountImport() {
         original_amount: parseFloat(row.original_amount) || 0,
         outstanding_balance: parseFloat(row.outstanding_balance) || 0,
         monthly_payment: parseFloat(row.monthly_payment) || null,
-        currency: row.currency || "AED",
+        currency: row.currency || tenantConfig?.currency || "",
         dpd: parseInt(row.dpd) || 0,
         due_date: row.due_date || null,
         status: "active",

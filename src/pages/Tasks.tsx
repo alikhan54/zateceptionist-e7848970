@@ -256,7 +256,7 @@ const contactTypeConfig: Record<string, { label: string; icon: React.ReactNode; 
 // MAIN COMPONENT
 // =====================================================
 export default function SmartTasksPage() {
-  const { tenantId } = useTenant();
+  const { tenantId, tenantConfig } = useTenant();
   const { authUser } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -383,7 +383,7 @@ export default function SmartTasksPage() {
       const { data: conversationsData } = await supabase
         .from("conversations")
         .select("id, customer_id, customer_phone, customer_name, channel")
-        .eq("tenant_id", tenantId)
+        .eq("tenant_id", tenantConfig?.id)
         .order("updated_at", { ascending: false })
         .limit(500);
 

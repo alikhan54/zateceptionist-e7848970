@@ -32,7 +32,7 @@ export interface Conversation {
 }
 
 export function useConversations(options?: { channel?: string; status?: string }) {
-  const { tenantId } = useTenant();
+  const { tenantId, tenantConfig } = useTenant();
   const queryClient = useQueryClient();
 
   const {
@@ -48,7 +48,7 @@ export function useConversations(options?: { channel?: string; status?: string }
       let query = supabase
         .from('conversations')
         .select('*')
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', tenantConfig?.id)
         .order('last_message_at', { ascending: false, nullsFirst: false });
 
       if (options?.channel) {
@@ -116,7 +116,7 @@ export function useConversations(options?: { channel?: string; status?: string }
         .from('conversations')
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', id)
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', tenantConfig?.id)
         .select()
         .single();
 
@@ -136,7 +136,7 @@ export function useConversations(options?: { channel?: string; status?: string }
         .from('conversations')
         .update({ unread_count: 0, updated_at: new Date().toISOString() })
         .eq('id', conversationId)
-        .eq('tenant_id', tenantId);
+        .eq('tenant_id', tenantConfig?.id);
 
       if (error) throw error;
     },
@@ -157,7 +157,7 @@ export function useConversations(options?: { channel?: string; status?: string }
 }
 
 export function useConversationMessages(conversationId: string | undefined) {
-  const { tenantId } = useTenant();
+  const { tenantId, tenantConfig } = useTenant();
   const queryClient = useQueryClient();
 
   const {

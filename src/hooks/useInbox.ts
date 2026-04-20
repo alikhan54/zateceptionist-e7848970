@@ -42,7 +42,7 @@ export interface Message {
 }
 
 export function useInbox(channelFilter?: string) {
-  const { tenantId } = useTenant();
+  const { tenantId, tenantConfig } = useTenant();
   const queryClient = useQueryClient();
 
   const {
@@ -59,7 +59,7 @@ export function useInbox(channelFilter?: string) {
       let query = supabase
         .from("conversations")
         .select("*")
-        .eq("tenant_id", tenantId)
+        .eq("tenant_id", tenantConfig?.id)
         .order("last_message_at", { ascending: false, nullsFirst: false })
         .limit(100);
 
@@ -168,7 +168,7 @@ export function useInbox(channelFilter?: string) {
         .from("conversations")
         .update({ unread_count: 0 })
         .eq("id", conversationId)
-        .eq("tenant_id", tenantId);
+        .eq("tenant_id", tenantConfig?.id);
 
       if (error) throw error;
     },
@@ -183,7 +183,7 @@ export function useInbox(channelFilter?: string) {
         .from("conversations")
         .update({ status, updated_at: new Date().toISOString() })
         .eq("id", id)
-        .eq("tenant_id", tenantId);
+        .eq("tenant_id", tenantConfig?.id);
 
       if (error) throw error;
     },
@@ -212,7 +212,7 @@ export function useInbox(channelFilter?: string) {
 }
 
 export function useConversationMessages(conversationId: string | undefined, customerId?: string) {
-  const { tenantId } = useTenant();
+  const { tenantId, tenantConfig } = useTenant();
   const queryClient = useQueryClient();
 
   const {
@@ -230,7 +230,7 @@ export function useConversationMessages(conversationId: string | undefined, cust
       const { data: msgData, error: msgError } = await supabase
         .from("messages")
         .select("*")
-        .eq("tenant_id", tenantId)
+        .eq("tenant_id", tenantConfig?.id)
         .eq("conversation_id", conversationId || customerId)
         .order("created_at", { ascending: true });
 
