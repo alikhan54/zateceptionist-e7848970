@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, FileText, Eye, Sparkles, Clock, CheckCircle, PenTool, RotateCw, RefreshCw, Copy, Download, ExternalLink, Layout, Info, Palette, Film } from "lucide-react";
+import { Plus, FileText, Eye, Sparkles, Clock, CheckCircle, PenTool, RotateCw, RefreshCw, Copy, Download, ExternalLink, Layout, Info, Palette, Film, HelpCircle } from "lucide-react";
 import { useBrandVoice } from "@/hooks/useBrandVoice";
 import { RepurposeDialog } from "@/components/marketing/RepurposeDialog";
 import { SEOScoreWidget } from "@/components/marketing/SEOScoreWidget";
@@ -312,7 +312,19 @@ export default function BlogManager() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div>
-            <h1 className="text-2xl font-bold">Blog Manager</h1>
+            <h1 className="text-2xl font-bold flex items-center">
+              Blog Manager
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help inline ml-2" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-[280px] text-xs">
+                    AI writes SEO-optimized posts automatically at 8AM daily. Posts are scored and shared to social.
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </h1>
             <p className="text-muted-foreground">AI-powered blog content generation &amp; distribution</p>
           </div>
           {hasBrandVoice && (

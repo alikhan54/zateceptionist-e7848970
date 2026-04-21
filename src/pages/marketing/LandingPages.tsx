@@ -1,7 +1,10 @@
 import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
 import { callWebhook, WEBHOOKS } from "@/lib/api/webhooks";
 import { logSystemEvent } from "@/lib/api/systemEvents";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +23,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Globe, Plus, Eye, Trash2, Copy, MoreVertical, Layout, Smartphone, Monitor,
   MousePointer, TrendingUp, Check, Download, Edit, ExternalLink, Info,
-  UserPlus, Rocket, CalendarDays, Clock, Zap, MessageSquare,
+  UserPlus, Rocket, CalendarDays, Clock, Zap, MessageSquare, HelpCircle,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
@@ -480,7 +483,19 @@ export default function LandingPages() {
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Landing Pages</h1>
+          <h1 className="text-3xl font-bold flex items-center">
+            Landing Pages
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help inline ml-2" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[280px] text-xs">
+                  Create pages that capture leads. Each page gets a public URL. Use Lead Magnets tab for downloadable resources.
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </h1>
           <p className="text-muted-foreground mt-1">Create high-converting landing pages with built-in lead capture</p>
         </div>
         <Button onClick={() => setIsCreateOpen(true)}><Plus className="h-4 w-4 mr-2" />New Page</Button>
@@ -510,6 +525,7 @@ export default function LandingPages() {
         <TabsList>
           <TabsTrigger value="pages">My Pages ({pages.length})</TabsTrigger>
           <TabsTrigger value="templates">Templates</TabsTrigger>
+          <TabsTrigger value="lead-magnets">Lead Magnets</TabsTrigger>
         </TabsList>
 
         <TabsContent value="pages" className="space-y-6">
@@ -636,6 +652,38 @@ export default function LandingPages() {
             ))}
           </div>
         </TabsContent>
+
+        <TabsContent value="lead-magnets" className="space-y-6">
+          {/* What is a Lead Magnet — info banner */}
+          <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-4 flex gap-3">
+            <span className="text-2xl">🧲</span>
+            <div>
+              <p className="font-medium text-sm">What is a Lead Magnet?</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                A free resource you offer visitors in exchange for their contact info. Examples: free checklist, ROI calculator, case study, or template. Each one gets its own public page with a form.
+              </p>
+            </div>
+          </div>
+
+          {/* Template starter cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              { icon: "✅", label: "Checklist", desc: "Step-by-step guide" },
+              { icon: "🧮", label: "Calculator", desc: "ROI or savings tool" },
+              { icon: "📖", label: "Case Study", desc: "Success story" },
+              { icon: "📋", label: "Template", desc: "Ready-to-use doc" },
+            ].map((t) => (
+              <Card key={t.label} className="p-3 cursor-pointer hover:shadow-md transition-shadow text-center">
+                <p className="text-2xl mb-1">{t.icon}</p>
+                <p className="font-medium text-sm">{t.label}</p>
+                <p className="text-xs text-muted-foreground">{t.desc}</p>
+              </Card>
+            ))}
+          </div>
+
+          {/* Existing lead magnets list */}
+          <LeadMagnetsEmbed tenantId={tenantConfig?.id} />
+        </TabsContent>
       </Tabs>
 
       {/* Create Page Dialog (template gallery) */}
@@ -697,6 +745,53 @@ export default function LandingPages() {
         💡 To host landing pages on your domain, configure your website URL in{' '}
         <button className="text-primary underline hover:no-underline" onClick={() => navigate('/settings/integrations')}>Settings → Integrations</button>
       </p>
+    </div>
+  );
+}
+
+// NOTE: lead_magnets uses SLUG tenant_id='zateceptionist' (not UUID like other tables).
+// Hardcoded slug for now — flag for future migration to UUID consistency.
+function LeadMagnetsEmbed({ tenantId }: { tenantId?: string }) {
+  const { data: magnets = [] } = useQuery({
+    queryKey: ["lead_magnets_embed", tenantId],
+    queryFn: async () => {
+      if (!tenantId) return [];
+      const { data } = await (supabase as any)
+        .from("lead_magnets")
+        .select("*")
+        .eq("tenant_id", "zateceptionist")
+        .order("created_at", { ascending: false });
+      return data || [];
+    },
+    enabled: !!tenantId,
+  });
+
+  if (magnets.length === 0) {
+    return (
+      <div className="text-center py-12 text-muted-foreground">
+        <p className="text-lg mb-2">No lead magnets yet</p>
+        <p className="text-sm">Create your first lead magnet above to start capturing leads</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {magnets.map((m: any) => (
+        <Card key={m.id} className="p-4">
+          <div className="flex justify-between items-start mb-2">
+            <h3 className="font-medium text-sm">{m.title}</h3>
+            <Badge variant={m.is_active ? "default" : "secondary"}>
+              {m.is_active ? "Active" : "Inactive"}
+            </Badge>
+          </div>
+          <p className="text-xs text-muted-foreground mb-3">{m.magnet_type}</p>
+          <div className="flex gap-3 text-xs text-muted-foreground">
+            <span>{m.views || 0} views</span>
+            <span>{m.submissions || 0} submissions</span>
+          </div>
+        </Card>
+      ))}
     </div>
   );
 }

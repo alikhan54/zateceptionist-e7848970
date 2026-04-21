@@ -20,11 +20,12 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Target, Plus, TrendingUp, DollarSign, MousePointerClick,
   BarChart3, Eye, Pause, Play, Trash2, RefreshCw, Zap,
   ArrowLeft, Settings, Megaphone, Search, Image, Video,
-  ExternalLink, Copy, FileText, Sparkles, Brain,
+  ExternalLink, Copy, FileText, Sparkles, Brain, HelpCircle,
 } from "lucide-react";
 
 const fmt = (v: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(v);
@@ -64,6 +65,7 @@ export default function AdsManager() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isCreativeDialogOpen, setIsCreativeDialogOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("overview");
 
   // Create campaign form
   const [formName, setFormName] = useState("");
@@ -385,6 +387,16 @@ export default function AdsManager() {
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <Target className="h-6 w-6 text-primary" /> Ads Manager
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help inline ml-1" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-[280px] text-xs">
+                    Manage ad campaigns across Google and Meta. Ad Intelligence analyzes competitors to generate winning ad scripts.
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </h1>
             <p className="text-sm text-muted-foreground">AI-powered Google Ads + Meta Ads campaigns</p>
           </div>
@@ -400,7 +412,7 @@ export default function AdsManager() {
         </div>
       </div>
 
-      <Tabs defaultValue="overview">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="w-full justify-start">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
@@ -431,6 +443,59 @@ export default function AdsManager() {
               </Card>
             ))}
           </div>
+
+          {/* Ad Intelligence summary */}
+          <Card className="border-purple-200 dark:border-purple-800">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Brain className="h-4 w-4 text-purple-500" />
+                Ad Intelligence
+                <Badge variant="secondary" className="text-purple-600 bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300">AI-Powered</Badge>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-[250px]">
+                      AI analyzes competitor ads and generates winning scripts tailored to your industry
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Competitor ad patterns analyzed by AI to give you an unfair advantage
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                <div className="text-center p-3 rounded-lg bg-purple-500/10">
+                  <p className="text-xl font-bold text-purple-500">{intelReports?.length || 0}</p>
+                  <p className="text-xs text-muted-foreground">Intelligence Reports</p>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-blue-500/10">
+                  <p className="text-xl font-bold text-blue-500">{competitorAds?.length || 0}</p>
+                  <p className="text-xs text-muted-foreground">Competitor Ads Indexed</p>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-green-500/10">
+                  <p className="text-xl font-bold text-green-500">
+                    {(intelReports || []).reduce(
+                      (sum: number, r: any) => sum + ((r.generated_scripts as any[])?.length || 0),
+                      0
+                    )}
+                  </p>
+                  <p className="text-xs text-muted-foreground">AI Scripts Ready</p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => setActiveTab("intelligence")}
+              >
+                View Full Intelligence Report →
+              </Button>
+            </CardContent>
+          </Card>
 
           {/* Platform split */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

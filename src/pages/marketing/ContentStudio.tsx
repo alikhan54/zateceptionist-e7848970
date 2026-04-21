@@ -10,6 +10,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { callWebhook } from '@/lib/api/webhooks';
@@ -38,7 +40,9 @@ import {
   Eye,
   Zap,
   RotateCw,
-  Palette
+  Palette,
+  Radio,
+  HelpCircle
 } from 'lucide-react';
 
 type ContentType = 'social_media' | 'email' | 'blog' | 'whatsapp' | 'ad_copy' | 'social' | 'video' | 'sms' | 'ad';
@@ -92,6 +96,7 @@ export default function ContentStudio() {
   const [libraryFilter, setLibraryFilter] = useState<string>('all');
   const [editItem, setEditItem] = useState<any | null>(null);
   const [editContent, setEditContent] = useState('');
+  const [selectedItem, setSelectedItem] = useState<any | null>(null);
   const [repurposingId, setRepurposingId] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -257,7 +262,19 @@ export default function ContentStudio() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Content Studio</h1>
+          <h1 className="text-3xl font-bold flex items-center">
+            Content Studio
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help inline ml-2" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[280px] text-xs">
+                  Generate content with AI → save to library → send to Social Commander to schedule & publish
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </h1>
           <p className="text-muted-foreground mt-1">AI-powered content creation and management</p>
         </div>
         <div className="flex gap-2">
@@ -427,7 +444,11 @@ export default function ContentStudio() {
               {filteredLibrary.map((item: any) => {
                 const typeConfig = contentTypeConfig[item.content_type] || contentTypeConfig.blog;
                 return (
-                  <Card key={item.id} className="flex flex-col">
+                  <Card
+                    key={item.id}
+                    className="flex flex-col cursor-pointer hover:shadow-md transition-shadow"
+                    onClick={() => { setSelectedItem(item); setEditContent(item.body || item.summary || ''); }}
+                  >
                     <CardHeader className="pb-2">
                       <div className="flex items-start justify-between">
                         <Badge className={typeConfig.color}>{typeConfig.icon}<span className="ml-1">{typeConfig.label}</span></Badge>
@@ -444,7 +465,7 @@ export default function ContentStudio() {
                         <span className="flex items-center gap-1"><Share2 className="h-3 w-3" />{item.shares || 0}</span>
                       </div>
                     </CardContent>
-                    <div className="p-4 pt-0 flex gap-2">
+                    <div className="p-4 pt-0 flex gap-2" onClick={e => e.stopPropagation()}>
                       <Button variant="outline" size="sm" onClick={() => handleCopyContent(item.body || '')}><Copy className="h-4 w-4" /></Button>
                       <Button variant="outline" size="sm" onClick={() => handleRepurpose(item)} disabled={repurposingId === item.id}>
                         {repurposingId === item.id ? <RefreshCw className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />}
@@ -590,6 +611,64 @@ export default function ContentStudio() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Content Detail Slide-over */}
+      <Sheet open={!!selectedItem} onOpenChange={(open) => { if (!open) setSelectedItem(null); }}>
+        <SheetContent className="w-[500px] sm:w-[600px] overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              {selectedItem && contentTypeConfig[selectedItem.content_type]?.label}
+              {selectedItem?.ai_generated && <Badge variant="secondary">AI</Badge>}
+            </SheetTitle>
+            <SheetDescription>View full content, edit, or publish</SheetDescription>
+          </SheetHeader>
+          {selectedItem && (
+            <div className="mt-6 space-y-4">
+              <div>
+                <label className="text-sm font-medium">Title</label>
+                <p className="mt-1 text-sm text-muted-foreground">{selectedItem.title}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Content</label>
+                <Textarea
+                  className="mt-1 min-h-[200px] text-sm"
+                  defaultValue={selectedItem.body || selectedItem.summary || ''}
+                  onChange={(e) => setEditContent(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-4 text-sm text-muted-foreground items-center">
+                <span className="flex items-center gap-1"><Eye className="h-3 w-3" /> {selectedItem.views || 0} views</span>
+                <Badge variant="outline">{selectedItem.status}</Badge>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button
+                  className="flex-1"
+                  onClick={() => { handleCopyContent(editContent || selectedItem.body || ''); }}
+                >
+                  <Copy className="h-4 w-4 mr-2" /> Copy
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => { handleRepurpose(selectedItem); setSelectedItem(null); }}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" /> Repurpose
+                </Button>
+              </div>
+              <Button
+                variant="secondary"
+                className="w-full"
+                onClick={() => { window.location.href = '/marketing/social'; }}
+              >
+                <Radio className="h-4 w-4 mr-2" /> Send to Social Commander
+              </Button>
+              <p className="text-xs text-muted-foreground text-center pt-2">
+                💡 Tip: Use Repurpose to create variations for different platforms automatically
+              </p>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

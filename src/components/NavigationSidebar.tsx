@@ -117,6 +117,9 @@ import {
   Microscope,
   Wrench,
   Ship,
+  Compass,
+  Radio,
+  Bot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -403,39 +406,52 @@ export function NavigationSidebar() {
     featureKey: "marketing_module",
     items: [
       { title: "Marketing Hub", url: "/marketing", icon: Megaphone },
-      { title: "Content AI", url: "/marketing/content", icon: PenTool, children: [
+
+      // CREATE & PUBLISH — everything about making + publishing
+      { title: "Create & Publish", url: "/marketing/content", icon: PenTool, children: [
         { title: "Content Studio", url: "/marketing/content", icon: PenTool },
         { title: "Blog Manager", url: "/marketing/blogs", icon: FileText },
-        { title: "Landing Pages", url: "/marketing/landing", icon: Globe },
-        { title: "Page Builder", url: "/marketing/page-builder", icon: LayoutTemplate },
-        { title: "Lead Magnets", url: "/marketing/lead-magnets", icon: Magnet },
         { title: "Email AI", url: "/marketing/email", icon: Mail },
-      ]},
-      { title: "Social Commander", url: "/marketing/social", icon: Share2, children: [
+        { title: "Video Studio", url: "/marketing/video-studio", icon: Film },
+        { title: "Social Commander", url: "/marketing/social", icon: Radio },
         { title: "Social Listening", url: "/marketing/social-listening", icon: Ear },
       ]},
-      { title: "Video AI", url: "/marketing/video-studio", icon: Film, children: [
-        { title: "Video Studio", url: "/marketing/video-studio", icon: Film },
+
+      // PAGES & CAPTURE
+      { title: "Pages & Capture", url: "/marketing/landing", icon: Globe, children: [
+        { title: "Landing Pages", url: "/marketing/landing", icon: Globe },
+        { title: "Page Builder", url: "/marketing/page-builder", icon: LayoutTemplate },
       ]},
-      { title: "Campaign Central", url: "/marketing/campaigns", icon: Send, children: [
+
+      // CAMPAIGNS
+      { title: "Campaigns", url: "/marketing/campaigns", icon: Send, children: [
         { title: "Ads Manager", url: "/marketing/ads", icon: Target },
         { title: "A/B Testing", url: "/marketing/ab-testing", icon: GitBranch },
-        { title: "Marketing Sequences", url: "/marketing/sequences", icon: Layers },
+        { title: "Sequences", url: "/marketing/sequences", icon: Layers },
         { title: "Content Calendar", url: "/marketing/calendar", icon: CalendarDays },
       ]},
+
+      // INTELLIGENCE
       { title: "Intelligence", url: "/marketing/analytics", icon: PieChart, children: [
         { title: "Marketing Analytics", url: "/marketing/analytics", icon: PieChart },
         { title: "Competitor Intel", url: "/marketing/competitors", icon: Eye },
         { title: "SEO Dashboard", url: "/marketing/seo", icon: Search },
         { title: "AEO Dashboard", url: "/marketing/aeo-dashboard", icon: Brain },
-        { title: "Target Accounts", url: "/sales/target-accounts", icon: Crosshair },
       ]},
-      { title: "Brand Voice", url: "/marketing/brand-voice", icon: Palette, children: [
+
+      // STRATEGY
+      { title: "Strategy", url: "/marketing/brand-voice", icon: Compass, children: [
+        { title: "Brand Voice", url: "/marketing/brand-voice", icon: Palette },
         { title: "Playbooks", url: "/marketing/playbooks", icon: BookOpen },
+        { title: "Influencer Hub", url: "/marketing/influencers", icon: Users },
+        { title: "Dream Clients", url: "/sales/target-accounts", icon: Crosshair },
       ]},
-      { title: "Influencer Hub", url: "/marketing/influencers", icon: Users },
-      { title: "Voice Marketing", url: "/marketing/voice", icon: Phone },
-      { title: "Autonomous Mode", url: "/marketing/autonomous", icon: Zap },
+
+      // AUTOMATION
+      { title: "Automation", url: "/marketing/voice", icon: Zap, children: [
+        { title: "Voice Marketing", url: "/marketing/voice", icon: Phone },
+        { title: "Autonomous Mode", url: "/marketing/autonomous", icon: Bot },
+      ]},
     ],
   };
 
