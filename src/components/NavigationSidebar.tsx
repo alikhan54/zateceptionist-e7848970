@@ -120,6 +120,7 @@ import {
   Compass,
   Radio,
   Bot,
+  CloudLightning,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -156,7 +157,7 @@ export function NavigationSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, isAdmin, isMasterAdmin, authUser, hasPermission } = useAuth();
-  const { tenantConfig, translate, tenantId, setTenantId, isRestaurant, isBankingCollections, isHealthcareClinic, isConstructionEstimation, isRealEstate, isYouTubeAgency, isLaboratoryInstruments } = useTenant();
+  const { tenantConfig, translate, tenantId, setTenantId, isRestaurant, isBankingCollections, isHealthcareClinic, isConstructionEstimation, isRealEstate, isYouTubeAgency, isLaboratoryInstruments, isRoofing } = useTenant();
   const { isEnabled } = useFeatureFlags();
   const { toast } = useToast();
 
@@ -580,6 +581,17 @@ export function NavigationSidebar() {
     ],
   };
 
+  const roofingSection: NavSection = {
+    label: "Roofing",
+    collapsible: true,
+    items: [
+      { title: "Inspections", url: "/roofing/inspections", icon: ClipboardCheck },
+      { title: "Insurance Claims", url: "/roofing/insurance-claims", icon: ShieldCheck },
+      { title: "Warranty Tracker", url: "/roofing/warranty", icon: CalendarClock },
+      { title: "Storm Alerts", url: "/roofing/storm-alerts", icon: CloudLightning },
+    ],
+  };
+
   const youtubeAgencySection: NavSection = {
     label: "YouTube Agency",
     collapsible: true,
@@ -963,6 +975,11 @@ export function NavigationSidebar() {
         {/* Estimation Section — Construction industry only */}
         {isConstructionEstimation && canAccessSection(estimationSection) && (
           <CollapsibleSection section={estimationSection} sectionKey="estimation" />
+        )}
+
+        {/* Roofing Section — Roofing industry only (rewerck-roofing etc) */}
+        {isRoofing && canAccessSection(roofingSection) && (
+          <CollapsibleSection section={roofingSection} sectionKey="roofing" />
         )}
 
         {/* YouTube Agency Section — YouTube Agency industry only */}

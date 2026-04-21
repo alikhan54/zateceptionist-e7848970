@@ -436,6 +436,7 @@ interface TenantContextType {
   isHealthcareStaffing: boolean;
   isYouTubeAgency: boolean;
   isLaboratoryInstruments: boolean;
+  isRoofing: boolean;
   refreshConfig: () => Promise<void>;
 }
 
@@ -638,6 +639,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const isHealthcareStaffing = industry === "healthcare_staffing";
   const isYouTubeAgency = industry === "youtube_agency";
   const isLaboratoryInstruments = industry === "laboratory_instruments";
+  const isRoofing = industry === "roofing";
 
   useEffect(() => {
     fetchTenantConfig();
@@ -668,6 +670,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         isHealthcareStaffing,
         isYouTubeAgency,
         isLaboratoryInstruments,
+        isRoofing,
         refreshConfig: fetchTenantConfig,
       }}
     >

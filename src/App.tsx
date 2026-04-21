@@ -178,6 +178,13 @@ const EstimationRFIs = lazy(() => import("./pages/estimation/RFITracker"));
 const EstimationReports = lazy(() => import("./pages/estimation/EstimationReports"));
 const EstimationApprovalQueue = lazy(() => import("./pages/estimation/EstimationApprovalQueue"));
 
+// Roofing Module — pages are always registered in router; NavigationSidebar gates visibility
+// via isRoofing flag. Data isolation is enforced at query level (eq tenant_id).
+const RoofingInsuranceClaims = lazy(() => import("./pages/roofing/InsuranceClaims"));
+const RoofingWarrantyTracker = lazy(() => import("./pages/roofing/WarrantyTracker"));
+const RoofingStormAlerts = lazy(() => import("./pages/roofing/StormAlerts"));
+const RoofingInspectionCalendar = lazy(() => import("./pages/roofing/InspectionCalendar"));
+
 // YouTube Agency Module
 const YouTubeDiscovery = lazy(() => import("./pages/youtube/Discovery"));
 const YouTubePipeline = lazy(() => import("./pages/youtube/Pipeline"));
@@ -1251,6 +1258,13 @@ const App = () => (
                   <Route path="/estimation/rfis" element={<LazyPage><EstimationRFIs /></LazyPage>} />
                   <Route path="/estimation/reports" element={<LazyPage><EstimationReports /></LazyPage>} />
                   <Route path="/estimation/approval" element={<LazyPage><EstimationApprovalQueue /></LazyPage>} />
+
+                  {/* Roofing Module — rewerck-roofing + future roofing tenants */}
+                  <Route path="/roofing" element={<Navigate to="/roofing/inspections" replace />} />
+                  <Route path="/roofing/insurance-claims" element={<LazyPage><RoofingInsuranceClaims /></LazyPage>} />
+                  <Route path="/roofing/warranty" element={<LazyPage><RoofingWarrantyTracker /></LazyPage>} />
+                  <Route path="/roofing/storm-alerts" element={<LazyPage><RoofingStormAlerts /></LazyPage>} />
+                  <Route path="/roofing/inspections" element={<LazyPage><RoofingInspectionCalendar /></LazyPage>} />
 
                   {/* YouTube Agency Module */}
                   <Route path="/youtube" element={<Navigate to="/youtube/discovery" replace />} />
