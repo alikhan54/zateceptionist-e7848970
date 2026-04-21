@@ -73,6 +73,19 @@ export default function PublicLandingPage() {
     };
   }, [page]);
 
+  // Increment view counter (fire-and-forget, silent on error)
+  // TECH DEBT: For high-concurrency traffic, migrate to an RPC like
+  // increment_premium_page_views (which already exists for premium pages).
+  // Direct update is acceptable for current low-traffic landing pages.
+  useEffect(() => {
+    if (!page?.id) return;
+    (supabase as any)
+      .from('landing_pages')
+      .update({ views: (page.views || 0) + 1 })
+      .eq('id', page.id)
+      .then(() => {}, () => {}); // silent both ways
+  }, [page?.id]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTenant } from "@/contexts/TenantContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase, callWebhook, WEBHOOKS } from "@/integrations/supabase/client";
+import { callWebhookWithTimeout } from "@/lib/api/webhooks";
 import { logSystemEvent } from "@/lib/api/systemEvents";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -91,9 +92,10 @@ export default function BlogManager() {
 
   const generateContent = async (post: any) => {
     setGeneratingId(post.id);
-    toast({ title: "🤖 AI is writing your blog post...", description: `Generating content for "${post.title}"` });
+    toast({ title: "🤖 AI is writing your blog post...", description: `Generating content for "${post.title}" — this can take 1-3 minutes` });
     try {
-      const result = await callWebhook(WEBHOOKS.GENERATE_CONTENT, {
+      // Use 5-minute timeout (Ollama blog gen takes 60-180s; default fetch timeout can abort prematurely)
+      const result = await callWebhookWithTimeout(WEBHOOKS.GENERATE_CONTENT, {
         blog_id: post.id,
         topic: post.title,
         keyword: post.primary_keyword || '',
@@ -101,7 +103,7 @@ export default function BlogManager() {
         tone: 'professional',
         length: 'long',
         brand_voice: brandPrompt,
-      }, tenantConfig?.id || '');
+      }, tenantConfig?.id || '', 300000);
 
       if (result.success) {
         const content = (result.data as any)?.content || (result.data as any)?.html || '';
@@ -114,10 +116,16 @@ export default function BlogManager() {
             published_at: new Date().toISOString(),
             canonical_url: `${window.location.origin}/blog/${titleSlug || post.id}`,
           }).eq("id", post.id);
+          queryClient.invalidateQueries({ queryKey: ["blog_posts"] });
+          toast({ title: "Post published! AEO scoring started." });
+          logSystemEvent({ tenantId: tenantConfig?.id || '', eventType: 'blog_generated', sourceModule: 'marketing', eventData: { blog_title: post.title, blog_id: post.id } });
+        } else {
+          // Webhook responded OK but no content returned
+          queryClient.invalidateQueries({ queryKey: ["blog_posts"] });
+          toast({ title: "Generation returned empty", description: "The AI responded but produced no content. Try again.", variant: "destructive" });
+          setGeneratingId(null);
+          return;
         }
-        queryClient.invalidateQueries({ queryKey: ["blog_posts"] });
-        toast({ title: "Post published! AEO scoring started." });
-        logSystemEvent({ tenantId: tenantConfig?.id || '', eventType: 'blog_generated', sourceModule: 'marketing', eventData: { blog_title: post.title, blog_id: post.id } });
 
         // Auto-repurpose on publish — fire-and-forget
         callWebhook(WEBHOOKS.REPURPOSE_CONTENT, {
@@ -168,7 +176,14 @@ export default function BlogManager() {
           contentId: post.id,
         });
       } else {
-        toast({ title: "Generation Failed", description: result.error || "Could not generate", variant: "destructive" });
+        if (result.error === "TIMEOUT") {
+          toast({
+            title: "AI is still working...",
+            description: "Generation exceeded 5 minutes. Check back in a few minutes — the post may appear when ready.",
+          });
+        } else {
+          toast({ title: "Generation Failed", description: result.error || "Could not generate", variant: "destructive" });
+        }
       }
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });

@@ -682,7 +682,7 @@ export default function LandingPages() {
           </div>
 
           {/* Existing lead magnets list */}
-          <LeadMagnetsEmbed tenantId={tenantConfig?.id} />
+          <LeadMagnetsEmbed tenantId={tenantConfig?.id} tenantSlug={(tenantConfig as any)?.tenant_id} />
         </TabsContent>
       </Tabs>
 
@@ -749,17 +749,20 @@ export default function LandingPages() {
   );
 }
 
-// NOTE: lead_magnets uses SLUG tenant_id='zateceptionist' (not UUID like other tables).
-// Hardcoded slug for now — flag for future migration to UUID consistency.
-function LeadMagnetsEmbed({ tenantId }: { tenantId?: string }) {
+// NOTE: lead_magnets.tenant_id is TEXT type storing SLUG (e.g. 'zateceptionist'),
+// NOT UUID like other marketing tables. Deliberate inconsistency from older schema.
+// Using tenantSlug prop (tenantConfig.tenant_id) for dynamic multi-tenant support;
+// falls back to 'zateceptionist' if no slug available. Full migration to UUID
+// would require a DB migration + n8n workflow updates (out of scope here).
+function LeadMagnetsEmbed({ tenantId, tenantSlug }: { tenantId?: string; tenantSlug?: string }) {
   const { data: magnets = [] } = useQuery({
-    queryKey: ["lead_magnets_embed", tenantId],
+    queryKey: ["lead_magnets_embed", tenantSlug],
     queryFn: async () => {
       if (!tenantId) return [];
       const { data } = await (supabase as any)
         .from("lead_magnets")
         .select("*")
-        .eq("tenant_id", "zateceptionist")
+        .eq("tenant_id", tenantSlug || "zateceptionist")
         .order("created_at", { ascending: false });
       return data || [];
     },

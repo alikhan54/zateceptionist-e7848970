@@ -15,6 +15,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { useTenant } from "@/contexts/TenantContext";
 import { useSocialPosts, useSocialAccounts } from "@/hooks/useSocialPosts";
@@ -492,7 +493,11 @@ export default function SocialCommander() {
               const config = platformConfig[post.platform] || platformConfig.instagram;
               const PlatformIcon = config.icon;
               return (
-                <Card key={post.id} className="hover:shadow-md transition-shadow">
+                <Card
+                  key={post.id}
+                  className="cursor-pointer hover:shadow-lg transition-all"
+                  onClick={() => setSelectedPost(post)}
+                >
                   <CardContent className="p-4 flex items-start gap-4">
                     {post.media_urls?.[0] && <img src={post.media_urls[0]} alt="" className="w-24 h-24 rounded-lg object-cover" />}
                     <div className="flex-1">
@@ -821,6 +826,137 @@ export default function SocialCommander() {
           sourceTitle={repurposePost.post_text?.substring(0, 60) || "Social Post"}
         />
       )}
+
+      {/* Post Detail Slide-over */}
+      <Sheet open={!!selectedPost} onOpenChange={(open) => { if (!open) setSelectedPost(null); }}>
+        <SheetContent className="w-[520px] sm:w-[640px] overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              {selectedPost && (() => {
+                const cfg = platformConfig[selectedPost.platform] || platformConfig.instagram;
+                const Icon = cfg.icon;
+                return (
+                  <>
+                    <Icon className={`h-5 w-5 ${cfg.color}`} />
+                    <span>{selectedPost.platform.charAt(0).toUpperCase() + selectedPost.platform.slice(1)} Post</span>
+                    <PostStatusBadge post={selectedPost} />
+                  </>
+                );
+              })()}
+            </SheetTitle>
+            <SheetDescription>Full post details and engagement metrics</SheetDescription>
+          </SheetHeader>
+          {selectedPost && (
+            <div className="mt-6 space-y-5">
+              {/* Media preview */}
+              {selectedPost.media_urls?.[0] && (
+                <img
+                  src={selectedPost.media_urls[0]}
+                  alt="Post media"
+                  className="w-full rounded-lg object-cover max-h-64"
+                />
+              )}
+
+              {/* Full post text */}
+              <div>
+                <label className="text-sm font-medium flex items-center gap-2 mb-2">Post Content</label>
+                <div className="p-3 rounded-lg bg-muted text-sm whitespace-pre-wrap">
+                  {selectedPost.post_text}
+                </div>
+              </div>
+
+              {/* Schedule/platform */}
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="p-3 rounded-lg bg-muted/50">
+                  <p className="text-xs text-muted-foreground mb-1">Scheduled</p>
+                  <p className="font-medium">
+                    {selectedPost.scheduled_at
+                      ? format(new Date(selectedPost.scheduled_at), "MMM d, yyyy h:mm a")
+                      : "Immediate"}
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg bg-muted/50">
+                  <p className="text-xs text-muted-foreground mb-1">Platform</p>
+                  <p className="font-medium capitalize">{selectedPost.platform}</p>
+                </div>
+              </div>
+
+              {/* Engagement metrics */}
+              {selectedPost.status === "published" && (
+                <div>
+                  <p className="text-sm font-medium mb-3">Engagement</p>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[
+                      { label: "Likes", value: selectedPost.likes_count || 0, emoji: "❤️" },
+                      { label: "Comments", value: selectedPost.comments_count || 0, emoji: "💬" },
+                      { label: "Shares", value: selectedPost.shares_count || 0, emoji: "🔄" },
+                      { label: "Impressions", value: (selectedPost.impressions || 0).toLocaleString(), emoji: "👁" },
+                    ].map((m) => (
+                      <div key={m.label} className="text-center p-2 rounded-lg bg-muted/50">
+                        <p className="text-lg">{m.emoji}</p>
+                        <p className="font-bold text-sm">{m.value}</p>
+                        <p className="text-xs text-muted-foreground">{m.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {selectedPost.engagement_rate > 0 && (
+                    <div className="mt-2 p-2 rounded-lg bg-green-500/10 text-center">
+                      <span className="text-sm font-medium text-green-600">
+                        {selectedPost.engagement_rate}% engagement rate
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Error banner */}
+              {selectedPost.status === "failed" && selectedPost.error_message && (
+                <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+                  <p className="text-xs font-medium text-red-600 mb-1">Error</p>
+                  <p className="text-xs text-red-600">{selectedPost.error_message}</p>
+                </div>
+              )}
+
+              {/* Platform link */}
+              <PlatformLink post={selectedPost} />
+
+              {/* Actions */}
+              <div className="flex gap-2 pt-2 border-t">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    navigator.clipboard.writeText(selectedPost.post_text || "");
+                    toast({ title: "Copied to clipboard!" });
+                  }}
+                >
+                  <Copy className="h-4 w-4 mr-2" /> Copy
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    setRepurposePost(selectedPost);
+                    setSelectedPost(null);
+                  }}
+                >
+                  <Recycle className="h-4 w-4 mr-2" /> Repurpose
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  onClick={() => {
+                    handleDeletePost(selectedPost.id);
+                    setSelectedPost(null);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
