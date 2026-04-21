@@ -210,6 +210,7 @@ const CustomReports = lazy(() => import("./pages/analytics/Reports"));
 const AIInsights = lazy(() => import("./pages/analytics/AIInsights"));
 const Predictions = lazy(() => import("./pages/analytics/Predictions"));
 const AutonomousHealth = lazy(() => import("./pages/analytics/AutonomousHealth"));
+const EngagementResponder = lazy(() => import("./pages/marketing/EngagementResponder"));
 
 // Settings Module
 const GeneralSettings = lazy(() => import("./pages/settings/General"));
@@ -845,6 +846,14 @@ const App = () => (
                     element={
                       <LazyPage>
                         <AutonomousMarketing />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/marketing/engagement-responder"
+                    element={
+                      <LazyPage>
+                        <EngagementResponder />
                       </LazyPage>
                     }
                   />

@@ -451,6 +451,7 @@ export function NavigationSidebar() {
       { title: "Automation", url: "/marketing/voice", icon: Zap, children: [
         { title: "Voice Marketing", url: "/marketing/voice", icon: Phone },
         { title: "Autonomous Mode", url: "/marketing/autonomous", icon: Bot },
+        { title: "Engagement Responder", url: "/marketing/engagement-responder", icon: MessageCircle },
       ]},
     ],
   };
