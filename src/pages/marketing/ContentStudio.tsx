@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTenant } from '@/contexts/TenantContext';
 import { useMarketingContent, useTrendInsights } from '@/hooks/useMarketingContent';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -78,6 +79,7 @@ const languages = [
 ];
 
 export default function ContentStudio() {
+  const navigate = useNavigate();
   const { tenantId, tenantConfig, isLoading: tenantLoading } = useTenant();
   const { toast } = useToast();
   const { brandPrompt, hasBrandVoice } = useBrandVoice();
@@ -253,6 +255,162 @@ export default function ContentStudio() {
     const matchesFilter = libraryFilter === 'all' || item.content_type === libraryFilter;
     return matchesSearch && matchesFilter;
   });
+
+  // Premium content type preview — returns platform-specific JSX mockup
+  const renderContentPreview = (item: any) => {
+    const type = (item.content_type || '').toLowerCase();
+    const brandInitial = ((tenantConfig?.company_name || 'Z')[0] || 'Z').toUpperCase();
+    const brandName = tenantConfig?.company_name || 'Your Brand';
+    const bodyContent = item.body || item.summary || 'No content preview available';
+
+    // SOCIAL MEDIA
+    if (type.includes('social')) {
+      return (
+        <div className="rounded-xl border overflow-hidden">
+          <div className="flex items-center gap-2 p-3 border-b bg-muted/40">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
+              {brandInitial}
+            </div>
+            <div>
+              <p className="text-xs font-semibold leading-none">{brandName}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Sponsored · {item.platform || 'Social'}
+              </p>
+            </div>
+            <div className="ml-auto">
+              <Badge variant="secondary" className="text-[10px]">
+                {item.platform || 'Post'}
+              </Badge>
+            </div>
+          </div>
+          <div className="p-4">
+            <p className="text-sm leading-relaxed">{bodyContent}</p>
+          </div>
+          <div className="px-4 pb-3 flex gap-4 text-xs text-muted-foreground border-t pt-2.5">
+            <span className="flex items-center gap-1">👍 Like</span>
+            <span className="flex items-center gap-1">💬 Comment</span>
+            <span className="flex items-center gap-1">↗️ Share</span>
+          </div>
+        </div>
+      );
+    }
+
+    // BLOG ARTICLE
+    if (type.includes('blog')) {
+      return (
+        <div className="rounded-xl border overflow-hidden">
+          <div className="h-1.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500" />
+          <div className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-6 h-6 rounded bg-blue-500/20 flex items-center justify-center">
+                <FileText className="h-3 w-3 text-blue-500" />
+              </div>
+              <span className="text-xs font-medium text-blue-500 uppercase tracking-wide">
+                Blog Article
+              </span>
+            </div>
+            <p className="text-sm leading-relaxed text-foreground">{bodyContent}</p>
+            {item.primary_keyword && (
+              <div className="mt-3 flex items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">Keyword:</span>
+                <Badge variant="outline" className="text-xs">{item.primary_keyword}</Badge>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // EMAIL NEWSLETTER
+    if (type.includes('email')) {
+      return (
+        <div className="rounded-xl border overflow-hidden">
+          <div className="bg-zinc-100 dark:bg-zinc-800 px-4 py-3 border-b space-y-1.5">
+            <div className="flex gap-2 items-center">
+              <span className="text-xs text-muted-foreground w-10 shrink-0">From:</span>
+              <span className="text-xs font-medium">
+                {brandName} &lt;hello@zatesystems.com&gt;
+              </span>
+            </div>
+            <div className="flex gap-2 items-start">
+              <span className="text-xs text-muted-foreground w-10 shrink-0">Subj:</span>
+              <span className="text-xs font-semibold leading-tight">
+                {item.title || item.meta_title || 'Email Subject'}
+              </span>
+            </div>
+          </div>
+          <div className="p-4 bg-white dark:bg-zinc-900">
+            <p className="text-sm leading-relaxed text-zinc-900 dark:text-zinc-100">
+              {bodyContent}
+            </p>
+            <div className="mt-4 inline-block">
+              <div className="px-4 py-2 rounded bg-purple-600 text-white text-xs font-medium">
+                View in Browser →
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // WHATSAPP
+    if (type.includes('whatsapp')) {
+      return (
+        <div className="rounded-xl overflow-hidden" style={{ background: '#0b1418' }}>
+          <div className="flex items-center gap-2 p-3 border-b border-white/10">
+            <div className="w-8 h-8 rounded-full bg-green-600 flex items-center justify-center text-white text-xs font-bold">
+              {brandInitial}
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-white">{brandName}</p>
+              <p className="text-xs text-green-400">Business Account ✓</p>
+            </div>
+          </div>
+          <div className="p-4">
+            <div className="flex justify-end">
+              <div
+                className="max-w-[85%] rounded-lg rounded-tr-none px-3 py-2.5"
+                style={{ background: '#005c4b' }}
+              >
+                <p className="text-sm leading-relaxed text-white">{bodyContent}</p>
+                <p className="text-[10px] text-green-300 text-right mt-1.5">Now ✓✓</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // AD COPY
+    if (type.includes('ad')) {
+      return (
+        <div className="rounded-xl border overflow-hidden">
+          <div className="bg-white dark:bg-zinc-900 p-4">
+            <p className="text-xs text-green-700 dark:text-green-400 font-medium mb-1">
+              Ad · zatesystems.com
+            </p>
+            <p className="text-blue-600 dark:text-blue-400 text-base font-medium leading-snug mb-1 hover:underline cursor-pointer">
+              {item.title || 'Ad Headline'}
+            </p>
+            <p className="text-sm text-zinc-900 dark:text-zinc-100 leading-relaxed">
+              {bodyContent}
+            </p>
+          </div>
+          <div className="bg-zinc-50 dark:bg-zinc-800/50 px-4 py-2 border-t flex items-center gap-2">
+            <Badge variant="outline" className="text-[10px]">Sponsored</Badge>
+            <span className="text-xs text-muted-foreground">Google / Meta Ads</span>
+          </div>
+        </div>
+      );
+    }
+
+    // DEFAULT
+    return (
+      <div className="rounded-xl bg-muted/30 p-4 border">
+        <p className="text-sm leading-relaxed whitespace-pre-wrap">{bodyContent}</p>
+      </div>
+    );
+  };
 
   if (tenantLoading) {
     return <div className="space-y-6"><Skeleton className="h-10 w-64" /><Skeleton className="h-96" /></div>;
@@ -493,6 +651,32 @@ export default function ContentStudio() {
             </Button>
           </div>
 
+          {/* Staleness banner — shows when latest trend is >3 days old */}
+          {trends.length > 0 && (() => {
+            const latest = trends[0];
+            if (!latest?.created_at) return null;
+            const daysAgo = Math.floor(
+              (Date.now() - new Date(latest.created_at).getTime()) / (1000 * 60 * 60 * 24)
+            );
+            if (daysAgo < 3) return null;
+            return (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 px-4 py-2.5 flex items-center justify-between">
+                <span className="text-amber-700 dark:text-amber-400 text-sm">
+                  ⚠️ Trends last refreshed {daysAgo} days ago
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => refreshTrends.mutateAsync()}
+                  disabled={refreshTrends.isPending}
+                  className="border-amber-300 text-amber-700 hover:bg-amber-100 dark:border-amber-800 dark:text-amber-400"
+                >
+                  {refreshTrends.isPending ? 'Refreshing...' : 'Refresh Now'}
+                </Button>
+              </div>
+            );
+          })()}
+
           {trendsLoading ? (
             <div className="grid gap-4 md:grid-cols-2">
               {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-32" />)}
@@ -612,59 +796,78 @@ export default function ContentStudio() {
         </TabsContent>
       </Tabs>
 
-      {/* Content Detail Slide-over */}
+      {/* Content Detail Slide-over — premium 5-type preview */}
       <Sheet open={!!selectedItem} onOpenChange={(open) => { if (!open) setSelectedItem(null); }}>
-        <SheetContent className="w-[500px] sm:w-[600px] overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
-              {selectedItem && contentTypeConfig[selectedItem.content_type]?.label}
-              {selectedItem?.ai_generated && <Badge variant="secondary">AI</Badge>}
+        <SheetContent className="w-[560px] sm:w-[680px] overflow-y-auto">
+          <SheetHeader className="pb-4 border-b">
+            <SheetTitle>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge className={contentTypeConfig[selectedItem?.content_type]?.color || 'bg-muted'}>
+                  {contentTypeConfig[selectedItem?.content_type]?.label || selectedItem?.content_type || 'Content'}
+                </Badge>
+                {selectedItem?.ai_generated && (
+                  <Badge variant="secondary" className="gap-1">
+                    <Sparkles className="h-3 w-3" /> AI
+                  </Badge>
+                )}
+                {selectedItem?.status && (
+                  <Badge variant="outline" className="text-xs">{selectedItem.status}</Badge>
+                )}
+                <div className="ml-auto flex items-center gap-3 text-xs font-normal text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Eye className="h-3 w-3" />
+                    {(selectedItem?.views || 0).toLocaleString()}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Share2 className="h-3 w-3" />
+                    {(selectedItem?.shares || 0).toLocaleString()}
+                  </span>
+                </div>
+              </div>
             </SheetTitle>
-            <SheetDescription>View full content, edit, or publish</SheetDescription>
+            <SheetDescription className="sr-only">Full content preview</SheetDescription>
+            <p className="font-semibold text-base leading-snug mt-2 text-foreground">
+              {selectedItem?.title}
+            </p>
           </SheetHeader>
+
           {selectedItem && (
-            <div className="mt-6 space-y-4">
-              <div>
-                <label className="text-sm font-medium">Title</label>
-                <p className="mt-1 text-sm text-muted-foreground">{selectedItem.title}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Content</label>
-                <Textarea
-                  className="mt-1 min-h-[200px] text-sm"
-                  defaultValue={selectedItem.body || selectedItem.summary || ''}
-                  onChange={(e) => setEditContent(e.target.value)}
-                />
-              </div>
-              <div className="flex gap-4 text-sm text-muted-foreground items-center">
-                <span className="flex items-center gap-1"><Eye className="h-3 w-3" /> {selectedItem.views || 0} views</span>
-                <Badge variant="outline">{selectedItem.status}</Badge>
-              </div>
+            <div className="mt-5 space-y-4">
+              {renderContentPreview(selectedItem)}
+
+              <p className="text-xs text-muted-foreground text-center mt-3 italic opacity-70">
+                💡 Preview shows teaser. Full content is generated on publish.
+              </p>
+
+              {/* Actions */}
               <div className="flex gap-2 pt-2">
                 <Button
                   className="flex-1"
-                  onClick={() => { handleCopyContent(editContent || selectedItem.body || ''); }}
+                  size="sm"
+                  onClick={() => {
+                    handleCopyContent(selectedItem.body || selectedItem.summary || '');
+                    toast({ title: 'Copied to clipboard!' });
+                  }}
                 >
-                  <Copy className="h-4 w-4 mr-2" /> Copy
+                  <Copy className="h-4 w-4 mr-1.5" /> Copy Content
                 </Button>
                 <Button
                   variant="outline"
+                  size="sm"
                   className="flex-1"
                   onClick={() => { handleRepurpose(selectedItem); setSelectedItem(null); }}
                 >
-                  <RefreshCw className="h-4 w-4 mr-2" /> Repurpose
+                  <RefreshCw className="h-4 w-4 mr-1.5" /> Repurpose
                 </Button>
               </div>
               <Button
                 variant="secondary"
                 className="w-full"
-                onClick={() => { window.location.href = '/marketing/social'; }}
+                size="sm"
+                onClick={() => navigate('/marketing/social')}
               >
                 <Radio className="h-4 w-4 mr-2" /> Send to Social Commander
               </Button>
-              <p className="text-xs text-muted-foreground text-center pt-2">
-                💡 Tip: Use Repurpose to create variations for different platforms automatically
-              </p>
             </div>
           )}
         </SheetContent>

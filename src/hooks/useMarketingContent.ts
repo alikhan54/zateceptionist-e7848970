@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/contexts/TenantContext';
+import { callWebhookWithTimeout, WEBHOOKS } from '@/lib/api/webhooks';
 
 export type ContentType = 'blog' | 'social' | 'video' | 'email' | 'ad' | 'sms' | 'whatsapp';
 
@@ -115,13 +116,16 @@ export function useTrendInsights(options?: { minScore?: number; limit?: number }
 
   const refreshTrends = useMutation({
     mutationFn: async () => {
-      const response = await fetch('https://webhooks.zatesystems.com/webhook/1d12af48-bda7-4a01-b4b6-c5f1612712f1', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenant_id: tenantUuid }),
-      });
-      if (!response.ok) throw new Error('Failed');
-      return response.json();
+      // Use callWebhookWithTimeout (2 min) — Ollama trend generation can be slow.
+      // Previously this used raw fetch() with default browser timeout, which aborted prematurely.
+      const result = await callWebhookWithTimeout(
+        WEBHOOKS.REFRESH_TRENDS,
+        { tenant_id: tenantUuid },
+        tenantUuid || '',
+        120000
+      );
+      if (!result.success) throw new Error(result.error || 'Failed to refresh trends');
+      return result.data;
     },
     onSuccess: () => { toast({ title: 'Refreshing Trends' }); },
   });

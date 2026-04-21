@@ -53,6 +53,12 @@ function extractHashtags(text: string): string[] {
   return text.match(/#\w+/g) || [];
 }
 
+// Detect if a media URL is a video (used for Social post slide-over media render)
+function isVideoUrl(url: string): boolean {
+  if (!url) return false;
+  return /\.(mp4|webm|mov|avi|mkv)$/i.test(url) || url.includes('/videos/') || url.includes('/video/');
+}
+
 function stripHtmlTags(text: string): string {
   return text.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').trim();
 }
@@ -848,13 +854,57 @@ export default function SocialCommander() {
           </SheetHeader>
           {selectedPost && (
             <div className="mt-6 space-y-5">
-              {/* Media preview */}
+              {/* Platform mockup with video/image auto-detect */}
               {selectedPost.media_urls?.[0] && (
-                <img
-                  src={selectedPost.media_urls[0]}
-                  alt="Post media"
-                  className="w-full rounded-lg object-cover max-h-64"
-                />
+                <div className="rounded-xl border overflow-hidden">
+                  <div className="flex items-center gap-2 p-3 border-b bg-muted/40">
+                    {(() => {
+                      const cfg = platformConfig[selectedPost.platform] || platformConfig.instagram;
+                      const PIcon = cfg.icon;
+                      return (
+                        <>
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                            Z
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold leading-none">zateceptionist</p>
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <PIcon className={`h-3 w-3 ${cfg.color}`} />
+                              <span className="text-xs text-muted-foreground capitalize">
+                                {selectedPost.platform}
+                              </span>
+                            </div>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+
+                  {isVideoUrl(selectedPost.media_urls[0]) ? (
+                    <video
+                      src={selectedPost.media_urls[0]}
+                      controls
+                      muted
+                      className="w-full max-h-64 bg-black"
+                      preload="metadata"
+                    />
+                  ) : (
+                    <img
+                      src={selectedPost.media_urls[0]}
+                      alt="Post media"
+                      className="w-full aspect-square object-cover"
+                    />
+                  )}
+
+                  <div className="p-3 border-t">
+                    <p className="text-sm leading-relaxed line-clamp-3">{selectedPost.post_text}</p>
+                  </div>
+                  <div className="px-3 pb-3 flex gap-4 text-xs text-muted-foreground">
+                    <span>❤️ {selectedPost.likes_count || 0}</span>
+                    <span>💬 {selectedPost.comments_count || 0}</span>
+                    <span>📤 {selectedPost.shares_count || 0}</span>
+                  </div>
+                </div>
               )}
 
               {/* Full post text */}

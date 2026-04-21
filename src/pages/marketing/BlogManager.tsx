@@ -397,10 +397,38 @@ export default function BlogManager() {
                         <Badge variant="outline" className="text-xs"><Sparkles className="h-3 w-3 mr-1" /> AI</Badge>
                       )}
                       <Badge variant={post.status === "published" ? "default" : "secondary"}>{post.status}</Badge>
-                      {post.seo_score != null && (
+                      {post.seo_score != null && post.seo_score > 0 ? (
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${getSeoColor(post.seo_score)}`}>
                           SEO: {post.seo_score}/100
                         </span>
+                      ) : (
+                        <button
+                          className="text-xs px-2 py-0.5 rounded-full font-medium border border-dashed border-muted-foreground/40 text-muted-foreground hover:border-purple-400 hover:text-purple-500 transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            callWebhookWithTimeout(
+                              WEBHOOKS.SEO_ANALYZE,
+                              {
+                                tenant_id: tenantConfig?.id,
+                                content_type: "blog_post",
+                                content_id: post.id,
+                                url: post.canonical_url || `${window.location.origin}/blog/${post.slug || post.id}`,
+                                title: post.title,
+                                content: (post.content_html || '').replace(/<[^>]+>/g, '').substring(0, 1000),
+                                keywords: post.primary_keyword || '',
+                              },
+                              tenantConfig?.id || '',
+                              60000
+                            ).then(() => {
+                              queryClient.invalidateQueries({ queryKey: ["blog_posts", tenantConfig?.id] });
+                              toast({ title: "SEO analysis started", description: "Score will update shortly" });
+                            }).catch(() => {
+                              toast({ title: "SEO analysis failed", variant: "destructive" });
+                            });
+                          }}
+                        >
+                          SEO: Analyze ✦
+                        </button>
                       )}
                     </div>
 
