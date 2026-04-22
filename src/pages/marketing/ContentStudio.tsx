@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
+import { formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { callWebhook } from '@/lib/api/webhooks';
 import { WEBHOOKS, supabase } from '@/integrations/supabase/client';
@@ -103,6 +104,49 @@ export default function ContentStudio() {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
+
+  // Content Intelligence Engine — topic input + dialog state
+  const [ciDialogOpen, setCiDialogOpen] = useState(false);
+  const [ciTopic, setCiTopic] = useState('');
+  const [ciSubmitting, setCiSubmitting] = useState(false);
+
+  // Platform filter chips (separate from the libraryFilter Select above — works across all types)
+  const [platformFilter, setPlatformFilter] = useState<string>('all');
+
+  // Fetch social_post_queue rows to surface generated images in the slide-over
+  // (marketing_content has no image_url column; images live in social_post_queue.media_urls)
+  const { data: postQueueRows = [] } = useQuery({
+    queryKey: ['social_post_queue_for_preview', tenantConfig?.id],
+    queryFn: async () => {
+      if (!tenantConfig?.id) return [];
+      const { data } = await supabase
+        .from('social_post_queue')
+        .select('platform, content, media_urls, created_at')
+        .eq('tenant_id', tenantConfig.id)
+        .order('created_at', { ascending: false })
+        .limit(100);
+      return (data || []) as any[];
+    },
+    enabled: !!tenantConfig?.id,
+  });
+
+  // Given a marketing_content row, find the matching queue row's image (if any)
+  const findImageForItem = (item: any): string | null => {
+    if (!item) return null;
+    const platform = (item.platform || item.content_type || '').toLowerCase();
+    if (!platform) return null;
+    const bodyKey = (item.body || '').slice(0, 50);
+    if (!bodyKey) return null;
+    const match = postQueueRows.find((q: any) =>
+      q.platform === platform &&
+      typeof q.content === 'string' &&
+      q.content.slice(0, 50) === bodyKey
+    );
+    if (match && Array.isArray(match.media_urls) && match.media_urls.length > 0) {
+      return match.media_urls[0] || null;
+    }
+    return null;
+  };
 
   // Media library query — fetch files from Supabase Storage 'media' bucket
   const { data: mediaFiles = [] } = useQuery({
@@ -253,8 +297,51 @@ export default function ContentStudio() {
   const filteredLibrary = content.filter((item: any) => {
     const matchesSearch = (item.title || '').toLowerCase().includes(librarySearch.toLowerCase()) || (item.body || '').toLowerCase().includes(librarySearch.toLowerCase());
     const matchesFilter = libraryFilter === 'all' || item.content_type === libraryFilter;
-    return matchesSearch && matchesFilter;
+    const matchesPlatform = platformFilter === 'all'
+      || item.platform === platformFilter
+      || item.content_type === platformFilter;
+    return matchesSearch && matchesFilter && matchesPlatform;
   });
+
+  // Generate via Content Intelligence Engine (Phase 1 workflow)
+  const handleCiGenerate = async () => {
+    const slug = (tenantConfig as any)?.tenant_id || '';
+    if (!slug) {
+      toast({ title: 'No tenant configured', variant: 'destructive' });
+      return;
+    }
+    if (!ciTopic.trim()) {
+      toast({ title: 'Enter a topic', variant: 'destructive' });
+      return;
+    }
+    setCiSubmitting(true);
+    try {
+      // Fire and forget — EarlyOK pattern returns ~2s, generation runs async
+      callWebhook(WEBHOOKS.CONTENT_INTELLIGENCE, {
+        tenant_id: slug,
+        topic: ciTopic.trim(),
+      }, tenantConfig?.id || '').catch(() => {});
+
+      toast({
+        title: '✨ Generating 6 variants across all channels...',
+        description: 'Instagram, Facebook, LinkedIn, WhatsApp, Email, Blog. Content will appear in ~2-3 min.',
+      });
+      setCiDialogOpen(false);
+      setCiTopic('');
+
+      // Ollama takes 1-3 min to generate 6 variants — schedule a query refresh at 30s, 90s, 180s
+      [30000, 90000, 180000].forEach(delay => {
+        setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: ['marketing_content'] });
+          queryClient.invalidateQueries({ queryKey: ['social_post_queue_for_preview'] });
+        }, delay);
+      });
+    } catch (err: any) {
+      toast({ title: 'Failed to start generation', description: err?.message, variant: 'destructive' });
+    } finally {
+      setCiSubmitting(false);
+    }
+  };
 
   // Premium content type preview — returns platform-specific JSX mockup
   const renderContentPreview = (item: any) => {
@@ -262,9 +349,10 @@ export default function ContentStudio() {
     const brandInitial = ((tenantConfig?.company_name || 'Z')[0] || 'Z').toUpperCase();
     const brandName = tenantConfig?.company_name || 'Your Brand';
     const bodyContent = item.body || item.summary || 'No content preview available';
+    const imageUrl = findImageForItem(item);
 
-    // SOCIAL MEDIA
-    if (type.includes('social')) {
+    // SOCIAL MEDIA (includes instagram/facebook/linkedin/social_media/social)
+    if (type.includes('social') || type === 'instagram' || type === 'facebook' || type === 'linkedin') {
       return (
         <div className="rounded-xl border overflow-hidden">
           <div className="flex items-center gap-2 p-3 border-b bg-muted/40">
@@ -283,8 +371,16 @@ export default function ContentStudio() {
               </Badge>
             </div>
           </div>
+          {imageUrl && (
+            <img
+              src={imageUrl}
+              alt="Generated post image"
+              className="w-full aspect-square object-cover bg-muted"
+              loading="lazy"
+            />
+          )}
           <div className="p-4">
-            <p className="text-sm leading-relaxed">{bodyContent}</p>
+            <p className="text-sm leading-relaxed whitespace-pre-wrap">{bodyContent}</p>
           </div>
           <div className="px-4 pb-3 flex gap-4 text-xs text-muted-foreground border-t pt-2.5">
             <span className="flex items-center gap-1">👍 Like</span>
@@ -369,11 +465,21 @@ export default function ContentStudio() {
           <div className="p-4">
             <div className="flex justify-end">
               <div
-                className="max-w-[85%] rounded-lg rounded-tr-none px-3 py-2.5"
+                className="max-w-[85%] rounded-lg rounded-tr-none overflow-hidden"
                 style={{ background: '#005c4b' }}
               >
-                <p className="text-sm leading-relaxed text-white">{bodyContent}</p>
-                <p className="text-[10px] text-green-300 text-right mt-1.5">Now ✓✓</p>
+                {imageUrl && (
+                  <img
+                    src={imageUrl}
+                    alt="Generated WhatsApp image"
+                    className="w-full max-h-48 object-cover"
+                    loading="lazy"
+                  />
+                )}
+                <div className="px-3 py-2.5">
+                  <p className="text-sm leading-relaxed text-white whitespace-pre-wrap">{bodyContent}</p>
+                  <p className="text-[10px] text-green-300 text-right mt-1.5">Now ✓✓</p>
+                </div>
               </div>
             </div>
           </div>
@@ -435,7 +541,14 @@ export default function ContentStudio() {
           </h1>
           <p className="text-muted-foreground mt-1">AI-powered content creation and management</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            onClick={() => setCiDialogOpen(true)}
+            className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+            size="sm"
+          >
+            <Sparkles className="h-4 w-4 mr-1.5" /> Generate
+          </Button>
           <Badge variant="outline" className="gap-1"><FileText className="h-3 w-3" />{contentStats.total} items</Badge>
           <Badge variant="outline" className="gap-1"><Sparkles className="h-3 w-3" />{contentStats.aiGenerated} AI</Badge>
           <Badge variant="outline" className="gap-1"><Eye className="h-3 w-3" />{contentStats.totalViews} views</Badge>
@@ -591,6 +704,33 @@ export default function ContentStudio() {
             </Select>
           </div>
 
+          {/* Platform filter chips — filters by item.platform (per-channel variant) */}
+          <div className="flex flex-wrap gap-2 items-center">
+            <span className="text-xs text-muted-foreground mr-1">Platform:</span>
+            {[
+              { value: 'all', label: 'All' },
+              { value: 'instagram', label: 'Instagram' },
+              { value: 'facebook', label: 'Facebook' },
+              { value: 'linkedin', label: 'LinkedIn' },
+              { value: 'whatsapp', label: 'WhatsApp' },
+              { value: 'email', label: 'Email' },
+              { value: 'blog', label: 'Blog' },
+              { value: 'ad_copy', label: 'Ad Copy' },
+            ].map(chip => {
+              const isActive = platformFilter === chip.value;
+              return (
+                <Badge
+                  key={chip.value}
+                  variant={isActive ? 'default' : 'outline'}
+                  className={`cursor-pointer transition-colors ${isActive ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
+                  onClick={() => setPlatformFilter(chip.value)}
+                >
+                  {chip.label}
+                </Badge>
+              );
+            })}
+          </div>
+
           {contentLoading ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-48" />)}
@@ -614,6 +754,11 @@ export default function ContentStudio() {
                           {item.ai_generated && <Badge variant="outline" className="text-xs"><Sparkles className="h-3 w-3 mr-1" />AI</Badge>}
                         </div>
                       </div>
+                      {item.created_at && (
+                        <p className="text-[11px] text-muted-foreground mt-1">
+                          {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
+                        </p>
+                      )}
                       <CardTitle className="text-base mt-2 line-clamp-1">{item.title}</CardTitle>
                     </CardHeader>
                     <CardContent className="flex-1">
@@ -878,6 +1023,43 @@ export default function ContentStudio() {
           )}
         </SheetContent>
       </Sheet>
+
+      {/* Content Intelligence — Generate topic dialog */}
+      <Dialog open={ciDialogOpen} onOpenChange={setCiDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-purple-500" />
+              Generate Content
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Topic</Label>
+              <Input
+                placeholder="e.g. AI automation for SMBs"
+                value={ciTopic}
+                onChange={e => setCiTopic(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && ciTopic.trim()) handleCiGenerate(); }}
+                autoFocus
+              />
+              <p className="text-xs text-muted-foreground">
+                Generates 6 variants: Instagram, Facebook, LinkedIn, WhatsApp, Email, and a Blog post — each tuned to the platform with brand voice.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCiDialogOpen(false)}>Cancel</Button>
+            <Button
+              onClick={handleCiGenerate}
+              disabled={!ciTopic.trim() || ciSubmitting}
+              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+            >
+              {ciSubmitting ? <><RefreshCw className="h-4 w-4 mr-1.5 animate-spin" />Starting...</> : <><Sparkles className="h-4 w-4 mr-1.5" />Generate 6 Variants</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

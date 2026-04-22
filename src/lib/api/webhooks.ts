@@ -43,6 +43,7 @@ export const WEBHOOKS = {
   REPURPOSE_CONTENT: "/marketing/repurpose-content",
   VOICE_CALL: "/marketing/voice-call",
   SEO_ANALYZE: "/seo-analyze",
+  CONTENT_INTELLIGENCE: "/content-intelligence",
 
   // HR
   EMPLOYEE_ONBOARDING: "/hr/employee-onboarding-v2",
