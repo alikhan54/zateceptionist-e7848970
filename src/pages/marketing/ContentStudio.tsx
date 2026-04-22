@@ -651,12 +651,18 @@ export default function ContentStudio() {
             </Button>
           </div>
 
-          {/* Staleness banner — shows when latest trend is >3 days old */}
+          {/* Staleness banner — shows when latest trend is >3 days old.
+              NOTE: trends are ordered by ai_relevance_score DESC in the hook,
+              so trends[0] is the HIGHEST-SCORE trend, not the newest by date.
+              Use reduce() to find the actual newest by discovered_at. */}
           {trends.length > 0 && (() => {
-            const latest = trends[0];
-            if (!latest?.created_at) return null;
+            const latest = trends.reduce(
+              (a: any, b: any) => new Date(a.discovered_at) > new Date(b.discovered_at) ? a : b,
+              trends[0]
+            );
+            if (!latest?.discovered_at) return null;
             const daysAgo = Math.floor(
-              (Date.now() - new Date(latest.created_at).getTime()) / (1000 * 60 * 60 * 24)
+              (Date.now() - new Date(latest.discovered_at).getTime()) / (1000 * 60 * 60 * 24)
             );
             if (daysAgo < 3) return null;
             return (
