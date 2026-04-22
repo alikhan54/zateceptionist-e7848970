@@ -12,6 +12,7 @@ import { useTenant } from '@/contexts/TenantContext';
 import { callWebhook, WEBHOOKS } from '@/lib/api/webhooks';
 import { OnboardingData, ONBOARDING_STEPS } from '@/pages/onboarding/constants';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ReadyStepProps {
   data: OnboardingData;
@@ -33,14 +34,52 @@ export default function ReadyStep({ data, updateData }: ReadyStepProps) {
   const [trainingStatus, setTrainingStatus] = useState<Record<string, 'pending' | 'training' | 'done' | 'error'>>({});
   const [isTraining, setIsTraining] = useState(false);
   const [trainingComplete, setTrainingComplete] = useState(false);
+  const [showSkipButton, setShowSkipButton] = useState(false);
+  const [isSkipping, setIsSkipping] = useState(false);
 
-  // Auto-start training on mount
+  // Auto-start training once tenantId is available (fixes race condition
+  // where useEffect fired before TenantContext finished loading tenantId)
   useEffect(() => {
-    if (!data.trainingComplete && !isTraining) {
+    if (!tenantId) return;
+    if (!data.trainingComplete && !isTraining && !trainingComplete) {
       trainAgents();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [tenantId]);
+
+  // Stuck detection: if nothing completes within 10s, offer a skip button
+  useEffect(() => {
+    if (data.trainingComplete || trainingComplete) return;
+    const timer = setTimeout(() => {
+      if (!trainingComplete && !data.trainingComplete) {
+        setShowSkipButton(true);
+      }
+    }, 10000);
+    return () => clearTimeout(timer);
+  }, [trainingComplete, data.trainingComplete]);
+
+  const handleSkipToDashboard = async () => {
+    setIsSkipping(true);
+    try {
+      if (tenantId) {
+        await supabase
+          .from('tenant_config')
+          .update({
+            onboarding_completed: true,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('tenant_id', tenantId);
+      }
+    } catch (e) {
+      console.warn('Skip onboarding_completed update failed:', e);
+    }
+    updateData({ trainingComplete: true });
+    toast({
+      title: 'Continuing to dashboard',
+      description: 'AI training will continue in the background.',
+    });
+    navigate('/dashboard');
+  };
 
   const trainAgents = async () => {
     setIsTraining(true);
@@ -227,6 +266,36 @@ export default function ReadyStep({ data, updateData }: ReadyStepProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Stuck detection: offer skip button if training hasn't progressed */}
+      {showSkipButton && !trainingComplete && (
+        <Card className="border-amber-300 bg-amber-50 dark:bg-amber-950/20">
+          <CardContent className="pt-6 space-y-3">
+            <p className="text-sm text-amber-900 dark:text-amber-200">
+              Training is taking longer than expected. You can continue to your dashboard —
+              AI training will finish in the background.
+            </p>
+            <Button
+              variant="outline"
+              onClick={handleSkipToDashboard}
+              disabled={isSkipping}
+              className="w-full"
+            >
+              {isSkipping ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Continuing...
+                </>
+              ) : (
+                <>
+                  Skip to Dashboard
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Summary */}
       {trainingComplete && (
