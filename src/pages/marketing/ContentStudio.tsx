@@ -130,6 +130,25 @@ export default function ContentStudio() {
     enabled: !!tenantConfig?.id,
   });
 
+  // Dedicated fetch for the TRUE latest trend_insights.discovered_at.
+  // Bypasses useTrendInsights' ai_relevance_score filter which hides recent
+  // low-score trends and makes the staleness banner think trends are 60+ days old.
+  const { data: latestTrendDate } = useQuery({
+    queryKey: ['latest_trend_date', tenantConfig?.id],
+    queryFn: async (): Promise<string | null> => {
+      if (!tenantConfig?.id) return null;
+      const { data } = await supabase
+        .from('trend_insights')
+        .select('discovered_at')
+        .eq('tenant_id', tenantConfig.id)
+        .order('discovered_at', { ascending: false })
+        .limit(1);
+      return (data?.[0]?.discovered_at as string | undefined) ?? null;
+    },
+    enabled: !!tenantConfig?.id,
+    staleTime: 60_000,
+  });
+
   // Given a marketing_content row, find the matching queue row's image (if any)
   const findImageForItem = (item: any): string | null => {
     if (!item) return null;
@@ -796,18 +815,12 @@ export default function ContentStudio() {
             </Button>
           </div>
 
-          {/* Staleness banner — shows when latest trend is >3 days old.
-              NOTE: trends are ordered by ai_relevance_score DESC in the hook,
-              so trends[0] is the HIGHEST-SCORE trend, not the newest by date.
-              Use reduce() to find the actual newest by discovered_at. */}
-          {trends.length > 0 && (() => {
-            const latest = trends.reduce(
-              (a: any, b: any) => new Date(a.discovered_at) > new Date(b.discovered_at) ? a : b,
-              trends[0]
-            );
-            if (!latest?.discovered_at) return null;
+          {/* Staleness banner — shows when the newest trend in DB is >3 days old.
+              Uses dedicated latestTrendDate query that ignores the ai_relevance_score
+              filter (so recent low-score trends count toward "freshness"). */}
+          {latestTrendDate && (() => {
             const daysAgo = Math.floor(
-              (Date.now() - new Date(latest.discovered_at).getTime()) / (1000 * 60 * 60 * 24)
+              (Date.now() - new Date(latestTrendDate).getTime()) / (1000 * 60 * 60 * 24)
             );
             if (daysAgo < 3) return null;
             return (

@@ -53,10 +53,11 @@ function extractHashtags(text: string): string[] {
   return text.match(/#\w+/g) || [];
 }
 
-// Detect if a media URL is a video (used for Social post slide-over media render)
+// Detect if a media URL is a video — extension-only (path-based checks
+// false-positively match FLUX PNG images stored under /videos/... paths).
 function isVideoUrl(url: string): boolean {
   if (!url) return false;
-  return /\.(mp4|webm|mov|avi|mkv)$/i.test(url) || url.includes('/videos/') || url.includes('/video/');
+  return /\.(mp4|webm|mov|avi|mkv)(\?|$)/i.test(url);
 }
 
 function stripHtmlTags(text: string): string {
@@ -449,12 +450,22 @@ export default function SocialCommander() {
                     const PlatformIcon = config.icon;
                     return (
                       <div key={post.id} className="flex items-start gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors">
-                        {post.media_urls?.[0] && <img src={post.media_urls[0]} alt="" className="w-20 h-20 rounded-lg object-cover" />}
+                        {post.media_urls?.[0] && (
+                          isVideoUrl(post.media_urls[0])
+                            ? <video src={post.media_urls[0]} muted playsInline preload="metadata" className="w-20 h-20 rounded-lg object-cover bg-black shrink-0" />
+                            : <img src={post.media_urls[0]} alt="" className="w-20 h-20 rounded-lg object-cover shrink-0" />
+                        )}
                         <div className="flex-1 min-w-0">
                           <p className="text-sm line-clamp-2">{post.post_text}</p>
                           <div className="flex items-center gap-2 mt-2">
                             <PlatformIcon className={`h-4 w-4 ${config.color}`} />
-                            <span className="text-xs text-muted-foreground ml-2">{post.scheduled_at ? format(new Date(post.scheduled_at), "MMM d, h:mm a") : "No date"}</span>
+                            <span className="text-xs text-muted-foreground ml-2">
+                              {post.scheduled_at
+                                ? format(new Date(post.scheduled_at), "MMM d, h:mm a")
+                                : post.status === 'draft' && post.created_at
+                                  ? `Draft · ${formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}`
+                                  : "No date"}
+                            </span>
                           </div>
                           {post.status === "published" && (
                             <div className="space-y-1 mt-2">
@@ -505,13 +516,23 @@ export default function SocialCommander() {
                   onClick={() => setSelectedPost(post)}
                 >
                   <CardContent className="p-4 flex items-start gap-4">
-                    {post.media_urls?.[0] && <img src={post.media_urls[0]} alt="" className="w-24 h-24 rounded-lg object-cover" />}
+                    {post.media_urls?.[0] && (
+                      isVideoUrl(post.media_urls[0])
+                        ? <video src={post.media_urls[0]} muted playsInline preload="metadata" className="w-24 h-24 rounded-lg object-cover bg-black shrink-0" />
+                        : <img src={post.media_urls[0]} alt="" className="w-24 h-24 rounded-lg object-cover shrink-0" />
+                    )}
                     <div className="flex-1">
                       <p className="text-sm">{post.post_text}</p>
                       <div className="flex items-center gap-2 mt-2">
                         <PlatformIcon className={`h-4 w-4 ${config.color}`} />
                         <PostStatusBadge post={post} />
-                        <span className="text-xs text-muted-foreground">{post.scheduled_at ? format(new Date(post.scheduled_at), "MMM d, h:mm a") : ""}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {post.scheduled_at
+                            ? format(new Date(post.scheduled_at), "MMM d, h:mm a")
+                            : post.status === 'draft' && post.created_at
+                              ? `Draft · ${formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}`
+                              : ""}
+                        </span>
                       </div>
                       {post.status === "published" && (
                         <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
