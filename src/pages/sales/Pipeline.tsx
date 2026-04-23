@@ -407,6 +407,16 @@ function ContactCard({ contact, deals = [], onSelect, onMoveStage }: ContactCard
         {contact.consent_status === "opted_out" && (
           <Badge variant="destructive" className="text-xs">Opted Out</Badge>
         )}
+        {(contact.lead_status?.startsWith("archived_") || contact.sequence_status === "archived") && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+            Archived
+          </span>
+        )}
+        {contact.status === "disqualified" && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20">
+            Disqualified
+          </span>
+        )}
       </div>
 
       {/* Contact Info */}
@@ -983,6 +993,7 @@ export default function Pipeline() {
   const [showDetail, setShowDetail] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [temperatureFilter, setTemperatureFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<"active" | "include_archived" | "include_disqualified" | "all">("active");
   const [sortBy, setSortBy] = useState<"lead_score" | "intent_score">("lead_score");
   const [dragOverStage, setDragOverStage] = useState<string | null>(null);
 
@@ -993,18 +1004,37 @@ export default function Pipeline() {
     isLoading: contactsLoading,
     refetch: refetchContacts,
   } = useQuery({
-    queryKey: ["sales_leads", "pipeline", tenantId],
+    queryKey: ["sales_leads", "pipeline", tenantId, statusFilter],
     queryFn: async () => {
       if (!tenantId) return [];
-      
-      console.log("[Pipeline] Fetching sales_leads with tenant SLUG:", tenantId);
 
-      const { data, error } = await supabase
+      console.log("[Pipeline] Fetching sales_leads with tenant SLUG:", tenantId, "statusFilter:", statusFilter);
+
+      // Build query with conditional archived/disqualified filters
+      let query = supabase
         .from("sales_leads")
         .select("*")
         .eq("tenant_id", tenantId) // SLUG — sales_leads uses TEXT tenant_id
-        .not("lead_status", "eq", "lost")
-        .order("lead_score", { ascending: false, nullsFirst: false });
+        .not("lead_status", "eq", "lost");
+
+      if (statusFilter === "active") {
+        // Hide both archived and disqualified
+        query = query
+          .neq("status", "disqualified")
+          .not("lead_status", "like", "archived_%")
+          .or("sequence_status.is.null,sequence_status.neq.archived");
+      } else if (statusFilter === "include_archived") {
+        // Show archived, still hide disqualified
+        query = query.neq("status", "disqualified");
+      } else if (statusFilter === "include_disqualified") {
+        // Show disqualified, still hide archived
+        query = query
+          .not("lead_status", "like", "archived_%")
+          .or("sequence_status.is.null,sequence_status.neq.archived");
+      }
+      // statusFilter === "all" → no extra filters
+
+      const { data, error } = await query.order("lead_score", { ascending: false, nullsFirst: false });
 
       if (error) {
         console.error("[Pipeline] Error fetching sales_leads:", error);
@@ -1379,6 +1409,17 @@ export default function Pipeline() {
             <SelectItem value="HOT">🔥 Hot Only</SelectItem>
             <SelectItem value="WARM">🌡️ Warm Only</SelectItem>
             <SelectItem value="COLD">❄️ Cold Only</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
+          <SelectTrigger className="w-44">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="active">Active only</SelectItem>
+            <SelectItem value="include_archived">Include archived</SelectItem>
+            <SelectItem value="include_disqualified">Include disqualified</SelectItem>
+            <SelectItem value="all">Show everything</SelectItem>
           </SelectContent>
         </Select>
         <Select value={sortBy} onValueChange={(v) => setSortBy(v as "lead_score" | "intent_score")}>
