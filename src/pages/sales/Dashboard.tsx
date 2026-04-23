@@ -112,7 +112,7 @@ export default function SalesDashboard() {
       const { data, error } = await supabase
         .from("sales_leads")
         .select("id, lead_score, score, lead_temperature, temperature, lead_grade, lead_status, status, pipeline_stage, sequence_status, source, created_at")
-        .eq("tenant_id", tenantConfig?.id); // SLUG — sales_leads uses TEXT tenant_id
+        .eq("tenant_id", tenantId); // SLUG — sales_leads uses TEXT tenant_id
       if (error) {
         console.error("[SalesDashboard] Error fetching sales_leads:", error);
         throw error;
@@ -188,7 +188,7 @@ export default function SalesDashboard() {
         const { data: leads } = await supabase
           .from("sales_leads")
           .select("emails_sent, calls_made, whatsapp_sent")
-          .eq("tenant_id", tenantConfig?.id);
+          .eq("tenant_id", tenantId);
 
         const emailsSent = leads?.reduce((sum, l) => sum + (l.emails_sent || 0), 0) || 0;
         const callsMade = leads?.reduce((sum, l) => sum + (l.calls_made || 0), 0) || 0;

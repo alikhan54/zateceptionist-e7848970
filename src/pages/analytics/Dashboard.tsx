@@ -42,7 +42,7 @@ export default function AnalyticsDashboard() {
       const { data } = await supabase
         .from('sales_leads')
         .select('temperature')
-        .eq('tenant_id', tenantConfig?.id);
+        .eq('tenant_id', tenantId);
       const counts = { hot: 0, warm: 0, cold: 0 };
       (data || []).forEach((l: any) => {
         const t = (l.temperature || 'cold').toLowerCase();

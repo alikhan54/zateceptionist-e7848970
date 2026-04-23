@@ -235,7 +235,7 @@ export function useLeadSourceAnalytics() {
       const { data, error } = await supabase
         .from('sales_leads')
         .select('source, status')
-        .eq('tenant_id', tenantConfig?.id);
+        .eq('tenant_id', tenantId);
 
       if (error) throw error;
 

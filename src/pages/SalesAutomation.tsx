@@ -183,7 +183,7 @@ export default function SalesAutomationPage() {
         supabase
           .from('sales_leads')
           .select('*')
-          .eq('tenant_id', tenantConfig?.id)
+          .eq('tenant_id', tenantId)
           .order('created_at', { ascending: false })
           .limit(100),
         supabase

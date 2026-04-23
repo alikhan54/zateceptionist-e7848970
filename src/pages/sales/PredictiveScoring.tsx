@@ -105,7 +105,7 @@ export default function PredictiveScoring() {
       const { data, error } = await supabase
         .from("sales_leads")
         .select("id, contact_name, company_name, name, company")
-        .eq("tenant_id", tenantConfig?.id)
+        .eq("tenant_id", tenantId)
         .in("id", leadIds);
       if (error) return {};
       const map: Record<string, any> = {};

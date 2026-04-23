@@ -170,7 +170,7 @@ export default function PhoneNumbers() {
       const { data } = await supabase
         .from("sales_leads")
         .select("country")
-        .eq("tenant_id", tenantConfig?.id);
+        .eq("tenant_id", tenantId);
       if (!data) return [];
       const counts: Record<string, number> = {};
       data.forEach((l: any) => {
