@@ -406,12 +406,12 @@ export default function Inbox() {
     queryFn: async () => {
       if (!tenantId && !tenantUuid) return [];
 
-      // Try UUID first (for conversations relationship)
+      // customers uses SLUG tenant_id; filter by tenantId (SLUG)
       let query = supabase.from("customers").select("*");
-      if (tenantUuid) {
-        query = query.eq("tenant_id", tenantUuid);
-      } else if (tenantId) {
+      if (tenantId) {
         query = query.eq("tenant_id", tenantId);
+      } else if (tenantUuid) {
+        query = query.eq("tenant_id", tenantUuid);
       }
 
       const { data, error } = await query;
@@ -643,8 +643,8 @@ export default function Inbox() {
       // Try with UUID first (matching conversations), then with slug
       let error;
 
-      // First attempt with UUID
-      if (tenantUuid) {
+      // First attempt with SLUG (customers is SLUG-keyed)
+      if (tenantId) {
         const result = await supabase
           .from("customers")
           .update({
@@ -654,7 +654,7 @@ export default function Inbox() {
             updated_at: new Date().toISOString(),
           })
           .eq("id", selectedConversation.contact_id)
-          .eq("tenant_id", tenantUuid);
+          .eq("tenant_id", tenantId);
 
         error = result.error;
 
@@ -713,21 +713,21 @@ export default function Inbox() {
       // Get existing notes - try UUID first then slug
       let customerData: any[] | null = null;
 
-      if (tenantUuid) {
-        const { data } = await supabase
-          .from("customers")
-          .select("notes")
-          .eq("id", customerId)
-          .eq("tenant_id", tenantUuid);
-        customerData = data;
-      }
-
-      if (!customerData?.length && tenantId) {
+      if (tenantId) {
         const { data } = await supabase
           .from("customers")
           .select("notes")
           .eq("id", customerId)
           .eq("tenant_id", tenantId);
+        customerData = data;
+      }
+
+      if (!customerData?.length && tenantUuid) {
+        const { data } = await supabase
+          .from("customers")
+          .select("notes")
+          .eq("id", customerId)
+          .eq("tenant_id", tenantUuid);
         customerData = data;
       }
 
@@ -737,25 +737,25 @@ export default function Inbox() {
         ? `${existingNotes}\n\n[${timestamp}] ${noteText.trim()}`
         : `[${timestamp}] ${noteText.trim()}`;
 
-      // Update - try UUID first then slug
+      // Update - try SLUG first (customers is SLUG-keyed), UUID as fallback
       let updateSuccess = false;
 
-      if (tenantUuid) {
-        const { error } = await supabase
-          .from("customers")
-          .update({ notes: newNotes, updated_at: new Date().toISOString() })
-          .eq("id", customerId)
-          .eq("tenant_id", tenantUuid);
-
-        if (!error) updateSuccess = true;
-      }
-
-      if (!updateSuccess && tenantId) {
+      if (tenantId) {
         const { error } = await supabase
           .from("customers")
           .update({ notes: newNotes, updated_at: new Date().toISOString() })
           .eq("id", customerId)
           .eq("tenant_id", tenantId);
+
+        if (!error) updateSuccess = true;
+      }
+
+      if (!updateSuccess && tenantUuid) {
+        const { error } = await supabase
+          .from("customers")
+          .update({ notes: newNotes, updated_at: new Date().toISOString() })
+          .eq("id", customerId)
+          .eq("tenant_id", tenantUuid);
 
         if (error) throw error;
       }
@@ -1015,17 +1015,8 @@ export default function Inbox() {
   // Consent
   const updateConsentMutation = useMutation({
     mutationFn: async ({ customerId, field, value }: { customerId: string; field: string; value: boolean }) => {
-      // Try both tenant IDs
+      // customers is SLUG-keyed; try SLUG first, UUID as fallback
       const updateData = { [field]: value, updated_at: new Date().toISOString() };
-
-      if (tenantUuid) {
-        const { error } = await supabase
-          .from("customers")
-          .update(updateData)
-          .eq("id", customerId)
-          .eq("tenant_id", tenantUuid);
-        if (!error) return;
-      }
 
       if (tenantId) {
         const { error } = await supabase
@@ -1033,6 +1024,15 @@ export default function Inbox() {
           .update(updateData)
           .eq("id", customerId)
           .eq("tenant_id", tenantId);
+        if (!error) return;
+      }
+
+      if (tenantUuid) {
+        const { error } = await supabase
+          .from("customers")
+          .update(updateData)
+          .eq("id", customerId)
+          .eq("tenant_id", tenantUuid);
         if (error) throw error;
       }
     },

@@ -162,7 +162,7 @@ export default function MarketingHub() {
       const { count: custCount } = await supabase
         .from('customers')
         .select('*', { count: 'exact', head: true })
-        .eq('tenant_id', (tenantConfig as any)?.tenant_id || tenantConfig?.id);
+        .eq('tenant_id', tenantId);
       checks.push({
         label: 'Contacts',
         status: (custCount || 0) >= 10 ? 'ok' : (custCount || 0) > 0 ? 'warn' : 'error',

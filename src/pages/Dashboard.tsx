@@ -190,7 +190,7 @@ export default function Dashboard() {
           .eq('tenant_id', tenantId)
           .in('status', ['scheduled', 'confirmed', 'pending']),
         supabase.from('sales_leads').select('*', { count: 'exact', head: true })
-          .eq('tenant_id', tenantConfig?.id)
+          .eq('tenant_id', tenantId)
       ]);
       
       return {
@@ -394,7 +394,7 @@ export default function Dashboard() {
       const { data, error } = await supabase
         .from('sales_leads')
         .select('id, company_name, contact_name, intent_score')
-        .eq('tenant_id', tenantConfig?.id)
+        .eq('tenant_id', tenantId)
         .neq('status', 'disqualified')
         .gte('intent_score', 40)
         .order('intent_score', { ascending: false })

@@ -39,7 +39,7 @@ export default function DashboardBriefing() {
       const { data } = await supabase
         .from("sales_leads")
         .select("lead_status, lead_score, enrichment_status, sequence_status, pipeline_stage, temperature, lead_temperature, updated_at")
-        .eq("tenant_id", tenantConfig?.id);
+        .eq("tenant_id", tenantId);
       return data || [];
     },
     enabled: !!tenantId,

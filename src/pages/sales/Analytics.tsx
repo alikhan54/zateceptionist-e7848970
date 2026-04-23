@@ -83,7 +83,7 @@ export default function SalesAnalytics() {
       const { data, error } = await supabase
         .from('sales_leads')
         .select('id, lead_status, pipeline_stage, source, lead_temperature, temperature, sequence_status, created_at, intent_score, behavioral_score, data_quality_score, consent_status, phone_type, phone, lead_score')
-        .eq('tenant_id', tenantConfig?.id);
+        .eq('tenant_id', tenantId);
       if (error) { console.warn("Query error:", error.message); return []; }
       return data || [];
     },
@@ -113,7 +113,7 @@ export default function SalesAnalytics() {
       const { data, error } = await supabase
         .from('sequences')
         .select('id, name, status, enrolled_count, steps')
-        .eq('tenant_id', tenantUuid)
+        .eq('tenant_id', tenantId)
         .order('enrolled_count', { ascending: false });
       if (error) { console.log('sequences query error', error); return []; }
       return data || [];

@@ -71,7 +71,7 @@ export default function MarketingSequences() {
       const { data } = await supabase
         .from('customers')
         .select('id, name, phone_number, email')
-        .eq('tenant_id', (tenantConfig as any)?.tenant_id || tenantConfig.id)
+        .eq('tenant_id', tenantId)
         .limit(100);
       return data || [];
     },
@@ -87,7 +87,7 @@ export default function MarketingSequences() {
       const { data } = await supabase
         .from('sales_leads')
         .select('id, contact_name, email, phone, temperature, lead_score')
-        .eq('tenant_id', tenantConfig?.id)
+        .eq('tenant_id', tenantId)
         .eq('temperature', 'hot')
         .in('lead_status', ['new', 'qualified', 'contacted'])
         .order('lead_score', { ascending: false })
