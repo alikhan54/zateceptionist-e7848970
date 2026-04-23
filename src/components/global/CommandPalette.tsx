@@ -362,11 +362,13 @@ export function CommandPalette() {
         if (!session.session?.user) return;
 
         // Check profiles table for master_admin role
+        // Use maybeSingle() so missing profile returns null cleanly
+        // instead of throwing PGRST116 / 406 in the browser console.
         const { data: profile } = await supabase
           .from("profiles")
           .select("role")
           .eq("id", session.session.user.id)
-          .single();
+          .maybeSingle();
 
         if (profile?.role === "master_admin") {
           setIsMasterAdmin(true);
