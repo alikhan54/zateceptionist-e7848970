@@ -143,6 +143,7 @@ export default function VideoStudio() {
   const [videoType, setVideoType] = useState("standard");      // "standard" | "avatar"
   const [selectedLanguage, setSelectedLanguage] = useState("en");
   const [abTestEnabled, setAbTestEnabled] = useState(false);
+  const [videoStyle, setVideoStyle] = useState<"standard" | "ad">("standard");  // Phase A1.5: ad/reel pacing
 
   // ============================================================
   // QUERIES
@@ -262,6 +263,8 @@ export default function VideoStudio() {
         cloud_model: videoProvider === "cloud" ? (cloudModel || "fal-ai/kling-video/v2/master") : "",
         script_engine: scriptEngine,
         language: selectedLanguage !== "en" ? selectedLanguage : undefined,
+        video_style: videoStyle,
+        music_mood: videoStyle === "ad" ? "energetic" : "tech",
       }, tid!);
       return result.data || result;
     },
@@ -401,6 +404,8 @@ export default function VideoStudio() {
           cloud_provider: videoProvider === "cloud" ? cloudProvider : "",
           cloud_model: videoProvider === "cloud" ? (cloudModel || "fal-ai/kling-video/v2/master") : "",
           script_engine: scriptEngine,
+          video_style: videoStyle,
+          music_mood: videoStyle === "ad" ? "energetic" : "tech",
         }, tid!).catch(() => {});
         setTab("queue");
         refreshProjects();
@@ -463,6 +468,8 @@ export default function VideoStudio() {
           cloud_provider: videoProvider === "cloud" ? cloudProvider : "",
           cloud_model: videoProvider === "cloud" ? (cloudModel || "fal-ai/kling-video/v2/master") : "",
           script_engine: scriptEngine,
+          video_style: videoStyle,
+          music_mood: videoStyle === "ad" ? "energetic" : "tech",
         }, tid!).catch(() => {});
         refreshProjects();
         setTab("queue");
@@ -620,6 +627,11 @@ export default function VideoStudio() {
             <button onClick={() => setVideoType(videoType === "avatar" ? "standard" : "avatar")}
               className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all ${videoType === "avatar" ? "bg-orange-600 text-white shadow-sm" : "bg-muted/50 text-muted-foreground hover:bg-muted"}`}>
               {videoType === "avatar" ? "Avatar" : "Standard"}
+            </button>
+            <button onClick={() => setVideoStyle(videoStyle === "ad" ? "standard" : "ad")}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all ${videoStyle === "ad" ? "bg-pink-600 text-white shadow-sm ring-1 ring-pink-400/50" : "bg-muted/50 text-muted-foreground hover:bg-muted"}`}
+              title="Ad/Reel mode: AIDA script, fast pacing, no intro/outro, energetic music">
+              {videoStyle === "ad" ? "📱 Ad/Reel" : "🎬 Standard"}
             </button>
             <button onClick={() => setAbTestEnabled(!abTestEnabled)}
               className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all ${abTestEnabled ? "bg-green-600 text-white shadow-sm" : "bg-muted/50 text-muted-foreground hover:bg-muted"}`}>
