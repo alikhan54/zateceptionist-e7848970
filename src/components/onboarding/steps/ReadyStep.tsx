@@ -31,9 +31,19 @@ export default function ReadyStep({ data, updateData }: ReadyStepProps) {
   const navigate = useNavigate();
   const { tenantId } = useTenant();
   const { toast } = useToast();
-  const [trainingStatus, setTrainingStatus] = useState<Record<string, 'pending' | 'training' | 'done' | 'error'>>({});
+  // Initialize state from persisted data so a previously-completed session
+  // (data.trainingComplete=true in localStorage) renders the celebration UI
+  // and shows 5/5 instead of 0/5 stuck on Waiting.
+  const [trainingStatus, setTrainingStatus] = useState<Record<string, 'pending' | 'training' | 'done' | 'error'>>(() => {
+    if (data.trainingComplete) {
+      const all: Record<string, 'pending' | 'training' | 'done' | 'error'> = {};
+      TRAINING_MODULES.forEach((m) => { all[m.key] = 'done'; });
+      return all;
+    }
+    return {};
+  });
   const [isTraining, setIsTraining] = useState(false);
-  const [trainingComplete, setTrainingComplete] = useState(false);
+  const [trainingComplete, setTrainingComplete] = useState(!!data.trainingComplete);
   const [showSkipButton, setShowSkipButton] = useState(false);
   const [isSkipping, setIsSkipping] = useState(false);
 
@@ -57,6 +67,18 @@ export default function ReadyStep({ data, updateData }: ReadyStepProps) {
     }, 10000);
     return () => clearTimeout(timer);
   }, [trainingComplete, data.trainingComplete]);
+
+  // Manual re-train: clears the persisted-complete state and re-runs trainAgents
+  const handleRetrain = () => {
+    setTrainingStatus({});
+    setTrainingComplete(false);
+    setShowSkipButton(false);
+    updateData({ trainingComplete: false });
+    if (tenantId) {
+      // Defer so updateData state propagates before trainAgents reads guards
+      setTimeout(() => trainAgents(), 50);
+    }
+  };
 
   const handleSkipToDashboard = async () => {
     setIsSkipping(true);
@@ -316,17 +338,28 @@ export default function ReadyStep({ data, updateData }: ReadyStepProps) {
 
       {/* Action Buttons */}
       {trainingComplete && (
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
-          <Button size="lg" onClick={() => navigate('/dashboard')}>
-            Go to Dashboard <ArrowRight className="h-4 w-4 ml-1" />
-          </Button>
-          <Button variant="outline" size="lg" onClick={() => navigate('/inbox')}>
-            <MessageSquare className="h-4 w-4 mr-1" /> Send a Test Message
-          </Button>
-          <Button variant="outline" size="lg" onClick={() => navigate('/settings/team')}>
-            <Users className="h-4 w-4 mr-1" /> Invite Team
-          </Button>
-        </div>
+        <>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
+            <Button size="lg" onClick={() => navigate('/dashboard')}>
+              Go to Dashboard <ArrowRight className="h-4 w-4 ml-1" />
+            </Button>
+            <Button variant="outline" size="lg" onClick={() => navigate('/inbox')}>
+              <MessageSquare className="h-4 w-4 mr-1" /> Send a Test Message
+            </Button>
+            <Button variant="outline" size="lg" onClick={() => navigate('/settings/team')}>
+              <Users className="h-4 w-4 mr-1" /> Invite Team
+            </Button>
+          </div>
+          <div className="text-center pt-2">
+            <button
+              type="button"
+              onClick={handleRetrain}
+              className="text-xs text-muted-foreground hover:text-foreground underline"
+            >
+              Re-run training
+            </button>
+          </div>
+        </>
       )}
     </div>
   );
