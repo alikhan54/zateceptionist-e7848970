@@ -1455,14 +1455,8 @@ const App = () => (
                       </LazyPage>
                     }
                   />
-                  <Route
-                    path="/settings/api-keys"
-                    element={
-                      <LazyPage>
-                        <APIKeys />
-                      </LazyPage>
-                    }
-                  />
+                  {/* API Keys page consolidated into Integrations — redirect for backward compatibility */}
+                  <Route path="/settings/api-keys" element={<Navigate to="/settings/integrations" replace />} />
                   <Route
                     path="/settings/team"
                     element={

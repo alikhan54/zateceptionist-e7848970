@@ -9,20 +9,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { 
-  Eye, 
-  EyeOff, 
-  Copy, 
-  Check, 
-  ExternalLink, 
-  Loader2, 
-  TestTube, 
+import {
+  Eye,
+  EyeOff,
+  Copy,
+  Check,
+  ExternalLink,
+  Loader2,
+  TestTube,
   Save,
   Webhook,
   BookOpen,
   Settings2,
   Key,
   Sparkles,
+  RefreshCw,
+  ShieldCheck,
 } from 'lucide-react';
 import { Integration, IntegrationSetting, IntegrationCredentialField } from '@/types/integrations';
 import { useToast } from '@/hooks/use-toast';
@@ -59,17 +61,41 @@ export function IntegrationDialog({
   const [settings, setSettings] = useState<Record<string, any>>({});
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [copied, setCopied] = useState<string | null>(null);
+  // Tracks which password fields had a saved value when the dialog opened.
+  // For these fields we never load the actual secret into React state — the
+  // input stays empty and we show a masked placeholder until user clicks "Replace".
+  const [savedSecretFields, setSavedSecretFields] = useState<Record<string, boolean>>({});
+  // Tracks which saved secret fields the user has clicked "Replace" on.
+  // Replacing fields show an empty password input ready for new value.
+  const [replacingFields, setReplacingFields] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
 
   // Initialize values when integration changes
   useEffect(() => {
     if (integration) {
-      // Set credentials from stored values
       const initialCreds: Record<string, string> = {};
+      const savedSecrets: Record<string, boolean> = {};
+
       integration.credentials.forEach(field => {
-        initialCreds[field.key] = storedCredentials[field.key] || '';
+        const isPassword = field.type === 'password';
+        const storedValue = storedCredentials[field.key] || '';
+
+        if (isPassword && storedValue) {
+          // SECURITY: Don't load saved password values into React state.
+          // Mark as "saved" so UI shows masked placeholder. User must click
+          // "Replace" to enter a new value.
+          initialCreds[field.key] = '';
+          savedSecrets[field.key] = true;
+        } else {
+          // Non-secret fields (IDs, URLs, hostnames) load normally
+          initialCreds[field.key] = storedValue;
+        }
       });
+
       setCredentials(initialCreds);
+      setSavedSecretFields(savedSecrets);
+      setReplacingFields({});
+      setShowPasswords({});
 
       // Set settings from stored values or defaults
       const initialSettings: Record<string, any> = {};
@@ -79,6 +105,20 @@ export function IntegrationDialog({
       setSettings(initialSettings);
     }
   }, [integration, storedCredentials, storedSettings]);
+
+  const handleReplaceSecret = (key: string) => {
+    setReplacingFields(prev => ({ ...prev, [key]: true }));
+    setCredentials(prev => ({ ...prev, [key]: '' }));
+  };
+
+  const handleCancelReplace = (key: string) => {
+    setReplacingFields(prev => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    setCredentials(prev => ({ ...prev, [key]: '' }));
+  };
 
   const handleCredentialChange = (key: string, value: string) => {
     setCredentials(prev => ({ ...prev, [key]: value }));
@@ -100,9 +140,15 @@ export function IntegrationDialog({
   };
 
   const handleSave = async () => {
-    // Validate required fields
+    // Validate required fields — but a saved secret counts as filled
+    // (user doesn't need to re-enter to save other field changes)
     const missingFields = integration?.credentials
-      .filter(field => field.required && !credentials[field.key])
+      .filter(field => {
+        if (!field.required) return false;
+        const hasValue = !!credentials[field.key];
+        const hasSavedValue = savedSecretFields[field.key];
+        return !hasValue && !hasSavedValue;
+      })
       .map(field => field.label);
 
     if (missingFields && missingFields.length > 0) {
@@ -114,20 +160,82 @@ export function IntegrationDialog({
       return;
     }
 
-    await onSave(credentials, settings);
+    // SECURITY: Filter out saved-secret fields where the user didn't enter
+    // a new value. Empty strings would overwrite the stored token.
+    const credentialsToSave: Record<string, string> = {};
+    Object.entries(credentials).forEach(([key, value]) => {
+      const isSavedSecret = savedSecretFields[key];
+      const isReplacing = replacingFields[key];
+      if (isSavedSecret && !isReplacing && !value) {
+        // Skip — don't include this field in the update payload
+        return;
+      }
+      if (isSavedSecret && isReplacing && !value) {
+        // User clicked Replace but left blank — skip rather than wipe
+        return;
+      }
+      credentialsToSave[key] = value;
+    });
+
+    await onSave(credentialsToSave, settings);
   };
 
   const renderCredentialField = (field: IntegrationCredentialField) => {
     const isPassword = field.type === 'password';
     const showPassword = showPasswords[field.key];
+    const isSavedSecret = isPassword && savedSecretFields[field.key];
+    const isReplacing = replacingFields[field.key];
+
+    // SECURITY: For saved secrets in display mode, render masked placeholder
+    // with a Replace button. The actual token is never loaded into the DOM
+    // or React state — it remains in the database only.
+    if (isSavedSecret && !isReplacing) {
+      return (
+        <div key={field.key} className="space-y-2">
+          <Label htmlFor={field.key} className="flex items-center gap-2">
+            {field.label}
+            {field.required && <span className="text-destructive">*</span>}
+            <Badge variant="outline" className="ml-auto text-xs gap-1">
+              <ShieldCheck className="h-3 w-3" /> Saved
+            </Badge>
+          </Label>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 px-3 py-2 rounded-md border bg-muted/40 font-mono text-sm text-muted-foreground select-none">
+              ••••••••••••••••
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => handleReplaceSecret(field.key)}
+            >
+              <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+              Replace
+            </Button>
+          </div>
+          {field.helpText && (
+            <p className="text-xs text-muted-foreground">{field.helpText}</p>
+          )}
+        </div>
+      );
+    }
 
     return (
       <div key={field.key} className="space-y-2">
         <Label htmlFor={field.key} className="flex items-center gap-2">
           {field.label}
           {field.required && <span className="text-destructive">*</span>}
+          {isReplacing && (
+            <button
+              type="button"
+              onClick={() => handleCancelReplace(field.key)}
+              className="ml-auto text-xs text-muted-foreground hover:text-foreground underline"
+            >
+              cancel replace
+            </button>
+          )}
         </Label>
-        
+
         {field.type === 'textarea' ? (
           <Textarea
             id={field.key}
@@ -161,28 +269,21 @@ export function IntegrationDialog({
               placeholder={field.placeholder}
               value={credentials[field.key] || ''}
               onChange={(e) => handleCredentialChange(field.key, e.target.value)}
-              className={cn(isPassword && 'font-mono pr-20')}
+              className={cn(isPassword && 'font-mono pr-10')}
             />
             {isPassword && (
               <div className="absolute right-1 top-1/2 -translate-y-1/2 flex gap-1">
+                {/* Eye toggle: lets user verify their typing while entering a new token. */}
+                {/* Copy button intentionally removed — secrets shouldn't be copied to clipboard. */}
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon-sm"
                   onClick={() => togglePasswordVisibility(field.key)}
+                  aria-label={showPassword ? 'Hide value' : 'Show value'}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
-                {credentials[field.key] && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => copyToClipboard(credentials[field.key], field.key)}
-                  >
-                    {copied === field.key ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                  </Button>
-                )}
               </div>
             )}
           </div>

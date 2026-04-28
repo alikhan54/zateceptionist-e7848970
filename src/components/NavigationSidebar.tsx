@@ -697,7 +697,8 @@ export function NavigationSidebar() {
     items: [
       { title: "General Settings", url: "/settings", icon: Settings },
       { title: "Integrations", url: "/settings/integrations", icon: Webhook },
-      { title: "API Keys", url: "/settings/api-keys", icon: Key },
+      // API Keys page removed — all key management consolidated under Integrations.
+      // Route /settings/api-keys still exists in App.tsx but redirects to /settings/integrations.
       { title: "Team", url: "/settings/team", icon: UserCog },
       { title: "Billing", url: "/settings/billing", icon: CreditCard },
       { title: "Notifications", url: "/settings/notifications", icon: Bell },
