@@ -695,18 +695,20 @@ export function NavigationSidebar() {
     label: "Settings",
     collapsible: true,
     items: [
-      { title: "General Settings", url: "/settings", icon: Settings },
+      // Business Profile is now the top entry — General Settings fields have been
+      // merged into Business Profile > Company Info. /settings and /settings/general
+      // redirect to /settings/business-profile/company in App.tsx.
+      { title: "Business Profile", url: "/settings/business-profile", icon: Building2, children: [
+        { title: "Company Info", url: "/settings/business-profile/company", icon: Briefcase },
+        { title: "Knowledge Base", url: "/settings/business-profile/knowledge", icon: BookOpen },
+        { title: "AI Training", url: "/settings/business-profile/training", icon: Brain },
+      ] },
       { title: "Integrations", url: "/settings/integrations", icon: Webhook },
       // API Keys page removed — all key management consolidated under Integrations.
       // Route /settings/api-keys still exists in App.tsx but redirects to /settings/integrations.
       { title: "Team", url: "/settings/team", icon: UserCog },
       { title: "Billing", url: "/settings/billing", icon: CreditCard },
       { title: "Notifications", url: "/settings/notifications", icon: Bell },
-      { title: "Business Profile", url: "/settings/business-profile", icon: Building2, children: [
-        { title: "Company Info", url: "/settings/business-profile/company", icon: Briefcase },
-        { title: "Knowledge Base", url: "/settings/business-profile/knowledge", icon: BookOpen },
-        { title: "AI Training", url: "/settings/business-profile/training", icon: Brain },
-      ] },
       { title: "Outreach & Safety", url: "/settings/outreach", icon: Shield },
     ],
   };

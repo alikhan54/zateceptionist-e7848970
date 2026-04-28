@@ -1438,14 +1438,10 @@ const App = () => (
                     }
                   />
                   {/* Settings Module */}
-                  <Route
-                    path="/settings"
-                    element={
-                      <LazyPage>
-                        <GeneralSettings />
-                      </LazyPage>
-                    }
-                  />
+                  {/* General Settings consolidated into Business Profile > Company Info.
+                      Both /settings and /settings/general redirect to the new location. */}
+                  <Route path="/settings" element={<Navigate to="/settings/business-profile/company" replace />} />
+                  <Route path="/settings/general" element={<Navigate to="/settings/business-profile/company" replace />} />
                   <Route path="/settings/voice-ai" element={<Navigate to="/communications/voice-ai?tab=config" replace />} />
                   <Route
                     path="/settings/integrations"

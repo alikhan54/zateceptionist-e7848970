@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Building2, Brain, Save, Loader2, Clock, Globe, Link } from "lucide-react";
+import { TIMEZONES } from "@/pages/onboarding/constants";
 
 const INDUSTRIES: { value: IndustryType; label: string }[] = [
   { value: "technology", label: "Technology" },
@@ -258,12 +259,21 @@ export default function CompanyInfo() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="timezone">Timezone</Label>
-                <Input
-                  id="timezone"
-                  value={formData.timezone}
-                  onChange={(e) => updateField("timezone", e.target.value)}
-                  placeholder="Asia/Dubai"
-                />
+                <Select
+                  value={formData.timezone || ""}
+                  onValueChange={(v) => updateField("timezone", v)}
+                >
+                  <SelectTrigger id="timezone">
+                    <SelectValue placeholder="Select timezone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIMEZONES.map((tz) => (
+                      <SelectItem key={tz.value} value={tz.value}>
+                        {tz.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
