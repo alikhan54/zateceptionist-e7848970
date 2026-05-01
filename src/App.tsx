@@ -18,6 +18,7 @@ import Layout from "./components/Layout";
 // Lazy load all pages for better performance
 // Core Pages
 const Dashboard = lazy(() => import("./pages/Dashboard"));
+const NeuralDashboard = lazy(() => import("./pages/NeuralDashboard"));
 const CustomersPage = lazy(() => import("./pages/Customers"));
 const InboxPage = lazy(() => import("./pages/Inbox"));
 const AppointmentsPage = lazy(() => import("./pages/Appointments"));
@@ -296,6 +297,16 @@ function LazyPage({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Phase 1 OMEGA Neural Core: route /dashboard?ui=v2 to the new shell while
+// leaving /dashboard exactly as before. Query is read once on mount; switching
+// modes requires a real navigation. Both branches stay inside <Layout /> so
+// auth + tenant guards apply uniformly.
+function DashboardRouter() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("ui") === "v2") return <NeuralDashboard />;
+  return <Dashboard />;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -425,12 +436,12 @@ const App = () => (
                     </ProtectedRoute>
                   }
                 >
-                  {/* Dashboard */}
+                  {/* Dashboard — wraps existing Dashboard with ?ui=v2 → NeuralDashboard branch */}
                   <Route
                     path="/dashboard"
                     element={
                       <LazyPage>
-                        <Dashboard />
+                        <DashboardRouter />
                       </LazyPage>
                     }
                   />

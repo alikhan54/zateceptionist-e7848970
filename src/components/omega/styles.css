@@ -1,0 +1,760 @@
+/* ============================================================
+ * OMEGA Neural Brain Shell — component-scoped styles
+ * Loaded only when NeuralBrainShell mounts.
+ * ============================================================ */
+
+/* ---- 1. Hide OmegaFloatingChat while the neural shell is open.
+   Layout.tsx is a sacred file and unconditionally mounts
+   <OmegaFloatingChat />. We don't modify it; we just hide its
+   two render states (collapsed button + expanded panel) via
+   stable selectors that don't depend on its internal classnames.
+   The body class is added/removed by NeuralBrainShell's effect. */
+body.omega-fullscreen [title="Chat with OMEGA (Ctrl+Shift+O)"],
+body.omega-fullscreen [class*="border-violet-500/30"][class*="shadow-2xl"] {
+  display: none !important;
+}
+
+/* ---- 2. Shell container.
+   z-index: 50 (per amendment) is high enough to cover Layout's
+   sidebar + header but low enough to leave shadcn Toasts +
+   Dialogs functional above us. */
+.omega-shell {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: radial-gradient(ellipse at center, #0a0a14 0%, #000 70%);
+  color: #e2e8f0;
+  font-family:
+    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  cursor: default;
+}
+
+.omega-shell *,
+.omega-shell *::before,
+.omega-shell *::after {
+  box-sizing: border-box;
+}
+
+.omega-shell .stage {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.omega-shell .brain-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.omega-shell .label-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.omega-shell .vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 30%,
+    rgba(0, 0, 0, 0.55) 100%
+  );
+}
+
+.omega-shell .grain {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  opacity: 0.04;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.6'/></svg>");
+}
+
+/* ---- 3. HUD frame corners */
+.omega-shell .hud-corner {
+  position: absolute;
+  z-index: 6;
+  width: 56px;
+  height: 56px;
+  pointer-events: none;
+  color: #22d3ee;
+  opacity: 0.6;
+}
+.omega-shell .hud-corner.tl {
+  top: 16px;
+  left: 16px;
+}
+.omega-shell .hud-corner.tr {
+  top: 16px;
+  right: 16px;
+  transform: scaleX(-1);
+}
+.omega-shell .hud-corner.bl {
+  bottom: 16px;
+  left: 16px;
+  transform: scaleY(-1);
+}
+.omega-shell .hud-corner.br {
+  bottom: 16px;
+  right: 16px;
+  transform: scale(-1, -1);
+}
+
+/* ---- 4. Top bar (glass) */
+.omega-shell .topbar {
+  position: absolute;
+  top: 24px;
+  left: 84px;
+  right: 24px;
+  height: 56px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 18px;
+  border-radius: 14px;
+  background: rgba(8, 10, 22, 0.55);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 10px 30px rgba(0, 0, 0, 0.45);
+}
+
+.omega-shell .topbar-mark {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #22d3ee, #3b82f6);
+  display: grid;
+  place-items: center;
+  color: #050816;
+  font-weight: 700;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.omega-shell .topbar-name {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+.omega-shell .topbar-name .n1 {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.omega-shell .topbar-name .n2 {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.omega-shell .telemetry {
+  display: flex;
+  gap: 18px;
+  margin-left: auto;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: #94a3b8;
+}
+.omega-shell .telemetry span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  text-transform: uppercase;
+}
+.omega-shell .telemetry b {
+  color: #e2e8f0;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.omega-shell .search-hint {
+  font-size: 11px;
+  color: #475569;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.omega-shell .avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1e293b, #334155);
+  display: grid;
+  place-items: center;
+  color: #cbd5e1;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  flex-shrink: 0;
+}
+
+/* ---- 5. Left rail */
+.omega-shell .rail {
+  position: absolute;
+  top: 24px;
+  bottom: 24px;
+  left: 16px;
+  width: 52px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 0;
+  border-radius: 14px;
+  background: rgba(8, 10, 22, 0.55);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid rgba(148, 163, 184, 0.1);
+}
+.omega-shell .rail-z {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #22d3ee, #3b82f6);
+  color: #050816;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+.omega-shell .rail-item {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  cursor: pointer;
+  transition:
+    color 160ms,
+    background 160ms;
+}
+.omega-shell .rail-item:hover {
+  color: #e2e8f0;
+  background: rgba(148, 163, 184, 0.08);
+}
+.omega-shell .rail-item.active {
+  color: #22d3ee;
+  background: rgba(34, 211, 238, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.3);
+}
+
+/* ---- 6. Floating side panels */
+.omega-shell .panel {
+  position: absolute;
+  top: 96px;
+  bottom: 120px;
+  z-index: 10;
+  border-radius: 14px;
+  background: rgba(8, 10, 22, 0.55);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: transform 240ms ease;
+}
+.omega-shell .panel.left {
+  left: 84px;
+  width: 240px;
+}
+.omega-shell .panel.right {
+  right: 24px;
+  width: 220px;
+}
+.omega-shell .panel.left.collapsed {
+  transform: translateX(calc(-100% - 12px));
+}
+.omega-shell .panel.right.collapsed {
+  transform: translateX(calc(100% + 12px));
+}
+
+.omega-shell .panel-toggle {
+  position: absolute;
+  z-index: 11;
+  width: 24px;
+  height: 32px;
+  border-radius: 6px;
+  background: rgba(8, 10, 22, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  color: #94a3b8;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  font-size: 14px;
+  user-select: none;
+}
+.omega-shell .panel-toggle:hover {
+  color: #22d3ee;
+}
+.omega-shell .panel-toggle.left {
+  top: 100px;
+  left: calc(84px + 240px + 6px);
+  transition: left 240ms ease;
+}
+.omega-shell .panel-toggle.left.collapsed {
+  left: 84px;
+}
+.omega-shell .panel-toggle.right {
+  top: 100px;
+  right: calc(24px + 220px + 6px);
+  transition: right 240ms ease;
+}
+.omega-shell .panel-toggle.right.collapsed {
+  right: 24px;
+}
+
+.omega-shell .panel-head {
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.omega-shell .panel-head h4 {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: #94a3b8;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.omega-shell .panel-search {
+  margin: 8px 12px 6px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  color: #e2e8f0;
+  font-size: 11.5px;
+  outline: none;
+}
+.omega-shell .panel-search::placeholder {
+  color: #64748b;
+}
+.omega-shell .panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 10px 12px;
+}
+.omega-shell .panel-body::-webkit-scrollbar {
+  width: 6px;
+}
+.omega-shell .panel-body::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.18);
+  border-radius: 3px;
+}
+
+.omega-shell .section-title {
+  margin: 12px 6px 6px;
+  font-size: 9.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #475569;
+  font-weight: 600;
+}
+
+.omega-shell .agent-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 140ms;
+}
+.omega-shell .agent-row:hover {
+  background: rgba(148, 163, 184, 0.06);
+}
+.omega-shell .orb {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  font-size: 10.5px;
+  font-weight: 700;
+  flex-shrink: 0;
+  color: #050816;
+}
+.omega-shell .orb.cyan {
+  background: linear-gradient(135deg, #22d3ee, #06b6d4);
+}
+.omega-shell .orb.amber {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+}
+.omega-shell .orb.violet {
+  background: linear-gradient(135deg, #a78bfa, #8b5cf6);
+}
+.omega-shell .orb.mint {
+  background: linear-gradient(135deg, #6ee7b7, #10b981);
+}
+.omega-shell .orb.rose {
+  background: linear-gradient(135deg, #fda4af, #f87171);
+}
+.omega-shell .orb.copper {
+  background: linear-gradient(135deg, #fdba74, #fb923c);
+}
+.omega-shell .orb.electric {
+  background: linear-gradient(135deg, #93c5fd, #3b82f6);
+}
+.omega-shell .agent-meta {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  min-width: 0;
+}
+.omega-shell .agent-meta b {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #e2e8f0;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.omega-shell .agent-meta i {
+  font-style: normal;
+  font-size: 10px;
+  color: #64748b;
+}
+
+/* ---- 7. Metrics cards */
+.omega-shell .stat-card {
+  margin: 8px 6px;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.45);
+  border: 1px solid rgba(148, 163, 184, 0.08);
+}
+.omega-shell .stat-card .lbl {
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  color: #64748b;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.omega-shell .stat-card .val {
+  font-size: 20px;
+  font-weight: 600;
+  color: #e2e8f0;
+  letter-spacing: 0.01em;
+}
+.omega-shell .stat-card .delta {
+  font-size: 10.5px;
+  margin-top: 2px;
+  color: #6ee7b7;
+}
+.omega-shell .stat-card .delta.down {
+  color: #fda4af;
+}
+.omega-shell .spark {
+  height: 22px;
+  margin-top: 6px;
+  width: 100%;
+}
+
+/* ---- 8. Centered name + state pill + transcript */
+.omega-shell .name-label {
+  position: absolute;
+  top: 110px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 11;
+  text-align: center;
+  pointer-events: none;
+}
+.omega-shell .name-label .n {
+  font-size: 13px;
+  letter-spacing: 0.45em;
+  color: #cbd5e1;
+  font-weight: 600;
+  text-shadow: 0 0 18px rgba(34, 211, 238, 0.4);
+}
+.omega-shell .name-label .s {
+  font-size: 9.5px;
+  letter-spacing: 0.32em;
+  color: #475569;
+  text-transform: uppercase;
+  margin-top: 3px;
+}
+
+.omega-shell .state-pill {
+  position: absolute;
+  bottom: 120px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 11;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(8, 10, 22, 0.65);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  font-size: 10.5px;
+  letter-spacing: 0.2em;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+.omega-shell .state-pill .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22d3ee;
+  box-shadow: 0 0 10px #22d3ee;
+}
+.omega-shell .state-pill.thinking .dot {
+  background: #a78bfa;
+  box-shadow: 0 0 10px #a78bfa;
+}
+.omega-shell .state-pill.speaking .dot {
+  background: #6ee7b7;
+  box-shadow: 0 0 10px #6ee7b7;
+}
+.omega-shell .state-pill.listening .dot {
+  background: #22d3ee;
+  animation: omegaPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes omegaPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0.6;
+  }
+}
+
+.omega-shell .transcript {
+  position: absolute;
+  bottom: 160px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 11;
+  max-width: 600px;
+  width: calc(100% - 200px);
+  text-align: center;
+  font-size: 14px;
+  color: #cbd5e1;
+  letter-spacing: 0.01em;
+  pointer-events: none;
+  min-height: 22px;
+  line-height: 1.4;
+}
+
+/* ---- 9. Command bar (input + mic) */
+.omega-shell .commandbar {
+  position: absolute;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(640px, calc(100% - 200px));
+}
+.omega-shell .input-pill {
+  flex: 1;
+  height: 48px;
+  border-radius: 999px;
+  background: rgba(8, 10, 22, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  padding: 0 22px;
+  color: #e2e8f0;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 160ms;
+}
+.omega-shell .input-pill::placeholder {
+  color: #475569;
+}
+.omega-shell .input-pill:focus {
+  border-color: rgba(34, 211, 238, 0.5);
+}
+.omega-shell .mic-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #22d3ee, #3b82f6);
+  border: none;
+  color: #050816;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow:
+    0 0 0 4px rgba(34, 211, 238, 0.12),
+    0 8px 22px rgba(34, 211, 238, 0.35);
+  transition: transform 140ms;
+}
+.omega-shell .mic-btn:hover {
+  transform: scale(1.05);
+}
+.omega-shell .mic-btn:active {
+  transform: scale(0.96);
+}
+.omega-shell .mic-btn.listening {
+  animation: omegaListenPulse 1s ease-in-out infinite;
+}
+
+@keyframes omegaListenPulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 4px rgba(34, 211, 238, 0.2),
+      0 8px 22px rgba(34, 211, 238, 0.4);
+  }
+  50% {
+    box-shadow:
+      0 0 0 12px rgba(34, 211, 238, 0.05),
+      0 8px 22px rgba(34, 211, 238, 0.55);
+  }
+}
+
+/* ---- 10. Bottom status lines */
+.omega-shell .status-line {
+  position: absolute;
+  bottom: 16px;
+  z-index: 11;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: #475569;
+  text-transform: uppercase;
+}
+.omega-shell .status-line.left {
+  left: 84px;
+}
+.omega-shell .status-line.right {
+  right: 24px;
+}
+
+/* ---- 11. Region labels (3D-projected) */
+.omega-shell .region-label {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  color: #cbd5e1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.6);
+  transform: translate(-50%, -50%);
+}
+.omega-shell .region-label .rate {
+  display: block;
+  margin-top: 1px;
+  font-size: 8.5px;
+  color: #64748b;
+  letter-spacing: 0.12em;
+}
+
+/* ---- 12. Action card (slides in when speaking) */
+.omega-shell .action-card {
+  position: absolute;
+  top: 50%;
+  right: 270px;
+  transform: translate(120%, -50%);
+  z-index: 11;
+  width: 280px;
+  border-radius: 14px;
+  background: rgba(8, 10, 22, 0.78);
+  backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  padding: 14px 14px 12px;
+  opacity: 0;
+  transition:
+    transform 320ms ease,
+    opacity 320ms ease;
+}
+.omega-shell .action-card.show {
+  transform: translate(0, -50%);
+  opacity: 1;
+}
+.omega-shell .action-card h5 {
+  margin: 0 0 10px;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: #94a3b8;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.omega-shell .action-card .lead-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.06);
+  font-size: 11.5px;
+}
+.omega-shell .action-card .lead-row:last-of-type {
+  border-bottom: none;
+}
+.omega-shell .action-card .lead-name {
+  flex: 1;
+  color: #e2e8f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.omega-shell .action-card .lead-score {
+  color: #fbbf24;
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+.omega-shell .action-card .row-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.omega-shell .action-card button {
+  flex: 1;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(15, 23, 42, 0.6);
+  color: #cbd5e1;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 140ms;
+}
+.omega-shell .action-card button:hover {
+  background: rgba(34, 211, 238, 0.12);
+  color: #22d3ee;
+}
+.omega-shell .action-card button.primary {
+  background: linear-gradient(135deg, #22d3ee, #3b82f6);
+  color: #050816;
+  border: none;
+  font-weight: 600;
+}
