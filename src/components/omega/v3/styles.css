@@ -1,0 +1,326 @@
+/* ============================================================
+ * OMEGA Neural Core v3 — Particle Sphere shell styles
+ * Loaded only when ParticleSphereShell mounts.
+ * ============================================================ */
+
+/* Reuse v2's body.omega-fullscreen hide rule for OmegaFloatingChat.
+   Single source of truth — no duplicate hide rule here. */
+@import "../styles.css";
+
+/* All v3 selectors are scoped under .omega-shell-v3 to avoid
+   collision with v2's .omega-shell. The two shells never mount
+   simultaneously (they're sibling DashboardRouter branches), but
+   defensive scoping keeps the contract clean. */
+
+.omega-shell-v3 {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: #000;
+  color: #e2e8f0;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+.omega-shell-v3 *,
+.omega-shell-v3 *::before,
+.omega-shell-v3 *::after {
+  box-sizing: border-box;
+}
+
+/* ---- Stage / canvas */
+.omega-shell-v3 .stage-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Subtle vignette — keeps the sphere visually centered without darkening it */
+.omega-shell-v3 .v3-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 35%,
+    rgba(0, 0, 0, 0.6) 100%
+  );
+}
+
+/* ---- Slim glass top bar */
+.omega-shell-v3 .v3-topbar {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  right: 18px;
+  height: 44px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 16px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid rgba(148, 163, 184, 0.08);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.omega-shell-v3 .v3-topbar .mark {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  background: linear-gradient(135deg, #22d3ee, #3b82f6);
+  display: grid;
+  place-items: center;
+  color: #050816;
+  font-weight: 700;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.omega-shell-v3 .v3-topbar .name {
+  font-weight: 600;
+  color: #e2e8f0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.omega-shell-v3 .v3-topbar .name .small {
+  color: #64748b;
+  font-weight: 400;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.omega-shell-v3 .v3-topbar .telemetry {
+  display: flex;
+  gap: 14px;
+  margin-left: auto;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 10.5px;
+}
+.omega-shell-v3 .v3-topbar .telemetry b {
+  color: #e2e8f0;
+  font-weight: 600;
+  margin-left: 4px;
+  letter-spacing: 0.02em;
+}
+
+.omega-shell-v3 .v3-topbar .search-hint {
+  font-size: 10px;
+  color: #475569;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.omega-shell-v3 .v3-topbar .avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1e293b, #334155);
+  display: grid;
+  place-items: center;
+  color: #cbd5e1;
+  font-size: 10.5px;
+  font-weight: 600;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  flex-shrink: 0;
+}
+
+/* ---- OMEGA wordmark — the dramatic centerpiece */
+.omega-shell-v3 .v3-wordmark {
+  position: absolute;
+  top: 32%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 4;
+  pointer-events: none;
+  text-align: center;
+  width: max-content;
+  max-width: 90vw;
+}
+
+.omega-shell-v3 .v3-wordmark h1 {
+  margin: 0;
+  font-family: "DM Serif Display", "Playfair Display", Georgia, serif;
+  font-style: italic;
+  font-size: clamp(72px, 12vw, 160px);
+  font-weight: 400;
+  letter-spacing: -0.04em;
+  line-height: 0.95;
+  color: rgba(248, 250, 252, 0.92);
+  text-shadow: 0 0 40px rgba(34, 211, 238, 0.3);
+}
+
+.omega-shell-v3 .v3-wordmark .sub {
+  font-family: "JetBrains Mono", "SF Mono", Menlo, monospace;
+  font-size: 11px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin-top: 14px;
+}
+.omega-shell-v3 .v3-wordmark .sub em {
+  font-style: normal;
+  color: #22d3ee;
+}
+
+/* ---- State pill */
+.omega-shell-v3 .v3-state-pill {
+  position: absolute;
+  top: 70%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  font-size: 10.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.omega-shell-v3 .v3-state-pill .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22d3ee;
+  box-shadow: 0 0 10px #22d3ee;
+}
+.omega-shell-v3 .v3-state-pill.listening .dot {
+  background: #60a5fa;
+  box-shadow: 0 0 10px #60a5fa;
+  animation: omegaV3Pulse 1.4s ease-in-out infinite;
+}
+.omega-shell-v3 .v3-state-pill.thinking .dot {
+  background: #a78bfa;
+  box-shadow: 0 0 10px #a78bfa;
+}
+.omega-shell-v3 .v3-state-pill.speaking .dot {
+  background: #34d399;
+  box-shadow: 0 0 10px #34d399;
+}
+
+@keyframes omegaV3Pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.45);
+    opacity: 0.55;
+  }
+}
+
+/* ---- Single floating transcript */
+.omega-shell-v3 .v3-transcript {
+  position: absolute;
+  top: calc(70% + 50px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  max-width: 600px;
+  width: calc(100% - 200px);
+  text-align: center;
+  font-size: 14px;
+  color: #cbd5e1;
+  font-family: inherit;
+  pointer-events: none;
+  min-height: 22px;
+  line-height: 1.4;
+}
+
+/* ---- Command bar (input + mic) — minimalist */
+.omega-shell-v3 .v3-commandbar {
+  position: absolute;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(640px, calc(100% - 200px));
+}
+
+.omega-shell-v3 .v3-input-pill {
+  flex: 1;
+  height: 48px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  padding: 0 22px;
+  color: #e2e8f0;
+  font-size: 14px;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 160ms;
+}
+.omega-shell-v3 .v3-input-pill::placeholder {
+  color: #475569;
+}
+.omega-shell-v3 .v3-input-pill:focus {
+  border-color: rgba(34, 211, 238, 0.5);
+}
+
+.omega-shell-v3 .v3-mic-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #22d3ee, #3b82f6);
+  border: none;
+  color: #050816;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow:
+    0 0 0 4px rgba(34, 211, 238, 0.12),
+    0 8px 22px rgba(34, 211, 238, 0.35);
+  transition: transform 140ms;
+}
+.omega-shell-v3 .v3-mic-btn:hover {
+  transform: scale(1.05);
+}
+.omega-shell-v3 .v3-mic-btn:active {
+  transform: scale(0.96);
+}
+.omega-shell-v3 .v3-mic-btn.listening {
+  animation: omegaV3MicPulse 1s ease-in-out infinite;
+}
+
+@keyframes omegaV3MicPulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 4px rgba(34, 211, 238, 0.2),
+      0 8px 22px rgba(34, 211, 238, 0.4);
+  }
+  50% {
+    box-shadow:
+      0 0 0 12px rgba(34, 211, 238, 0.05),
+      0 8px 22px rgba(34, 211, 238, 0.55);
+  }
+}

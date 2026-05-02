@@ -19,6 +19,7 @@ import Layout from "./components/Layout";
 // Core Pages
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const NeuralDashboard = lazy(() => import("./pages/NeuralDashboard"));
+const NeuralDashboardV3 = lazy(() => import("./pages/NeuralDashboardV3"));
 const CustomersPage = lazy(() => import("./pages/Customers"));
 const InboxPage = lazy(() => import("./pages/Inbox"));
 const AppointmentsPage = lazy(() => import("./pages/Appointments"));
@@ -304,6 +305,7 @@ function LazyPage({ children }: { children: React.ReactNode }) {
 function DashboardRouter() {
   const params = new URLSearchParams(window.location.search);
   if (params.get("ui") === "v2") return <NeuralDashboard />;
+  if (params.get("ui") === "v3") return <NeuralDashboardV3 />;
   return <Dashboard />;
 }
 
