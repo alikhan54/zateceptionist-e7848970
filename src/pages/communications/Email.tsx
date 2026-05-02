@@ -64,7 +64,7 @@ export default function EmailHub() {
         .select("*")
         .eq("tenant_id", tenantId)
         .eq("channel", "email")
-        .order("sent_at", { ascending: false })
+        .order("sent_at", { ascending: false, nullsFirst: false })
         .limit(100);
       if (error) { console.error("[Email] Sent query error:", error); return []; }
       return data || [];
@@ -249,7 +249,7 @@ export default function EmailHub() {
           <CardContent className="p-6 text-center">
             <Send className="h-8 w-8 mx-auto text-chart-2 mb-2" />
             <p className="text-2xl font-bold">{sentCount}</p>
-            <p className="text-sm text-muted-foreground">Sent</p>
+            <p className="text-sm text-muted-foreground">Recent (last {sentCount})</p>
           </CardContent>
         </Card>
         <Card>
