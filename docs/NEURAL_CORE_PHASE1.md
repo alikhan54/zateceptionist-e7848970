@@ -135,9 +135,84 @@ Run end-to-end:
 7. On any other route: confirm the bubble is visible
 8. Mic click on either v2 or v3: state pill cycles `idle → listening → thinking → speaking → idle`
 
+## Phase 2A — Navigation overlays (NavRail + Spotlight + Cathedral)
+
+Added 2026-05-03. Navigation that preserves the v3 minimalism: home view stays sphere + wordmark + mic. Two overlays appear on user action only.
+
+### What it adds
+
+- **NavRail** — slim 4-icon left rail (Home / Inbox / Users / LayoutGrid). Glass background, indigo→violet active accent, hover tooltip with keyboard hint. Always visible on `?ui=v3`.
+- **Spotlight** — ⌘K (or Ctrl+K) command palette modal. Searchable, keyboard-driven. 21 destinations across 7 groups (Suggested + 5 sections + Quick actions). Arrow keys + Enter navigate, ⌘+Enter opens in new tab, Esc closes.
+- **Cathedral** — full-screen "All apps" overlay. Triggered by 4th rail icon (LayoutGrid). Hero header ("Your universe"), 4 stat cards, 12-card grid for sections (10 enabled / 2 "Coming soon"). Click card to navigate. Sphere + OMEGA wordmark fade out via `body.cathedral-open` body class.
+
+### Files added
+
+| Path | Lines | Purpose |
+|---|---:|---|
+| `src/components/omega/v3/nav/sectionsRegistry.ts` | 269 | Single source of truth: `SECTIONS` (12), `CATHEDRAL_STATS` (4), `SPOTLIGHT_ROWS` (21). Routes audited against App.tsx. |
+| `src/components/omega/v3/nav/useNavOverlay.ts` | 75 | Custom hook owning Spotlight + Cathedral state. Wires global ⌘K, ⌘1/2/3, Esc shortcuts. Toggles `body.cathedral-open` class. |
+| `src/components/omega/v3/nav/NavRail.tsx` | 77 | The left rail. Active state derived from `useLocation().pathname`. |
+| `src/components/omega/v3/nav/Spotlight.tsx` | 221 | Command palette. Filter by name + sub + group. Hand-curated lucide icon registry. |
+| `src/components/omega/v3/nav/Cathedral.tsx` | 140 | All-apps overlay. Per-card `--card-glow` CSS variable for hover-revealed radial gradient in the corner. |
+
+### Files modified
+
+- `src/components/omega/v3/ParticleSphereShell.tsx` (+17 lines) — pure additions: 4 imports (`useLocation`, `NavRail`, `Spotlight`, `Cathedral`, `useNavOverlay`), 2 hook calls, and the three nav components mounted at the end of the JSX. **None** of the existing elements (sphere, vignette, top bar, OMEGA wordmark, transcript, state pill, command bar, mic, demo timers, body-class management) were modified.
+- `src/components/omega/v3/styles.css` (~390 appended lines) — Phase 2A CSS for cathedral fade-out, shared `.orb-*` color classes, and full styling for NavRail, Spotlight, and Cathedral. Existing v3 styles untouched.
+
+### Files NOT modified
+
+`src/App.tsx` is unchanged in Phase 2A. All routing for v3 still resolves through the Phase 1.5 `DashboardRouter` branch. The new keyboard shortcuts (⌘K, ⌘1/2/3) are scoped to the v3 shell via the `useNavOverlay` hook's `window.addEventListener` (cleanup on unmount), so they only fire when v3 is the active route.
+
+### Route audit (real vs spec)
+
+| Section | Spec route | Actual route used | Status |
+|---|---|---|---|
+| OMEGA | `/dashboard` | `/dashboard` | enabled, ⌘1 |
+| Unified Inbox | `/inbox` | `/inbox` | enabled, ⌘2 |
+| Clients (label) | `/clients` | `/customers` (real route) | enabled, ⌘3 |
+| Sales AI | `/sales` | `/sales` (redirects to `/sales/dashboard`) | enabled |
+| Marketing AI | `/marketing` | `/marketing` | enabled |
+| HR AI | `/hr` | `/hr` (redirects to `/hr/dashboard`) | enabled |
+| Operations | `/operations` | `/operations` (redirects to `/operations/inventory`) | enabled |
+| Communications | `/comms` | `/communications` (real route) | enabled |
+| Industry Verticals | `/industry` | (none) | **disabled** — "Coming soon" |
+| Intelligence Layer | `/intel` | (none) | **disabled** — "Coming soon" |
+| Analytics | `/analytics` | `/analytics` | enabled |
+| Settings | `/settings` | `/settings` (redirects to `/settings/business-profile/company`) | enabled |
+
+10 enabled, 2 disabled.
+
+### Cathedral fade-out CSS
+
+Spec called for fading `.omega-orb-stage` and `.omega-hero-text` — those classes don't exist in v3. The actual classes in `styles.css` are `.stage-canvas` (the WebGL canvas) and `.v3-wordmark` (the OMEGA serif text). The rule appended to `styles.css`:
+
+```css
+body.cathedral-open .omega-shell-v3 .stage-canvas,
+body.cathedral-open .omega-shell-v3 .v3-wordmark {
+  opacity: 0;
+  transition: opacity 600ms cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+```
+
+### Sacred zones — verified unchanged after Phase 2A
+
+`git diff --stat` returned empty for: `src/components/omega/{NeuralBrain,NeuralBrainShell,agentRegistry,styles}.{tsx,ts,css}`, `src/pages/NeuralDashboard.tsx`, `src/components/omega/v3/ParticleSphere.tsx`, `src/pages/NeuralDashboardV3.tsx`, `src/App.tsx`, `Layout.tsx`, `OmegaFloatingChat.tsx`, `NavigationSidebar.tsx`, `ThemeToggle.tsx`, `webhooks.ts`, `supabase.ts`, `index.css`, `theme-fixes.css`, all configs, `src/hooks/`, `src/contexts/`.
+
+### Build artifacts (Phase 2A)
+
+| Chunk | Size | Notes |
+|---|---:|---|
+| `NeuralDashboardV3-*.js` | 23.0 kB (was 7.2 kB) | +15.8 kB for nav components |
+| `NeuralDashboardV3-*.css` | 29.3 kB (was 18.1 kB) | +11.2 kB for nav styles |
+| `three.module-*.js` | 459 kB | unchanged (still shared between v2 and v3) |
+| `NeuralDashboard-*.js` (v2) | 23.5 kB | unchanged |
+
 ## Out of scope (future)
 
-- Phase 2: wire mic button to real OMEGA backend (`OmegaFloatingChat.sendMessage` extraction into a `useOmegaChat` hook)
+- Phase 2B: wire mic button to real OMEGA backend (`OmegaFloatingChat.sendMessage` extraction into a `useOmegaChat` hook); wire Cathedral stat cards + section pills to live data
 - Real telemetry counters in top bar
 - Real agent registry data (currently 70-agent placeholder)
 - Tenant-aware coloring or content
+- Industry + Intelligence section pages (currently "Coming soon")
