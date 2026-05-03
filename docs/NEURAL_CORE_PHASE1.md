@@ -209,10 +209,68 @@ body.cathedral-open .omega-shell-v3 .v3-wordmark {
 | `three.module-*.js` | 459 kB | unchanged (still shared between v2 and v3) |
 | `NeuralDashboard-*.js` (v2) | 23.5 kB | unchanged |
 
+## Phase 2A.5 — Pulse Cathedral redesign
+
+Added 2026-05-03. Cathedral renamed and redesigned as **Pulse**: light/colorful palette, layered card grid, live mini-dashboard metrics on each card (replacing marketing prose), knowledge gaps and competitor moves surfaced in red, premium effects (parallax tilt, breathing icon, count-up numbers, sword-light fallback border).
+
+### What changed
+
+- **"Your universe" → "Pulse"** with subtitle `live · across every department · across every layer`.
+- **Light palette** scoped to `.pulse-cathedral`: pearl-white / pale-lavender / warm-cream tri-gradient background, deep-navy text. Defeats global theme overrides via a single `!important` on the container background.
+- **12 cards in 3 layers**:
+  - Operations · Doing — OMEGA, Sales AI, Marketing AI, HR AI, Operations, Communications
+  - Intelligence · Knowing — Intelligence Layer, Industry Verticals
+  - Reach · Connecting — Inbox, Clients, Analytics, Settings
+- **No more "Coming soon"**. Intelligence Layer routes to `/settings/business-profile/knowledge` (the existing `KnowledgeBaseSettings` page); Industry Verticals routes to `/settings/business-profile/company` (the existing `CompanyInfoSettings` page).
+- **Per-card colors** — every card has its own saturated hue (cyan/amber/rose/emerald/indigo/sky/violet/coral/plum/teal/gold/slate). Inline CSS variable `--card-color` drives icon, halo, sword-light edge, sparkline, metric numbers, and pill.
+- **Cards show live metrics, not descriptions.** Each has a vertical list of 4-5 metrics (numeric value in card color + monospace label). Knowledge gaps + competitor moves render in red.
+- **Premium effects** (all CSS-driven where possible, RAF-driven where needed):
+  - Parallax tilt up to ±6° tracking the mouse, capped, springy on leave
+  - Breathing icon — 2s opacity 0.7→1→0.7 loop
+  - Count-up — values count from 0 → target over 800ms with `easeOutCubic`, staggered 40ms per card so they cascade in
+  - Sword-light fallback — static colored 1px gradient border revealed on hover (full revolving conic gradient deferred for browser-compat safety per approval)
+  - Always-on subtle gradient halo from each card's color
+  - Smoothed upward sparkline at the bottom of each card
+- **Hero stats fixed** — Phase 2A's invisible-numbers bug (light text on theme-overridden light bg) is fixed by binding `.pulse-cath-stat .val` color to `var(--pulse-ink)` inside the high-specificity `.pulse-cathedral` scope.
+
+### Files modified (3 only)
+
+| File | Diff | Notes |
+|---|---|---|
+| `src/components/omega/v3/nav/Cathedral.tsx` | full rewrite (140 → 290 lines) | New `<PulseCard>` subcomponent with parallax tilt + count-up + sparkline. Layered grouping by `PulseLayer`. Open/close mechanism, esc handling, body-scroll-lock effect all preserved. |
+| `src/components/omega/v3/nav/sectionsRegistry.ts` | full rewrite (269 → 318 lines) | New `PulseSection` shape with `metrics: PulseMetric[]` and `layer`. `NavSection` and `NavColor` re-exported as type aliases for back-compat. `SPOTLIGHT_ROWS` minimally updated — added 3 new rows for Intelligence + Industry destinations. `CATHEDRAL_STATS` unchanged. |
+| `src/components/omega/v3/styles.css` | +~390 appended lines | New `/* === PULSE CATHEDRAL (Phase 2A.5) === */` section. All selectors scoped under `.pulse-cathedral`. The Phase 2A `.v3-cathedral` / `.v3-cath-*` rules remain in place as dead-code fallback (no JSX uses those classes anymore — surgical, not destructive). |
+
+### Files NOT modified (verified byte-identical via `git diff --stat`)
+
+- All Phase 1 v2 files (`NeuralBrain.tsx`, `NeuralBrainShell.tsx`, `agentRegistry.ts`, `src/components/omega/styles.css`, `NeuralDashboard.tsx`)
+- All Phase 1.5 files (`ParticleSphere.tsx`, `NeuralDashboardV3.tsx`)
+- All Phase 2A files except Cathedral.tsx itself: `ParticleSphereShell.tsx`, `NavRail.tsx`, `Spotlight.tsx`, `useNavOverlay.ts`
+- `src/App.tsx` — no routing change
+- All system sacred files (`Layout.tsx`, `OmegaFloatingChat.tsx`, `NavigationSidebar.tsx`, `ThemeToggle.tsx`, `webhooks.ts`, `supabase.ts`, `index.css`, `theme-fixes.css`, all configs, `src/hooks/`, `src/contexts/`)
+
+### Theme-conflict fix
+
+The Phase 2A bug — hero stat numbers invisible in production — was light-on-light: text was `#f8fafc` on a cathedral background that some global theme override rendered light. Phase 2A.5 fix:
+
+1. Container bg uses `!important` to defeat any global override:
+   ```css
+   .pulse-cathedral { background: linear-gradient(...) !important; }
+   ```
+2. All text colors inside the cathedral are bound to `var(--pulse-ink)` (deep navy `#0F172A`) — explicit dark color that wins regardless of any ambient light/dark theme.
+3. High specificity (`.pulse-cathedral .pulse-cath-stat .val`) defeats single-class theme rules without needing additional `!important`s.
+
+### Build artifacts
+
+- `npm run build` passes in 23.95s, zero TS errors.
+- `NeuralDashboardV3-*.js` chunk barely changed (logic still in same file boundaries).
+- `NeuralDashboardV3-*.css` chunk grew with the appended Pulse styles.
+- Three.js shared chunk unchanged.
+
 ## Out of scope (future)
 
-- Phase 2B: wire mic button to real OMEGA backend (`OmegaFloatingChat.sendMessage` extraction into a `useOmegaChat` hook); wire Cathedral stat cards + section pills to live data
-- Real telemetry counters in top bar
-- Real agent registry data (currently 70-agent placeholder)
+- Phase 2B: wire mic button to real OMEGA backend (`OmegaFloatingChat.sendMessage` extraction into a `useOmegaChat` hook); wire Pulse stat cards + section metrics to live Supabase data (currently all hardcoded)
+- Real telemetry counters in top bar (currently hardcoded in `ParticleSphereShell.tsx`)
+- Real agent registry data in v2 (currently 70-agent placeholder)
 - Tenant-aware coloring or content
-- Industry + Intelligence section pages (currently "Coming soon")
+- Full revolving conic-gradient sword-light edge (deferred from Phase 2A.5 for browser-compat — fallback static gradient ships now)
