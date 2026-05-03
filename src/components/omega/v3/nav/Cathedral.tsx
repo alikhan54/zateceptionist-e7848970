@@ -16,11 +16,10 @@ import {
   X,
 } from "lucide-react";
 import {
-  CATHEDRAL_STATS,
-  SECTIONS,
   type PulseLayer,
   type PulseSection,
 } from "./sectionsRegistry";
+import { usePulseData } from "./usePulseData";
 
 interface CathedralProps {
   isOpen: boolean;
@@ -218,6 +217,10 @@ function PulseCard({ section, index, cathedralOpen, onClick }: PulseCardProps) {
 
 export function Cathedral({ isOpen, onClose }: CathedralProps) {
   const navigate = useNavigate();
+
+  // Phase 2B: per-tenant data via Supabase. Falls back silently to hardcoded
+  // values when queries fail or columns don't exist.
+  const { sections: SECTIONS, heroStats: CATHEDRAL_STATS } = usePulseData(isOpen);
 
   // Lock background scroll while open (preserved from Phase 2A).
   useEffect(() => {
