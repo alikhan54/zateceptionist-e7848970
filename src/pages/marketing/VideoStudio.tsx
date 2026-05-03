@@ -245,6 +245,10 @@ export default function VideoStudio() {
   const [abTestEnabled, setAbTestEnabled] = useState(false);
   const [cloudModel, setCloudModel] = useState("fal-ai/kling-video/v2/master");
 
+  // ----- Avatar Creator state (shown when QuickTemplate "avatar" is selected) -----
+  const [avatarScript, setAvatarScript] = useState("");
+  const [isGeneratingAvatar, setIsGeneratingAvatar] = useState(false);
+
   // ----- Scene editor (still preserved when project clicked) -----
   const [sceneEdits, setSceneEdits] = useState<any[]>([]);
   const [selectedScene, setSelectedScene] = useState(0);
@@ -559,6 +563,81 @@ export default function VideoStudio() {
   };
 
   // ============================================================
+  // AVATAR CREATOR — separate flow from main generateVideo
+  // Calls the public avatar webhook (which proxies to video-service:8125
+  // /generate-avatar; backend currently routes to HeyGen / D-ID / MuseTalk
+  // depending on what's configured). Saves the resulting clip to
+  // video_projects so it shows up in My Videos immediately.
+  // ============================================================
+
+  const generateAvatarVideo = async () => {
+    if (!avatarScript.trim()) {
+      toast({ title: "Write what the avatar should say" });
+      return;
+    }
+    if (!tid) {
+      toast({ title: "Tenant not loaded yet — please retry" });
+      return;
+    }
+    setIsGeneratingAvatar(true);
+    try {
+      const projectId = `avatar_${Date.now()}`;
+      const resp = await fetch(
+        "https://webhooks.zatesystems.com/webhook/video/generate-avatar",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            script: avatarScript,
+            provider: "auto",
+            voice_id: selectedVoice,
+            language: language !== "en" ? language : undefined,
+            tenant_id: tenantConfig?.tenant_id || tid,
+            project_id: projectId,
+          }),
+        }
+      );
+
+      // Best-effort JSON parse — webhook may return text on error
+      let result: any = {};
+      try { result = await resp.json(); } catch { result = { error: `HTTP ${resp.status}` }; }
+      const videoUrl: string | undefined = result?.video_url || result?.clip_url;
+
+      if (videoUrl) {
+        await supabase.from("video_projects" as any).insert({
+          tenant_id: tid,
+          title: avatarScript.slice(0, 80),
+          video_url: videoUrl,
+          rendered_video_url: videoUrl,
+          render_status: "complete",
+          status: "complete",
+          source_type: "avatar",
+          video_type: "avatar",
+          aspect_ratio: "9:16",
+          ai_generated: true,
+          voice_style: selectedVoice,
+          ai_optimization_notes: { provider: result?.source || "auto", voice: selectedVoice },
+        });
+        qc.invalidateQueries({ queryKey: ["video-projects-studio"] });
+        toast({ title: "Avatar video created ✨", description: "Open My Videos to watch it." });
+        setTab("videos");
+        setSelectedTemplate(null);
+        setAvatarScript("");
+      } else {
+        toast({
+          title: "Avatar generation didn't return a video",
+          description: (result?.error || `HTTP ${resp.status}`).toString().slice(0, 200),
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      toast({ title: "Connection error", description: String(err).slice(0, 200), variant: "destructive" });
+    } finally {
+      setIsGeneratingAvatar(false);
+    }
+  };
+
+  // ============================================================
   // GSAP ANIMATIONS
   // ============================================================
 
@@ -692,86 +771,221 @@ export default function VideoStudio() {
               </button>
             </div>
 
-            {/* Prompt textarea — frosted glass */}
-            <div className="rounded-2xl bg-white/95 backdrop-blur-xl shadow-2xl p-1">
-              <Textarea
-                value={aiPrompt}
-                onChange={(e) => setAiPrompt(e.target.value)}
-                placeholder="A 30-second product ad showing why our AI replaces 10 tools at a fraction of the cost…"
-                className="border-0 bg-transparent min-h-[110px] resize-none text-base text-slate-800 placeholder:text-slate-400 focus-visible:ring-0 focus-visible:ring-offset-0"
-                rows={4}
-              />
-            </div>
-
-            {/* Quick Create grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
-              {QUICK_TEMPLATES.map(t => {
-                const isSelected = selectedTemplate === t.id;
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedTemplate(isSelected ? null : t.id);
-                      if (!isSelected && !aiPrompt.trim()) setAiPrompt(t.placeholder);
-                    }}
-                    onMouseMove={handleCardTilt}
-                    onMouseLeave={handleCardTiltReset}
-                    className={`vs-quick-card group relative text-left rounded-xl bg-white border-l-4 ${t.border} px-3.5 py-3 transition-all hover:shadow-xl ${isSelected ? "ring-2 ring-white shadow-2xl scale-[1.02]" : ""}`}
-                    style={{ transformStyle: "preserve-3d", willChange: "transform" }}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="text-2xl leading-none mb-2">{t.icon}</div>
-                      {isSelected && (
-                        <div className="rounded-full bg-emerald-500 p-1 shadow-sm">
-                          <CheckCircle className="h-3 w-3 text-white" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="font-semibold text-sm text-slate-800">{t.title}</div>
-                    <div className="text-[11px] text-slate-500 mt-0.5 line-clamp-1">{t.subtitle}</div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Generate button */}
-            <div className="flex justify-center mt-7">
-              <button
-                onClick={generateVideo}
-                disabled={isGenerating || !aiPrompt.trim()}
-                className="group relative overflow-hidden rounded-full px-10 py-4 text-base font-semibold text-white transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-                style={{
-                  background: "linear-gradient(135deg, #6366F1 0%, #A855F7 50%, #EC4899 100%)",
-                  boxShadow: "0 10px 40px rgba(99,102,241,.45)",
-                  animation: !isGenerating && aiPrompt.trim() ? "vsPulseGlow 3s ease-in-out infinite" : undefined,
-                }}
-                onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.96)"; }}
-                onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+            {selectedTemplate === "avatar" ? (
+              /* ===== AVATAR CREATOR (replaces prompt+grid+generate when avatar template active) ===== */
+              <div
+                className="vs-avatar-panel"
+                style={{ animation: "vsFadeUp 0.4s ease-out" }}
               >
-                <span
-                  className="absolute inset-0 pointer-events-none"
-                  style={{
-                    background: "linear-gradient(90deg, transparent, rgba(255,255,255,.3), transparent)",
-                    animation: "vsShimmer 3s ease-in-out infinite",
-                  }}
-                />
-                <span className="relative flex items-center gap-2.5 min-w-[220px] justify-center">
-                  {isGenerating ? (
-                    <>
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                      {genStep || "Creating your video…"}
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="h-5 w-5" />
-                      Generate Video
-                    </>
-                  )}
-                </span>
-              </button>
-            </div>
+                {/* Back link */}
+                <button
+                  onClick={() => { setSelectedTemplate(null); setAvatarScript(""); }}
+                  className="text-sm text-white/80 hover:text-white underline-offset-2 hover:underline transition-colors mb-4 inline-flex items-center gap-1.5"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" /> Back to templates
+                </button>
+
+                {/* Card */}
+                <div
+                  className="rounded-2xl bg-white p-6 md:p-7"
+                  style={{ boxShadow: "0 8px 40px rgba(99,102,241,0.18)" }}
+                >
+                  <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-1">
+                    <span className="text-xl leading-none">🧑</span> Avatar Video Creator
+                  </h3>
+                  <p className="text-sm text-slate-500 mb-5">
+                    Type a script — your AI avatar speaks it directly to camera with real lip sync.
+                  </p>
+
+                  {/* Avatar selector + voice — two columns on desktop */}
+                  <div className="grid grid-cols-1 md:grid-cols-[160px_1fr_1fr] gap-4 mb-4">
+                    {/* Avatar tile */}
+                    <div className="text-center">
+                      <div className="rounded-xl bg-gradient-to-br from-violet-400 to-pink-500 aspect-square flex items-center justify-center text-5xl shadow-md ring-2 ring-indigo-300">
+                        🧑‍💼
+                      </div>
+                      <div className="text-xs text-slate-600 mt-1.5 font-medium">Adeel (default)</div>
+                      <div className="text-[10px] text-slate-400">Upload coming soon</div>
+                    </div>
+
+                    {/* Voice */}
+                    <div>
+                      <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5 flex items-center gap-1.5">
+                        <span>🎙️</span> Voice
+                      </div>
+                      <Select value={selectedVoice} onValueChange={setSelectedVoice}>
+                        <SelectTrigger className="bg-slate-50 border-slate-200"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {VOICE_OPTIONS.map(v => <SelectItem key={v.value} value={v.value}>{v.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Language */}
+                    <div>
+                      <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5 flex items-center gap-1.5">
+                        <span>🌍</span> Language
+                      </div>
+                      <Select
+                        value={language}
+                        onValueChange={(v) => {
+                          setLanguage(v);
+                          const l = LANGUAGES.find(x => x.code === v);
+                          if (l) setSelectedVoice(l.defaultVoice);
+                        }}
+                      >
+                        <SelectTrigger className="bg-slate-50 border-slate-200"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {LANGUAGES.map(l => <SelectItem key={l.code} value={l.code}>{l.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Script textarea */}
+                  <div className="mb-2">
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+                      What should the avatar say?
+                    </div>
+                    <Textarea
+                      value={avatarScript}
+                      onChange={(e) => setAvatarScript(e.target.value)}
+                      placeholder='e.g. "Hi, I am Adeel. Let me show you how the 420 System replaces your entire tech stack in under 5 minutes…"'
+                      rows={5}
+                      className="bg-slate-50 border-slate-200 rounded-xl text-base resize-none focus-visible:ring-1 focus-visible:ring-indigo-300"
+                      style={{ boxShadow: "0 1px 2px rgba(99,102,241,.04)" }}
+                    />
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-[11px] text-slate-400">
+                        {avatarScript.length} chars · ~{Math.max(1, Math.round(avatarScript.split(/\s+/).filter(Boolean).length / 2.5))}s read time
+                      </span>
+                      <span className="text-[11px] text-slate-400">Talking Head mode</span>
+                    </div>
+                  </div>
+
+                  {/* Generate */}
+                  <div className="flex justify-center mt-6">
+                    <button
+                      onClick={generateAvatarVideo}
+                      disabled={isGeneratingAvatar || !avatarScript.trim()}
+                      className="group relative overflow-hidden rounded-full px-9 py-3.5 text-base font-semibold text-white transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                      style={{
+                        background: "linear-gradient(135deg, #6366F1 0%, #A855F7 50%, #EC4899 100%)",
+                        boxShadow: "0 10px 40px rgba(99,102,241,.45)",
+                        animation: !isGeneratingAvatar && avatarScript.trim() ? "vsPulseGlow 3s ease-in-out infinite" : undefined,
+                      }}
+                      onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.96)"; }}
+                      onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+                    >
+                      <span
+                        className="absolute inset-0 pointer-events-none"
+                        style={{
+                          background: "linear-gradient(90deg, transparent, rgba(255,255,255,.3), transparent)",
+                          animation: "vsShimmer 3s ease-in-out infinite",
+                        }}
+                      />
+                      <span className="relative flex items-center gap-2.5 min-w-[220px] justify-center">
+                        {isGeneratingAvatar ? (
+                          <>
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            Bringing the avatar to life…
+                          </>
+                        ) : (
+                          <>
+                            <Zap className="h-5 w-5" />
+                            Generate Avatar Video
+                          </>
+                        )}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Prompt textarea — frosted glass */}
+                <div className="rounded-2xl bg-white/95 backdrop-blur-xl shadow-2xl p-1">
+                  <Textarea
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    placeholder="A 30-second product ad showing why our AI replaces 10 tools at a fraction of the cost…"
+                    className="border-0 bg-transparent min-h-[110px] resize-none text-base text-slate-800 placeholder:text-slate-400 focus-visible:ring-0 focus-visible:ring-offset-0"
+                    rows={4}
+                  />
+                </div>
+
+                {/* Quick Create grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
+                  {QUICK_TEMPLATES.map(t => {
+                    const isSelected = selectedTemplate === t.id;
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedTemplate(isSelected ? null : t.id);
+                          if (!isSelected && t.id !== "avatar" && !aiPrompt.trim()) setAiPrompt(t.placeholder);
+                        }}
+                        onMouseMove={handleCardTilt}
+                        onMouseLeave={handleCardTiltReset}
+                        className={`vs-quick-card group relative text-left rounded-xl bg-white border-l-4 ${t.border} px-3.5 py-3 transition-all hover:shadow-xl ${isSelected ? "ring-2 ring-white shadow-2xl scale-[1.02]" : ""}`}
+                        style={{ transformStyle: "preserve-3d", willChange: "transform" }}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="text-2xl leading-none mb-2">{t.icon}</div>
+                          {isSelected && (
+                            <div className="rounded-full bg-emerald-500 p-1 shadow-sm">
+                              <CheckCircle className="h-3 w-3 text-white" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="font-semibold text-sm text-slate-800">{t.title}</div>
+                        <div className="text-[11px] text-slate-500 mt-0.5 line-clamp-1">{t.subtitle}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Generate button */}
+                <div className="flex justify-center mt-7">
+                  <button
+                    onClick={generateVideo}
+                    disabled={isGenerating || !aiPrompt.trim()}
+                    className="group relative overflow-hidden rounded-full px-10 py-4 text-base font-semibold text-white transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                    style={{
+                      background: "linear-gradient(135deg, #6366F1 0%, #A855F7 50%, #EC4899 100%)",
+                      boxShadow: "0 10px 40px rgba(99,102,241,.45)",
+                      animation: !isGenerating && aiPrompt.trim() ? "vsPulseGlow 3s ease-in-out infinite" : undefined,
+                    }}
+                    onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.96)"; }}
+                    onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+                  >
+                    <span
+                      className="absolute inset-0 pointer-events-none"
+                      style={{
+                        background: "linear-gradient(90deg, transparent, rgba(255,255,255,.3), transparent)",
+                        animation: "vsShimmer 3s ease-in-out infinite",
+                      }}
+                    />
+                    <span className="relative flex items-center gap-2.5 min-w-[220px] justify-center">
+                      {isGenerating ? (
+                        <>
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                          {genStep || "Creating your video…"}
+                        </>
+                      ) : (
+                        <>
+                          <Zap className="h-5 w-5" />
+                          Generate Video
+                        </>
+                      )}
+                    </span>
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </section>
 
