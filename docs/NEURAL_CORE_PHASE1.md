@@ -267,10 +267,106 @@ The Phase 2A bug — hero stat numbers invisible in production — was light-on-
 - `NeuralDashboardV3-*.css` chunk grew with the appended Pulse styles.
 - Three.js shared chunk unchanged.
 
+## Phase 2B — Wire Pulse to real per-tenant Supabase data
+
+Added 2026-05-04. Pulse cathedral metrics now reflect the logged-in tenant's actual data, with the Phase 2A.5 hardcoded values acting as a graceful fallback when a query fails or a column doesn't exist. Visual layout, premium effects (parallax tilt, breathing icon, count-up, sparklines, sword-light edge), and routing all unchanged.
+
+### What changed
+
+- New custom hook `usePulseData(isOpen)` fans out ~15 Supabase count queries in parallel (`Promise.allSettled`), with a 5s global timeout via `Promise.race`. Each successful query overlays its real value onto the `FALLBACK_SECTIONS` shape; failed queries silently keep the hardcoded value.
+- `Cathedral.tsx` consumes the hook and feeds its existing `<PulseCard>` render path. The count-up animation reads from the merged `sections` state; if real data arrives within ~400ms (typical), the count-up animates straight to the real values.
+- The "tenant industry" metric on the Industry card reads directly from `useTenant().tenantConfig?.industry` — no query, no roundtrip.
+- The hook is debounced via `fetchedRef`: one fetch per `isOpen` flip. Opening and closing Pulse repeatedly does NOT hammer the database.
+
+### Files added (1)
+
+| File | Lines | Purpose |
+|---|---|---|
+| `src/components/omega/v3/nav/usePulseData.ts` | 322 | Custom hook. Consumes `useTenant()` for tenantId (SLUG) + tenantConfig.id (UUID) + tenantConfig.industry. Returns `{ sections, heroStats, loading, error }` matching the existing `PulseSection[]` and `CathedralStat[]` shapes. |
+
+### Files modified (1, +5/-2 lines)
+
+| File | Diff | Notes |
+|---|---|---|
+| `src/components/omega/v3/nav/Cathedral.tsx` | +5 / -2 | Removed `SECTIONS` + `CATHEDRAL_STATS` imports from `sectionsRegistry`. Added `usePulseData` import. Added one line at top of `Cathedral` component: `const { sections: SECTIONS, heroStats: CATHEDRAL_STATS } = usePulseData(isOpen);`. Render path unchanged. |
+
+### Files NOT modified (verified byte-identical via `git diff --stat`)
+
+- All Phase 2A nav (`NavRail.tsx`, `Spotlight.tsx`, `useNavOverlay.ts`, `sectionsRegistry.ts`)
+- All Phase 1 v2 files, all Phase 1.5 files, Phase 2A `ParticleSphereShell.tsx`
+- Phase 2A.5 `styles.css` — zero new styles needed
+- All system sacred files (`Layout.tsx`, `OmegaFloatingChat.tsx`, `NavigationSidebar.tsx`, `ThemeToggle.tsx`, `webhooks.ts`, `supabase.ts`, `index.css`, `theme-fixes.css`, configs, `src/hooks/`, `src/contexts/`)
+- `src/App.tsx` — no routing change, no new lazy imports
+
+### Per-table tenant_id format (verified from existing code, see Phase 2B investigation)
+
+| Table | format | Verified at |
+|---|---|---|
+| `customers` | SLUG | `useAnalytics.ts:74` |
+| `sales_leads` | SLUG | `useAnalytics.ts:236` |
+| `appointments` | SLUG | `useAnalytics.ts:78` |
+| `conversations` | UUID (with SLUG fallback) | `useAnalytics.ts:76-77` |
+| `outbound_messages` | SLUG | `SMS.tsx:73`, `Email.tsx:65` |
+| `campaigns` | SLUG | `useCampaigns.ts:53` |
+| `tenant_integrations` | SLUG | `useIntegrations.ts:43` |
+| `estimation_projects` | SLUG | per `CLAUDE.md` + `ProjectDetail.tsx` |
+| `social_posts` | UUID | `useSocialPosts.ts:55` |
+| `competitor_tracking` | UUID | `marketing/Analytics.tsx:52` |
+
+### Real vs hardcoded — final tally per card
+
+| Card | Real queries | Hardcoded |
+|---|---|---|
+| OMEGA | 0 | 4 (system constants) |
+| Sales AI | 3 (in pipeline, hot leads ≥75, contacted today) | 2 (sequences, ARR) |
+| Marketing AI | 2 (campaigns live, posts this week) | 3 |
+| HR AI | 0 | 4 (no clean table mapping) |
+| Operations | 2 (active projects, estimates pending) | 2 |
+| Communications | 2 (WhatsApp chats 24h, emails sent 24h) | 2 |
+| Intelligence Layer | 0 | 5 (no knowledge tables found) |
+| Industry Verticals | 3 (tenant industry from config, competitors tracked, moves this week) | 2 (benchmarks) |
+| Unified Inbox | 1 (open conversations) | 3 |
+| Clients | 2 (total, today) | 2 (active, NPS) |
+| Analytics | 0 | 4 (system metrics) |
+| Settings | 1 (integrations connected) | 3 (static labels) |
+| **Hero stats** | 3 (active leads, conversations, booked appointments) | 1 (agents healthy 88/88) |
+
+**Total: ~19 real queries · ~30 hardcoded fallbacks.**
+
+### Multi-tenant safety
+
+- Every query has explicit `.eq('tenant_id', X)` — never relies on RLS alone.
+- `tenant_id` value chosen per-table from the verified mapping above (UUID for `conversations` / `social_posts` / `competitor_tracking`; SLUG for everything else).
+- `Promise.allSettled` — one failed query never cascades; missing values fall back to hardcoded.
+- 5s global timeout via `Promise.race` — Pulse never blocks on a slow Supabase round-trip.
+- `fetchedRef` debounces — one fetch per `isOpen` flip.
+- Read-only. Zero writes, zero schema changes, zero RLS policy changes, zero n8n calls.
+- New tenants with empty tables return count `0` and Pulse shows `0` — not a crash, not the hardcoded fallback (since `0 !== null`).
+
+### Speculative columns (graceful fallback if absent)
+
+| Query | Speculative column | Behavior if missing |
+|---|---|---|
+| `sales_leads` "contacted today" | `last_contact_at` | Falls back to hardcoded "12" |
+| `conversations` "WhatsApp chats" | `last_message_at` | Falls back to hardcoded "47" |
+| `competitor_tracking` "moves this week" | `updated_at` | Falls back to hardcoded "3 alerts" |
+| `tenant_integrations` "connected" | `status='connected'` | Falls back to hardcoded "22" |
+
+If any column is wrong, `console.warn` logs the specific failure and the metric silently falls back. No user-visible breakage.
+
+### Build artifacts
+
+- `npm run build` passes in 49.32s, zero TS errors.
+- No new dependencies.
+- Module size delta: `usePulseData.ts` adds ~322 lines / ~10 kB to the lazy-loaded `NeuralDashboardV3-*.js` chunk.
+
 ## Out of scope (future)
 
-- Phase 2B: wire mic button to real OMEGA backend (`OmegaFloatingChat.sendMessage` extraction into a `useOmegaChat` hook); wire Pulse stat cards + section metrics to live Supabase data (currently all hardcoded)
+- Phase 2C: wire mic button to real OMEGA backend (`OmegaFloatingChat.sendMessage` extraction into a `useOmegaChat` hook)
 - Real telemetry counters in top bar (currently hardcoded in `ParticleSphereShell.tsx`)
 - Real agent registry data in v2 (currently 70-agent placeholder)
-- Tenant-aware coloring or content
+- Tenant-aware sphere coloring
 - Full revolving conic-gradient sword-light edge (deferred from Phase 2A.5 for browser-compat — fallback static gradient ships now)
+- Knowledge-base / RAG metrics for Intelligence Layer card (no `tenant_kb_entries` table found — needs schema work first)
+- HR card real data (no `hiring_requisitions` / `job_openings` table — needs schema work first)
+- Sales/Marketing attribution metrics (e.g. "leads from blog", "engagement %") — need separate attribution pipeline
