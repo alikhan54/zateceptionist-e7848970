@@ -324,3 +324,571 @@
       0 8px 22px rgba(34, 211, 238, 0.55);
   }
 }
+
+/* ============================================================
+ * Phase 2A — Navigation
+ * Appended without modifying any of the v3 base styles above.
+ * ============================================================ */
+
+/* ---- Cathedral fade-out for the sphere + wordmark.
+   Body class is toggled by useNavOverlay when cathedralOpen. */
+body.cathedral-open .omega-shell-v3 .stage-canvas,
+body.cathedral-open .omega-shell-v3 .v3-wordmark {
+  opacity: 0;
+  transition: opacity 600ms cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+/* ---- Shared color orb classes used by Spotlight + Cathedral icons */
+.omega-shell-v3 .orb-cyan    { background: rgba(34, 211, 238, 0.10); color: #22d3ee; }
+.omega-shell-v3 .orb-violet  { background: rgba(167, 139, 250, 0.10); color: #a78bfa; }
+.omega-shell-v3 .orb-indigo  { background: rgba(99, 102, 241, 0.10); color: #6366f1; }
+.omega-shell-v3 .orb-amber   { background: rgba(251, 191, 36, 0.10); color: #fbbf24; }
+.omega-shell-v3 .orb-mint    { background: rgba(110, 231, 183, 0.10); color: #6ee7b7; }
+.omega-shell-v3 .orb-rose    { background: rgba(248, 113, 113, 0.10); color: #f87171; }
+.omega-shell-v3 .orb-emerald { background: rgba(52, 211, 153, 0.10); color: #34d399; }
+.omega-shell-v3 .orb-sky     { background: rgba(96, 165, 250, 0.10); color: #60a5fa; }
+
+/* ============================================================
+ * Nav Rail (left, 4 icons)
+ * ============================================================ */
+.omega-shell-v3 .v3-rail {
+  position: absolute;
+  top: 50%;
+  left: 16px;
+  transform: translateY(-50%);
+  z-index: 50;
+  width: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 0;
+  border-radius: 14px;
+  background: rgba(20, 26, 48, 0.55);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  border: 1px solid rgba(248, 250, 252, 0.06);
+}
+
+.omega-shell-v3 .v3-rail-item-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.omega-shell-v3 .v3-rail-divider {
+  display: block;
+  width: 18px;
+  height: 1px;
+  background: rgba(248, 250, 252, 0.06);
+  margin: 4px 0;
+}
+
+.omega-shell-v3 .v3-rail-item {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  color: rgba(248, 250, 252, 0.55);
+  cursor: pointer;
+  transition: color 160ms, background 160ms;
+  outline: none;
+}
+.omega-shell-v3 .v3-rail-item:hover {
+  color: #f8fafc;
+  background: rgba(248, 250, 252, 0.04);
+}
+.omega-shell-v3 .v3-rail-item:focus-visible {
+  box-shadow: 0 0 0 2px rgba(167, 139, 250, 0.55);
+}
+.omega-shell-v3 .v3-rail-item.active {
+  color: #f8fafc;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(167, 139, 250, 0.18));
+}
+
+.omega-shell-v3 .v3-rail-accent {
+  position: absolute;
+  left: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 18px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #6366f1, #a78bfa);
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.6);
+}
+
+/* Rail tooltip */
+.omega-shell-v3 .v3-rail-tooltip {
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 9px;
+  background: rgba(0, 0, 0, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(248, 250, 252, 0.08);
+  border-radius: 6px;
+  font-size: 11.5px;
+  color: rgba(248, 250, 252, 0.85);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms;
+}
+.omega-shell-v3 .v3-rail-tooltip kbd {
+  font-family: "JetBrains Mono", "SF Mono", monospace;
+  font-size: 9.5px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(248, 250, 252, 0.06);
+  color: rgba(248, 250, 252, 0.55);
+}
+.omega-shell-v3 .v3-rail-item:hover .v3-rail-tooltip,
+.omega-shell-v3 .v3-rail-item:focus-visible .v3-rail-tooltip {
+  opacity: 1;
+}
+
+/* ============================================================
+ * Spotlight (⌘K modal)
+ * ============================================================ */
+.omega-shell-v3 .v3-spot-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(5, 8, 18, 0.7);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 12vh 16px 16px;
+  animation: v3SpotFadeIn 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes v3SpotFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.omega-shell-v3 .v3-spot-modal {
+  width: min(720px, 92vw);
+  background: rgba(15, 20, 35, 0.95);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid rgba(248, 250, 252, 0.12);
+  border-radius: 16px;
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(167, 139, 250, 0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: v3SpotEnter 320ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes v3SpotEnter {
+  from { opacity: 0; transform: translateY(-12px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.omega-shell-v3 .v3-spot-input-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(248, 250, 252, 0.06);
+}
+.omega-shell-v3 .v3-spot-search-icon {
+  color: rgba(248, 250, 252, 0.4);
+  flex-shrink: 0;
+}
+.omega-shell-v3 .v3-spot-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #f8fafc;
+  font-family: inherit;
+  font-size: 17px;
+  letter-spacing: -0.01em;
+}
+.omega-shell-v3 .v3-spot-input::placeholder {
+  color: rgba(248, 250, 252, 0.35);
+}
+.omega-shell-v3 .v3-spot-esc {
+  font-family: "JetBrains Mono", "SF Mono", monospace;
+  font-size: 9.5px;
+  padding: 3px 7px;
+  border-radius: 5px;
+  background: rgba(248, 250, 252, 0.06);
+  color: rgba(248, 250, 252, 0.55);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.omega-shell-v3 .v3-spot-results {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 6px 0 8px;
+}
+.omega-shell-v3 .v3-spot-results::-webkit-scrollbar { width: 6px; }
+.omega-shell-v3 .v3-spot-results::-webkit-scrollbar-thumb {
+  background: rgba(248, 250, 252, 0.08);
+  border-radius: 3px;
+}
+
+.omega-shell-v3 .v3-spot-empty {
+  padding: 28px 20px;
+  text-align: center;
+  color: rgba(248, 250, 252, 0.45);
+  font-size: 13px;
+}
+
+.omega-shell-v3 .v3-spot-group { padding: 6px 0; }
+.omega-shell-v3 .v3-spot-group-label {
+  font-family: "JetBrains Mono", "SF Mono", monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.4);
+  padding: 8px 20px 4px;
+}
+
+.omega-shell-v3 .v3-spot-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 9px 20px;
+  cursor: pointer;
+  transition: background 120ms;
+}
+.omega-shell-v3 .v3-spot-row:hover {
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.10), rgba(167, 139, 250, 0.06));
+}
+.omega-shell-v3 .v3-spot-row.selected {
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.20), rgba(167, 139, 250, 0.12));
+}
+.omega-shell-v3 .v3-spot-row.disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.omega-shell-v3 .v3-spot-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.omega-shell-v3 .v3-spot-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.omega-shell-v3 .v3-spot-text .name {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.omega-shell-v3 .v3-spot-text .sub {
+  font-family: "JetBrains Mono", "SF Mono", monospace;
+  font-size: 11px;
+  color: rgba(248, 250, 252, 0.55);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.omega-shell-v3 .v3-spot-shortcut {
+  font-family: "JetBrains Mono", "SF Mono", monospace;
+  font-size: 9.5px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(248, 250, 252, 0.06);
+  color: rgba(248, 250, 252, 0.6);
+  flex-shrink: 0;
+}
+
+.omega-shell-v3 .v3-spot-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 20px;
+  border-top: 1px solid rgba(248, 250, 252, 0.06);
+  font-family: "JetBrains Mono", "SF Mono", monospace;
+  font-size: 10px;
+  color: rgba(248, 250, 252, 0.4);
+  letter-spacing: 0.04em;
+  flex-wrap: wrap;
+}
+.omega-shell-v3 .v3-spot-footer kbd {
+  display: inline-block;
+  margin-right: 4px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(248, 250, 252, 0.06);
+  color: rgba(248, 250, 252, 0.65);
+}
+
+/* ============================================================
+ * Cathedral (full-screen "All apps")
+ * ============================================================ */
+.omega-shell-v3 .v3-cathedral {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(10, 14, 26, 0.88);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  overflow-y: auto;
+  animation: v3CathFadeIn 500ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes v3CathFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.omega-shell-v3 .v3-cathedral-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 8vh 80px 80px;
+}
+
+.omega-shell-v3 .v3-cath-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 48px;
+  gap: 24px;
+}
+
+.omega-shell-v3 .v3-cath-titles { min-width: 0; }
+
+.omega-shell-v3 .v3-cath-title {
+  margin: 0;
+  font-family: "Instrument Serif", "DM Serif Display", Georgia, serif;
+  font-style: italic;
+  font-size: clamp(40px, 5vw, 64px);
+  line-height: 1;
+  font-weight: 400;
+  color: #f8fafc;
+  letter-spacing: -0.02em;
+}
+
+.omega-shell-v3 .v3-cath-sub {
+  font-family: "JetBrains Mono", "SF Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.55);
+  margin-top: 14px;
+}
+
+.omega-shell-v3 .v3-cath-close {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px 8px 12px;
+  border-radius: 999px;
+  background: rgba(248, 250, 252, 0.04);
+  border: 1px solid rgba(248, 250, 252, 0.08);
+  color: rgba(248, 250, 252, 0.7);
+  font-family: "JetBrains Mono", "SF Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 160ms, color 160ms, border-color 160ms;
+  flex-shrink: 0;
+}
+.omega-shell-v3 .v3-cath-close:hover {
+  background: rgba(248, 250, 252, 0.08);
+  color: #f8fafc;
+  border-color: rgba(248, 250, 252, 0.16);
+}
+
+.omega-shell-v3 .v3-cath-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
+}
+@media (max-width: 760px) {
+  .omega-shell-v3 .v3-cath-stats { grid-template-columns: repeat(2, 1fr); }
+}
+
+.omega-shell-v3 .v3-cath-stat {
+  padding: 18px;
+  background: rgba(248, 250, 252, 0.02);
+  border: 1px solid rgba(248, 250, 252, 0.06);
+  border-radius: 12px;
+}
+.omega-shell-v3 .v3-cath-stat .lbl {
+  font-family: "JetBrains Mono", "SF Mono", monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.4);
+}
+.omega-shell-v3 .v3-cath-stat .val {
+  font-family: "Instrument Serif", "DM Serif Display", Georgia, serif;
+  font-style: italic;
+  font-size: 36px;
+  line-height: 1;
+  color: #f8fafc;
+  margin-top: 8px;
+}
+.omega-shell-v3 .v3-cath-stat .delta {
+  font-family: "JetBrains Mono", "SF Mono", monospace;
+  font-size: 10px;
+  color: #6ee7b7;
+  margin-top: 6px;
+}
+
+.omega-shell-v3 .v3-cath-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.omega-shell-v3 .v3-cath-card {
+  position: relative;
+  padding: 24px;
+  background: linear-gradient(135deg, rgba(20, 26, 48, 0.7), rgba(15, 20, 35, 0.5));
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid rgba(248, 250, 252, 0.06);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 280ms cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.omega-shell-v3 .v3-cath-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 100% 0%, var(--card-glow, rgba(99, 102, 241, 0.3)), transparent 60%);
+  opacity: 0;
+  transition: opacity 280ms;
+  pointer-events: none;
+  border-radius: inherit;
+}
+.omega-shell-v3 .v3-cath-card:hover:not(.disabled)::before { opacity: 1; }
+.omega-shell-v3 .v3-cath-card:hover:not(.disabled) {
+  transform: translateY(-2px);
+  border-color: rgba(248, 250, 252, 0.12);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+}
+.omega-shell-v3 .v3-cath-card.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.omega-shell-v3 .v3-cath-icon {
+  position: relative;
+  z-index: 1;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+}
+
+.omega-shell-v3 .v3-cath-name {
+  position: relative;
+  z-index: 1;
+  font-family: "Instrument Serif", "DM Serif Display", Georgia, serif;
+  font-style: italic;
+  font-size: 24px;
+  line-height: 1.1;
+  color: #f8fafc;
+  margin-top: 18px;
+  margin-bottom: 6px;
+}
+
+.omega-shell-v3 .v3-cath-desc {
+  position: relative;
+  z-index: 1;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: rgba(248, 250, 252, 0.55);
+  margin-bottom: 18px;
+}
+
+.omega-shell-v3 .v3-cath-meta {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 14px;
+  border-top: 1px solid rgba(248, 250, 252, 0.06);
+  margin-top: auto;
+}
+
+.omega-shell-v3 .v3-cath-stat-line {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.omega-shell-v3 .v3-cath-stat-line .num {
+  font-family: "Instrument Serif", "DM Serif Display", Georgia, serif;
+  font-style: italic;
+  font-size: 18px;
+  color: #f8fafc;
+  line-height: 1;
+}
+.omega-shell-v3 .v3-cath-stat-line .lbl {
+  font-family: "JetBrains Mono", "SF Mono", monospace;
+  font-size: 10px;
+  color: rgba(248, 250, 252, 0.5);
+  letter-spacing: 0.04em;
+}
+
+.omega-shell-v3 .v3-cath-pill {
+  font-family: "JetBrains Mono", "SF Mono", monospace;
+  font-size: 9px;
+  padding: 3px 7px;
+  border-radius: 100px;
+  background: rgba(110, 231, 183, 0.10);
+  color: #6ee7b7;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.omega-shell-v3 .v3-cath-pill.live {
+  background: rgba(110, 231, 183, 0.10);
+  color: #6ee7b7;
+}
+.omega-shell-v3 .v3-cath-pill.hot {
+  background: rgba(251, 191, 36, 0.12);
+  color: #fbbf24;
+}
+.omega-shell-v3 .v3-cath-card.disabled .v3-cath-pill {
+  background: rgba(248, 250, 252, 0.05);
+  color: rgba(248, 250, 252, 0.4);
+}
+
+/* Tighter padding on small screens */
+@media (max-width: 760px) {
+  .omega-shell-v3 .v3-cathedral-inner { padding: 6vh 16px 60px; }
+  .omega-shell-v3 .v3-cath-header { flex-direction: column; align-items: flex-start; gap: 16px; }
+}
+

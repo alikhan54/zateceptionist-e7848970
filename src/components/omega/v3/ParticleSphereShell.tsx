@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Mic } from "lucide-react";
 import { ParticleSphere, type OmegaState } from "./ParticleSphere";
+import { NavRail } from "./nav/NavRail";
+import { Spotlight } from "./nav/Spotlight";
+import { Cathedral } from "./nav/Cathedral";
+import { useNavOverlay } from "./nav/useNavOverlay";
 import "./styles.css";
 
 const STATE_LABEL: Record<OmegaState, string> = {
@@ -17,6 +22,8 @@ export function ParticleSphereShell() {
   const [state, setState] = useState<OmegaState>("idle");
   const [transcript, setTranscript] = useState("");
   const demoTimers = useRef<number[]>([]);
+  const overlay = useNavOverlay();
+  const location = useLocation();
 
   // Add 'omega-fullscreen' class to body to hide OmegaFloatingChat.
   // CSS rule lives in v2's styles.css (imported via this component's styles.css).
@@ -136,6 +143,16 @@ export function ParticleSphereShell() {
           <Mic size={22} strokeWidth={2.2} />
         </button>
       </div>
+
+      {/* Phase 2A — navigation. Pure additions: NavRail (left), Spotlight (⌘K modal),
+          Cathedral ("All apps" overlay). None of the existing elements above are changed. */}
+      <NavRail
+        onOpenSpotlight={overlay.openSpotlight}
+        onOpenCathedral={overlay.openCathedral}
+        currentPath={location.pathname}
+      />
+      <Spotlight isOpen={overlay.spotlightOpen} onClose={overlay.closeSpotlight} />
+      <Cathedral isOpen={overlay.cathedralOpen} onClose={overlay.closeCathedral} />
     </div>
   );
 }
