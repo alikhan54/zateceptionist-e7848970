@@ -451,8 +451,96 @@ These are facts about the OMEGA architecture, identical across all tenants — n
 - App boot verified clean on `/login` — zero console errors, all 4 modified modules served at 200.
 - Live test (you logging into different tenants) will surface per-query outcomes via `[Pulse] *` warn lines in the browser console.
 
+## Phase 4 — Pulse becomes the default for /dashboard
+
+Shipped 2026-05-04. v3 (Pulse) is now the default UI for every tenant on `/dashboard`. The legacy Dashboard remains accessible via `?ui=legacy` for per-device rollback.
+
+### What changed
+
+A single 3-line edit to `DashboardRouter` in `src/App.tsx`:
+
+```diff
+ function DashboardRouter() {
+   const params = new URLSearchParams(window.location.search);
++  // Phase 4: v3 (Pulse) is now the default for /dashboard. ?ui=legacy is the
++  // per-device rollback flag. ?ui=v2 / ?ui=v3 still resolve for old bookmarks.
++  if (params.get("ui") === "legacy") return <Dashboard />;
+   if (params.get("ui") === "v2") return <NeuralDashboard />;
+   if (params.get("ui") === "v3") return <NeuralDashboardV3 />;
+-  return <Dashboard />;
++  return <NeuralDashboardV3 />;
+ }
+```
+
+### URL contract
+
+| URL | Behavior |
+|---|---|
+| `/dashboard` | **Pulse (v3) — new default for all tenants** |
+| `/dashboard?ui=legacy` | **Old Dashboard.tsx — per-device rollback** |
+| `/dashboard?ui=v2` | Neural Brain (Phase 1, JARVIS-style) |
+| `/dashboard?ui=v3` | Pulse (kept for backward compatibility — old bookmarks still work) |
+
+### Mobile decision
+
+**Phase 4b posture (all viewports → v3).** No `matchMedia` fallback. Reasoning:
+- WebGL supported on ~97% of modern phones
+- Splitting UIs creates maintenance debt
+- `?ui=legacy` is the per-device escape hatch — any user with a struggling phone can revert with one URL change
+- CSS already has `@media (max-width: 760px)` adaptations for the cathedral layout
+
+If real-world mobile complaints surface post-deploy, a Phase 4.5 hotfix can add `if (window.matchMedia("(max-width: 768px)").matches) return <Dashboard />;` to the router.
+
+### Loading state
+
+**Skipped — no code change.** First paint shows the shell chrome (top bar, OMEGA wordmark, mic, rail) immediately; the WebGL sphere materializes ~200-400ms later inside the already-visible shell. This natural progression is graceful — adding a fade-in would slow first paint without improving the UX.
+
+### Rollback procedures
+
+1. **Per-device rollback (any user)** — append `?ui=legacy` to the `/dashboard` URL. The user immediately sees the old Card-based stats dashboard. Bookmarkable, shareable.
+2. **Per-tenant rollback** — not implemented in Phase 4. If a specific tenant needs to be force-routed to legacy, it would require a tenantConfig flag check in DashboardRouter (Phase 4.5+ if needed).
+3. **Global rollback** — `git revert HEAD` on the App.tsx commit, push to GitHub, Lovable Publish. Returns the default route to legacy Dashboard for everyone within ~60 seconds. The v3 routes (`?ui=v3`, `?ui=v2`) remain available as opt-in.
+
+### Known limitations (deferred to Phase 5)
+
+The v3 NavRail (4 icons) + Spotlight (~25 rows) cover most destinations, but the following routes are accessible only via direct URL until Phase 5 expands navigation:
+
+- **Universal pages missing from rail + Spotlight:** `/tasks`, `/appointments`, `/services`
+- **Industry-conditional pages** (only matter for those tenants): `/clinic/*`, `/estimation/*`, `/collections/*`, `/youtube/*`, `/realestate/*`, `/roofing/*`, `/tenders/*`
+- **Admin pages** (master_admin only): `/admin/*`
+
+Phase 5 will add Tasks/Appointments/Services to Spotlight quick actions and introduce a rail "More" menu that surfaces industry-conditional routes based on `tenantConfig.industry`.
+
+### Files modified (1)
+
+| File | Diff | Notes |
+|---|---|---|
+| `src/App.tsx` | +4 / -1 | DashboardRouter swap. All other lazy imports + routes byte-identical. |
+
+### Files NOT modified (verified byte-identical via `git diff --stat`)
+
+- All Phase 1/1.5/2A/2A.5/2B/2B.1 files
+- `src/pages/Dashboard.tsx` (legacy — must remain functional via `?ui=legacy`)
+- All system sacred files (`Layout`, `OmegaFloatingChat`, `NavigationSidebar`, `ThemeToggle`, `webhooks`, `supabase`, `index.css`, `theme-fixes.css`, configs, `src/hooks/`, `src/contexts/`)
+
+### Build artifacts
+
+- `npm run build` passes in 24.82s, zero TS errors, zero new dependencies.
+- App boot verified clean — `/login` renders, `/dashboard` correctly redirects unauthenticated to `/login` through the new routing.
+- All 4 module paths (App.tsx, Dashboard.tsx, NeuralDashboard.tsx, NeuralDashboardV3.tsx) served by Vite at 200.
+
+### Multi-tenant safety
+
+- Zero schema/RLS/n8n/VAPI/LangGraph changes.
+- Every tenant gets v3 with their own real per-tenant data (proven in Phase 2B + 2B.1).
+- Top bar reads `useTenant()` (Phase 2B.1) — already verified to flip per tenant.
+- Pulse cathedral data scoped per tenant via Phase 2B's verified `.eq('tenant_id', X)` patterns.
+- `?ui=legacy` provides immediate fallback for any tenant who reports issues.
+
 ## Out of scope (future)
 
+- Phase 4.5 (only if needed): tenantConfig flag for per-tenant rollback to legacy, OR mobile fallback if real-world performance complaints surface
+- Phase 5: extend Spotlight + rail "More" menu to cover Tasks, Appointments, Services, and industry-conditional routes
 - Phase 2C: wire mic button to real OMEGA backend (`OmegaFloatingChat.sendMessage` extraction into a `useOmegaChat` hook)
 - Schema work to populate the currently-`notConfigured` metrics:
   - `tenant_kb_entries` / knowledge tables (Intelligence Layer)
