@@ -198,14 +198,56 @@ function PulseCard({ section, index, cathedralOpen, onClick }: PulseCardProps) {
       <span className="pulse-card-meta">{section.meta}</span>
       <span className="pulse-card-divider" aria-hidden />
       <ul className="pulse-card-metrics">
-        {section.metrics.map((m, i) => (
-          <li key={`${section.id}-m-${i}`} className={`pulse-metric ${m.isWarning ? "warning" : ""}`}>
-            <span className="num">
-              <CountUpValue value={m.value} trigger={cathedralOpen} delay={revealDelay} />
-            </span>
-            <span className="lbl">{m.label}</span>
-          </li>
-        ))}
+        {section.metrics.map((m, i) => {
+          // Phase 2B.1 — metrics with no real per-tenant data source render
+          // "—" plus a small italic "not configured" hint instead of a fake
+          // hardcoded number. Flag is set in registry (genuinely unwireable
+          // metrics) and toggled by usePulseData per-query outcome.
+          if (m.notConfigured) {
+            return (
+              <li
+                key={`${section.id}-m-${i}`}
+                className="pulse-metric"
+                style={{ opacity: 0.85 }}
+              >
+                <span
+                  className="num"
+                  style={{ color: "var(--pulse-ink-3)", opacity: 0.55 }}
+                >
+                  —
+                </span>
+                <span className="lbl">
+                  {m.label}
+                  <em
+                    style={{
+                      display: "block",
+                      fontFamily: "'Instrument Serif', Georgia, serif",
+                      fontStyle: "italic",
+                      fontSize: "9.5px",
+                      color: "var(--pulse-ink-3)",
+                      opacity: 0.6,
+                      marginTop: "2px",
+                      letterSpacing: "0.04em",
+                    }}
+                  >
+                    not configured
+                  </em>
+                </span>
+              </li>
+            );
+          }
+          return (
+            <li
+              key={`${section.id}-m-${i}`}
+              className={`pulse-metric ${m.isWarning ? "warning" : ""}`}
+            >
+              <span className="num">
+                <CountUpValue value={m.value} trigger={cathedralOpen} delay={revealDelay} />
+              </span>
+              <span className="lbl">{m.label}</span>
+            </li>
+          );
+        })}
       </ul>
       <Sparkline color={sparkColor} />
       <span className={`pulse-card-pill pulse-pill-${section.pillType}`}>{section.pillText}</span>

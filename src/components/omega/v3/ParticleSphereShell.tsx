@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Mic } from "lucide-react";
+import { useTenant } from "@/contexts/TenantContext";
 import { ParticleSphere, type OmegaState } from "./ParticleSphere";
 import { NavRail } from "./nav/NavRail";
 import { Spotlight } from "./nav/Spotlight";
@@ -24,6 +25,14 @@ export function ParticleSphereShell() {
   const demoTimers = useRef<number[]>([]);
   const overlay = useNavOverlay();
   const location = useLocation();
+  // Phase 2B.1 — top bar reads from useTenant() instead of hardcoded text.
+  const { tenantId, tenantConfig } = useTenant();
+  const businessName =
+    tenantConfig?.company_name ??
+    tenantId?.replace(/-/g, " ").toUpperCase() ??
+    "OMEGA";
+  const tenantLabel = tenantId ?? "guest";
+  const markLetter = (businessName[0] ?? "O").toUpperCase();
 
   // Add 'omega-fullscreen' class to body to hide OmegaFloatingChat.
   // CSS rule lives in v2's styles.css (imported via this component's styles.css).
@@ -87,12 +96,12 @@ export function ParticleSphereShell() {
       <ParticleSphere state={state} className="stage-canvas" />
       <div className="v3-vignette" />
 
-      {/* Slim top bar */}
+      {/* Slim top bar — reads tenant identity from useTenant() (Phase 2B.1) */}
       <div className="v3-topbar">
-        <div className="mark">Z</div>
+        <div className="mark">{markLetter}</div>
         <div className="name">
-          ZATE SYSTEMS
-          <span className="small">tenant · zateceptionist</span>
+          {businessName.toUpperCase()}
+          <span className="small">tenant · {tenantLabel}</span>
         </div>
         <div className="telemetry">
           <span>

@@ -34,6 +34,11 @@ export interface PulseMetric {
   label: string;
   /** Render the value + label in red. Used for knowledge gaps + competitor moves. */
   isWarning?: boolean;
+  /** Phase 2B.1 — when true, render "—" + italic "not configured" instead of value.
+   *  Set true on metrics with no real per-tenant data source. usePulseData clears
+   *  this flag when its query for the metric succeeds (and sets it true if a
+   *  query that was attempted fails — speculative columns end up here). */
+  notConfigured?: boolean;
 }
 
 export interface PulseSection {
@@ -95,7 +100,7 @@ export const SECTIONS: PulseSection[] = [
       { value: "47", label: "sequences active" },
       { value: "12", label: "contacted today" },
       { value: "3", label: "hot leads" },
-      { value: "$1.2M", label: "ARR managed" },
+      { value: "$1.2M", label: "ARR managed", notConfigured: true },
     ],
   },
   {
@@ -112,9 +117,9 @@ export const SECTIONS: PulseSection[] = [
     metrics: [
       { value: "8", label: "campaigns live" },
       { value: "24", label: "posts this week" },
-      { value: "64", label: "leads from blog" },
-      { value: "1.2k", label: "IG followers" },
-      { value: "+12%", label: "engagement" },
+      { value: "64", label: "leads from blog", notConfigured: true },
+      { value: "1.2k", label: "IG followers", notConfigured: true },
+      { value: "+12%", label: "engagement", notConfigured: true },
     ],
   },
   {
@@ -129,10 +134,10 @@ export const SECTIONS: PulseSection[] = [
     pillType: "normal",
     pillText: "7 open",
     metrics: [
-      { value: "7", label: "open roles" },
-      { value: "3", label: "onboarding" },
-      { value: "2", label: "reviews due" },
-      { value: "94%", label: "team capacity" },
+      { value: "7", label: "open roles", notConfigured: true },
+      { value: "3", label: "onboarding", notConfigured: true },
+      { value: "2", label: "reviews due", notConfigured: true },
+      { value: "94%", label: "team capacity", notConfigured: true },
     ],
   },
   {
@@ -149,8 +154,8 @@ export const SECTIONS: PulseSection[] = [
     metrics: [
       { value: "18", label: "active projects" },
       { value: "11", label: "estimates pending" },
-      { value: "22", label: "dispatches today" },
-      { value: "96%", label: "SLA met" },
+      { value: "22", label: "dispatches today", notConfigured: true },
+      { value: "96%", label: "SLA met", notConfigured: true },
     ],
   },
   {
@@ -185,11 +190,11 @@ export const SECTIONS: PulseSection[] = [
     pillType: "warning",
     pillText: "3 gaps",
     metrics: [
-      { value: "4.2k", label: "docs ingested" },
-      { value: "2.1M", label: "tokens indexed" },
-      { value: "78%", label: "knowledge confidence" },
-      { value: "3", label: "knowledge gaps", isWarning: true },
-      { value: "80", label: "agents trained" },
+      { value: "4.2k", label: "docs ingested", notConfigured: true },
+      { value: "2.1M", label: "tokens indexed", notConfigured: true },
+      { value: "78%", label: "knowledge confidence", notConfigured: true },
+      { value: "3", label: "knowledge gaps", isWarning: true, notConfigured: true },
+      { value: "80", label: "agents trained", notConfigured: true },
     ],
   },
   {
@@ -207,8 +212,8 @@ export const SECTIONS: PulseSection[] = [
       { value: "SaaS", label: "tenant industry" },
       { value: "8", label: "competitors tracked" },
       { value: "3", label: "moves this week", isWarning: true },
-      { value: "Top 12%", label: "lead velocity" },
-      { value: "Top 8%", label: "pipeline volume" },
+      { value: "Top 12%", label: "lead velocity", notConfigured: true },
+      { value: "Top 8%", label: "pipeline volume", notConfigured: true },
     ],
   },
 
@@ -228,8 +233,8 @@ export const SECTIONS: PulseSection[] = [
     metrics: [
       { value: "10", label: "channels active" },
       { value: "17", label: "conversations" },
-      { value: "3", label: "hot threads" },
-      { value: "2", label: "awaiting response" },
+      { value: "3", label: "hot threads", notConfigured: true },
+      { value: "2", label: "awaiting response", notConfigured: true },
     ],
   },
   {
@@ -247,8 +252,8 @@ export const SECTIONS: PulseSection[] = [
     metrics: [
       { value: "17", label: "total clients" },
       { value: "+2", label: "today" },
-      { value: "14", label: "active accounts" },
-      { value: "8.4", label: "avg NPS" },
+      { value: "14", label: "active accounts", notConfigured: true },
+      { value: "8.4", label: "avg NPS", notConfigured: true },
     ],
   },
   {
@@ -264,8 +269,8 @@ export const SECTIONS: PulseSection[] = [
     pillText: "live",
     metrics: [
       { value: "14", label: "dashboards" },
-      { value: "522", label: "events / hr" },
-      { value: "18M", label: "datapoints" },
+      { value: "522", label: "events / hr", notConfigured: true },
+      { value: "18M", label: "datapoints", notConfigured: true },
       { value: "live", label: "streaming" },
     ],
   },

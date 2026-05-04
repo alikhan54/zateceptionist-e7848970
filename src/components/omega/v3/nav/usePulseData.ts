@@ -138,29 +138,111 @@ interface FetchInputs {
   tenantSlug: string;
   tenantUuid: string | null;
   tenantIndustry: string | null;
+  /** Phase 2B.1 — channel-flag bag from tenantConfig, used for the
+   *  derived "channels active" metric (no Supabase query). */
+  channelsCount: number;
 }
 
 interface MetricUpdate {
   /** "sectionId|metricLabel" — must match exactly. */
   key: string;
-  value: string;
+  /** Present on successful query. Sets metric.value, clears notConfigured. */
+  value?: string;
+  /** Phase 2B.1 — true when the query was attempted and failed (null result).
+   *  The merger sets metric.notConfigured = true so the renderer shows "—". */
+  notConfigured?: boolean;
+}
+
+// ---------- ARR best-effort fetch (Phase 2B.1) ------------------------------
+
+function formatArr(n: number): string {
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}k`;
+  return `$${n.toFixed(0)}`;
+}
+
+/** Probe for tenant ARR. Best-effort — column shape unknown, so we try and
+ *  fall back to null (→ "not configured") on any error. */
+async function fetchLatestArr(tenantSlug: string): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from("ltv_cac_snapshots")
+      .select("arr")
+      .eq("tenant_id", tenantSlug)
+      .limit(1)
+      .maybeSingle();
+    if (error) {
+      console.warn("[Pulse] ltv_cac_snapshots query failed:", error.message);
+      return null;
+    }
+    if (!data || data.arr == null) return null;
+    const num = typeof data.arr === "number" ? data.arr : Number(data.arr);
+    if (!Number.isFinite(num)) return null;
+    return formatArr(num);
+  } catch (e) {
+    console.warn(
+      "[Pulse] ltv_cac_snapshots threw:",
+      e instanceof Error ? e.message : String(e),
+    );
+    return null;
+  }
+}
+
+/** Count enabled communication channels from tenantConfig flags. Always
+ *  succeeds — no Supabase query needed. */
+function deriveChannelsActive(
+  tenantConfig: {
+    has_whatsapp?: boolean;
+    has_email?: boolean;
+    has_voice?: boolean;
+    has_instagram?: boolean;
+    has_facebook?: boolean;
+    has_linkedin?: boolean;
+  } | null,
+): number {
+  if (!tenantConfig) return 0;
+  let n = 0;
+  if (tenantConfig.has_whatsapp) n++;
+  if (tenantConfig.has_email) n++;
+  if (tenantConfig.has_voice) n++;
+  if (tenantConfig.has_instagram) n++;
+  if (tenantConfig.has_facebook) n++;
+  if (tenantConfig.has_linkedin) n++;
+  return n;
 }
 
 async function fetchAllMetrics(
   inputs: FetchInputs,
 ): Promise<{ updates: MetricUpdate[]; heroStats: CathedralStat[] }> {
-  const { tenantSlug, tenantUuid, tenantIndustry } = inputs;
+  const { tenantSlug, tenantUuid, tenantIndustry, channelsCount } = inputs;
   const conv_id = tenantUuid || tenantSlug; // conversations supports either; UUID preferred
   const dayAgoISO = timeAgo("24h");
   const weekAgoISO = timeAgo("7d");
   const todayISO = startOfTodayISO();
 
-  /** Each entry: a key (sectionId|metricLabel) + the count promise. */
-  const queryDefs: Array<{ key: string; promise: Promise<number | null> }> = [
+  /** Each entry: a key (sectionId|metricLabel) + a result promise.
+   *  Phase 2B.1 widens the result type to allow string (e.g. ARR formatted as $1.2M). */
+  const queryDefs: Array<{
+    key: string;
+    promise: Promise<number | string | null>;
+  }> = [
     // ===== Sales AI =====
     {
       key: "sales|in pipeline",
       promise: countQuery("sales_leads", { tenant_id: tenantSlug }),
+    },
+    // Phase 2B.1: sequences (SLUG, is_active)
+    {
+      key: "sales|sequences active",
+      promise: countQuery("sequences", {
+        tenant_id: tenantSlug,
+        is_active: true,
+      }),
+    },
+    // Phase 2B.1: ARR best-effort
+    {
+      key: "sales|ARR managed",
+      promise: fetchLatestArr(tenantSlug),
     },
     {
       key: "sales|hot leads",
@@ -217,6 +299,35 @@ async function fetchAllMetrics(
     },
 
     // ===== Communications =====
+    // Phase 2B.1: calls today via voice_usage (SLUG)
+    {
+      key: "comms|calls today",
+      promise: countQuery(
+        "voice_usage",
+        { tenant_id: tenantSlug },
+        { gte: { created_at: dayAgoISO } },
+      ),
+    },
+    // Phase 2B.1: HR onboarding (UUID, speculative status='onboarding')
+    {
+      key: "hr|onboarding",
+      promise: tenantUuid
+        ? countQuery("hr_candidates", {
+            tenant_id: tenantUuid,
+            status: "onboarding",
+          })
+        : Promise.resolve(null),
+    },
+    // Phase 2B.1: HR reviews due (UUID, speculative status='pending')
+    {
+      key: "hr|reviews due",
+      promise: tenantUuid
+        ? countQuery("hr_performance_reviews", {
+            tenant_id: tenantUuid,
+            status: "pending",
+          })
+        : Promise.resolve(null),
+    },
     {
       key: "comms|WhatsApp chats",
       promise: countQuery(
@@ -323,7 +434,8 @@ async function fetchAllMetrics(
 
   // ---- Process metric results
   const updates: MetricUpdate[] = [];
-  // Industry-card "tenant industry" — direct from tenantConfig, no query
+
+  // Industry-card "tenant industry" — direct from tenantConfig, always succeeds when present
   if (tenantIndustry) {
     updates.push({
       key: "industry|tenant industry",
@@ -331,10 +443,22 @@ async function fetchAllMetrics(
     });
   }
 
+  // Phase 2B.1: derived "channels active" from tenantConfig (no Supabase query)
+  updates.push({
+    key: "inbox|channels active",
+    value: String(channelsCount),
+  });
+
   for (let i = 0; i < queryDefs.length; i++) {
     const r = settled[i];
     if (r.status === "fulfilled" && r.value !== null && r.value !== undefined) {
+      // Success — clear notConfigured, set value
       updates.push({ key: queryDefs[i].key, value: String(r.value) });
+    } else {
+      // Phase 2B.1 — query was attempted but failed (column missing, RLS,
+      // network, etc.). Flip notConfigured:true so the renderer shows "—"
+      // instead of the registry's hardcoded fallback.
+      updates.push({ key: queryDefs[i].key, notConfigured: true });
     }
   }
 
@@ -359,13 +483,22 @@ function applyUpdates(
   updates: MetricUpdate[],
 ): PulseSection[] {
   if (updates.length === 0) return base;
-  const map = new Map<string, string>();
-  for (const u of updates) map.set(u.key, u.value);
+  const map = new Map<string, MetricUpdate>();
+  for (const u of updates) map.set(u.key, u);
   return base.map((s) => ({
     ...s,
     metrics: s.metrics.map((m) => {
-      const real = map.get(`${s.id}|${m.label}`);
-      return real !== undefined ? { ...m, value: real } : m;
+      const u = map.get(`${s.id}|${m.label}`);
+      if (!u) return m;
+      // Successful query — set value, clear notConfigured
+      if (u.value !== undefined) {
+        return { ...m, value: u.value, notConfigured: false };
+      }
+      // Failed query — flag notConfigured so renderer shows "—"
+      if (u.notConfigured) {
+        return { ...m, notConfigured: true };
+      }
+      return m;
     }),
   }));
 }
@@ -397,8 +530,9 @@ export function usePulseData(isOpen: boolean): PulseData {
     const tenantSlug = tenantId; // SLUG
     const tenantUuid = tenantConfig?.id ?? null; // UUID (may be null mid-bootstrap)
     const tenantIndustry = tenantConfig?.industry ?? null;
+    const channelsCount = deriveChannelsActive(tenantConfig); // Phase 2B.1
 
-    fetchAllMetrics({ tenantSlug, tenantUuid, tenantIndustry })
+    fetchAllMetrics({ tenantSlug, tenantUuid, tenantIndustry, channelsCount })
       .then(({ updates, heroStats }) => {
         const sections = applyUpdates(FALLBACK_SECTIONS, updates);
         setData({ sections, heroStats, loading: false, error: null });
