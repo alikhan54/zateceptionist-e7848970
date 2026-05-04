@@ -1297,61 +1297,78 @@ export default function VideoStudio() {
         )}
       </div>
 
-      {/* ===== VIDEO PLAYER MODAL ===== */}
-      <Dialog open={!!playerVideo} onOpenChange={(open) => !open && setPlayerVideo(null)}>
-        <DialogContent className="max-w-3xl bg-white p-0 overflow-hidden border-0">
-          {playerVideo && (
-            <div>
-              <div className="aspect-video bg-black">
-                <video
-                  src={playerVideo.video_url || playerVideo.rendered_video_url}
-                  controls
-                  autoPlay
-                  className="w-full h-full"
-                />
-              </div>
-              <div className="p-5">
-                <h2 className="text-lg font-bold text-slate-800">{playerVideo.title}</h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  {timeAgo(playerVideo.created_at)} · {playerVideo.aspect_ratio || "9:16"}
-                </p>
-                <div className="flex gap-2 mt-4">
-                  <a
-                    href={playerVideo.video_url || playerVideo.rendered_video_url}
-                    download
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-medium transition-colors"
-                  >
-                    <Download className="h-3.5 w-3.5" /> Download
-                  </a>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-medium transition-colors">
-                        <Share2 className="h-3.5 w-3.5" /> Publish
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      {["instagram", "tiktok", "facebook", "linkedin", "youtube"].map(pl => {
-                        const Icon = PLATFORM_ICONS[pl] || Share2;
-                        return (
-                          <DropdownMenuItem key={pl} onClick={() => publishVideo(playerVideo.id, pl, playerVideo.video_url || playerVideo.rendered_video_url, playerVideo.title)}>
-                            <Icon className="h-4 w-4 mr-2" /> {pl.charAt(0).toUpperCase() + pl.slice(1)}
-                          </DropdownMenuItem>
-                        );
-                      })}
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem asChild>
-                        <a href="/marketing/social-commander">
-                          <Send className="h-4 w-4 mr-2" /> Open Social Commander
-                        </a>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+      {/* ===== VIDEO PLAYER MODAL (Fix 1: custom modal — shadcn Dialog was blocking video playback) ===== */}
+      {playerVideo && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+          onClick={() => setPlayerVideo(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="relative w-full max-w-2xl mx-4 bg-white rounded-2xl overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close button */}
+            <button
+              onClick={() => setPlayerVideo(null)}
+              className="absolute top-3 right-3 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 transition"
+              aria-label="Close"
+            >
+              <X className="h-4 w-4" />
+            </button>
+
+            {/* Video player */}
+            <video
+              src={playerVideo.video_url || playerVideo.rendered_video_url}
+              controls
+              autoPlay
+              playsInline
+              className="w-full max-h-[80vh] bg-black"
+            />
+
+            {/* Title bar + actions */}
+            <div className="p-4 bg-white">
+              <h3 className="font-semibold text-slate-800 text-sm">{playerVideo.title}</h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {timeAgo(playerVideo.created_at)} · {playerVideo.aspect_ratio || "9:16"}
+              </p>
+              <div className="flex gap-2 mt-3">
+                <a
+                  href={playerVideo.video_url || playerVideo.rendered_video_url}
+                  download
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-medium transition-colors"
+                >
+                  <Download className="h-3.5 w-3.5" /> Download
+                </a>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-medium transition-colors">
+                      <Share2 className="h-3.5 w-3.5" /> Publish
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {["instagram", "tiktok", "facebook", "linkedin", "youtube"].map(pl => {
+                      const Icon = PLATFORM_ICONS[pl] || Share2;
+                      return (
+                        <DropdownMenuItem key={pl} onClick={() => publishVideo(playerVideo.id, pl, playerVideo.video_url || playerVideo.rendered_video_url, playerVideo.title)}>
+                          <Icon className="h-4 w-4 mr-2" /> {pl.charAt(0).toUpperCase() + pl.slice(1)}
+                        </DropdownMenuItem>
+                      );
+                    })}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <a href="/marketing/social-commander">
+                        <Send className="h-4 w-4 mr-2" /> Open Social Commander
+                      </a>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
+          </div>
+        </div>
+      )}
 
       {/* ===== FROM SCRATCH (preserved) ===== */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
@@ -1474,17 +1491,43 @@ function VideoCard({
   const status = STATUS_LABELS[p.render_status || p.status] || { label: p.status || "draft", color: "bg-slate-200 text-slate-600" };
   const tier = p.target_duration_seconds && p.target_duration_seconds > 60 ? "premium" : "standard";
 
-  // Type-based gradient placeholder
+  // Source-type-driven gradient (varies by what kind of video this is)
+  const gradientBySource: Record<string, string> = {
+    avatar:                  "linear-gradient(135deg,#a78bfa,#6366f1)",  // purple → indigo
+    manual_render:           "linear-gradient(135deg,#f472b6,#fb7185)",  // pink → rose
+    blog_published:          "linear-gradient(135deg,#34d399,#14b8a6)",  // emerald → teal
+    campaign_created:        "linear-gradient(135deg,#fbbf24,#fb923c)",  // amber → orange
+    competitor_ad_detected:  "linear-gradient(135deg,#f87171,#e11d48)",  // red → rose-600
+    social_trend:            "linear-gradient(135deg,#e879f9,#ec4899)",  // fuchsia → pink
+    sales_proposal:          "linear-gradient(135deg,#60a5fa,#6366f1)",  // blue → indigo
+    engagement_followup:     "linear-gradient(135deg,#34d399,#10b981)",  // emerald gradient
+  };
+  // Fall back to video_type if no source_type, then to a generic violet
   const gradientByType: Record<string, string> = {
     short_form: "linear-gradient(135deg,#ec4899,#a855f7)",
     long_form: "linear-gradient(135deg,#3b82f6,#06b6d4)",
-    ad_commercial: "linear-gradient(135deg,#f97316,#ef4444)",
-    explainer: "linear-gradient(135deg,#06b6d4,#3b82f6)",
     avatar: "linear-gradient(135deg,#8b5cf6,#ec4899)",
-    testimonial: "linear-gradient(135deg,#f59e0b,#f97316)",
-    announcement: "linear-gradient(135deg,#10b981,#059669)",
   };
-  const grad = gradientByType[p.video_type] || gradientByType.short_form;
+  const grad = gradientBySource[p.source_type]
+    || gradientByType[p.video_type]
+    || "linear-gradient(135deg,#a78bfa,#a855f7)";
+
+  // Source-type badge (Fix 2): shows what kind of video at a glance
+  const styleField = (p.ai_optimization_notes && p.ai_optimization_notes.video_style)
+    || (p.metadata && p.metadata.video_style) || "";
+  const sourceLabels: Record<string, { text: string; color: string }> = {
+    avatar:                  { text: "🧑 Avatar",     color: "bg-purple-100 text-purple-700" },
+    manual_render:           { text: "🎬 Video",      color: "bg-blue-100 text-blue-700" },
+    blog_published:          { text: "📝 Blog",       color: "bg-green-100 text-green-700" },
+    campaign_created:        { text: "📢 Campaign",   color: "bg-amber-100 text-amber-700" },
+    competitor_ad_detected:  { text: "🛡️ Counter Ad", color: "bg-red-100 text-red-700" },
+    social_trend:            { text: "📱 Social",     color: "bg-pink-100 text-pink-700" },
+    sales_proposal:          { text: "💼 Sales",      color: "bg-indigo-100 text-indigo-700" },
+    engagement_followup:     { text: "🎯 Follow-up",  color: "bg-emerald-100 text-emerald-700" },
+  };
+  const sourceLabel = (styleField === "ad" || styleField === "reel")
+    ? { text: "📱 Ad/Reel", color: "bg-pink-100 text-pink-700" }
+    : (sourceLabels[p.source_type] || { text: "🎬 Video", color: "bg-slate-100 text-slate-600" });
 
   return (
     <div
@@ -1532,6 +1575,12 @@ function VideoCard({
         <h3 className="font-semibold text-sm text-slate-800 line-clamp-2 leading-snug min-h-[2.5rem]">
           {p.title || "Untitled"}
         </h3>
+        {/* Source-type badge (Fix 2) */}
+        <div className="mt-2">
+          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${sourceLabel.color}`}>
+            {sourceLabel.text}
+          </span>
+        </div>
         <div className="flex items-center gap-2 mt-2 text-[11px] text-slate-500">
           <span className={`inline-block w-1.5 h-1.5 rounded-full ${tier === "premium" ? "bg-violet-500" : "bg-slate-300"}`} />
           <span className="capitalize">{tier}</span>
