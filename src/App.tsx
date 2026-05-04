@@ -304,9 +304,12 @@ function LazyPage({ children }: { children: React.ReactNode }) {
 // auth + tenant guards apply uniformly.
 function DashboardRouter() {
   const params = new URLSearchParams(window.location.search);
+  // Phase 4: v3 (Pulse) is now the default for /dashboard. ?ui=legacy is the
+  // per-device rollback flag. ?ui=v2 / ?ui=v3 still resolve for old bookmarks.
+  if (params.get("ui") === "legacy") return <Dashboard />;
   if (params.get("ui") === "v2") return <NeuralDashboard />;
   if (params.get("ui") === "v3") return <NeuralDashboardV3 />;
-  return <Dashboard />;
+  return <NeuralDashboardV3 />;
 }
 
 const App = () => (
