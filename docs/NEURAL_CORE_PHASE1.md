@@ -360,13 +360,108 @@ If any column is wrong, `console.warn` logs the specific failure and the metric 
 - No new dependencies.
 - Module size delta: `usePulseData.ts` adds ~322 lines / ~10 kB to the lazy-loaded `NeuralDashboardV3-*.js` chunk.
 
+## Phase 2B.1 — full pulse data introspection + top bar fix
+
+Added 2026-05-04. Two issues from the Phase 2B live test:
+
+1. v3 top bar showed `ZATE SYSTEMS · tenant · zateceptionist` regardless of which tenant was logged in. Real bug.
+2. Hardcoded fake values like `47 sequences active`, `$1.2M ARR`, `1.2k IG followers`, `12 calls today` sat next to real-zero values like `0 in pipeline`, looking inconsistent.
+
+### What changed
+
+**Top bar fix.** `ParticleSphereShell.tsx` now reads `useTenant()` and derives:
+- `businessName = tenantConfig?.company_name ?? tenantId.toUpperCase() ?? "OMEGA"`
+- `tenantLabel = tenantId ?? "guest"`
+- `markLetter = businessName[0]`
+
+Three text nodes swapped: `<div className="mark">Z</div>` → `{markLetter}`; `ZATE SYSTEMS` → `{businessName.toUpperCase()}`; `tenant · zateceptionist` → `tenant · {tenantLabel}`.
+
+**Data introspection — broader table sweep.** A comprehensive `grep -hEo '\.from\(['\"][a-z_]+['\"]\)' src/` returned 110+ unique tables. Cross-referenced with the existing per-table `tenant_id` patterns to discover tables Phase 2B missed:
+
+| Newly wired in Phase 2B.1 | Format | Source | Metric |
+|---|---|---|---|
+| `sequences` | SLUG | `sales/Analytics.tsx:114` | sales **sequences active** (`is_active=true`) |
+| `voice_usage` | SLUG | `VoiceCallLog.tsx:93`, `Dashboard.tsx:110` | comms **calls today** (`created_at >= 24h`) |
+| `hr_candidates` | UUID | `useRecruitment.ts:370` | hr **onboarding** (speculative `status='onboarding'`) |
+| `hr_performance_reviews` | UUID | `useHR.ts:524` | hr **reviews due** (speculative `status='pending'`) |
+| `ltv_cac_snapshots` | SLUG | `useLtvCac.ts:89` | sales **ARR managed** (best-effort `arr` column → formatted `$1.2M`) |
+
+**Derived from `tenantConfig` — no Supabase query.** The Inbox card "channels active" metric is now real per-tenant, computed from the boolean flags `has_whatsapp + has_email + has_voice + has_instagram + has_facebook + has_linkedin`. Always succeeds when tenantConfig is loaded.
+
+**`notConfigured` sentinel for genuinely unwireable metrics.** New optional field on `PulseMetric`:
+
+```ts
+notConfigured?: boolean;
+```
+
+When `true`, the renderer shows `—` plus a small italic *not configured* hint (inline-styled) instead of a number. The flag is set in two places:
+
+1. **At rest** (`sectionsRegistry.ts`) for metrics with no real data source — IG followers, engagement %, open roles, team capacity, dispatches today, SLA met, all 5 Intelligence Layer metrics, lead velocity, pipeline volume, hot threads, awaiting response, active accounts, avg NPS, events / hr, datapoints. Total: 21 metrics marked.
+2. **Per-query outcome** (`usePulseData.ts` — Phase 2B.1 change). When a query was attempted and failed (column missing, RLS denial, network), the merger now flips `notConfigured: true` on that metric instead of silently keeping the registry's hardcoded fallback. This converts Phase 2B's silent fallback into an explicit "—" so users never see a fake-but-failed number.
+
+**Successful query → `notConfigured: false`.** `applyUpdates` now clears `notConfigured` whenever a query returns a real value (including 0 — distinguishing "real empty" from "not configured" remains preserved).
+
+### System constants — kept hardcoded, NOT marked `notConfigured`
+
+These are facts about the OMEGA architecture, identical across all tenants — not "fake per-tenant numbers":
+
+- OMEGA card: 79 tools active, 12 core agents, 4 LangGraph brains, 99.9% uptime
+- Communications card: 41 VAPI tools
+- Analytics card: 14 dashboards, "live" streaming label
+- Settings card: "Knowledge base managed", "AI training active", "Company info configured" (status descriptors, not numbers)
+- Hero stats: 88/88 agents healthy
+
+### Files modified (4)
+
+| File | Diff | Notes |
+|---|---|---|
+| `src/components/omega/v3/ParticleSphereShell.tsx` | +12/-5 | New `useTenant()` import + 3 derived values + 3 text-node swaps. All other markup byte-identical. |
+| `src/components/omega/v3/nav/sectionsRegistry.ts` | +14/-5 | Added `notConfigured?: boolean` to `PulseMetric` type. Marked 21 unwireable metrics. |
+| `src/components/omega/v3/nav/usePulseData.ts` | +130/-15 | Widened `MetricUpdate` type. Added 5 new queries (sequences, voice_usage, hr_candidates, hr_performance_reviews, ltv_cac_snapshots ARR). Added `deriveChannelsActive()` (no-query derivation from tenantConfig). Result-processing loop now flips `notConfigured: true` on null outcome. `applyUpdates` clears `notConfigured` on success. |
+| `src/components/omega/v3/nav/Cathedral.tsx` | +44/-7 | Conditional rendering: `if (m.notConfigured)` → render `—` + italic hint via inline `style={{}}`. Else: existing CountUpValue render. No `styles.css` edit. |
+
+### Files NOT modified (verified byte-identical via `git diff --stat`)
+
+- All Phase 2A nav (`NavRail`, `Spotlight`, `useNavOverlay`)
+- All Phase 1 v2 + Phase 1.5 + Phase 2A.5 `styles.css`
+- All system sacred (`Layout`, `OmegaFloatingChat`, `NavigationSidebar`, `ThemeToggle`, `webhooks`, `supabase`, `index.css`, `theme-fixes.css`, configs, `src/hooks/`, `src/contexts/`)
+- `App.tsx` — no routing change
+
+### Multi-tenant safety
+
+- Every new query has explicit `.eq('tenant_id', X)` with verified per-table format.
+- `Promise.allSettled` + 5s timeout — failures don't cascade.
+- ARR query uses `.maybeSingle()` so missing rows don't throw.
+- Channels-active derivation reads only from already-fetched tenantConfig — no extra query, no risk.
+- Speculative columns (`hr_candidates.status='onboarding'`, `hr_performance_reviews.status='pending'`, `ltv_cac_snapshots.arr`) fall back to `notConfigured: true` rather than silent hardcoded values, per the new policy.
+
+### Behavior matrix
+
+| State | What user sees |
+|---|---|
+| Logged in, query succeeds, value ≥ 0 | Real number, count-up animation |
+| Logged in, query returns `null` (column missing / RLS denied) | "—" + italic *not configured* |
+| Logged in, query attempted, returns `0` (real empty) | "0", count-up animation |
+| Logged out / no tenant | Registry fallback (notConfigured already true on unwireable metrics) |
+| Tenant context loading | Registry fallback briefly, then real values when fetch completes |
+
+### Build artifacts
+
+- `npm run build` passes in 38.45s, zero TS errors, zero new dependencies.
+- App boot verified clean on `/login` — zero console errors, all 4 modified modules served at 200.
+- Live test (you logging into different tenants) will surface per-query outcomes via `[Pulse] *` warn lines in the browser console.
+
 ## Out of scope (future)
 
 - Phase 2C: wire mic button to real OMEGA backend (`OmegaFloatingChat.sendMessage` extraction into a `useOmegaChat` hook)
-- Real telemetry counters in top bar (currently hardcoded in `ParticleSphereShell.tsx`)
+- Schema work to populate the currently-`notConfigured` metrics:
+  - `tenant_kb_entries` / knowledge tables (Intelligence Layer)
+  - `hiring_requisitions` / `job_openings` (HR open roles)
+  - Marketing attribution pipeline (leads from blog, IG followers, engagement %)
+  - SLA + dispatch metrics (Operations)
+  - Industry benchmark snapshots (lead velocity, pipeline volume Top X%)
+  - NPS aggregation (Clients)
+  - Analytics events-per-hour stream
 - Real agent registry data in v2 (currently 70-agent placeholder)
 - Tenant-aware sphere coloring
 - Full revolving conic-gradient sword-light edge (deferred from Phase 2A.5 for browser-compat — fallback static gradient ships now)
-- Knowledge-base / RAG metrics for Intelligence Layer card (no `tenant_kb_entries` table found — needs schema work first)
-- HR card real data (no `hiring_requisitions` / `job_openings` table — needs schema work first)
-- Sales/Marketing attribution metrics (e.g. "leads from blog", "engagement %") — need separate attribution pipeline
