@@ -441,18 +441,28 @@ export default function VideoStudio() {
     setSelectedScene(0);
   };
 
-  // View/download tracking (preserved)
+  // View/download tracking — fire-and-forget, must NEVER throw or block UI.
+  // Uses mode:"no-cors" so the browser doesn't reject on missing
+  // Access-Control-Allow-Origin from the n8n webhook (we don't read the
+  // response anyway). Outer try/catch swallows any synchronous error
+  // (URL parse, JSON.stringify on circular refs, etc.).
   const trackVideoAction = (projectId: string, action: "watch" | "download") => {
-    fetch("https://webhooks.zatesystems.com/webhook/video/track-view", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        video_project_id: projectId, tenant_id: tid, viewer_identifier: "studio-user",
-        platform: "web", watch_percentage: action === "watch" ? 1.0 : 0,
-        cta_clicked: action === "download",
-      }),
-    }).catch(() => {});
+    try {
+      fetch("https://webhooks.zatesystems.com/webhook/video/track-view", {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          video_project_id: projectId, tenant_id: tid, viewer_identifier: "studio-user",
+          platform: "web", watch_percentage: action === "watch" ? 1.0 : 0,
+          cta_clicked: action === "download",
+        }),
+      }).catch(() => {});
+    } catch {}
     if (action === "watch" && tid) {
-      supabase.rpc("increment_video_views" as any, { p_id: projectId }).catch(() => {});
+      try {
+        supabase.rpc("increment_video_views" as any, { p_id: projectId }).catch(() => {});
+      } catch {}
     }
   };
 
@@ -1160,13 +1170,14 @@ export default function VideoStudio() {
                     onOpen={() => openProject(p)}
                     onWatch={() => {
                       const url = p.video_url || p.rendered_video_url;
-                      // Diagnostic for the user — they can open DevTools and confirm the click fires
                       // eslint-disable-next-line no-console
                       console.log("[VideoStudio] WATCH clicked:", { id: p.id, title: p.title, url });
-                      trackVideoAction(p.id, "watch");
+                      // Open modal FIRST so the user sees the video immediately —
+                      // tracking is best-effort and must never block playback.
                       setPlayerVideo(p);
+                      try { trackVideoAction?.(p.id, "watch"); } catch {}
                     }}
-                    onDownload={() => trackVideoAction(p.id, "download")}
+                    onDownload={() => { try { trackVideoAction?.(p.id, "download"); } catch {} }}
                     onPublish={(platform) => publishVideo(p.id, platform, p.video_url || p.rendered_video_url, p.title)}
                     onUpgrade={() => {
                       callWebhook(WEBHOOKS.VIDEO_ORCHESTRATE, {
