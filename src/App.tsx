@@ -14,6 +14,7 @@ import { PageLoading } from "@/components/shared/PageLoading";
 // Eager load critical pages
 import LoginPage from "./pages/Login";
 import Layout from "./components/Layout";
+import V3Layout from "./components/v3/V3Layout";
 
 // Lazy load all pages for better performance
 // Core Pages
@@ -433,15 +434,15 @@ const App = () => (
 
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-                {/* Protected routes with Layout */}
+                {/* Phase 5 — Tier 1 routes wrapped in V3Layout (rail + slim top bar + Spotlight + Cathedral).
+                    V3Layout itself reads ?ui=legacy and delegates to <Layout /> for per-device rollback. */}
                 <Route
                   element={
                     <ProtectedRoute>
-                      <Layout />
+                      <V3Layout />
                     </ProtectedRoute>
                   }
                 >
-                  {/* Dashboard — wraps existing Dashboard with ?ui=v2 → NeuralDashboard branch */}
                   <Route
                     path="/dashboard"
                     element={
@@ -450,8 +451,6 @@ const App = () => (
                       </LazyPage>
                     }
                   />
-
-                  {/* Core CRM */}
                   <Route
                     path="/customers"
                     element={
@@ -468,6 +467,33 @@ const App = () => (
                       </LazyPage>
                     }
                   />
+                  <Route
+                    path="/sales/dashboard"
+                    element={
+                      <LazyPage>
+                        <SalesDashboard />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/marketing"
+                    element={
+                      <LazyPage>
+                        <MarketingHub />
+                      </LazyPage>
+                    }
+                  />
+                </Route>
+
+                {/* Protected routes with Layout (the existing chrome — Tier 2/3 routes) */}
+                <Route
+                  element={
+                    <ProtectedRoute>
+                      <Layout />
+                    </ProtectedRoute>
+                  }
+                >
+                  {/* Core CRM */}
                   <Route
                     path="/appointments"
                     element={
@@ -493,17 +519,9 @@ const App = () => (
                     }
                   />
 
-                  {/* Sales Module */}
+                  {/* Sales Module — /sales/dashboard moved to V3Layout parent (Phase 5) */}
                   <Route path="/leads" element={<Navigate to="/sales/dashboard" replace />} />
                   <Route path="/sales" element={<Navigate to="/sales/dashboard" replace />} />
-                  <Route
-                    path="/sales/dashboard"
-                    element={
-                      <LazyPage>
-                        <SalesDashboard />
-                      </LazyPage>
-                    }
-                  />
                   <Route
                     path="/sales/pipeline"
                     element={
@@ -673,14 +691,7 @@ const App = () => (
                     element={<LazyPage><SendTimeInsights /></LazyPage>}
                   />
 
-                  <Route
-                    path="/marketing"
-                    element={
-                      <LazyPage>
-                        <MarketingHub />
-                      </LazyPage>
-                    }
-                  />
+                  {/* /marketing moved to V3Layout parent (Phase 5) */}
                   <Route
                     path="/marketing/content"
                     element={
