@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase, callWebhook, WEBHOOKS } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
@@ -1157,7 +1158,14 @@ export default function VideoStudio() {
                     key={p.id}
                     project={p}
                     onOpen={() => openProject(p)}
-                    onWatch={() => { trackVideoAction(p.id, "watch"); setPlayerVideo(p); }}
+                    onWatch={() => {
+                      const url = p.video_url || p.rendered_video_url;
+                      // Diagnostic for the user — they can open DevTools and confirm the click fires
+                      // eslint-disable-next-line no-console
+                      console.log("[VideoStudio] WATCH clicked:", { id: p.id, title: p.title, url });
+                      trackVideoAction(p.id, "watch");
+                      setPlayerVideo(p);
+                    }}
                     onDownload={() => trackVideoAction(p.id, "download")}
                     onPublish={(platform) => publishVideo(p.id, platform, p.video_url || p.rendered_video_url, p.title)}
                     onUpgrade={() => {
@@ -1297,13 +1305,19 @@ export default function VideoStudio() {
         )}
       </div>
 
-      {/* ===== VIDEO PLAYER MODAL (Fix 1: custom modal — shadcn Dialog was blocking video playback) ===== */}
-      {playerVideo && (
+      {/* ===== VIDEO PLAYER MODAL =====
+          Rendered into document.body via createPortal so no parent stacking
+          context (transform/filter/contain on any ancestor) can trap it.
+          z-[9999] beats shadcn Toast (z-100) and any sidebar/header overlay.
+          `muted` on <video> so iOS Safari/Chrome doesn't block autoplay
+          (user can unmute via the controls). */}
+      {playerVideo && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm"
           onClick={() => setPlayerVideo(null)}
           role="dialog"
           aria-modal="true"
+          style={{ position: "fixed", inset: 0 }}
         >
           <div
             className="relative w-full max-w-2xl mx-4 bg-white rounded-2xl overflow-hidden shadow-2xl"
@@ -1312,7 +1326,7 @@ export default function VideoStudio() {
             {/* Close button */}
             <button
               onClick={() => setPlayerVideo(null)}
-              className="absolute top-3 right-3 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 transition"
+              className="absolute top-3 right-3 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition"
               aria-label="Close"
             >
               <X className="h-4 w-4" />
@@ -1323,8 +1337,14 @@ export default function VideoStudio() {
               src={playerVideo.video_url || playerVideo.rendered_video_url}
               controls
               autoPlay
+              muted
               playsInline
+              preload="auto"
               className="w-full max-h-[80vh] bg-black"
+              onError={(e) => {
+                // eslint-disable-next-line no-console
+                console.error("[VideoStudio] <video> error", e, playerVideo.video_url || playerVideo.rendered_video_url);
+              }}
             />
 
             {/* Title bar + actions */}
@@ -1367,7 +1387,8 @@ export default function VideoStudio() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ===== FROM SCRATCH (preserved) ===== */}
@@ -1516,14 +1537,16 @@ function VideoCard({
   const styleField = (p.ai_optimization_notes && p.ai_optimization_notes.video_style)
     || (p.metadata && p.metadata.video_style) || "";
   const sourceLabels: Record<string, { text: string; color: string }> = {
-    avatar:                  { text: "🧑 Avatar",     color: "bg-purple-100 text-purple-700" },
-    manual_render:           { text: "🎬 Video",      color: "bg-blue-100 text-blue-700" },
-    blog_published:          { text: "📝 Blog",       color: "bg-green-100 text-green-700" },
-    campaign_created:        { text: "📢 Campaign",   color: "bg-amber-100 text-amber-700" },
-    competitor_ad_detected:  { text: "🛡️ Counter Ad", color: "bg-red-100 text-red-700" },
-    social_trend:            { text: "📱 Social",     color: "bg-pink-100 text-pink-700" },
-    sales_proposal:          { text: "💼 Sales",      color: "bg-indigo-100 text-indigo-700" },
-    engagement_followup:     { text: "🎯 Follow-up",  color: "bg-emerald-100 text-emerald-700" },
+    avatar:                  { text: "🧑 Avatar",      color: "bg-purple-100 text-purple-700" },
+    manual_render:           { text: "🎬 Video",       color: "bg-blue-100 text-blue-700" },
+    manual:                  { text: "🎬 Video",       color: "bg-blue-100 text-blue-700" },
+    manual_prompt:           { text: "✨ AI Generated", color: "bg-violet-100 text-violet-700" },
+    blog_published:          { text: "📝 Blog",        color: "bg-green-100 text-green-700" },
+    campaign_created:        { text: "📢 Campaign",    color: "bg-amber-100 text-amber-700" },
+    competitor_ad_detected:  { text: "🛡️ Counter Ad",  color: "bg-red-100 text-red-700" },
+    social_trend:            { text: "📱 Social",      color: "bg-pink-100 text-pink-700" },
+    sales_proposal:          { text: "💼 Sales",       color: "bg-indigo-100 text-indigo-700" },
+    engagement_followup:     { text: "🎯 Follow-up",   color: "bg-emerald-100 text-emerald-700" },
   };
   const sourceLabel = (styleField === "ad" || styleField === "reel")
     ? { text: "📱 Ad/Reel", color: "bg-pink-100 text-pink-700" }
@@ -1540,12 +1563,27 @@ function VideoCard({
       onMouseLeave={handleCardTiltReset}
       onClick={onOpen}
     >
-      {/* Thumbnail */}
+      {/* Thumbnail — three-tier fallback so cards never look empty:
+          1) thumbnail_url (image) when present
+          2) <video preload=metadata muted> showing the video's first frame as live poster
+             (no DB column needed; browser fetches just the metadata chunk)
+          3) gradient placeholder + Film icon when no video either */}
       <div
-        className="relative aspect-video"
+        className="relative aspect-video overflow-hidden"
         style={{ background: p.thumbnail_url ? `url(${p.thumbnail_url}) center/cover` : grad }}
       >
-        {!p.thumbnail_url && (
+        {!p.thumbnail_url && url && (
+          <video
+            src={url}
+            preload="metadata"
+            muted
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover"
+            // pointer-events:none so the play overlay button still receives clicks
+            style={{ pointerEvents: "none" }}
+          />
+        )}
+        {!p.thumbnail_url && !url && (
           <div className="absolute inset-0 flex items-center justify-center">
             <Film className="h-12 w-12 text-white/40" />
           </div>
