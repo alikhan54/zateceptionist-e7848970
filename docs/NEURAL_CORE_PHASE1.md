@@ -537,10 +537,100 @@ Phase 5 will add Tasks/Appointments/Services to Spotlight quick actions and intr
 - Pulse cathedral data scoped per tenant via Phase 2B's verified `.eq('tenant_id', X)` patterns.
 - `?ui=legacy` provides immediate fallback for any tenant who reports issues.
 
+## Phase 5 — V3 chrome unification (Tier 1 routes)
+
+Shipped 2026-05-05. Five Tier 1 routes now render under v3 chrome (rail + slim top bar + ⌘K Spotlight + Cathedral) without changing any page content. Tier 2/3 routes keep their existing Layout chrome. Phase 5 is targeted unification, not a full migration.
+
+### Tier 1 routes migrated to V3Layout
+
+| Route | Page (unchanged) |
+|---|---|
+| `/dashboard` | `DashboardRouter` → `NeuralDashboardV3` (Pulse) |
+| `/inbox` | `InboxPage` |
+| `/customers` | `CustomersPage` |
+| `/sales/dashboard` | `SalesDashboard` |
+| `/marketing` | `MarketingHub` |
+
+All other ~95 protected routes remain under the existing `<Layout />` parent — byte-identical chrome, byte-identical behavior.
+
+### Architecture decisions
+
+**Q1 — Marketing route:** `/marketing` (no `/dashboard` suffix). Spec said "/marketing/dashboard" but only `/marketing` exists in App.tsx (renders `MarketingHub`). Used the actual route.
+
+**Q2 — Top-bar de-duplication:** Option B. V3Layout reads `useLocation()` and skips its own top bar when `pathname === '/dashboard'`. ParticleSphereShell continues rendering its own top bar there. Sacred file untouched.
+
+**Q3 — Route restructuring:** Option α. New `<Route element={<ProtectedRoute><V3Layout /></ProtectedRoute>}>` parent inserted BEFORE the existing `<Layout />` parent in App.tsx. Five Tier 1 routes moved into the new parent. React Router matches the first matching parent, so the new parent wins for those 5 paths and the old parent serves everything else.
+
+**`?ui=legacy` bypass:** V3Layout itself reads `URLSearchParams` and returns `<Layout />` instead of rendering v3 chrome when `?ui=legacy` is present. Per-device escape hatch for any tenant who hits issues with the new Tier 1 chrome — works on any V3Layout-wrapped route, not just `/dashboard`.
+
+### Files created (2)
+
+| Path | Lines | Notes |
+|---|---|---|
+| `src/components/v3/V3Layout.tsx` | 174 | Mirrors Layout.tsx auth/onboarding gates exactly. Renders `NavRail` (always), top bar (skipped on `/dashboard`), `<Outlet />`, `Spotlight`, `Cathedral`, `OmegaFloatingChat` (skipped on `/dashboard`), `BottomTabBar`, `InstallPrompt`, `OnboardingFlow`. Wraps in inline `V3MobileErrorBoundary` (separate class — not Layout's). `?ui=legacy` returns `<Layout />` directly. |
+| `src/components/v3/V3Layout.css` | 115 | Scoped under `.v3-layout-*` — no collision with `omega/v3/styles.css` (which is scoped `.omega-shell-v3`). Top bar fixed at `top:0; left:64px; height:48px`. Main padding-left 64px (rail) + padding-top 60px (top bar). Mobile breakpoint at `760px` shrinks rail/topbar. On `/dashboard`, padding collapses to 0 so ParticleSphereShell can take full viewport. |
+
+### Files modified (1)
+
+`src/App.tsx` — `+33 / -22`:
+- Added eager import: `import V3Layout from "./components/v3/V3Layout";`
+- Inserted new `<Route element={<ProtectedRoute><V3Layout /></ProtectedRoute>}>` parent BEFORE existing Layout parent
+- Moved 5 route blocks into the new parent: `/dashboard`, `/customers`, `/inbox`, `/sales/dashboard`, `/marketing`
+- Deleted those 5 routes from the existing Layout parent (replaced with single-line comments noting the move)
+- All other ~95 routes byte-identical wrapping
+
+### Files NOT modified (verified byte-identical via `git diff --stat`)
+
+- `Layout.tsx`, `OmegaFloatingChat.tsx`, `NavigationSidebar.tsx`, `ThemeToggle.tsx`, `BottomTabBar.tsx`, `InstallPrompt.tsx`, `OnboardingFlow.tsx`
+- `webhooks.ts`, `supabase.ts`, `theme-fixes.css`, `index.css`, all configs
+- All `src/hooks/`, `src/contexts/`
+- All Phase 1-4 v3 files: `NeuralBrain`, `NeuralBrainShell`, `agentRegistry`, `omega/styles.css`, `NeuralDashboard`, `ParticleSphere`, `ParticleSphereShell`, `v3/styles.css`, `NeuralDashboardV3`, `NavRail`, `Spotlight`, `useNavOverlay`, `sectionsRegistry`, `usePulseData`, `Cathedral`
+- All existing pages: `Dashboard.tsx`, `Inbox.tsx`, `Customers.tsx`, `pages/sales/Dashboard.tsx`, `MarketingEngine.tsx`
+
+### URL contract after Phase 5
+
+| URL | Chrome | Page |
+|---|---|---|
+| `/dashboard` | V3Layout (top bar skipped — sphere shell renders its own) | Pulse / NeuralDashboardV3 |
+| `/dashboard?ui=legacy` | Layout (V3Layout delegates) | Dashboard.tsx (old) |
+| `/dashboard?ui=v2` | V3Layout | Neural Brain (Phase 1, full-viewport — same skip-topbar applies) |
+| `/inbox` | V3Layout | InboxPage |
+| `/inbox?ui=legacy` | Layout (V3Layout delegates) | InboxPage |
+| `/customers` | V3Layout | CustomersPage |
+| `/sales/dashboard` | V3Layout | SalesDashboard |
+| `/marketing` | V3Layout | MarketingHub |
+| `/sales/leads`, `/sales/pipeline`, `/sales/sequences`, etc. | Layout (unchanged) | unchanged |
+| `/hr/*`, `/operations/*`, `/marketing/content`, etc. | Layout (unchanged) | unchanged |
+| All other ~95 routes | Layout (unchanged) | unchanged |
+
+### Multi-tenant safety
+
+- V3Layout consumes `useTenant()` only for top bar display (mirrors Phase 2B.1's pattern in ParticleSphereShell). No new Supabase queries.
+- Per-tenant `tenantConfig.primary_color` injected as `--primary` CSS var, mirroring Layout.tsx behavior.
+- Auth gates mirrored exactly: `useAuth()` + `useTenant()` loading + `!user` redirect to `/login` + `onboarding_completed === false` redirect to `/onboarding`.
+- Zero schema/RLS/n8n/agent/VAPI changes.
+
+### Rollback procedures
+
+| Scope | Procedure |
+|---|---|
+| Per-device | Append `?ui=legacy` to any Tier 1 URL — V3Layout delegates to old Layout. Bookmarkable, shareable. |
+| Per-route | Move that route's block from the V3Layout parent back to the Layout parent in App.tsx. One-line move. |
+| Global | `git revert HEAD` on the App.tsx commit + delete `src/components/v3/V3Layout.{tsx,css}` → push → Lovable Publish. Returns all 5 Tier 1 routes to old Layout for everyone within ~60s. |
+
+### Build
+
+`npm run build` passes in 23.25s, zero TS errors, zero new dependencies. App boots clean on `/login`, V3Layout module + CSS served by Vite at 200, zero console errors.
+
+### Known limitations (deferred to future)
+
+- NavRail still has only 4 icons — Tasks / Appointments / Services + industry-conditional routes still accessible only via direct URL or Spotlight (Phase 5 didn't expand the rail; the chrome unification was the focus).
+- Tier 2/3 routes still use the old NavigationSidebar. Cross-chrome navigation (e.g. Inbox v3 → click "Sequences" → lands in old chrome) is acceptable but jarring. Future phases can promote more routes to V3Layout.
+
 ## Out of scope (future)
 
-- Phase 4.5 (only if needed): tenantConfig flag for per-tenant rollback to legacy, OR mobile fallback if real-world performance complaints surface
-- Phase 5: extend Spotlight + rail "More" menu to cover Tasks, Appointments, Services, and industry-conditional routes
+- Phase 5.1 (only if needed): rollback per route or per tenant
+- Phase 6: extend NavRail + Spotlight to cover Tasks, Appointments, Services, and industry-conditional routes; promote more pages to V3Layout
 - Phase 2C: wire mic button to real OMEGA backend (`OmegaFloatingChat.sendMessage` extraction into a `useOmegaChat` hook)
 - Schema work to populate the currently-`notConfigured` metrics:
   - `tenant_kb_entries` / knowledge tables (Intelligence Layer)
