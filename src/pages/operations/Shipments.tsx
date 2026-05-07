@@ -19,6 +19,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { format } from "date-fns";
+import { PageLoading } from "@/components/shared/PageLoading";
 
 const STATUS_TABS = [
   { key: "all", label: "All" },
@@ -67,7 +68,7 @@ function DelayBadge({ probability }: { probability: number | null }) {
 
 export default function Shipments() {
   const { tenantConfig } = useTenant();
-  const tenantSlug = tenantConfig?.tenant_id || "zateceptionist";
+  const tenantSlug = tenantConfig?.tenant_id ?? "";
   const [activeTab, setActiveTab] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -107,6 +108,8 @@ export default function Shipments() {
     const delivered = shipments.filter((s: any) => s.status === "delivered").length;
     return { total, inTransit, delivered };
   }, [shipments]);
+
+  if (!tenantConfig) return <PageLoading />;
 
   return (
     <div className="space-y-6">

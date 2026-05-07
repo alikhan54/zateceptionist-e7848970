@@ -141,7 +141,7 @@ export function OmegaFloatingChat() {
         sender_identifier: user?.email || "",
         sender_type: isAdmin ? "admin" : "team_member",
         tenant_uuid: tenantUuid || "",
-      }, tenantId || "zateceptionist");
+      }, tenantId);
       const data = res.data as any;
       if (res.success && data) {
         const responseText = data.response || data.message || data.error || "OMEGA returned an unexpected response. Please try again.";
@@ -167,6 +167,7 @@ export function OmegaFloatingChat() {
   const send = useCallback(() => sendMessage(), [sendMessage]);
 
   if (!user) return null;
+  if (!tenantId) return null;
 
   return (
     <>

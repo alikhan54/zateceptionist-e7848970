@@ -22,11 +22,12 @@ import {
   Terminal,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { PageLoading } from "@/components/shared/PageLoading";
 
 export default function OpsCommandCenter() {
   const { tenantConfig } = useTenant();
   const { toast } = useToast();
-  const tenantSlug = tenantConfig?.tenant_id || "zateceptionist";
+  const tenantSlug = tenantConfig?.tenant_id ?? "";
   const [command, setCommand] = useState("");
   const [dispatching, setDispatching] = useState(false);
 
@@ -143,6 +144,8 @@ export default function OpsCommandCenter() {
     completed: "bg-green-500/10 text-green-600 border-green-500/30",
     failed: "bg-red-500/10 text-red-600 border-red-500/30",
   };
+
+  if (!tenantConfig) return <PageLoading />;
 
   return (
     <div className="space-y-6">

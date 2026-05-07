@@ -23,6 +23,7 @@ import {
   Send,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { PageLoading } from "@/components/shared/PageLoading";
 
 const AGENTS = [
   { codename: "NEXUS", role: "Operations Supervisor", phase: "P26 — Full Orchestration", icon: Brain, live: true },
@@ -78,12 +79,13 @@ export default function AiIntelligence() {
   const { tenantConfig } = useTenant();
   const { toast } = useToast();
 
-  const tenantSlug = tenantConfig?.tenant_id || "zateceptionist";
-  const tenantId = tenantConfig?.id || "ac308ab6-f381-4eef-88ec-4d5c7a860ff9";
+  const tenantSlug = tenantConfig?.tenant_id ?? "";
+  const tenantId = tenantConfig?.id ?? "";
 
   // Fetch recent tasks
   const { data: tasks = [], refetch: refetchTasks } = useQuery({
     queryKey: ["ops-tasks", tenantSlug],
+    enabled: !!tenantConfig,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("ops_agent_tasks")
@@ -100,6 +102,7 @@ export default function AiIntelligence() {
   // Fetch inventory items
   const { data: inventory = [] } = useQuery({
     queryKey: ["ops-inventory", tenantSlug, industry],
+    enabled: !!tenantConfig,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("ops_inventory_items")
@@ -117,6 +120,7 @@ export default function AiIntelligence() {
   // Fetch demand forecasts
   const { data: forecasts = [], refetch: refetchForecasts } = useQuery({
     queryKey: ["ops-forecasts", tenantSlug, industry],
+    enabled: !!tenantConfig,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("ops_demand_forecasts")
@@ -134,6 +138,7 @@ export default function AiIntelligence() {
   // Fetch vendors (Phase 22)
   const { data: vendors = [] } = useQuery({
     queryKey: ["ops-vendors", tenantSlug, industry],
+    enabled: !!tenantConfig,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("ops_vendors")
@@ -150,6 +155,7 @@ export default function AiIntelligence() {
   // Fetch purchase orders (Phase 22)
   const { data: purchaseOrders = [] } = useQuery({
     queryKey: ["ops-purchase-orders", tenantSlug, industry],
+    enabled: !!tenantConfig,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("ops_purchase_orders")
@@ -167,6 +173,7 @@ export default function AiIntelligence() {
   // Fetch production plans (Phase 23)
   const { data: productionPlans = [] } = useQuery({
     queryKey: ["ops-production-plans", tenantSlug, industry],
+    enabled: !!tenantConfig,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("ops_production_plans")
@@ -184,6 +191,7 @@ export default function AiIntelligence() {
   // Fetch QC results (Phase 23)
   const { data: qcResults = [] } = useQuery({
     queryKey: ["ops-qc-results", tenantSlug],
+    enabled: !!tenantConfig,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("ops_qc_results")
@@ -200,6 +208,7 @@ export default function AiIntelligence() {
   // Fetch shipments (Phase 24)
   const { data: shipments = [] } = useQuery({
     queryKey: ["ops-shipments", tenantSlug],
+    enabled: !!tenantConfig,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("ops_shipments")
@@ -216,6 +225,7 @@ export default function AiIntelligence() {
   // Fetch cost savings (Phase 24)
   const { data: savings = [] } = useQuery({
     queryKey: ["ops-savings", tenantSlug, industry],
+    enabled: !!tenantConfig,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("ops_cost_savings")
@@ -232,6 +242,7 @@ export default function AiIntelligence() {
   // Fetch budget status (Phase 25)
   const { data: budgetStatus = [] } = useQuery({
     queryKey: ["ops-budgets", tenantSlug, industry],
+    enabled: !!tenantConfig,
     queryFn: async () => {
       const now = new Date();
       const { data, error } = await supabase
@@ -250,6 +261,7 @@ export default function AiIntelligence() {
   // Fetch compliance log (Phase 25)
   const { data: complianceLogs = [] } = useQuery({
     queryKey: ["ops-compliance", tenantSlug],
+    enabled: !!tenantConfig,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("ops_compliance_log")
@@ -298,6 +310,7 @@ export default function AiIntelligence() {
   // Fetch industry configs
   const { data: configs = [] } = useQuery({
     queryKey: ["ops-configs", tenantSlug],
+    enabled: !!tenantConfig,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("ops_industry_configs")
@@ -352,6 +365,8 @@ export default function AiIntelligence() {
     if (sec < 86400) return `${Math.floor(sec / 3600)}h ago`;
     return `${Math.floor(sec / 86400)}d ago`;
   };
+
+  if (!tenantConfig) return <PageLoading />;
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">

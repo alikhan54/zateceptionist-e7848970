@@ -20,6 +20,7 @@ import { callWebhook, WEBHOOKS } from "@/lib/api/webhooks";
 import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { sanitizeResponse } from "@/lib/security/sanitizeResponse";
+import { PageLoading } from "@/components/shared/PageLoading";
 
 const AGENT_COLORS: Record<string, string> = {
   OMEGA: "bg-violet-500/15 text-violet-400 border-violet-500/30",
@@ -742,8 +743,10 @@ function SystemStatusTab({ healthData, healthStatus, refreshHealth, tenantId }: 
 // --- Main Page ---
 export default function OmegaCommandCenter() {
   const { tenantId, tenantConfig } = useTenant();
-  const tenantUuid = tenantConfig?.id;
-  const { status, data: healthData, refresh: refreshHealth } = useHealth(tenantId || "zateceptionist");
+  const tenantUuid = tenantConfig?.id ?? "";
+  const { status, data: healthData, refresh: refreshHealth } = useHealth(tenantId ?? "");
+
+  if (!tenantId || !tenantConfig) return <PageLoading />;
 
   return (
     <PageWrapper>
@@ -775,12 +778,12 @@ export default function OmegaCommandCenter() {
             <TabsTrigger value="memory"><Database className="h-4 w-4 mr-1.5 hidden sm:inline" /> Memory</TabsTrigger>
             <TabsTrigger value="system"><Cpu className="h-4 w-4 mr-1.5 hidden sm:inline" /> System</TabsTrigger>
           </TabsList>
-          <TabsContent value="chat"><ChatTab tenantId={tenantId || "zateceptionist"} tenantUuid={tenantUuid || ""} /></TabsContent>
-          <TabsContent value="activity"><ActivityFeedTab tenantId={tenantId || "zateceptionist"} /></TabsContent>
-          <TabsContent value="autonomous"><AutonomousLogTab tenantId={tenantId || "zateceptionist"} tenantUuid={tenantUuid || ""} /></TabsContent>
+          <TabsContent value="chat"><ChatTab tenantId={tenantId} tenantUuid={tenantUuid} /></TabsContent>
+          <TabsContent value="activity"><ActivityFeedTab tenantId={tenantId} /></TabsContent>
+          <TabsContent value="autonomous"><AutonomousLogTab tenantId={tenantId} tenantUuid={tenantUuid} /></TabsContent>
           <TabsContent value="approvals"><ApprovalQueueTab /></TabsContent>
-          <TabsContent value="memory"><MemoryTab tenantId={tenantId || "zateceptionist"} /></TabsContent>
-          <TabsContent value="system"><SystemStatusTab healthData={healthData} healthStatus={status} refreshHealth={refreshHealth} tenantId={tenantId || "zateceptionist"} /></TabsContent>
+          <TabsContent value="memory"><MemoryTab tenantId={tenantId} /></TabsContent>
+          <TabsContent value="system"><SystemStatusTab healthData={healthData} healthStatus={status} refreshHealth={refreshHealth} tenantId={tenantId} /></TabsContent>
         </Tabs>
       </div>
     </PageWrapper>

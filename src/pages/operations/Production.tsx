@@ -20,6 +20,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { format } from "date-fns";
+import { PageLoading } from "@/components/shared/PageLoading";
 
 const PLAN_STATUS_BADGE: Record<string, string> = {
   draft: "bg-gray-500/10 text-gray-500 border-gray-500/30",
@@ -37,7 +38,7 @@ const QC_STATUS_BADGE: Record<string, string> = {
 
 export default function Production() {
   const { tenantConfig } = useTenant();
-  const tenantSlug = tenantConfig?.tenant_id || "zateceptionist";
+  const tenantSlug = tenantConfig?.tenant_id ?? "";
   const [mainTab, setMainTab] = useState("plans");
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -117,6 +118,8 @@ export default function Production() {
     const passRate = total > 0 ? Math.round((passed / total) * 100) : 0;
     return { total, passed, failed, passRate };
   }, [qcResults]);
+
+  if (!tenantConfig) return <PageLoading />;
 
   return (
     <div className="space-y-6">

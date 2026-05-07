@@ -18,6 +18,7 @@ import {
   ArrowDownRight,
   BarChart3,
 } from "lucide-react";
+import { PageLoading } from "@/components/shared/PageLoading";
 
 const SAVINGS_STATUS_BADGE: Record<string, string> = {
   identified: "bg-blue-500/10 text-blue-600 border-blue-500/30",
@@ -28,7 +29,7 @@ const SAVINGS_STATUS_BADGE: Record<string, string> = {
 
 export default function Budgets() {
   const { tenantConfig } = useTenant();
-  const tenantSlug = tenantConfig?.tenant_id || "zateceptionist";
+  const tenantSlug = tenantConfig?.tenant_id ?? "";
 
   // Budgets
   const { data: budgets = [], isLoading: loadingBudgets } = useQuery({
@@ -74,6 +75,8 @@ export default function Budgets() {
       .reduce((sum: number, s: any) => sum + (s.estimated_saving || 0), 0);
     return { totalBudgeted, totalSpent, remaining, utilization, totalPotentialSavings };
   }, [budgets, savings]);
+
+  if (!tenantConfig) return <PageLoading />;
 
   return (
     <div className="space-y-6">

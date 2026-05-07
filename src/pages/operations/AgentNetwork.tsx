@@ -23,6 +23,7 @@ import {
   Activity,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { PageLoading } from "@/components/shared/PageLoading";
 
 interface AgentDef {
   codename: string;
@@ -128,7 +129,7 @@ const TASK_STATUS_ICON: Record<string, React.ReactNode> = {
 
 export default function AgentNetwork() {
   const { tenantConfig } = useTenant();
-  const tenantSlug = tenantConfig?.tenant_id || "zateceptionist";
+  const tenantSlug = tenantConfig?.tenant_id ?? "";
 
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ["ops_agent_tasks_all", tenantSlug],
@@ -163,6 +164,8 @@ export default function AgentNetwork() {
   }, [tasks]);
 
   const recentTasks = useMemo(() => tasks.slice(0, 15), [tasks]);
+
+  if (!tenantConfig) return <PageLoading />;
 
   return (
     <div className="space-y-6">

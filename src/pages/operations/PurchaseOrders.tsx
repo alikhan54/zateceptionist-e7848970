@@ -20,6 +20,7 @@ import {
   DollarSign,
 } from "lucide-react";
 import { format } from "date-fns";
+import { PageLoading } from "@/components/shared/PageLoading";
 
 const STATUS_TABS = [
   { key: "all", label: "All" },
@@ -51,7 +52,7 @@ const STATUS_ICON: Record<string, React.ReactNode> = {
 
 export default function PurchaseOrders() {
   const { tenantConfig } = useTenant();
-  const tenantSlug = tenantConfig?.tenant_id || "zateceptionist";
+  const tenantSlug = tenantConfig?.tenant_id ?? "";
   const [activeTab, setActiveTab] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -98,6 +99,8 @@ export default function PurchaseOrders() {
     ).length;
     return { total, totalValue, pendingCount, deliveredCount };
   }, [purchaseOrders]);
+
+  if (!tenantConfig) return <PageLoading />;
 
   return (
     <div className="space-y-6">
