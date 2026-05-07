@@ -201,7 +201,7 @@ const PIPELINE_STAGES = [
     description: "Handling objections",
   },
   {
-    id: "CLOSE",
+    id: "CLOSING",
     name: "Closing",
     probability: 80,
     category: "Closing",
@@ -1050,7 +1050,7 @@ export default function Pipeline() {
         // 2. Derived from lead_status using STATUS_TO_STAGE_MAP
         // 3. Derived from status using STATUS_TO_STAGE_MAP (n8n writes 'status' not 'lead_status')
         // 4. Default to "PROS"
-        const validStageIds = ["PROS", "RES", "CONT", "PITCH", "OBJ", "CLOSE", "RET"];
+        const validStageIds = ["PROS", "RES", "CONT", "PITCH", "OBJ", "CLOSING", "RET"];
         
         let pipelineStage: string;
         const rawPipelineStage = lead.pipeline_stage;
@@ -1104,8 +1104,10 @@ export default function Pipeline() {
           pipeline_stage: pipelineStage,
           full_name: fullName,
           tags: null,
-          last_contacted_at: null,
-          last_responded_at: null,
+          // E.5: preserve real timestamps from DB instead of nulling them.
+          // DB column is `last_response_at` (singular); UI type uses `last_responded_at`.
+          last_contacted_at: (lead as any).last_contacted_at ?? null,
+          last_responded_at: (lead as any).last_response_at ?? null,
           total_conversations: 0,
           total_emails_sent: 0,
           source: lead.source || "unknown",
@@ -1146,7 +1148,7 @@ export default function Pipeline() {
     "CONT": "contacted",
     "PITCH": "qualified",
     "OBJ": "objection",
-    "CLOSE": "closing",
+    "CLOSING": "closing",
     "RET": "retained",
   };
 
