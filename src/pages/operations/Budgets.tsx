@@ -19,6 +19,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import { PageLoading } from "@/components/shared/PageLoading";
+import { useCurrencyFormatter } from "@/lib/formatCurrency";
 
 const SAVINGS_STATUS_BADGE: Record<string, string> = {
   identified: "bg-blue-500/10 text-blue-600 border-blue-500/30",
@@ -30,6 +31,7 @@ const SAVINGS_STATUS_BADGE: Record<string, string> = {
 export default function Budgets() {
   const { tenantConfig } = useTenant();
   const tenantSlug = tenantConfig?.tenant_id ?? "";
+  const formatCurrency = useCurrencyFormatter();
 
   // Budgets
   const { data: budgets = [], isLoading: loadingBudgets } = useQuery({
@@ -99,7 +101,7 @@ export default function Budgets() {
               <div>
                 <p className="text-sm text-muted-foreground">Total Budgeted</p>
                 <p className="text-2xl font-bold">
-                  ${overview.totalBudgeted.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  {formatCurrency(overview.totalBudgeted)}
                 </p>
               </div>
               <Target className="h-8 w-8 text-muted-foreground opacity-60" />
@@ -113,7 +115,7 @@ export default function Budgets() {
               <div>
                 <p className="text-sm text-muted-foreground">Total Spent</p>
                 <p className="text-2xl font-bold text-amber-500">
-                  ${overview.totalSpent.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  {formatCurrency(overview.totalSpent)}
                 </p>
               </div>
               <DollarSign className="h-8 w-8 text-amber-500 opacity-60" />
@@ -127,7 +129,7 @@ export default function Budgets() {
               <div>
                 <p className="text-sm text-muted-foreground">Remaining</p>
                 <p className={`text-2xl font-bold ${overview.remaining >= 0 ? "text-green-500" : "text-red-500"}`}>
-                  ${Math.abs(overview.remaining).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  {formatCurrency(Math.abs(overview.remaining))}
                   {overview.remaining < 0 && " over"}
                 </p>
               </div>
@@ -142,7 +144,7 @@ export default function Budgets() {
               <div>
                 <p className="text-sm text-muted-foreground">Potential Savings</p>
                 <p className="text-2xl font-bold text-emerald-500">
-                  ${overview.totalPotentialSavings.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  {formatCurrency(overview.totalPotentialSavings)}
                 </p>
               </div>
               <TrendingDown className="h-8 w-8 text-emerald-500 opacity-60" />
@@ -199,7 +201,7 @@ export default function Budgets() {
                           {(b.category || "Uncategorized").replace(/_/g, " ")}
                         </span>
                         <span className="text-xs text-muted-foreground">
-                          ${spent.toLocaleString()} / ${budgeted.toLocaleString()}
+                          {formatCurrency(spent)} / {formatCurrency(budgeted)}
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
@@ -258,7 +260,7 @@ export default function Budgets() {
                     <div className="flex items-center gap-3 flex-shrink-0 ml-4">
                       <span className="text-sm font-bold text-emerald-500 flex items-center gap-1">
                         <ArrowDownRight className="h-3 w-3" />
-                        ${(s.estimated_saving || 0).toLocaleString()}
+                        {formatCurrency(s.estimated_saving || 0)}
                       </span>
                       <Badge
                         variant="outline"

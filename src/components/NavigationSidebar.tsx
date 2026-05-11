@@ -496,7 +496,7 @@ export function NavigationSidebar() {
       { title: "Kitchen Display", url: "/operations/kitchen-display", icon: ChefHat },
       { title: "Menu Editor", url: "/operations/menu", icon: UtensilsCrossed },
       { title: "Reservations", url: "/operations/reservations", icon: CalendarCheck },
-      { title: "Inventory", url: "/operations/inventory", icon: Package },
+      // Inventory removed: lives under Operations > Supply Chain to avoid duplication.
     ],
   };
 
@@ -515,8 +515,10 @@ export function NavigationSidebar() {
       { title: "Production", url: "/operations/production", icon: Factory },
       { title: "Finance", url: "/operations/budgets", icon: DollarSign, children: [
         { title: "Budgets", url: "/operations/budgets", icon: Wallet },
-        { title: "Expenses", url: "/operations/expenses", icon: Receipt },
-        { title: "Invoices", url: "/operations/invoices", icon: FileCheck },
+        // Expenses and Invoices pages are placeholders with no DB backing.
+        // Hidden until expenses/invoices tables exist.
+        // { title: "Expenses", url: "/operations/expenses", icon: Receipt },
+        // { title: "Invoices", url: "/operations/invoices", icon: FileCheck },
       ]},
       { title: "AI Agents", url: "/operations/agents", icon: Brain, children: [
         { title: "Agent Network", url: "/operations/agents", icon: Network },

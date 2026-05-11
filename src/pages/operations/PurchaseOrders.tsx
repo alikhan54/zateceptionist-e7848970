@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { PageLoading } from "@/components/shared/PageLoading";
+import { useCurrencyFormatter } from "@/lib/formatCurrency";
 
 const STATUS_TABS = [
   { key: "all", label: "All" },
@@ -53,6 +54,7 @@ const STATUS_ICON: Record<string, React.ReactNode> = {
 export default function PurchaseOrders() {
   const { tenantConfig } = useTenant();
   const tenantSlug = tenantConfig?.tenant_id ?? "";
+  const formatCurrency = useCurrencyFormatter();
   const [activeTab, setActiveTab] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -127,7 +129,7 @@ export default function PurchaseOrders() {
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">Total Value</p>
             <p className="text-2xl font-bold text-indigo-500">
-              ${stats.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {formatCurrency(stats.totalValue)}
             </p>
           </CardContent>
         </Card>
@@ -197,12 +199,7 @@ export default function PurchaseOrders() {
                       <td className="py-3 font-mono font-medium">{po.po_number || "--"}</td>
                       <td className="py-3">{po.vendor_name || "--"}</td>
                       <td className="py-3 text-right font-medium">
-                        {po.total_amount != null
-                          ? Number(po.total_amount).toLocaleString(undefined, {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })
-                          : "--"}
+                        {po.total_amount != null ? formatCurrency(Number(po.total_amount)) : "--"}
                       </td>
                       <td className="py-3 text-muted-foreground">{po.currency || "USD"}</td>
                       <td className="py-3">

@@ -35,16 +35,16 @@ interface AgentDef {
 
 const AGENTS: AgentDef[] = [
   {
-    codename: "OVERSEER",
-    role: "Supervisor",
-    description: "Routes commands to specialist agents and orchestrates multi-agent workflows",
+    codename: "ORACLE",
+    role: "Demand Forecasting",
+    description: "Predicts inventory needs using consumption patterns and seasonality",
     icon: <Brain className="h-6 w-6" />,
     color: "text-purple-500",
   },
   {
     codename: "BUYER",
-    role: "Procurement",
-    description: "Creates POs, negotiates with vendors, manages supplier relationships",
+    role: "Procurement Automation",
+    description: "Creates purchase orders autonomously with budget and compliance gates",
     icon: <ShoppingCart className="h-6 w-6" />,
     color: "text-indigo-500",
   },
@@ -56,9 +56,9 @@ const AGENTS: AgentDef[] = [
     color: "text-blue-500",
   },
   {
-    codename: "KEEPER",
-    role: "Inventory",
-    description: "Monitors stock levels, triggers reorders, manages warehouse locations",
+    codename: "STOCKMASTER",
+    role: "Inventory Optimization",
+    description: "Monitors stock levels, calculates reorder points, prevents stockouts",
     icon: <Warehouse className="h-6 w-6" />,
     color: "text-teal-500",
   },
@@ -91,39 +91,43 @@ const AGENTS: AgentDef[] = [
     color: "text-cyan-500",
   },
   {
-    codename: "PLANNER",
-    role: "Demand Forecast",
-    description: "Predicts demand, plans inventory needs, seasonal adjustments",
+    codename: "SOURCER",
+    role: "Vendor Discovery",
+    description: "Finds and evaluates new suppliers using market intelligence",
     icon: <BarChart3 className="h-6 w-6" />,
     color: "text-violet-500",
   },
   {
-    codename: "SCHEDULER",
-    role: "Workforce",
-    description: "Manages shifts, assigns workers, tracks labor capacity",
+    codename: "DIPLOMAT",
+    role: "Vendor Relations",
+    description: "Scores vendor reliability, tracks performance, manages relationships",
     icon: <Clock className="h-6 w-6" />,
     color: "text-amber-500",
   },
   {
-    codename: "DISPATCHER",
-    role: "Order Fulfillment",
-    description: "Processes orders, coordinates picking and packing, manages returns",
+    codename: "GUARDIAN",
+    role: "Compliance & Safety",
+    description: "Monitors HACCP, food safety, and regulatory compliance",
     icon: <Zap className="h-6 w-6" />,
     color: "text-rose-500",
   },
   {
-    codename: "ANALYST",
-    role: "Reporting",
-    description: "Generates dashboards, trend analysis, operational KPIs",
+    codename: "OPS_NEXUS",
+    role: "Master Orchestrator",
+    description: "Coordinates all 11 agents to execute complex multi-step goals",
     icon: <Activity className="h-6 w-6" />,
     color: "text-sky-500",
   },
 ];
 
 const TASK_STATUS_ICON: Record<string, React.ReactNode> = {
+  complete: <CheckCircle2 className="h-3 w-3 text-green-500" />,
   completed: <CheckCircle2 className="h-3 w-3 text-green-500" />,
   failed: <XCircle className="h-3 w-3 text-red-500" />,
+  escalated: <XCircle className="h-3 w-3 text-red-500" />,
+  running: <Loader2 className="h-3 w-3 text-blue-500 animate-spin" />,
   in_progress: <Loader2 className="h-3 w-3 text-blue-500 animate-spin" />,
+  awaiting_approval: <Clock className="h-3 w-3 text-amber-500" />,
   pending: <Clock className="h-3 w-3 text-amber-500" />,
 };
 
@@ -154,8 +158,9 @@ export default function AgentNetwork() {
         map[name] = { total: 0, completed: 0, failed: 0, latest: null };
       }
       map[name].total++;
-      if (t.status === "completed") map[name].completed++;
-      if (t.status === "failed") map[name].failed++;
+      const status = String(t.status || "").toLowerCase();
+      if (status === "complete" || status === "completed") map[name].completed++;
+      if (status === "failed" || status === "escalated") map[name].failed++;
       if (!map[name].latest || (t.created_at && t.created_at > map[name].latest!)) {
         map[name].latest = t.created_at;
       }
@@ -198,7 +203,7 @@ export default function AgentNetwork() {
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">Completed</p>
             <p className="text-2xl font-bold text-green-500">
-              {tasks.filter((t: any) => t.status === "completed").length}
+              {tasks.filter((t: any) => { const s = String(t.status || "").toLowerCase(); return s === "complete" || s === "completed"; }).length}
             </p>
           </CardContent>
         </Card>
@@ -224,8 +229,9 @@ export default function AgentNetwork() {
               latest: null,
             };
             const isActive = stats.total > 0;
+            const finished = stats.completed + stats.failed;
             const successRate =
-              stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
+              finished > 0 ? Math.round((stats.completed / finished) * 100) : 0;
 
             return (
               <Card
@@ -313,7 +319,7 @@ export default function AgentNetwork() {
                   className="flex items-center justify-between py-2 border-b border-border/50 last:border-0"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    {TASK_STATUS_ICON[task.status] || <Clock className="h-3 w-3" />}
+                    {TASK_STATUS_ICON[String(task.status || "").toLowerCase()] || <Clock className="h-3 w-3" />}
                     <div className="min-w-0">
                       <p className="text-sm truncate">
                         <span className="font-medium">{task.agent_name || "UNKNOWN"}</span>

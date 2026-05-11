@@ -94,7 +94,7 @@ export default function Shipments() {
       const term = searchTerm.toLowerCase();
       list = list.filter(
         (s: any) =>
-          (s.tracking_number || "").toLowerCase().includes(term) ||
+          (s.carrier_tracking_number || s.tracking_number || "").toLowerCase().includes(term) ||
           (s.carrier || "").toLowerCase().includes(term) ||
           (s.po_number || "").toLowerCase().includes(term)
       );
@@ -212,7 +212,7 @@ export default function Shipments() {
                       className="border-b border-border/50 hover:bg-muted/50 transition-colors"
                     >
                       <td className="py-3 font-mono">{s.po_number || "--"}</td>
-                      <td className="py-3 font-mono text-xs">{s.tracking_number || "--"}</td>
+                      <td className="py-3 font-mono text-xs">{s.carrier_tracking_number || s.tracking_number || "--"}</td>
                       <td className="py-3">{s.carrier || "--"}</td>
                       <td className="py-3">
                         <Badge
@@ -226,13 +226,13 @@ export default function Shipments() {
                       <td className="py-3 text-muted-foreground">
                         <div className="flex items-center gap-1">
                           <MapPin className="h-3 w-3" />
-                          {s.origin || "--"}
+                          {s.origin || s.origin_address || s.origin_country || "--"}
                         </div>
                       </td>
                       <td className="py-3 text-muted-foreground">
                         <div className="flex items-center gap-1">
                           <MapPin className="h-3 w-3" />
-                          {s.destination || "--"}
+                          {s.destination || s.destination_address || s.destination_country || "--"}
                         </div>
                       </td>
                       <td className="py-3 text-muted-foreground">

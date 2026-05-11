@@ -23,11 +23,13 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { PageLoading } from "@/components/shared/PageLoading";
+import { useCurrencyFormatter } from "@/lib/formatCurrency";
 
 export default function OpsCommandCenter() {
   const { tenantConfig } = useTenant();
   const { toast } = useToast();
   const tenantSlug = tenantConfig?.tenant_id ?? "";
+  const formatCurrency = useCurrencyFormatter();
   const [command, setCommand] = useState("");
   const [dispatching, setDispatching] = useState(false);
 
@@ -120,7 +122,11 @@ export default function OpsCommandCenter() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             tenant_id: tenantSlug,
-            command: command.trim(),
+            tenant_slug: tenantSlug,
+            industry: tenantConfig?.industry ?? "",
+            region: tenantConfig?.region ?? "",
+            goal: command.trim(),
+            mode: "auto",
           }),
         }
       );
@@ -140,9 +146,13 @@ export default function OpsCommandCenter() {
 
   const TASK_STATUS_BADGE: Record<string, string> = {
     pending: "bg-amber-500/10 text-amber-600 border-amber-500/30",
+    awaiting_approval: "bg-amber-500/10 text-amber-600 border-amber-500/30",
     in_progress: "bg-blue-500/10 text-blue-600 border-blue-500/30",
+    running: "bg-blue-500/10 text-blue-600 border-blue-500/30",
+    complete: "bg-green-500/10 text-green-600 border-green-500/30",
     completed: "bg-green-500/10 text-green-600 border-green-500/30",
     failed: "bg-red-500/10 text-red-600 border-red-500/30",
+    escalated: "bg-red-500/10 text-red-600 border-red-500/30",
   };
 
   if (!tenantConfig) return <PageLoading />;
@@ -206,7 +216,7 @@ export default function OpsCommandCenter() {
               <div>
                 <p className="text-sm text-muted-foreground">Budget Remaining</p>
                 <p className="text-2xl font-bold text-green-500">
-                  ${budgetRemaining.toLocaleString()}
+                  {formatCurrency(budgetRemaining)}
                 </p>
               </div>
               <DollarSign className="h-8 w-8 text-green-500 opacity-80" />
@@ -305,11 +315,11 @@ export default function OpsCommandCenter() {
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="flex-shrink-0">
-                          {task.status === "completed" ? (
+                          {(task.status === "completed" || task.status === "complete") ? (
                             <CheckCircle2 className="h-4 w-4 text-green-500" />
-                          ) : task.status === "failed" ? (
+                          ) : (task.status === "failed" || task.status === "escalated") ? (
                             <XCircle className="h-4 w-4 text-red-500" />
-                          ) : task.status === "in_progress" ? (
+                          ) : (task.status === "in_progress" || task.status === "running") ? (
                             <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
                           ) : (
                             <Clock className="h-4 w-4 text-amber-500" />
