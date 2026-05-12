@@ -68,7 +68,7 @@ export const SECTIONS: PulseSection[] = [
   {
     id: "omega",
     name: "OMEGA",
-    meta: "12 agents · 79 tools",
+    meta: "12 agents · 81 tools",
     route: "/dashboard",
     icon: "Home",
     color: "cyan",
@@ -78,7 +78,7 @@ export const SECTIONS: PulseSection[] = [
     pillType: "live",
     pillText: "live",
     metrics: [
-      { value: "79", label: "tools active" },
+      { value: "81", label: "tools active" },
       { value: "12", label: "core agents" },
       { value: "4", label: "LangGraph brains" },
       { value: "99.9%", label: "uptime" },
@@ -96,10 +96,10 @@ export const SECTIONS: PulseSection[] = [
     pillType: "normal",
     pillText: "+24% week",
     metrics: [
-      { value: "522", label: "in pipeline" },
-      { value: "47", label: "sequences active" },
-      { value: "12", label: "contacted today" },
-      { value: "3", label: "hot leads" },
+      { value: "0", label: "in pipeline" },
+      { value: "0", label: "sequences active" },
+      { value: "0", label: "contacted today" },
+      { value: "0", label: "hot leads" },
       { value: "$1.2M", label: "ARR managed", notConfigured: true },
     ],
   },
@@ -115,8 +115,8 @@ export const SECTIONS: PulseSection[] = [
     pillType: "normal",
     pillText: "8 campaigns",
     metrics: [
-      { value: "8", label: "campaigns live" },
-      { value: "24", label: "posts this week" },
+      { value: "0", label: "campaigns live" },
+      { value: "0", label: "posts this week" },
       { value: "64", label: "leads from blog", notConfigured: true },
       { value: "1.2k", label: "IG followers", notConfigured: true },
       { value: "+12%", label: "engagement", notConfigured: true },
@@ -152,8 +152,8 @@ export const SECTIONS: PulseSection[] = [
     pillType: "healthy",
     pillText: "all healthy",
     metrics: [
-      { value: "18", label: "active projects" },
-      { value: "11", label: "estimates pending" },
+      { value: "0", label: "active projects" },
+      { value: "0", label: "estimates pending" },
       { value: "22", label: "dispatches today", notConfigured: true },
       { value: "96%", label: "SLA met", notConfigured: true },
     ],
@@ -170,10 +170,10 @@ export const SECTIONS: PulseSection[] = [
     pillType: "live",
     pillText: "12 live now",
     metrics: [
-      { value: "12", label: "calls today" },
-      { value: "47", label: "WhatsApp chats" },
-      { value: "94", label: "emails sent" },
-      { value: "41", label: "VAPI tools" },
+      { value: "0", label: "calls today" },
+      { value: "0", label: "WhatsApp chats" },
+      { value: "0", label: "emails sent" },
+      { value: "41", label: "VAPI tools", notConfigured: true },
     ],
   },
 
@@ -181,7 +181,7 @@ export const SECTIONS: PulseSection[] = [
   {
     id: "intel",
     name: "Intelligence Layer",
-    meta: "12 agents · 80 trained",
+    meta: "knowledge & training",
     route: "/settings/business-profile/knowledge", // App.tsx:1503 — KnowledgeBaseSettings
     icon: "Brain",
     color: "violet",
@@ -200,7 +200,7 @@ export const SECTIONS: PulseSection[] = [
   {
     id: "industry",
     name: "Industry Verticals",
-    meta: "8 competitors · monitored",
+    meta: "competitor intelligence",
     route: "/settings/business-profile/company", // App.tsx:1495 — CompanyInfoSettings
     icon: "Building2",
     color: "coral",
@@ -209,9 +209,9 @@ export const SECTIONS: PulseSection[] = [
     pillType: "warning",
     pillText: "3 alerts",
     metrics: [
-      { value: "SaaS", label: "tenant industry" },
-      { value: "8", label: "competitors tracked" },
-      { value: "3", label: "moves this week", isWarning: true },
+      { value: "", label: "tenant industry" },
+      { value: "0", label: "competitors tracked" },
+      { value: "0", label: "moves this week", isWarning: true },
       { value: "Top 12%", label: "lead velocity", notConfigured: true },
       { value: "Top 8%", label: "pipeline volume", notConfigured: true },
     ],
@@ -221,7 +221,7 @@ export const SECTIONS: PulseSection[] = [
   {
     id: "inbox",
     name: "Unified Inbox",
-    meta: "10 channels",
+    meta: "unified messaging",
     route: "/inbox",
     icon: "Inbox",
     color: "plum",
@@ -232,7 +232,7 @@ export const SECTIONS: PulseSection[] = [
     pillText: "3 hot",
     metrics: [
       { value: "10", label: "channels active" },
-      { value: "17", label: "conversations" },
+      { value: "0", label: "conversations" },
       { value: "3", label: "hot threads", notConfigured: true },
       { value: "2", label: "awaiting response", notConfigured: true },
     ],
@@ -240,7 +240,7 @@ export const SECTIONS: PulseSection[] = [
   {
     id: "clients",
     name: "Clients",
-    meta: "17 active",
+    meta: "customer 360",
     route: "/customers",
     icon: "Users",
     color: "teal",
@@ -250,8 +250,8 @@ export const SECTIONS: PulseSection[] = [
     pillType: "normal",
     pillText: "+2 today",
     metrics: [
-      { value: "17", label: "total clients" },
-      { value: "+2", label: "today" },
+      { value: "0", label: "total clients" },
+      { value: "+0", label: "today" },
       { value: "14", label: "active accounts", notConfigured: true },
       { value: "8.4", label: "avg NPS", notConfigured: true },
     ],
@@ -277,7 +277,7 @@ export const SECTIONS: PulseSection[] = [
   {
     id: "settings",
     name: "Settings",
-    meta: "22 integrations",
+    meta: "integrations & config",
     route: "/settings",
     icon: "Settings",
     color: "slate",
@@ -286,7 +286,7 @@ export const SECTIONS: PulseSection[] = [
     pillType: "normal",
     pillText: "all connected",
     metrics: [
-      { value: "22", label: "integrations connected" },
+      { value: "0", label: "integrations connected" },
       { value: "Knowledge base", label: "managed" },
       { value: "AI training", label: "active" },
       { value: "Company info", label: "configured" },
@@ -299,13 +299,17 @@ export interface CathedralStat {
   label: string;
   value: string;
   delta: string;
+  /** When true, the renderer should show "—" instead of value. Used for
+   *  hero stats that have no real data source wired (e.g. Agents healthy
+   *  until CORTEX /health is wired). */
+  notConfigured?: boolean;
 }
 
 export const CATHEDRAL_STATS: CathedralStat[] = [
-  { label: "Active leads",        value: "522",    delta: "↗ +38 this week" },
-  { label: "Conversations",       value: "94",     delta: "↗ +12% today" },
+  { label: "Active leads",        value: "0",      delta: "—" },
+  { label: "Conversations",       value: "0",      delta: "—" },
   { label: "Booked appointments", value: "0",      delta: "—" },
-  { label: "Agents healthy",      value: "88/88",  delta: "all systems online" },
+  { label: "Agents healthy",      value: "—",      delta: "—", notConfigured: true },
 ];
 
 /** Spotlight rows — minimally updated. UI unchanged; only added Intelligence
