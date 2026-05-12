@@ -304,7 +304,7 @@ export interface CathedralStat {
 export const CATHEDRAL_STATS: CathedralStat[] = [
   { label: "Active leads",        value: "522",    delta: "↗ +38 this week" },
   { label: "Conversations",       value: "94",     delta: "↗ +12% today" },
-  { label: "Booked appointments", value: "18",     delta: "↗ +3 today" },
+  { label: "Booked appointments", value: "0",      delta: "—" },
   { label: "Agents healthy",      value: "88/88",  delta: "all systems online" },
 ];
 

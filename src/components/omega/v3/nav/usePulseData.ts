@@ -153,40 +153,9 @@ interface MetricUpdate {
   notConfigured?: boolean;
 }
 
-// ---------- ARR best-effort fetch (Phase 2B.1) ------------------------------
-
-function formatArr(n: number): string {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}k`;
-  return `$${n.toFixed(0)}`;
-}
-
-/** Probe for tenant ARR. Best-effort — column shape unknown, so we try and
- *  fall back to null (→ "not configured") on any error. */
-async function fetchLatestArr(tenantSlug: string): Promise<string | null> {
-  try {
-    const { data, error } = await supabase
-      .from("ltv_cac_snapshots")
-      .select("arr")
-      .eq("tenant_id", tenantSlug)
-      .limit(1)
-      .maybeSingle();
-    if (error) {
-      console.warn("[Pulse] ltv_cac_snapshots query failed:", error.message);
-      return null;
-    }
-    if (!data || data.arr == null) return null;
-    const num = typeof data.arr === "number" ? data.arr : Number(data.arr);
-    if (!Number.isFinite(num)) return null;
-    return formatArr(num);
-  } catch (e) {
-    console.warn(
-      "[Pulse] ltv_cac_snapshots threw:",
-      e instanceof Error ? e.message : String(e),
-    );
-    return null;
-  }
-}
+// ARR helper removed — ltv_cac_snapshots has no `arr` column. The metric stays
+// notConfigured via the registry default. If we ever need ARR, derive it from
+// SUM(deals.value) WHERE stage='closed_won'.
 
 /** Count enabled communication channels from tenantConfig flags. Always
  *  succeeds — no Supabase query needed. */
@@ -231,19 +200,18 @@ async function fetchAllMetrics(
       key: "sales|in pipeline",
       promise: countQuery("sales_leads", { tenant_id: tenantSlug }),
     },
-    // Phase 2B.1: sequences (SLUG, is_active)
+    // Phase 2B.1: sequences (SLUG, status='active')
     {
       key: "sales|sequences active",
       promise: countQuery("sequences", {
         tenant_id: tenantSlug,
-        is_active: true,
+        status: "active",
       }),
     },
-    // Phase 2B.1: ARR best-effort
-    {
-      key: "sales|ARR managed",
-      promise: fetchLatestArr(tenantSlug),
-    },
+    // ARR metric dropped — ltv_cac_snapshots has no `arr` column. Registry
+    // already marks this notConfigured; we no longer push an update for it.
+    // TODO: when deals start closing, compute ARR from
+    //   SUM(deals.value) WHERE stage='closed_won' AND tenant_id=slug
     {
       key: "sales|hot leads",
       promise: countQuery(
@@ -264,11 +232,13 @@ async function fetchAllMetrics(
     // ===== Marketing AI =====
     {
       key: "marketing|campaigns live",
-      promise: countQuery(
-        "campaigns",
-        { tenant_id: tenantSlug },
-        { in: { status: ["active", "live", "running"] } },
-      ),
+      promise: tenantUuid
+        ? countQuery(
+            "marketing_campaigns",
+            { tenant_id: tenantUuid },
+            { in: { status: ["active", "sending", "scheduled"] } },
+          )
+        : Promise.resolve(null),
     },
     {
       key: "marketing|posts this week",
@@ -358,7 +328,7 @@ async function fetchAllMetrics(
         ? countQuery(
             "competitor_tracking",
             { tenant_id: tenantUuid },
-            { gte: { updated_at: weekAgoISO } },
+            { gte: { last_analyzed_at: weekAgoISO } },
           )
         : Promise.resolve(null),
     },
@@ -388,11 +358,13 @@ async function fetchAllMetrics(
     },
 
     // ===== Settings =====
+    // tenant_integrations has no `status` column — `is_active` (boolean) is the
+    // closest available signal for a connected provider.
     {
       key: "settings|integrations connected",
       promise: countQuery("tenant_integrations", {
         tenant_id: tenantSlug,
-        status: "connected",
+        is_active: true,
       }),
     },
   ];
@@ -409,12 +381,14 @@ async function fetchAllMetrics(
     },
     {
       label: "Booked appointments",
+      // appointments.start_time is `time without time zone` (HH:MM:SS only) —
+      // it can't be compared to an ISO timestamp. Use scheduled_at (timestamptz).
       promise: countQuery(
         "appointments",
         { tenant_id: tenantSlug },
         {
-          in: { status: ["scheduled", "confirmed"] },
-          gte: { start_time: todayISO },
+          in: { status: ["scheduled", "confirmed", "pending"] },
+          gte: { scheduled_at: todayISO },
         },
       ),
     },
