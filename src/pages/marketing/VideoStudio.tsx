@@ -249,6 +249,9 @@ export default function VideoStudio() {
   // ----- Avatar Creator state (shown when QuickTemplate "avatar" is selected) -----
   const [avatarScript, setAvatarScript] = useState("");
   const [isGeneratingAvatar, setIsGeneratingAvatar] = useState(false);
+  const [customAvatarUrl, setCustomAvatarUrl] = useState<string | null>(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const avatarFileInputRef = useRef<HTMLInputElement | null>(null);
 
   // ----- Scene editor (still preserved when project clicked) -----
   const [sceneEdits, setSceneEdits] = useState<any[]>([]);
@@ -581,6 +584,35 @@ export default function VideoStudio() {
   // video_projects so it shows up in My Videos immediately.
   // ============================================================
 
+  const handleAvatarUpload = async (file: File | null) => {
+    if (!file || !tid) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Please pick an image file", variant: "destructive" });
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      toast({ title: "Image too large", description: "Max 8MB", variant: "destructive" });
+      return;
+    }
+    setIsUploadingAvatar(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const filePath = `avatars/${tid}/${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("media").upload(filePath, file, { upsert: false, contentType: file.type });
+      if (error) {
+        toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+        return;
+      }
+      const { data } = supabase.storage.from("media").getPublicUrl(filePath);
+      setCustomAvatarUrl(data.publicUrl);
+      toast({ title: "Avatar uploaded ✨", description: "Your photo will be used in the next render." });
+    } catch (err: any) {
+      toast({ title: "Upload error", description: String(err?.message || err).slice(0, 200), variant: "destructive" });
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
   const generateAvatarVideo = async () => {
     if (!avatarScript.trim()) {
       toast({ title: "Write what the avatar should say" });
@@ -605,6 +637,7 @@ export default function VideoStudio() {
             language: language !== "en" ? language : undefined,
             tenant_id: tenantConfig?.tenant_id || tid,
             project_id: projectId,
+            ...(customAvatarUrl ? { source_image_url: customAvatarUrl } : {}),
           }),
         }
       );
@@ -810,13 +843,56 @@ export default function VideoStudio() {
 
                   {/* Avatar selector + voice — two columns on desktop */}
                   <div className="grid grid-cols-1 md:grid-cols-[160px_1fr_1fr] gap-4 mb-4">
-                    {/* Avatar tile */}
+                    {/* Avatar tile + upload */}
                     <div className="text-center">
-                      <div className="rounded-xl bg-gradient-to-br from-violet-400 to-pink-500 aspect-square flex items-center justify-center text-5xl shadow-md ring-2 ring-indigo-300">
-                        🧑‍💼
+                      <button
+                        type="button"
+                        onClick={() => avatarFileInputRef.current?.click()}
+                        disabled={isUploadingAvatar}
+                        className="relative rounded-xl aspect-square w-full overflow-hidden flex items-center justify-center shadow-md ring-2 ring-indigo-300 hover:ring-indigo-400 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                        style={{
+                          background: customAvatarUrl
+                            ? "transparent"
+                            : "linear-gradient(135deg, #A78BFA 0%, #EC4899 100%)",
+                        }}
+                        aria-label="Upload your avatar photo"
+                      >
+                        {customAvatarUrl ? (
+                          <img src={customAvatarUrl} alt="Your avatar" className="absolute inset-0 w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-5xl">🧑‍💼</span>
+                        )}
+                        {isUploadingAvatar && (
+                          <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-white">
+                            <Loader2 className="h-6 w-6 animate-spin" />
+                          </span>
+                        )}
+                        {customAvatarUrl && !isUploadingAvatar && (
+                          <span
+                            role="button"
+                            aria-label="Remove custom avatar"
+                            tabIndex={0}
+                            onClick={(e) => { e.stopPropagation(); setCustomAvatarUrl(null); }}
+                            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.stopPropagation(); setCustomAvatarUrl(null); } }}
+                            className="absolute top-1.5 right-1.5 bg-black/60 hover:bg-black/80 text-white rounded-full p-1 cursor-pointer"
+                          >
+                            <X className="h-3 w-3" />
+                          </span>
+                        )}
+                      </button>
+                      <input
+                        ref={avatarFileInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => handleAvatarUpload(e.target.files?.[0] || null)}
+                      />
+                      <div className="text-xs text-slate-600 mt-1.5 font-medium">
+                        {customAvatarUrl ? "Your avatar" : "Adeel (default)"}
                       </div>
-                      <div className="text-xs text-slate-600 mt-1.5 font-medium">Adeel (default)</div>
-                      <div className="text-[10px] text-slate-400">Upload coming soon</div>
+                      <div className="text-[10px] text-indigo-500 cursor-pointer hover:underline" onClick={() => avatarFileInputRef.current?.click()}>
+                        {customAvatarUrl ? "Replace photo" : "Upload your photo"}
+                      </div>
                     </div>
 
                     {/* Voice */}
