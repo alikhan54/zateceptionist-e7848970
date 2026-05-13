@@ -85,6 +85,7 @@ function formatIndustry(s: string | null | undefined): string {
     retail: "Retail",
     laboratory_instruments: "Lab Instruments",
     roofing: "Roofing",
+    forex_trading: "Forex",
     general: "General",
   };
   if (map[s]) return map[s];

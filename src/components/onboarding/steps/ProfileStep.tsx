@@ -32,6 +32,7 @@ const INDUSTRIES = [
   { value: 'automotive', label: 'Automotive', icon: '🚗' },
   { value: 'professional', label: 'Professional Services', icon: '💼' },
   { value: 'retail', label: 'Retail & E-commerce', icon: '🛍️' },
+  { value: 'forex_trading', label: 'Forex Trading / FX Brokerage', icon: '📈' },
   { value: 'general', label: 'Other', icon: '🏢' },
 ];
 

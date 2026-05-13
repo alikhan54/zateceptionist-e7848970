@@ -1,10 +1,11 @@
 // Core types for multi-tenant CRM
 
-export type IndustryType = 
-  | 'healthcare' 
-  | 'real_estate' 
-  | 'restaurant' 
-  | 'salon' 
+export type IndustryType =
+  | 'healthcare'
+  | 'real_estate'
+  | 'restaurant'
+  | 'salon'
+  | 'forex_trading'
   | 'general';
 
 export interface TenantConfig {

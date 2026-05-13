@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 
-export type IndustryType = "healthcare" | "healthcare_clinic" | "healthcare_staffing" | "real_estate" | "restaurant" | "salon" | "banking_collections" | "construction_estimation" | "youtube_agency" | "technology" | "legal" | "fitness" | "education" | "automotive" | "professional" | "retail" | "laboratory_instruments" | "roofing" | "general";
+export type IndustryType = "healthcare" | "healthcare_clinic" | "healthcare_staffing" | "real_estate" | "restaurant" | "salon" | "banking_collections" | "construction_estimation" | "youtube_agency" | "technology" | "legal" | "fitness" | "education" | "automotive" | "professional" | "retail" | "laboratory_instruments" | "roofing" | "forex_trading" | "general";
 
 export interface TenantConfig {
   id: string;
@@ -291,6 +291,20 @@ const industryVocabulary: Partial<Record<IndustryType, Record<string, string>>> 
     lead: "Prospect",
     leads: "Prospects",
   },
+  forex_trading: {
+    customer: "Trader",
+    customers: "Traders",
+    appointment: "Consultation",
+    appointments: "Consultations",
+    product: "Account Type",
+    products: "Account Types",
+    staff: "Account Manager",
+    staffs: "Account Managers",
+    deal: "Funded Account",
+    deals: "Funded Accounts",
+    lead: "Prospect",
+    leads: "Prospects",
+  },
 };
 
 // Industry-specific deal stages
@@ -408,6 +422,19 @@ const industryDealStages: Partial<Record<IndustryType, string[]>> & { general: s
     "Warranty Active",
     "Lost",
   ],
+  forex_trading: [
+    "Visitor",
+    "Registered",
+    "KYC Submitted",
+    "KYC Approved",
+    "Demo Active",
+    "First Deposit",
+    "Funded Trader",
+    "Active Trader",
+    "VIP / ECN",
+    "Churned",
+    "Lost",
+  ],
   general: ["Lead", "Qualified", "Proposal", "Negotiation", "Won", "Lost"],
 };
 
@@ -437,6 +464,7 @@ interface TenantContextType {
   isYouTubeAgency: boolean;
   isLaboratoryInstruments: boolean;
   isRoofing: boolean;
+  isForexTrading: boolean;
   refreshConfig: () => Promise<void>;
 }
 
@@ -640,6 +668,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const isYouTubeAgency = industry === "youtube_agency";
   const isLaboratoryInstruments = industry === "laboratory_instruments";
   const isRoofing = industry === "roofing";
+  const isForexTrading = industry === "forex_trading";
 
   useEffect(() => {
     fetchTenantConfig();
@@ -671,6 +700,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         isYouTubeAgency,
         isLaboratoryInstruments,
         isRoofing,
+        isForexTrading,
         refreshConfig: fetchTenantConfig,
       }}
     >

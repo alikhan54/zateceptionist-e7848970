@@ -28,6 +28,7 @@ const INDUSTRIES: { value: IndustryType; label: string }[] = [
   { value: "automotive", label: "Automotive" },
   { value: "professional", label: "Professional Services" },
   { value: "retail", label: "Retail" },
+  { value: "forex_trading", label: "Forex Trading / FX Brokerage" },
   { value: "general", label: "General" },
 ];
 

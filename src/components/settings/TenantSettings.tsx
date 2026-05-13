@@ -19,6 +19,7 @@ const industries: { value: IndustryType; label: string }[] = [
   { value: 'real_estate', label: 'Real Estate' },
   { value: 'restaurant', label: 'Restaurant' },
   { value: 'salon', label: 'Salon & Beauty' },
+  { value: 'forex_trading', label: 'Forex Trading' },
   { value: 'general', label: 'General Business' },
 ];
 
