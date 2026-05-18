@@ -65,7 +65,7 @@ class MobileErrorBoundary extends Component<
 
 export default function Layout() {
   const { user, isLoading: authLoading } = useAuth();
-  const { isLoading: tenantLoading, tenantConfig } = useTenant();
+  const { isLoading: tenantLoading, tenantConfig, brandBackgroundColor } = useTenant();
 
   const isLoading = authLoading || tenantLoading;
 
@@ -89,9 +89,12 @@ export default function Layout() {
     return <Navigate to="/onboarding" replace />;
   }
 
-  const tenantStyle = tenantConfig?.primary_color
-    ? ({ "--primary": tenantConfig.primary_color } as React.CSSProperties)
-    : {};
+  const tenantStyle: React.CSSProperties = {
+    ...(tenantConfig?.primary_color
+      ? ({ "--primary": tenantConfig.primary_color } as React.CSSProperties)
+      : {}),
+    ...(brandBackgroundColor ? { backgroundColor: brandBackgroundColor } : {}),
+  };
 
   return (
     <MobileErrorBoundary>

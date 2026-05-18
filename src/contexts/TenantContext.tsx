@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 
-export type IndustryType = "healthcare" | "healthcare_clinic" | "healthcare_staffing" | "real_estate" | "restaurant" | "salon" | "banking_collections" | "construction_estimation" | "youtube_agency" | "technology" | "legal" | "fitness" | "education" | "automotive" | "professional" | "retail" | "laboratory_instruments" | "roofing" | "forex_trading" | "general";
+export type IndustryType = "healthcare" | "healthcare_clinic" | "healthcare_staffing" | "real_estate" | "restaurant" | "salon" | "banking_collections" | "construction_estimation" | "youtube_agency" | "technology" | "legal" | "fitness" | "education" | "automotive" | "professional" | "retail" | "laboratory_instruments" | "roofing" | "forex_trading" | "accounting_practice_uk" | "general";
 
 export interface TenantConfig {
   id: string;
@@ -465,6 +465,8 @@ interface TenantContextType {
   isLaboratoryInstruments: boolean;
   isRoofing: boolean;
   isForexTrading: boolean;
+  isAccountingPracticeUK: boolean;
+  brandBackgroundColor: string | null;
   refreshConfig: () => Promise<void>;
 }
 
@@ -669,6 +671,16 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const isLaboratoryInstruments = industry === "laboratory_instruments";
   const isRoofing = industry === "roofing";
   const isForexTrading = industry === "forex_trading";
+  const isAccountingPracticeUK = industry === "accounting_practice_uk";
+
+  // Brand background color (Smart Ledger uses #faf6ed cream).
+  // Reads from tenant_config.features.brand_background_color — additive convention.
+  // Returns null when not set; AppLayout falls back to existing theme.
+  const brandBackgroundColor = useMemo<string | null>(() => {
+    const features = tenantConfig?.features as Record<string, unknown> | null | undefined;
+    const v = features?.brand_background_color;
+    return typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v) ? v : null;
+  }, [tenantConfig?.features]);
 
   useEffect(() => {
     fetchTenantConfig();
@@ -701,6 +713,8 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         isLaboratoryInstruments,
         isRoofing,
         isForexTrading,
+        isAccountingPracticeUK,
+        brandBackgroundColor,
         refreshConfig: fetchTenantConfig,
       }}
     >

@@ -188,6 +188,16 @@ const RoofingWarrantyTracker = lazy(() => import("./pages/roofing/WarrantyTracke
 const RoofingStormAlerts = lazy(() => import("./pages/roofing/StormAlerts"));
 const RoofingInspectionCalendar = lazy(() => import("./pages/roofing/InspectionCalendar"));
 
+// UK Accounting Practice — Smart Ledger Phase 1 (industry=accounting_practice_uk + features.accountant_dept)
+// Pages are registered in router; NavigationSidebar gates visibility via isAccountingPracticeUK.
+// Data isolation enforced at query level (eq tenant_id) + Supabase RLS policies.
+const AccountingDashboard = lazy(() => import("./pages/accounting/Dashboard"));
+const AccountingClients = lazy(() => import("./pages/accounting/Clients"));
+const AccountingJobs = lazy(() => import("./pages/accounting/Jobs"));
+const AccountingFinance = lazy(() => import("./pages/accounting/Finance"));
+const AccountingInvoices = lazy(() => import("./pages/accounting/Invoices"));
+const AccountingReminders = lazy(() => import("./pages/accounting/Reminders"));
+
 // YouTube Agency Module
 const YouTubeDiscovery = lazy(() => import("./pages/youtube/Discovery"));
 const YouTubePipeline = lazy(() => import("./pages/youtube/Pipeline"));
@@ -1291,6 +1301,15 @@ const App = () => (
                   <Route path="/roofing/warranty" element={<LazyPage><RoofingWarrantyTracker /></LazyPage>} />
                   <Route path="/roofing/storm-alerts" element={<LazyPage><RoofingStormAlerts /></LazyPage>} />
                   <Route path="/roofing/inspections" element={<LazyPage><RoofingInspectionCalendar /></LazyPage>} />
+
+                  {/* UK Accounting Practice — Smart Ledger Phase 1 */}
+                  <Route path="/accounting" element={<Navigate to="/accounting/dashboard" replace />} />
+                  <Route path="/accounting/dashboard" element={<LazyPage><AccountingDashboard /></LazyPage>} />
+                  <Route path="/accounting/clients" element={<LazyPage><AccountingClients /></LazyPage>} />
+                  <Route path="/accounting/jobs" element={<LazyPage><AccountingJobs /></LazyPage>} />
+                  <Route path="/accounting/finance" element={<LazyPage><AccountingFinance /></LazyPage>} />
+                  <Route path="/accounting/invoices" element={<LazyPage><AccountingInvoices /></LazyPage>} />
+                  <Route path="/accounting/reminders" element={<LazyPage><AccountingReminders /></LazyPage>} />
 
                   {/* YouTube Agency Module */}
                   <Route path="/youtube" element={<Navigate to="/youtube/discovery" replace />} />

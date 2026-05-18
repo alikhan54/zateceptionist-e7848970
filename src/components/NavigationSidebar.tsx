@@ -156,7 +156,7 @@ export function NavigationSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, isAdmin, isMasterAdmin, authUser, hasPermission } = useAuth();
-  const { tenantConfig, translate, tenantId, setTenantId, isRestaurant, isBankingCollections, isHealthcareClinic, isConstructionEstimation, isRealEstate, isYouTubeAgency, isLaboratoryInstruments, isRoofing } = useTenant();
+  const { tenantConfig, translate, tenantId, setTenantId, isRestaurant, isBankingCollections, isHealthcareClinic, isConstructionEstimation, isRealEstate, isYouTubeAgency, isLaboratoryInstruments, isRoofing, isAccountingPracticeUK } = useTenant();
   const { isEnabled } = useFeatureFlags();
   const { toast } = useToast();
 
@@ -593,6 +593,21 @@ export function NavigationSidebar() {
     ],
   };
 
+  // UK Accounting Practice — Smart Ledger Phase 1 (industry=accounting_practice_uk + features.accountant_dept)
+  const accountingSection: NavSection = {
+    label: "Accounting",
+    collapsible: true,
+    featureKey: "accountant_dept",
+    items: [
+      { title: "Dashboard",  url: "/accounting/dashboard", icon: LayoutDashboard },
+      { title: "Clients",    url: "/accounting/clients",   icon: Users },
+      { title: "Jobs",       url: "/accounting/jobs",      icon: Briefcase },
+      { title: "Finance",    url: "/accounting/finance",   icon: DollarSign },
+      { title: "Invoices",   url: "/accounting/invoices",  icon: FileText },
+      { title: "Reminders",  url: "/accounting/reminders", icon: Bell },
+    ],
+  };
+
   const youtubeAgencySection: NavSection = {
     label: "YouTube Agency",
     collapsible: true,
@@ -984,6 +999,11 @@ export function NavigationSidebar() {
         {/* Roofing Section — Roofing industry only (rewerck-roofing etc) */}
         {isRoofing && canAccessSection(roofingSection) && (
           <CollapsibleSection section={roofingSection} sectionKey="roofing" />
+        )}
+
+        {/* Accounting Section — UK Accounting Practice industry only (smart-ledger) */}
+        {isAccountingPracticeUK && canAccessSection(accountingSection) && (
+          <CollapsibleSection section={accountingSection} sectionKey="accounting" />
         )}
 
         {/* YouTube Agency Section — YouTube Agency industry only */}
