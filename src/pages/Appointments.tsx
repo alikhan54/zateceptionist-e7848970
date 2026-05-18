@@ -260,12 +260,28 @@ export default function AppointmentsPage() {
       const [hours, minutes] = newAppointment.time.split(":");
       scheduledAt.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
+      // appointments table has BOTH the modern `scheduled_at` timestamptz AND
+      // legacy `appointment_date` (date NOT NULL) + `start_time` (time NOT NULL)
+      // columns. Insert with only `scheduled_at` fails with 23502 NOT NULL
+      // violation. Populate all three from the same source so reads via either
+      // column work.
+      const appointmentDate = scheduledAt.toISOString().slice(0, 10); // YYYY-MM-DD
+      const startTime = `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
+      const endTime = (() => {
+        const end = new Date(scheduledAt);
+        end.setMinutes(end.getMinutes() + (newAppointment.duration || 30));
+        return `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}:00`;
+      })();
+
       const { error } = await supabase.from("appointments").insert({
         tenant_id: tenantId,
         customer_id: newAppointment.customer_id,
         service_id: newAppointment.service_id || null,
         provider_id: newAppointment.provider_id || null,
         scheduled_at: scheduledAt.toISOString(),
+        appointment_date: appointmentDate,
+        start_time: startTime,
+        end_time: endTime,
         duration_minutes: newAppointment.duration,
         status: "pending",
         notes: newAppointment.notes || null,
