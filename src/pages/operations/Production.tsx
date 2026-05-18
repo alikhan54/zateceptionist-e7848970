@@ -25,6 +25,7 @@ import { PageLoading } from "@/components/shared/PageLoading";
 const PLAN_STATUS_BADGE: Record<string, string> = {
   draft: "bg-gray-500/10 text-gray-500 border-gray-500/30",
   scheduled: "bg-blue-500/10 text-blue-600 border-blue-500/30",
+  approved: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30",
   in_progress: "bg-indigo-500/10 text-indigo-600 border-indigo-500/30",
   completed: "bg-green-500/10 text-green-600 border-green-500/30",
   cancelled: "bg-red-500/10 text-red-600 border-red-500/30",
@@ -89,7 +90,7 @@ export default function Production() {
     const term = searchTerm.toLowerCase();
     return plans.filter(
       (p: any) =>
-        (p.plan_name || "").toLowerCase().includes(term) ||
+        (p.name || p.plan_name || "").toLowerCase().includes(term) ||
         (p.status || "").toLowerCase().includes(term)
     );
   }, [plans, searchTerm]);
@@ -106,7 +107,9 @@ export default function Production() {
 
   const planStats = useMemo(() => {
     const total = plans.length;
-    const active = plans.filter((p: any) => p.status === "in_progress").length;
+    const active = plans.filter((p: any) =>
+      ["approved", "scheduled", "in_progress"].includes(p.status)
+    ).length;
     const completed = plans.filter((p: any) => p.status === "completed").length;
     return { total, active, completed };
   }, [plans]);
@@ -220,7 +223,7 @@ export default function Production() {
                             key={plan.id}
                             className="border-b border-border/50 hover:bg-muted/50 transition-colors"
                           >
-                            <td className="py-3 font-medium">{plan.plan_name || "--"}</td>
+                            <td className="py-3 font-medium">{plan.name || plan.plan_name || "--"}</td>
                             <td className="py-3 text-muted-foreground">
                               {plan.plan_date
                                 ? format(new Date(plan.plan_date), "MMM d, yyyy")
