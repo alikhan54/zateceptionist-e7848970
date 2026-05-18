@@ -439,12 +439,23 @@ export function useDepartments() {
     enabled: !!tenantUuid,
   });
 
+  // hr_departments has uuid-typed manager_id / parent_id / parent_department_id
+  // columns; the form initialises them as "" so we must coerce empty strings
+  // to null before INSERT/UPDATE or PostgREST returns 22P02.
+  const cleanDeptPayload = (dept: Partial<Department>): Partial<Department> => {
+    const cleaned: Record<string, unknown> = { ...dept };
+    for (const k of ['manager_id', 'parent_id', 'parent_department_id'] as const) {
+      if (cleaned[k] === '' || cleaned[k] === undefined) cleaned[k] = null;
+    }
+    return cleaned as Partial<Department>;
+  };
+
   const createDepartment = useMutation({
     mutationFn: async (dept: Partial<Department>) => {
       if (!tenantUuid) throw new Error('No tenant');
       const { data: result, error } = await supabase
         .from("hr_departments")
-        .insert({ ...dept, tenant_id: tenantUuid })
+        .insert({ ...cleanDeptPayload(dept), tenant_id: tenantUuid })
         .select()
         .single();
       if (error) throw error;
@@ -454,7 +465,7 @@ export function useDepartments() {
       queryClient.invalidateQueries({ queryKey: ["departments", tenantUuid] });
       toast.success("Department created");
     },
-    onError: () => toast.error("Failed to create department"),
+    onError: (err: any) => toast.error(`Failed to create department${err?.message ? `: ${err.message}` : ''}`),
   });
 
   const updateDepartment = useMutation({
@@ -462,7 +473,7 @@ export function useDepartments() {
       if (!tenantUuid) throw new Error('No tenant');
       const { data: result, error } = await supabase
         .from("hr_departments")
-        .update(changes)
+        .update(cleanDeptPayload(changes))
         .eq("id", id)
         .eq("tenant_id", tenantUuid)
         .select()
@@ -474,7 +485,7 @@ export function useDepartments() {
       queryClient.invalidateQueries({ queryKey: ["departments", tenantUuid] });
       toast.success("Department updated");
     },
-    onError: () => toast.error("Failed to update department"),
+    onError: (err: any) => toast.error(`Failed to update department${err?.message ? `: ${err.message}` : ''}`),
   });
 
   return { ...query, createDepartment, updateDepartment };
