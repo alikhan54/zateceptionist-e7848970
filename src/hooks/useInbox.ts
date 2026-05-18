@@ -89,11 +89,11 @@ export function useInbox(channelFilter?: string) {
         }));
       }
 
-      // Fallback: Build from customers table
+      // Fallback: Build from customers table (UUID-keyed)
       const { data: customers, error: custError } = await supabase
         .from("customers")
         .select("*")
-        .eq("tenant_id", tenantId)
+        .eq("tenant_id", tenantConfig?.id || tenantId)
         .order("last_interaction", { ascending: false, nullsFirst: false })
         .limit(100);
 

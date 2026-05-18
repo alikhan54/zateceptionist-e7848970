@@ -23,6 +23,7 @@ export type CustomerInput = Omit<Customer, 'id' | 'tenant_id' | 'created_at' | '
 
 export function useCustomers() {
   const { tenantId, tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id; // customers is UUID-keyed
   const queryClient = useQueryClient();
 
   const {
@@ -31,29 +32,29 @@ export function useCustomers() {
     error,
     refetch,
   } = useQuery({
-    queryKey: ['customers', tenantId],
+    queryKey: ['customers', tenantUuid],
     queryFn: async () => {
-      if (!tenantId) return [];
-      
+      if (!tenantUuid) return [];
+
       const { data, error } = await supabase
         .from('customers')
         .select('*')
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', tenantUuid)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       return data as Customer[];
     },
-    enabled: !!tenantId,
+    enabled: !!tenantUuid,
   });
 
   const addCustomer = useMutation({
     mutationFn: async (customer: CustomerInput) => {
-      if (!tenantId) throw new Error('No tenant ID');
-      
+      if (!tenantUuid) throw new Error('No tenant UUID');
+
       const { data, error } = await supabase
         .from('customers')
-        .insert({ ...customer, tenant_id: tenantId })
+        .insert({ ...customer, tenant_id: tenantUuid })
         .select()
         .single();
 
@@ -61,11 +62,10 @@ export function useCustomers() {
       return data as Customer;
     },
     onSuccess: async (customer) => {
-      queryClient.invalidateQueries({ queryKey: ['customers', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['customers', tenantUuid] });
 
       // Auto-enrollment: check for active sequences with new_lead/new_contact trigger
       try {
-        const tenantUuid = tenantConfig?.id;
         if (!tenantUuid) return;
         const { data: sequences } = await supabase
           .from('marketing_sequences' as any)
@@ -99,13 +99,13 @@ export function useCustomers() {
 
   const updateCustomer = useMutation({
     mutationFn: async ({ id, ...updates }: Partial<Customer> & { id: string }) => {
-      if (!tenantId) throw new Error('No tenant ID');
-      
+      if (!tenantUuid) throw new Error('No tenant UUID');
+
       const { data, error } = await supabase
         .from('customers')
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', id)
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', tenantUuid)
         .select()
         .single();
 
@@ -113,35 +113,35 @@ export function useCustomers() {
       return data as Customer;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customers', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['customers', tenantUuid] });
     },
   });
 
   const deleteCustomer = useMutation({
     mutationFn: async (id: string) => {
-      if (!tenantId) throw new Error('No tenant ID');
-      
+      if (!tenantUuid) throw new Error('No tenant UUID');
+
       const { error } = await supabase
         .from('customers')
         .delete()
         .eq('id', id)
-        .eq('tenant_id', tenantId);
+        .eq('tenant_id', tenantUuid);
 
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customers', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['customers', tenantUuid] });
     },
   });
 
   const getCustomer = async (id: string) => {
-    if (!tenantId) return null;
-    
+    if (!tenantUuid) return null;
+
     const { data, error } = await supabase
       .from('customers')
       .select('*')
       .eq('id', id)
-      .eq('tenant_id', tenantId)
+      .eq('tenant_id', tenantUuid)
       .maybeSingle();
 
     if (error) throw error;
@@ -161,23 +161,24 @@ export function useCustomers() {
 }
 
 export function useCustomer(id: string | undefined) {
-  const { tenantId } = useTenant();
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id; // customers is UUID-keyed
 
   return useQuery({
-    queryKey: ['customer', tenantId, id],
+    queryKey: ['customer', tenantUuid, id],
     queryFn: async () => {
-      if (!tenantId || !id) return null;
-      
+      if (!tenantUuid || !id) return null;
+
       const { data, error } = await supabase
         .from('customers')
         .select('*')
         .eq('id', id)
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', tenantUuid)
         .maybeSingle();
 
       if (error) throw error;
       return data as Customer | null;
     },
-    enabled: !!tenantId && !!id,
+    enabled: !!tenantUuid && !!id,
   });
 }

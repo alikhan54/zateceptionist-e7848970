@@ -71,8 +71,8 @@ export function useDashboardStats() {
         upcomingAppointmentsResult,
         dealsResult,
       ] = await Promise.all([
-        supabase.from('customers').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
-        supabase.from('customers').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).gte('created_at', startOfToday),
+        supabase.from('customers').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantConfig?.id || tenantId),
+        supabase.from('customers').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantConfig?.id || tenantId).gte('created_at', startOfToday),
         supabase.from('conversations').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantConfig?.id || tenantId),
         supabase.from('conversations').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantConfig?.id || tenantId).eq('status', 'open'),
         supabase.from('appointments').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).gte('start_time', startOfToday).lte('start_time', endOfToday),
