@@ -136,7 +136,8 @@ export default function CompetitorAnalysis() {
         .from('system_events' as any)
         .select('*')
         .or('event_type.eq.competitor_high_threat,event_type.eq.competitor_auto_discovered,event_type.eq.competitor_scrape')
-        .eq('tenant_id', (tenantConfig as any).tenant_id || tenantConfig.id)
+        // system_events.tenant_id is UUID-typed; passing the slug returned a 400.
+        .eq('tenant_id', tenantConfig.id)
         .order('created_at', { ascending: false })
         .limit(20);
       return data || [];

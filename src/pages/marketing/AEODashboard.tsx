@@ -115,8 +115,9 @@ export default function AEODashboard() {
       const { data } = await (supabase as any)
         .from('aeo_schema_registry')
         .select('*')
+        // aeo_schema_registry has no created_at; the timestamp is generated_at.
         .eq('tenant_id', tenantConfig.id)
-        .order('created_at', { ascending: false });
+        .order('generated_at', { ascending: false });
       return data || [];
     },
     enabled: !!tenantConfig?.id,
