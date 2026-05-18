@@ -1,4 +1,11 @@
 import { defineConfig } from '@playwright/test';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const STORAGE_PATH = path.join(__dirname, 'tests', '.auth-state.json');
 
 export default defineConfig({
   testDir: './tests',
@@ -17,6 +24,21 @@ export default defineConfig({
     trace: 'on',
   },
   projects: [
-    { name: 'chromium', use: { browserName: 'chromium' } },
+    {
+      name: 'setup',
+      testMatch: /auth\.setup\.ts/,
+      use: { browserName: 'chromium' },
+    },
+    {
+      name: 'phase1',
+      testMatch: /cosmique-phase1-e2e\.spec\.ts/,
+      use: { browserName: 'chromium' },
+    },
+    {
+      name: 'phase2',
+      testMatch: /cosmique-phase2-e2e\.spec\.ts/,
+      dependencies: ['setup'],
+      use: { browserName: 'chromium', storageState: STORAGE_PATH },
+    },
   ],
 });

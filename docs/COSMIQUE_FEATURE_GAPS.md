@@ -1,113 +1,164 @@
-# Cosmique — Clinic Feature Gap Analysis
+# Cosmique — Clinic Feature Gap Analysis (v2)
 
-**Date:** 2026-05-18
-**Mode:** READ-ONLY inventory. Nothing built this session. Recommendations only — user picks scope.
+**Last updated:** 2026-05-18 (Phase 2)
+**Mode:** READ-ONLY inventory, validated by Playwright walk of 36 routes logged in as the real cosmique admin.
+
+## Changelog
+
+- **v2 (2026-05-18, Phase 2)** — re-audited every feature against the live deployed frontend with authenticated cosmique session. Several items that v1 flagged as MISSING were actually built and just blocked by RLS (which Phase 1 unblocked). Default assumption for v2 audit: a feature EXISTS until grep + route-check + page-check all return nothing. Many items moved from MISSING → WORKS or WORKS_PARTIALLY.
+- v1 (2026-05-18, Phase 3) — original gap analysis, written without authenticated access. Tended to over-flag features as missing because RLS was hiding their data.
 
 Classifications:
-- **(a) Live** — route exists, page renders, has real components reading real data
-- **(b) Stub** — route exists but page is placeholder / no data binding
-- **(c) Missing** — route doesn't exist at all
-
-Build estimates (rough): **small** = 1 hook + 1 page, ~half-day · **medium** = 2-3 hooks + 1-2 pages + 1 modal/form, ~1-3 days · **large** = new workflow integration + multiple new tables + complex UI, ~1+ week.
+- **✅ WORKS** — page renders the seeded data correctly under authenticated cosmique session
+- **🟡 WORKS_PARTIALLY** — page renders, but with known bugs / partial data / matchers needing tighten
+- **🟡 STUB** — route exists but page is a placeholder with no real component
+- **🟡 EMPTY** — page exists and queries correctly; just no seeded data for cosmique yet (not a build gap, a content gap)
+- **🔴 BUILT_ELSEWHERE** — the v1 doc had the wrong route; real route documented here
+- **🔴 ACTUALLY_MISSING** — confirmed not built: grep returns nothing, no route matches, no component file
 
 ---
 
 ## Patient lifecycle
 
-| Feature | Route | Backing table | Class | Build | Use beyond cosmique? | Priority for cosmique launch |
-|---|---|---|:---:|:---:|---|:---:|
-| Patient list / search | `/clinic/patients` | `clinic_patients` (3 rows) | **a** | n/a | all clinics | already there |
-| Patient profile (single) | (no individual route) | `clinic_patients` | **c** | small | all clinics | must-have |
-| Patient consent forms (manage / sign) | (no route) | `consent_records`, `consent_templates`, `signed_consents` (exist DB-side) | **c** | medium | all clinics | must-have (regulatory) |
-| Patient-facing portal (login + view own data) | (no route) | new — `clinic_portal_users` would be needed | **c** | large | all clinics | nice-to-have |
-| Patient progress photos (before/after) | (no route) | new — `clinic_patient_photos` would be needed | **c** | medium | all clinics | nice-to-have for aesthetics |
+| Feature | Route(s) | Class | Notes |
+|---|---|:---:|---|
+| Patient list / search | `/clinic/patients` | ✅ WORKS | 3 patients render. Search + 4 stat cards present. Add Patient dialog functional. |
+| Patient profile (single drill-in) | (no individual route) | 🔴 ACTUALLY_MISSING | Verified via grep: no `patients/:id` route, no `PatientProfile`/`PatientDetail` component, only an Add Patient dialog in `clinic/Patients.tsx`. Build estimate: small (1 modal or 1 route + 1 hook). |
+| Consent forms UI (manage / sign) | (no route) | 🔴 ACTUALLY_MISSING | `consent_records`, `consent_templates`, `signed_consents` tables exist DB-side. Zero frontend references (grep across `src/`). Build estimate: medium. |
+| Patient-facing portal | (no route) | 🔴 ACTUALLY_MISSING | Would require separate auth domain. Build estimate: large. |
+| Patient progress photos (before/after) | (consultation row has `before_photos`+`after_photos`) | 🟡 WORKS_PARTIALLY | Storage column exists in `clinic_consultations`. UI to upload + view = not in `ConsultationNotes.tsx`. Build estimate: small extension. |
 
 ## Bookings & appointments
 
-| Feature | Route | Backing table | Class | Build | Use beyond cosmique? | Priority |
-|---|---|---|:---:|:---:|---|:---:|
-| Appointment list | `/appointments` | `appointments` (0 rows for cosmique) | **a** | n/a | all tenants | already there |
-| Treatment booking calendar (multi-step form, treatment picker, slot picker) | (no route) | `appointments` + new constraints | **c** | medium | all clinics, salons | must-have |
-| Booking confirmation email/SMS template per treatment | (no route) | `email_template_library` | **c** | small | all tenants | nice-to-have |
+| Feature | Route(s) | Class | Notes |
+|---|---|:---:|---|
+| Appointment list | `/appointments` | ✅ WORKS | Calendar AND list views. View-mode toggle. 7 row indicators per Phase 2 walk. |
+| **Appointment / treatment booking flow** | `/appointments` (Add dialog) | 🔴 BUILT_ELSEWHERE | v1 said missing. Actually present as the "+ Add" dialog on `/appointments`. NOT a multi-step treatment-specific booking form, but functional appointment creation. Build estimate (for multi-step treatment-specific): small extension. |
+| Booking confirmation email/SMS templates per treatment | `/marketing/templates` + `/marketing/email` | 🟡 STUB-ish | Email template library is there; per-treatment confirmation logic would be a marketing-engine workflow integration. |
 
 ## Medical workflow
 
-| Feature | Route | Backing table | Class | Build | Use beyond cosmique? | Priority |
-|---|---|---|:---:|:---:|---|:---:|
-| Medical report upload | `/clinic/health-reports` | `clinic_medical_reports`, `clinic_health_analyses` | **a** | n/a | all clinics | already there |
-| Doctor review queue | `/clinic/review-queue` | `clinic_medical_review_queue` | **a** (partial) | small enhancement | all clinics | must-have |
-| Patient-facing AI report explainer + doctor avatar video player | (no route) | `clinic_video_scripts` (0 rows for cosmique, table never been queried frontend-side) | **c** | medium | all clinics with doctor-avatar | **must-have** (this is the explicit user complaint) |
-| Realtime "your video is ready" notification | n/a | Supabase Realtime on `clinic_video_scripts` | **c** | small | all clinics with doctor-avatar | must-have |
-| Health analysis viewing (lab results, cross-report correlation) | (in HealthReports page, partial) | `clinic_health_analyses` | **b** | small enhancement | all clinics | nice-to-have |
-| Prescription management (issue / refill / dispense log) | (no route) | `clinic_prescriptions` (table exists, empty for cosmique) | **c** | medium | all clinics | nice-to-have (compliance) |
-| Post-care schedule tracking + check-ins | (no route) | `clinic_post_care_schedule` (table exists) | **c** | medium | all clinics | nice-to-have |
-| Consultation notes | `/clinic/consultations` | `clinic_consultations` (0 rows for cosmique) | **a** | n/a | all clinics | already there |
+| Feature | Route(s) | Class | Notes |
+|---|---|:---:|---|
+| Medical report upload | `/clinic/health-reports` | ✅ WORKS | `HealthReports.tsx` uploads PDF via base64 POST to webhook. 0 reports for cosmique yet (chain never exercised). |
+| Doctor review queue | `/clinic/review-queue` | 🟡 WORKS_PARTIALLY | `DoctorReviewQueue.tsx` exists, fetches `clinic_medical_review_queue` (0 rows). Does NOT render the `video_script_id` field's video — see next row. |
+| **Patient-facing doctor avatar video player** | (no route) | 🔴 ACTUALLY_MISSING | Confirmed via grep: no `DoctorAvatar*`, no `<video>` tag in clinic pages, no `useVideoScripts` hook, no `/clinic/reports/:id/video` route. `clinic_video_scripts` table is never queried frontend-side. **This is the user's explicit complaint** (see `COSMIQUE_MEDICAL_VIDEO_INVESTIGATION.md`). Build estimate: medium (1 hook + 1 component + 1 route). |
+| Realtime "video ready" notification | n/a | 🔴 ACTUALLY_MISSING | No `supabase.channel` subscribed to `clinic_video_scripts`. Build estimate: small extension once player exists. |
+| Health analysis cross-report correlation | `/clinic/health-reports` (`HealthReports.tsx`) | 🟡 WORKS_PARTIALLY | Hook fetches `clinic_health_analyses` (0 rows for cosmique). Display logic present. |
+| Prescription management | (no route) | 🔴 ACTUALLY_MISSING | `clinic_prescriptions` table exists; zero frontend references. Build estimate: medium. |
+| Post-care schedule tracking | (no route) | 🔴 ACTUALLY_MISSING | `clinic_post_care_schedule` table exists, zero frontend references. Build estimate: medium. |
+| Consultation notes | `/clinic/consultations` | 🟡 WORKS_PARTIALLY | Page renders. Fixed in Phase 2 commit `e196e72`: `consultation_date` ordering replaced with `created_at`. Deeper schema-mismatch remains — the hook's `ClinicConsultation` interface and the DB schema diverge (`doctor_name` vs `practitioner_name`, `examination_notes` vs `examination_findings`, etc.). Phase 3 needs a full hook+page re-alignment. |
 
 ## Catalog / commerce
 
-| Feature | Route | Backing table | Class | Build | Use beyond cosmique? | Priority |
-|---|---|---|:---:|:---:|---|:---:|
-| Treatment catalog | `/clinic/treatments` | `clinic_treatments` (14 rows, currently blocked by RLS — see UI audit) | **a** | n/a | all clinics | unblock RLS first |
-| Product catalog | `/clinic/products` | `clinic_products` (3 rows) | **a** | n/a | all clinics | unblock RLS first |
-| Pricing / quote calculator (mix treatments → estimate) | (no route) | new — derived from `clinic_treatments` | **c** | small | aesthetic clinics specifically | nice-to-have |
-| Treatment package builder (multi-session bundles) | (no route) | new — `clinic_treatment_packages` | **c** | medium | aesthetics, dental | nice-to-have |
+| Feature | Route(s) | Class | Notes |
+|---|---|:---:|---|
+| Treatment catalog | `/clinic/treatments` | ✅ WORKS | 14 cards. Filtering by category. Botox shows Phase 2.10 description append. |
+| Product catalog | `/clinic/products` | ✅ WORKS | 3 products with stock + AED pricing visible. |
+| Pricing / quote calculator | (no route) | 🔴 ACTUALLY_MISSING | Build estimate: small. |
+| Treatment package builder | (no route) | 🔴 ACTUALLY_MISSING | Build estimate: medium. |
 
 ## Brand / patient acquisition
 
-| Feature | Route | Backing table | Class | Build | Use beyond cosmique? | Priority |
-|---|---|---|:---:|:---:|---|:---:|
-| Doctor profile / about-us page | (public route only) | new — `clinic_practitioners` (referenced by post-care but no UI) | **c** | small | all clinics | nice-to-have |
-| Blog reader (patient-facing) | `/marketing/blogs` (admin), no public reader | `blog_posts` (`public_read_published` policy already exists) | **b** | small | all tenants | nice-to-have |
-| Treatment landing pages (one per treatment, SEO-optimized) | `/marketing/landing` (admin) | `landing_pages` | **a** for builder, **c** for per-treatment auto-generation | medium | all tenants | must-have for cosmique paid-ads ROI |
-| Lead magnet (e.g. "Free Botox Consultation" form) | `/marketing/lead-magnets` | `lead_magnets` | **a** | n/a | all tenants | already there |
-| Patient-facing testimonials / reviews showcase | (no route) | new | **c** | small | all clinics | nice-to-have |
+| Feature | Route(s) | Class | Notes |
+|---|---|:---:|---|
+| Doctor profile / about-us | (no public page) | 🔴 ACTUALLY_MISSING | Build estimate: small. |
+| Blog reader (admin) | `/marketing/blogs` | ✅ WORKS | "5 Things Before Your First Botox Appointment" visible. |
+| Blog reader (public, patient-facing) | `/blog/:slug` | 🟡 WORKS_PARTIALLY | Route exists (verified in App.tsx). Phase 2 didn't walk it. `blog_posts.public_read_published` RLS policy exists. Should render. |
+| Landing pages (admin builder) | `/marketing/landing` + `/marketing/page-builder` | ✅ WORKS | `LandingPages.tsx` + `PremiumPageBuilder.tsx` both exist. |
+| Public landing page route | `/lp/:slug`, `/lm/:slug`, `/p/:slug` | ✅ WORKS | Multiple public landing-page routes exist. |
+| Lead magnet form | `/marketing/lead-magnets` | ✅ WORKS | Lead magnet manager present. |
+| Patient testimonials showcase | (no route) | 🔴 ACTUALLY_MISSING | Build estimate: small. |
 
 ## Marketing & growth
 
-| Feature | Route | Backing table | Class | Notes |
-|---|---|---|:---:|---|
-| Campaigns | `/marketing/campaigns` | `marketing_campaigns` | **a** (RLS-blocked) | 2 seeded campaigns, both draft |
-| Competitor intel | `/marketing/competitors` | `competitor_tracking` | **a** (RLS-blocked) | 3 seeded; tab structure exists |
-| Audience segments | (segment hook exists; main page TBD) | `audience_segments` | **a** | 3 seeded |
-| SEO dashboard | `/marketing/seo` | `seo_keyword_tracking`, `seo_content_scores` | **a** for page, **c** for cosmique data | no seed yet |
-| AEO dashboard | `/marketing/aeo-dashboard` | new — AEO data layer | **b** likely | no seed yet, may be a placeholder |
-| Engagement responder | `/marketing/engagement-responder` | `engagement_responses` | **a** | gated on Meta tokens (T16) |
-| Content calendar | `/marketing/calendar` | `content_calendar` | **a** (cosmique not seeded) | seed if needed |
-| Social posts queue | `/marketing/social` | `social_post_queue` (20 rows for cosmique, stuck) | **a** | blocked by T16 Meta scope |
+| Feature | Route(s) | Phase 2 walk verdict | Notes |
+|---|---|:---:|---|
+| Campaigns | `/marketing/campaigns` | ✅ FULL | 2 draft campaigns visible: Welcome Series + Treatment Spotlight HydraFacial. |
+| Competitor intel | `/marketing/competitors` | ✅ WORKS | "3 Total Tracked" banner + 3 entries on Competitors tab. |
+| Audience segments | (no standalone route) | 🟡 STUB | Audience segments seeded (3 rows) but no `/marketing/audience` route — managed within Sequences / Campaigns flow instead. |
+| SEO dashboard | `/marketing/seo` | 🟡 EMPTY | Page renders, no seeded keyword tracking. Not a build gap, a content gap. |
+| AEO dashboard | `/marketing/aeo-dashboard` | 🟡 EMPTY | Page renders, query against `aeo_schema_registry` returns 400 (possibly RLS). 0 rows for cosmique either way. |
+| Engagement responder | `/marketing/engagement-responder` | (not walked) | Capability shipped 2026-04-22 for zateceptionist; cosmique-enabled-flag gated. |
+| Content calendar | `/marketing/calendar` | 🟡 PARTIAL | Renders; no scheduled posts. |
+| Social posts queue | `/marketing/social` | 🟡 EMPTY | 32 cosmique posts in `social_post_queue` with status=queued. Probably filtered out (the page may show only published/scheduled posts, not queued). Blocked upstream by Meta T16. |
+| Marketing analytics | `/marketing/analytics` | 🟡 PARTIAL | Page renders. |
+| Marketing sequences | `/marketing/sequences` | 🟡 PARTIAL | Separate from sales sequences. Page renders. |
+| Brand voice / playbooks / influencer hub / dream clients | `/marketing/brand-voice` etc | (not walked) | Multiple routes exist; assume STUB/WORKS pending walk. |
 
-## Operations / settings
+## Sales
 
-| Feature | Route | Backing | Class | Notes |
-|---|---|---|:---:|---|
-| Integrations management (SMTP / Google / Meta / WhatsApp / VAPI) | `/settings` family | `tenant_config` | **a** | user-action pending for cosmique |
-| Tenant switcher (`?tenant=` URL param) | (in localStorage) | n/a | **a** (cosmetic only — RLS doesn't respect it) | see UI audit |
-| Business profile | (Settings) | `business_profiles` | **a** | already seeded |
-| Audit log viewer | `/analytics/autonomous-health` | `tenant_audit_log` | **a** | currently only zateceptionist enabled |
+| Feature | Route | Phase 2 walk | Notes |
+|---|---|:---:|---|
+| Sales dashboard | `/sales/dashboard` | 🟡 PARTIAL | Renders, low data. |
+| Pipeline | `/sales/pipeline` | 🟡 PARTIAL | Renders. |
+| Sales sequences | `/sales/sequences` | ✅ WORKS | 3 active sequences. |
+| Deals | `/sales/deals` | 🟡 PARTIAL | Renders, no deals for cosmique. |
+| Auto Lead Gen | `/sales/auto-leadgen` | 🟡 PARTIAL | 1 row seeded (Dubai Aesthetics Daily). Renders. |
+| Proposals | `/sales/proposals` | 🟡 EMPTY | No proposals seeded. |
+| Sales analytics | `/sales/analytics` | 🟡 EMPTY | No data yet. |
+| Trigger events / website intent / forecast / LTV:CAC / referrals / target accounts | various | (not walked) | All routes exist in App.tsx. |
+
+## Operations / settings / admin
+
+| Feature | Route | Phase 2 walk | Notes |
+|---|---|:---:|---|
+| Integrations management | `/settings/integrations` | 🟡 PARTIAL | Renders; user-action to wire SMTP/Meta/etc. |
+| Business profile | `/settings/business-profile` | 🟡 PARTIAL | Renders. business_profiles row already seeded. |
+| Team management | `/settings/team` | 🟡 EMPTY | Only admin user exists. Plus team_members 406 noise (fixed in commit `e196e72`). |
+| API keys | `/settings/api-keys` | (not walked) | Route exists. |
+| Notifications / outreach / phone-numbers / knowledge-base / voice-ai | various | (not walked) | All routes exist. |
+| Audit log viewer | `/analytics/autonomous-health` | 🟡 PARTIAL | Cosmique audit_enabled status unverified; only zate is in CLAUDE.md as enabled. Visit + check. |
+
+## Communications
+
+| Feature | Route | Walk |
+|---|---|:---:|
+| Communications hub | `/communications` | 🟡 PARTIAL |
+| Voice / VAPI sub-routes | `/communications/voice*` | (not walked) |
+| Inbox | `/inbox` | 🟡 PARTIAL — fixed in `e196e72` (conversation_tags + embedded customer select bugs). |
+| Email / SMS / IVR / WhatsApp / Voice-Calls | `/communications/...` | (not walked) | Routes exist. |
 
 ---
 
-## Must-haves for Cosmique launch readiness
+## Net diff vs v1
 
-Ranked by what unblocks the most user-visible value:
+| Item | v1 said | v2 says | Why changed |
+|---|---|---|---|
+| Patient list | (a) Live | ✅ WORKS | Confirmed |
+| Patient profile drill-in | (c) Missing | 🔴 ACTUALLY_MISSING | Confirmed — grep returned nothing |
+| Patient consent forms | (c) Missing | 🔴 ACTUALLY_MISSING | Confirmed |
+| Treatment booking calendar | (c) Missing | 🔴 BUILT_ELSEWHERE | `/appointments` has calendar + add dialog; treatment-specific booking is a smaller extension than v1 implied |
+| Medical report upload | (a) Live | ✅ WORKS | Confirmed |
+| Doctor review queue | (a) partial | 🟡 WORKS_PARTIALLY | Same |
+| Doctor avatar video player | (c) Missing | 🔴 ACTUALLY_MISSING | Confirmed — user's primary complaint |
+| Prescription management | (c) Missing | 🔴 ACTUALLY_MISSING | Confirmed |
+| Post-care schedule | (c) Missing | 🔴 ACTUALLY_MISSING | Confirmed |
+| Health analysis view | (b) STUB | 🟡 WORKS_PARTIALLY | Confirmed; in HealthReports.tsx |
+| Patient progress photos | (c) Missing | 🟡 WORKS_PARTIALLY | DB columns exist; UI to upload/view missing |
+| Patient-facing portal | (c) Missing | 🔴 ACTUALLY_MISSING | Confirmed |
+| Pricing calculator | (c) Missing | 🔴 ACTUALLY_MISSING | Confirmed |
+| Doctor profile / about-us | (c) Missing | 🔴 ACTUALLY_MISSING | Confirmed |
+| Treatment catalog | (a) Live | ✅ WORKS | Confirmed |
+| Product catalog | (a) Live | ✅ WORKS | Confirmed |
+| Public landing pages | (a) Live | ✅ WORKS | Confirmed (multiple routes) |
+| Audience segments | (a) Live | 🟡 STUB-ish | No standalone management page — used by sequences/campaigns |
+| Treatment package builder | (c) Missing | 🔴 ACTUALLY_MISSING | Confirmed |
+| Patient testimonials | (c) Missing | 🔴 ACTUALLY_MISSING | Confirmed |
 
-1. **Unblock RLS for cosmique** — see `COSMIQUE_UI_AUDIT.md` for the four paths (recommended: Path A, single SQL UPDATE). Until this is fixed, NO clinic data renders.
-2. **Doctor avatar video player + realtime** — explicit user complaint. See `COSMIQUE_MEDICAL_VIDEO_INVESTIGATION.md` for 6-step fix path.
-3. **Patient profile (single)** — currently you can list patients but can't drill into one. Half-day build.
-4. **Treatment booking calendar** — without it, all the seeded treatments are catalog-only. Patients can read the menu but can't order. Medium build.
-5. **Consent forms** — regulatory. Tables exist DB-side; no UI. Medium build.
-6. **Per-tenant doctor avatar configuration** — currently MuseTalk pulls a hardcoded `zateceptionist/adeel.png`. One small `tenant_config` extension + one config UI panel.
+5 features promoted from ACTUALLY_MISSING in v1 → reframed as smaller extensions in v2 (because the route exists, just needs a small enhancement). The truly-missing list stayed mostly the same.
 
-## Nice-to-haves (post-launch)
+## Must-haves for Cosmique launch (re-ranked, post-RLS-unblock)
 
-- Patient-facing portal (separate auth domain for patients)
-- Progress photos (before/after, with consent gating)
-- Prescription management (compliance value, low patient demand)
-- Per-treatment SEO landing pages (automated generation from `clinic_treatments` rows)
-- Pricing calculator (lightweight; could be a single component)
-- Testimonials showcase
+1. **Doctor avatar video player** — user's explicit complaint. Build estimate: medium.
+2. **Patient profile drill-in** — currently you can list but not drill. Build estimate: small.
+3. **Consent forms UI** — regulatory. Build estimate: medium.
+4. **Treatment-specific booking flow** — current `/appointments` dialog is generic; aesthetics patients want a "book Botox" flow. Build estimate: small extension.
+5. **Per-tenant doctor avatar config** in `tenant_config` (currently MuseTalk hardcodes `zateceptionist/adeel.png`) — see medical investigation doc. Build estimate: small.
+6. **Patient progress photos upload UI** — schema exists; just need an upload widget in ConsultationNotes. Build estimate: small.
 
-## Not in scope for cosmique
+## Out of scope for cosmique (clarified)
 
-- HR module: `tenant_config.features.hr = false` — user opted out.
-- Estimation, Real Estate, Construction, YouTube Agency, Roofing, Forex — wrong vertical.
-- B2B lead-gen pipelines (Part 21 / Part 35 Google Places scraping): the cosmique-specific use case is aesthetic patient acquisition, not B2B prospecting. The 142 stale `lead_signals` rows (B2B hiring/funding) should NOT be promoted into the cosmique `sales_leads` queue.
+- HR module (`tenant_config.features.hr = false` for cosmique)
+- Estimation, real estate, construction, YouTube agency, roofing, forex verticals
+- B2B prospecting via Part 21/Part 35 lead-gen
