@@ -10,26 +10,33 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useClinicConsultations, ClinicConsultation } from "@/hooks/useClinicConsultations";
 import { useClinicPatients } from "@/hooks/useClinicPatients";
-import { useClinicTreatments } from "@/hooks/useClinicTreatments";
 import { FileText, Plus, Calendar, Stethoscope, Printer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-function generateReport(consultation: ClinicConsultation, patientName: string, treatmentName: string): string {
-  const date = new Date(consultation.consultation_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+// Helpers to unwrap jsonb fields back to display strings
+function planText(plan: any): string {
+  if (!plan) return "";
+  if (typeof plan === "string") return plan;
+  if (typeof plan === "object") return plan.notes || plan.text || JSON.stringify(plan);
+  return String(plan);
+}
+
+function generateReport(consultation: ClinicConsultation, patientName: string): string {
+  const date = new Date(consultation.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   let report = `CLINICAL CONSULTATION REPORT\n`;
   report += `${'='.repeat(50)}\n\n`;
   report += `Date: ${date}\n`;
   report += `Patient: ${patientName}\n`;
-  report += `Doctor: ${consultation.doctor_name || 'N/A'}\n`;
-  report += `Treatment: ${treatmentName || 'General Consultation'}\n`;
-  report += `Status: ${consultation.status}\n\n`;
+  report += `Practitioner: ${consultation.practitioner_name || 'N/A'}\n`;
+  report += `Status: ${consultation.report_status || 'draft'}\n\n`;
   if (consultation.chief_complaint) report += `CHIEF COMPLAINT:\n${consultation.chief_complaint}\n\n`;
-  if (consultation.examination_notes) report += `EXAMINATION NOTES:\n${consultation.examination_notes}\n\n`;
+  if (consultation.examination_findings) report += `EXAMINATION FINDINGS:\n${consultation.examination_findings}\n\n`;
   if (consultation.diagnosis) report += `DIAGNOSIS:\n${consultation.diagnosis}\n\n`;
-  if (consultation.treatment_plan) report += `TREATMENT PLAN:\n${consultation.treatment_plan}\n\n`;
-  if (consultation.prescriptions_given && consultation.prescriptions_given.length > 0) {
+  const planStr = planText(consultation.treatment_plan);
+  if (planStr) report += `TREATMENT PLAN:\n${planStr}\n\n`;
+  if (Array.isArray(consultation.prescriptions) && consultation.prescriptions.length > 0) {
     report += `PRESCRIPTIONS:\n`;
-    consultation.prescriptions_given.forEach((rx: any, i: number) => {
+    consultation.prescriptions.forEach((rx: any, i: number) => {
       report += `  ${i + 1}. ${typeof rx === 'object' ? `${rx.name} - ${rx.dosage || ''} ${rx.frequency || ''}` : rx}\n`;
     });
     report += `\n`;
@@ -42,18 +49,28 @@ function generateReport(consultation: ClinicConsultation, patientName: string, t
   return report;
 }
 
+const ALL_PATIENTS = "__all__";
+
 export default function ConsultationNotes() {
-  const [selectedPatient, setSelectedPatient] = useState<string>("");
+  const [selectedPatient, setSelectedPatient] = useState<string>(ALL_PATIENTS);
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const { consultations, isLoading, createConsultation } = useClinicConsultations(selectedPatient || undefined);
+  const { consultations, isLoading, createConsultation } = useClinicConsultations(
+    selectedPatient === ALL_PATIENTS ? undefined : selectedPatient
+  );
   const { patients } = useClinicPatients();
-  const { treatments } = useClinicTreatments();
   const { toast } = useToast();
 
-  const [newConsultation, setNewConsultation] = useState({
-    patient_id: "", treatment_id: "", doctor_name: "", consultation_date: new Date().toISOString().split('T')[0],
-    chief_complaint: "", examination_notes: "", diagnosis: "", treatment_plan: "", follow_up_date: "", follow_up_notes: "",
-  });
+  const blankConsult = {
+    patient_id: "",
+    practitioner_name: "",
+    chief_complaint: "",
+    examination_findings: "",
+    diagnosis: "",
+    treatment_plan_text: "",
+    follow_up_date: "",
+    follow_up_notes: "",
+  };
+  const [newConsultation, setNewConsultation] = useState(blankConsult);
 
   const handleCreate = async () => {
     if (!newConsultation.patient_id) {
@@ -61,14 +78,24 @@ export default function ConsultationNotes() {
       return;
     }
     try {
-      await createConsultation.mutateAsync({
-        ...newConsultation,
-        treatment_id: newConsultation.treatment_id || null,
-        status: 'completed',
-      } as any);
+      const payload: any = {
+        patient_id: newConsultation.patient_id,
+        practitioner_name: newConsultation.practitioner_name || null,
+        chief_complaint: newConsultation.chief_complaint || null,
+        examination_findings: newConsultation.examination_findings || null,
+        diagnosis: newConsultation.diagnosis || null,
+        // treatment_plan is jsonb in DB; wrap the free-text input
+        treatment_plan: newConsultation.treatment_plan_text
+          ? { notes: newConsultation.treatment_plan_text }
+          : null,
+        follow_up_date: newConsultation.follow_up_date || null,
+        follow_up_notes: newConsultation.follow_up_notes || null,
+        report_status: 'completed',
+      };
+      await createConsultation.mutateAsync(payload);
       toast({ title: "Success", description: "Consultation saved" });
       setShowAddDialog(false);
-      setNewConsultation({ patient_id: "", treatment_id: "", doctor_name: "", consultation_date: new Date().toISOString().split('T')[0], chief_complaint: "", examination_notes: "", diagnosis: "", treatment_plan: "", follow_up_date: "", follow_up_notes: "" });
+      setNewConsultation(blankConsult);
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
@@ -76,8 +103,7 @@ export default function ConsultationNotes() {
 
   const handlePrintReport = (consultation: ClinicConsultation) => {
     const patient = patients.find(p => p.id === consultation.patient_id);
-    const treatment = treatments.find(t => t.id === consultation.treatment_id);
-    const report = generateReport(consultation, patient?.full_name || 'Unknown', treatment?.name || '');
+    const report = generateReport(consultation, patient?.full_name || 'Unknown');
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       printWindow.document.write(`<pre style="font-family: monospace; white-space: pre-wrap; padding: 20px;">${report}</pre>`);
@@ -109,21 +135,8 @@ export default function ConsultationNotes() {
                   </Select>
                 </div>
                 <div className="grid gap-2">
-                  <Label>Treatment</Label>
-                  <Select value={newConsultation.treatment_id} onValueChange={(v) => setNewConsultation({...newConsultation, treatment_id: v})}>
-                    <SelectTrigger><SelectValue placeholder="Select treatment" /></SelectTrigger>
-                    <SelectContent>{treatments.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label>Doctor Name</Label>
-                  <Input value={newConsultation.doctor_name} onChange={(e) => setNewConsultation({...newConsultation, doctor_name: e.target.value})} />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Date</Label>
-                  <Input type="date" value={newConsultation.consultation_date} onChange={(e) => setNewConsultation({...newConsultation, consultation_date: e.target.value})} />
+                  <Label>Practitioner</Label>
+                  <Input value={newConsultation.practitioner_name} onChange={(e) => setNewConsultation({...newConsultation, practitioner_name: e.target.value})} placeholder="Dr. Khan" />
                 </div>
               </div>
               <div className="grid gap-2">
@@ -131,8 +144,8 @@ export default function ConsultationNotes() {
                 <Textarea value={newConsultation.chief_complaint} onChange={(e) => setNewConsultation({...newConsultation, chief_complaint: e.target.value})} rows={2} />
               </div>
               <div className="grid gap-2">
-                <Label>Examination Notes</Label>
-                <Textarea value={newConsultation.examination_notes} onChange={(e) => setNewConsultation({...newConsultation, examination_notes: e.target.value})} rows={3} />
+                <Label>Examination Findings</Label>
+                <Textarea value={newConsultation.examination_findings} onChange={(e) => setNewConsultation({...newConsultation, examination_findings: e.target.value})} rows={3} />
               </div>
               <div className="grid gap-2">
                 <Label>Diagnosis</Label>
@@ -140,7 +153,7 @@ export default function ConsultationNotes() {
               </div>
               <div className="grid gap-2">
                 <Label>Treatment Plan</Label>
-                <Textarea value={newConsultation.treatment_plan} onChange={(e) => setNewConsultation({...newConsultation, treatment_plan: e.target.value})} rows={3} />
+                <Textarea value={newConsultation.treatment_plan_text} onChange={(e) => setNewConsultation({...newConsultation, treatment_plan_text: e.target.value})} rows={3} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
@@ -164,7 +177,7 @@ export default function ConsultationNotes() {
         <Select value={selectedPatient} onValueChange={setSelectedPatient}>
           <SelectTrigger><SelectValue placeholder="All patients" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Patients</SelectItem>
+            <SelectItem value={ALL_PATIENTS}>All Patients</SelectItem>
             {patients.map(p => <SelectItem key={p.id} value={p.id}>{p.full_name}</SelectItem>)}
           </SelectContent>
         </Select>
@@ -178,7 +191,8 @@ export default function ConsultationNotes() {
         <div className="space-y-4">
           {consultations.map((c) => {
             const patient = patients.find(p => p.id === c.patient_id);
-            const treatment = treatments.find(t => t.id === c.treatment_id);
+            const planStr = planText(c.treatment_plan);
+            const status = c.report_status || 'draft';
             return (
               <Card key={c.id}>
                 <CardContent className="pt-6">
@@ -188,23 +202,22 @@ export default function ConsultationNotes() {
                       <div>
                         <h3 className="font-semibold">{patient?.full_name || 'Unknown Patient'}</h3>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Calendar className="h-3 w-3" /> {formatDate(c.consultation_date, 'medium')}
-                          {c.doctor_name && <><Stethoscope className="h-3 w-3 ml-2" /> Dr. {c.doctor_name}</>}
+                          <Calendar className="h-3 w-3" /> {formatDate(c.created_at, 'medium')}
+                          {c.practitioner_name && <><Stethoscope className="h-3 w-3 ml-2" /> {c.practitioner_name}</>}
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge variant={c.status === 'completed' ? 'default' : 'secondary'}>{c.status}</Badge>
+                      <Badge variant={status === 'completed' ? 'default' : 'secondary'}>{status}</Badge>
                       <Button variant="outline" size="sm" onClick={() => handlePrintReport(c)}>
                         <Printer className="h-3 w-3 mr-1" /> Report
                       </Button>
                     </div>
                   </div>
-                  {treatment && <Badge variant="outline" className="mb-2">{treatment.name}</Badge>}
                   <div className="grid gap-2 text-sm">
                     {c.chief_complaint && <div><span className="font-medium">Complaint:</span> {c.chief_complaint}</div>}
                     {c.diagnosis && <div><span className="font-medium">Diagnosis:</span> {c.diagnosis}</div>}
-                    {c.treatment_plan && <div><span className="font-medium">Plan:</span> <span className="line-clamp-2">{c.treatment_plan}</span></div>}
+                    {planStr && <div><span className="font-medium">Plan:</span> <span className="line-clamp-2">{planStr}</span></div>}
                     {c.follow_up_date && <div className="text-muted-foreground">Follow-up: {formatDate(c.follow_up_date, 'medium')}</div>}
                   </div>
                 </CardContent>

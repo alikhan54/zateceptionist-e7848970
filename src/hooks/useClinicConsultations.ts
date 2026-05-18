@@ -2,25 +2,32 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
 
+// Interface mirrors actual public.clinic_consultations columns (Phase 3 alignment).
+// Previous version had 8 columns that didn't exist in the DB.
 export interface ClinicConsultation {
   id: string;
   tenant_id: string;
   patient_id: string;
-  treatment_id: string | null;
-  doctor_name: string | null;
-  consultation_date: string;
+  appointment_id: string | null;
+  practitioner_name: string | null;
   chief_complaint: string | null;
-  examination_notes: string | null;
+  history_of_present: string | null;
+  examination_findings: string | null;
   diagnosis: string | null;
-  treatment_plan: string | null;
-  prescriptions_given: any[] | null;
-  products_recommended: string[] | null;
-  before_photos: string[] | null;
-  after_photos: string[] | null;
-  consent_signed: boolean;
+  treatment_plan: Record<string, any> | null; // jsonb in DB
+  estimated_cost: number | null;
+  prescriptions: any[] | Record<string, any> | null; // jsonb in DB
+  before_photos: any[] | Record<string, any> | null; // jsonb in DB
+  after_photos: any[] | Record<string, any> | null; // jsonb in DB
+  voice_recording_url: string | null;
+  voice_transcript: string | null;
+  ai_generated_report: string | null;
+  report_status: string | null;
+  doctor_approved: boolean;
+  doctor_approved_at: string | null;
   follow_up_date: string | null;
   follow_up_notes: string | null;
-  status: string;
+  notes: string | null;
   created_at: string;
   updated_at: string;
 }
