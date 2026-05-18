@@ -25,7 +25,6 @@ export interface ClinicPatient {
   loyalty_tier: string;
   tags: string[] | null;
   notes: string | null;
-  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -41,7 +40,6 @@ export function useClinicPatients(searchTerm?: string) {
         .from("clinic_patients" as any)
         .select("*")
         .eq("tenant_id", tenantId)
-        .eq("is_active", true)
         .order("full_name");
 
       if (searchTerm) {
