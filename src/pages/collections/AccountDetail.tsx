@@ -79,13 +79,13 @@ export default function AccountDetail() {
     isLoading,
     useContactLogs,
     useSettlements,
+    usePTPs,
+    useComplianceLogs,
     recordPTP,
     logContact,
+    createPTP,
+    createSettlement,
   } = useCollections();
-  const usePTPs = (_id?: string | null) => ({ data: [] as any[], isLoading: false });
-  const useComplianceLogs = (_id?: string | null) => ({ data: [] as any[], isLoading: false });
-  const createPTP = recordPTP;
-  const createSettlement = { mutateAsync: async (_d: any) => {} } as any;
 
   const account = accounts.find((a) => a.id === accountId) || null;
   const { data: contactLogs = [] } = useContactLogs(accountId || null);
