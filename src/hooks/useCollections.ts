@@ -663,6 +663,7 @@ export function useCollections(bucketFilter?: string) {
           discount_percent: discountPercent || null,
           offered_by: offeredBy || null,
           status: "pending_approval",
+          authority_level: "team_lead",
           offer_date: new Date().toISOString().split("T")[0],
           expiry_date: expiryDate || null,
         } as any);
