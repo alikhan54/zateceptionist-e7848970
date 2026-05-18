@@ -58,6 +58,7 @@
 | Phase 2.10 (Part B) — Botox description APPEND | UPDATE on `clinic_treatments` (1 row, primary-key WHERE) appending premium-tier note. updated_at bumped. Multi-tenant isolation verified PASS (only cosmique touched). | shipped | (DB only) |
 | Medical Video investigation | Read-only audit of doctor-avatar / medical-video chain. Identified 3-layer failure (frontend has no player; MuseTalk service broken; chain never exercised). | investigation only, see `COSMIQUE_MEDICAL_VIDEO_INVESTIGATION.md` | n/a |
 | Phase 3 — UI/DB alignment audit | Investigated why /clinic/treatments, /marketing/competitors show empty despite seeded data. ROOT CAUSE: RLS — no cosmique-mapped auth user, no master_admin RLS bypass. Frontend tenant-switcher is cosmetic; doesn't propagate to DB session. Also shipped 3 surgical hook fixes (customers table is UUID-keyed). Playwright E2E blocked until RLS unblocked. Feature gap analysis written. | shipped (3 fixes + 2 audit docs) | `f812438` |
+| Phase 4 — Auth unlock + real E2E + clinic_patients fix | (1) Created auth user `admin@cosmique.zatesystems.com` via Supabase Admin API, mapped to `tenant_id='cosmique'` in `public.users` + `public.user_roles`. Multi-tenant isolation: PASS. (2) Verified RLS via JWT: 11/11 cosmique-protected tables return seeded rows. (3) Playwright E2E walked 9 routes on the live frontend — 7 PASS (treatments, products, competitors, campaigns, blogs, sequences, dashboard), 1 BUG (clinic/patients), 1 GAP (/pulse 404). (4) Fixed the patients bug: removed `.eq("is_active", true)` filter from `useClinicPatients` — column doesn't exist on the table, was causing silent 400 → empty render. | shipped (1 fix + e2e harness + report) | `86849bf`, `438ab80` |
 
 ---
 
@@ -75,7 +76,7 @@
 
 ## Pending — engineering action
 
-- [ ] **🔴 BLOCKER: Unblock RLS for cosmique** — single SQL UPDATE on `public.users` (Path A in `COSMIQUE_UI_AUDIT.md`) OR add master_admin RLS bypass (Path B) OR introduce JWT claim injection (Path C). Until this is done, no clinic data renders on cosmique pages — even though the data is in the DB. THIS IS THE USER'S #1 COMPLAINT.
+- [x] **🟢 RESOLVED: RLS unblocked for cosmique (Phase 4)** — new auth user `admin@cosmique.zatesystems.com` mapped to `tenant_id='cosmique'`. JWT-scoped reads now return all seeded rows (11/11 tables verified). Multi-tenant isolation PASS.
 - [ ] **Build patient-facing video player** — new hook `useVideoScripts`, new component `DoctorAvatarVideoPlayer`, new route or expanded view in `HealthReports.tsx`. Currently NO frontend component renders the doctor avatar video result. See `COSMIQUE_MEDICAL_VIDEO_INVESTIGATION.md` Step 4.
 - [ ] **Fix MuseTalk service** (port 8126) — `huggingface-hub` version pin, restore missing model files (`dwpose/dw-ll_ucoco_384.pth`, `musetalk/config.json`), install `mmpose`. Container currently crash-looping on imports.
 - [ ] **Per-tenant doctor avatar** — `D:/420-system/video-service/server.py:35-37` hardcodes `zateceptionist/adeel.png`. Either add `tenant_config.features.doctor_avatar_url` or a dedicated column.
@@ -134,6 +135,7 @@
 - `D:/420-system/frontend/docs/COSMIQUE_MEDICAL_VIDEO_INVESTIGATION.md` — doctor avatar / medical video chain failure analysis + recommended fix path
 - `D:/420-system/frontend/docs/COSMIQUE_UI_AUDIT.md` — **Phase 3**: empty-data root cause (RLS), recommended remediation paths, why Playwright is blocked
 - `D:/420-system/frontend/docs/COSMIQUE_FEATURE_GAPS.md` — **Phase 3**: what's live, what's stub, what's missing for clinic launch readiness
+- `D:/420-system/frontend/docs/COSMIQUE_PHASE1_E2E_REPORT.md` — **Phase 4**: route-by-route Playwright verdicts + screenshots + the clinic_patients fix
 - `D:/420-system/CLAUDE.md` — full system architecture, tenant ID rules, sacred workflows, open tickets
 - `D:/420-system/CLAUDE_RESOLVED.md` — resolved tickets archive (full pooler recipe, engagement responder details, T34/T35 history)
 - `D:/420-system/frontend/docs/PULSE_REGISTRY_HISTORY.md` — NOT FOUND at session start (was referenced in handover but does not exist on disk; Phase 1 + 1.6 history captured in this status doc instead)
