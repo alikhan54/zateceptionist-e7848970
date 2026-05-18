@@ -105,15 +105,26 @@ export default function PatientProfile() {
       icon: <Activity className="h-4 w-4" />,
       accent: "from-emerald-500/20 to-green-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
     }));
-    prescriptions.forEach(p => items.push({
-      id: p.id,
-      type: "prescription",
-      date: p.issued_at || p.created_at,
-      title: p.medication_name || "Prescription",
-      body: [p.dosage, p.frequency].filter(Boolean).join(" · "),
-      icon: <FileText className="h-4 w-4" />,
-      accent: "from-amber-500/20 to-orange-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30",
-    }));
+    prescriptions.forEach(p => {
+      // clinic_prescriptions.medicines is a jsonb array of {name, dosage, frequency, duration}.
+      // Pull the first med's name as the timeline title; concat the rest as body.
+      const meds = Array.isArray(p.medicines) ? p.medicines : [];
+      const first = meds[0] || {};
+      const others = meds.slice(1).map((m: any) => m?.name).filter(Boolean).join(", ");
+      items.push({
+        id: p.id,
+        type: "prescription",
+        date: p.created_at,
+        title: first?.name || (p.notes ? "Prescription notes" : "Prescription"),
+        body: [
+          [first?.dosage, first?.frequency].filter(Boolean).join(" · "),
+          others ? `+ ${others}` : "",
+          p.prescribed_by ? `prescribed by ${p.prescribed_by}` : "",
+        ].filter(Boolean).join(" — "),
+        icon: <FileText className="h-4 w-4" />,
+        accent: "from-amber-500/20 to-orange-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30",
+      });
+    });
     return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [consultations, appointments, healthAnalyses, prescriptions]);
 
@@ -374,12 +385,19 @@ export default function PatientProfile() {
                 <CardContent className="space-y-2.5">
                   {prescriptions.length === 0 ? (
                     <p className="text-sm text-muted-foreground">No prescriptions on file.</p>
-                  ) : prescriptions.slice(0, 8).map(p => (
-                    <div key={p.id} className="text-sm border-l-2 border-amber-500/40 pl-3 py-0.5">
-                      <div className="font-medium">{p.medication_name || "Medication"}</div>
-                      <div className="text-xs text-muted-foreground">{[p.dosage, p.frequency].filter(Boolean).join(" · ") || "—"}</div>
-                    </div>
-                  ))}
+                  ) : prescriptions.slice(0, 8).map(p => {
+                    const meds = Array.isArray(p.medicines) ? p.medicines : [];
+                    const first = meds[0] || {};
+                    return (
+                      <div key={p.id} className="text-sm border-l-2 border-amber-500/40 pl-3 py-0.5">
+                        <div className="font-medium">{first?.name || "Medication"}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {[first?.dosage, first?.frequency].filter(Boolean).join(" · ") || "—"}
+                          {meds.length > 1 ? ` (+${meds.length - 1} more)` : ""}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </CardContent>
               </Card>
             </div>

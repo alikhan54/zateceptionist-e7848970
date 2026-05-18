@@ -62,10 +62,13 @@ export interface PatientWithRelations {
   prescriptions: Array<{
     id: string;
     patient_id: string;
-    medication_name: string | null;
-    dosage: string | null;
-    frequency: string | null;
-    issued_at: string | null;
+    prescribed_by: string | null;
+    // clinic_prescriptions stores meds as a jsonb array; each item typically
+    // has {name, dosage, frequency, duration}.
+    medicines: any[] | null;
+    pharmacy_name: string | null;
+    status: string | null;
+    notes: string | null;
     created_at: string;
   }>;
   healthAnalyses: Array<{
