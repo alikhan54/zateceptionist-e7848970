@@ -675,7 +675,8 @@ export function usePermissions() {
         const { data: user } = await supabase.auth.getUser();
         if (!user.user) return;
 
-        // Get user's role hierarchy
+        // Get user's role hierarchy. Use .maybeSingle() so users without a
+        // team_members row (most new tenants) don't trigger a 406 on every page.
         const { data: memberData } = await supabase
           .from("team_members")
           .select(
@@ -689,7 +690,7 @@ export function usePermissions() {
           .eq("org_id", orgId)
           .eq("user_id", user.user.id)
           .eq("status", "active")
-          .single();
+          .maybeSingle();
 
         if (memberData?.roles) {
           setCurrentUserHierarchy((memberData.roles as any).hierarchy_level || 0);

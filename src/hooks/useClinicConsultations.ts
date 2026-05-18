@@ -36,7 +36,7 @@ export function useClinicConsultations(patientId?: string) {
         .from("clinic_consultations" as any)
         .select("*")
         .eq("tenant_id", tenantId)
-        .order("consultation_date", { ascending: false });
+        .order("created_at", { ascending: false });
 
       if (patientId) {
         query = query.eq("patient_id", patientId);

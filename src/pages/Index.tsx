@@ -378,9 +378,11 @@ export default function Inbox() {
     queryKey: ["inbox-conversations", tenantUuid, selectedChannel],
     queryFn: async () => {
       if (!tenantUuid) return [];
+      // conversations has contact_id (not customer_id) — no FK to customers,
+      // so skip the embedded select to avoid PGRST200 errors on every load.
       let query = supabase
         .from("conversations")
-        .select(`*, customer:customers(*)`)
+        .select("*")
         .eq("tenant_id", tenantUuid) // UUID for conversations
         .order("last_message_at", { ascending: false, nullsFirst: false });
       if (selectedChannel !== "all") query = query.eq("channel", selectedChannel);

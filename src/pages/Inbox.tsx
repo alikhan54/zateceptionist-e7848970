@@ -414,24 +414,20 @@ export default function Inbox() {
     queryKey: ["inbox-conversations", tenantUuid, selectedChannel],
     queryFn: async () => {
       if (!tenantUuid) return [];
+      // conversations has contact_id (not customer_id) — no FK to customers, so
+      // skip the embedded select and read the row directly. Customer details
+      // can be hydrated separately if/when needed.
       let query = supabase
         .from("conversations")
-        .select(`*, customer:customers(*)`)
+        .select("*")
         .eq("tenant_id", tenantUuid)
         .order("last_message_at", { ascending: false, nullsFirst: false });
       if (selectedChannel !== "all") query = query.eq("channel", selectedChannel);
       const { data, error } = await query;
       if (error) {
         console.error("Conversations query error:", error);
-        const { data: fallback } = await supabase
-          .from("conversations")
-          .select("*")
-          .eq("tenant_id", tenantUuid)
-          .order("last_message_at", { ascending: false });
-        console.log("[Inbox] Conversations loaded (fallback):", fallback?.length, "first:", fallback?.[0]?.id?.slice(0,8));
-        return (fallback || []) as Conversation[];
+        return [] as Conversation[];
       }
-      console.log("[Inbox] Conversations loaded:", data?.length, "first:", data?.[0]?.id?.slice(0,8));
       return (data || []) as Conversation[];
     },
     enabled: !!tenantUuid,
@@ -528,8 +524,7 @@ export default function Inbox() {
       const { data } = await supabase
         .from("conversation_tags")
         .select("id, name, color")
-        .eq("tenant_id", tenantUuid)
-        .eq("is_active", true);
+        .eq("tenant_id", tenantUuid);
       return data || [];
     },
     enabled: !!tenantUuid,
