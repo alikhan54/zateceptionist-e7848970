@@ -40,5 +40,11 @@ export default defineConfig({
       dependencies: ['setup'],
       use: { browserName: 'chromium', storageState: STORAGE_PATH },
     },
+    {
+      name: 'phase3',
+      testMatch: /cosmique-phase3-e2e\.spec\.ts/,
+      dependencies: ['setup'],
+      use: { browserName: 'chromium', storageState: STORAGE_PATH },
+    },
   ],
 });
