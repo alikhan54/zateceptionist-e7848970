@@ -139,6 +139,7 @@ const AccountImport = lazy(() => import("./pages/collections/AccountImport"));
 // Clinic Module
 const ClinicDashboard = lazy(() => import("./pages/clinic/ClinicDashboard"));
 const ClinicPatients = lazy(() => import("./pages/clinic/Patients"));
+const ClinicPatientProfile = lazy(() => import("./pages/clinic/PatientProfile"));
 const ClinicTreatments = lazy(() => import("./pages/clinic/Treatments"));
 const ClinicProducts = lazy(() => import("./pages/clinic/Products"));
 const ConsultationNotes = lazy(() => import("./pages/clinic/ConsultationNotes"));
@@ -1221,6 +1222,14 @@ const App = () => (
                     element={
                       <LazyPage>
                         <ClinicPatients />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/clinic/patients/:patientId"
+                    element={
+                      <LazyPage>
+                        <ClinicPatientProfile />
                       </LazyPage>
                     }
                   />

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -7,10 +8,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useClinicPatients } from "@/hooks/useClinicPatients";
-import { Search, UserPlus, Phone, Mail, Heart, Star } from "lucide-react";
+import { Search, UserPlus, Phone, Mail, Heart, Star, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Patients() {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [newPatient, setNewPatient] = useState({ full_name: "", phone: "", email: "", gender: "female", skin_type: "", preferred_contact: "whatsapp" });
@@ -111,11 +113,26 @@ export default function Patients() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {patients.map((patient) => (
-            <Card key={patient.id} className="hover:shadow-md transition-shadow">
+            <Card
+              key={patient.id}
+              role="link"
+              tabIndex={0}
+              onClick={() => navigate(`/clinic/patients/${patient.id}`)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  navigate(`/clinic/patients/${patient.id}`);
+                }
+              }}
+              className="group cursor-pointer hover:shadow-md hover:border-primary/30 transition-all focus:outline-none focus:ring-2 focus:ring-primary/40"
+            >
               <CardContent className="pt-6">
                 <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h3 className="font-semibold">{patient.full_name}</h3>
+                  <div className="min-w-0">
+                    <h3 className="font-semibold flex items-center gap-1.5">
+                      {patient.full_name}
+                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </h3>
                     <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
                       <Phone className="h-3 w-3" /> {patient.phone}
                     </div>
