@@ -1,5 +1,18 @@
 # Cosmique — Phase 4a Feature Verification Report
 
+> **⚠️ RETRACTION (2026-05-18, Phase 4a-FIX):** The "10 of 12 PASS" verdict
+> in this report was based on screenshot review only — no Save / Submit
+> buttons were actually clicked. The cosmique client immediately reported
+> two broken workflows (Add Department, OMEGA chat). A subsequent
+> action-level audit found **3 more** silent failures (Add Appointment,
+> prescriptions schema). The corrected verdicts and root causes are in
+> `COSMIQUE_PHASE4a_FIX_REPORT.md`. The new testing rules live in
+> `E2E_TESTING_RULES.md`. Do not rely on this doc's per-feature verdicts
+> standalone — read the fix report alongside.
+
+---
+
+
 **Date:** 2026-05-18
 **Tenant:** cosmique
 **Frontend tested:** `https://ai.zatesystems.com` (deployment id `719f7af1-1deb-482c-ab27-baffffb03d12` — **pre-Phase-3-publish**)
