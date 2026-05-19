@@ -104,6 +104,10 @@ export default function AppointmentsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [providerFilter, setProviderFilter] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [rescheduleAppt, setRescheduleAppt] = useState<Appointment | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState<string>("");
+  const [rescheduleTime, setRescheduleTime] = useState<string>("");
+  const [rescheduleSaving, setRescheduleSaving] = useState(false);
 
   // For add dialog
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -312,6 +316,68 @@ export default function AppointmentsPage() {
         description: `Failed to schedule ${translate("appointment").toLowerCase()}`,
         variant: "destructive",
       });
+    }
+  };
+
+  const openReschedule = (appt: Appointment) => {
+    setRescheduleAppt(appt);
+    // Prefill from existing scheduled_at (timestamptz preferred), or
+    // fall back to appointment_date + start_time (legacy columns).
+    const src = (appt as any).scheduled_at
+      || ((appt as any).appointment_date && (appt as any).start_time
+        ? `${(appt as any).appointment_date}T${(appt as any).start_time}Z`
+        : null);
+    if (src) {
+      const d = new Date(src);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mi = String(d.getMinutes()).padStart(2, '0');
+      setRescheduleDate(`${yyyy}-${mm}-${dd}`);
+      setRescheduleTime(`${hh}:${mi}`);
+    } else {
+      setRescheduleDate(new Date().toISOString().slice(0, 10));
+      setRescheduleTime("10:00");
+    }
+  };
+
+  const handleReschedule = async () => {
+    if (!rescheduleAppt || !tenantId) return;
+    if (!rescheduleDate || !rescheduleTime) {
+      toast({ title: "Pick a date and time first", variant: "destructive" });
+      return;
+    }
+    setRescheduleSaving(true);
+    try {
+      const [yyyy, mm, dd] = rescheduleDate.split('-').map(Number);
+      const [hh, mi] = rescheduleTime.split(':').map(Number);
+      const scheduled = new Date(yyyy, mm - 1, dd, hh, mi, 0, 0);
+      const startTime = `${String(hh).padStart(2, '0')}:${String(mi).padStart(2, '0')}:00`;
+      const endMins = mi + ((rescheduleAppt as any).duration_minutes || 30);
+      const endHh = hh + Math.floor(endMins / 60);
+      const endMi = endMins % 60;
+      const endTime = `${String(endHh % 24).padStart(2, '0')}:${String(endMi).padStart(2, '0')}:00`;
+
+      const { error } = await supabase.from("appointments").update({
+        scheduled_at: scheduled.toISOString(),
+        appointment_date: rescheduleDate,
+        start_time: startTime,
+        end_time: endTime,
+      }).eq("id", rescheduleAppt.id).eq("tenant_id", tenantId);
+      if (error) throw error;
+
+      // Optimistic local update so the UI reflects the new time immediately
+      setAppointments(prev => prev.map(a => a.id === rescheduleAppt.id
+        ? { ...a, scheduled_at: scheduled.toISOString() } as any
+        : a));
+
+      toast({ title: `${translate("appointment")} rescheduled`, description: scheduled.toLocaleString() });
+      setRescheduleAppt(null);
+    } catch (err: any) {
+      toast({ title: "Could not reschedule", description: err?.message || String(err), variant: "destructive" });
+    } finally {
+      setRescheduleSaving(false);
     }
   };
 
@@ -673,12 +739,19 @@ export default function AppointmentsPage() {
                                 <CheckCircle2 className="h-4 w-4 mr-2" />
                                 Complete
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openReschedule(appointment)} data-testid={`reschedule-${appointment.id}`}>
+                                <CalendarIcon className="h-4 w-4 mr-2" />
+                                Reschedule
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleSendReminder(appointment)}>
                                 <Bell className="h-4 w-4 mr-2" />
                                 Send Reminder
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => handleUpdateStatus(appointment.id, "cancelled")}>
+                              <DropdownMenuItem
+                                onClick={() => handleUpdateStatus(appointment.id, "cancelled")}
+                                data-testid={`cancel-appt-${appointment.id}`}
+                              >
                                 <XCircle className="h-4 w-4 mr-2" />
                                 Cancel
                               </DropdownMenuItem>
@@ -804,6 +877,50 @@ export default function AppointmentsPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Reschedule dialog — Phase 5a J3 */}
+      <Dialog open={!!rescheduleAppt} onOpenChange={(v) => !v && setRescheduleAppt(null)}>
+        <DialogContent className="max-w-md" data-testid="reschedule-dialog">
+          <DialogHeader>
+            <DialogTitle>Reschedule {translate("appointment")}</DialogTitle>
+            <DialogDescription>
+              {rescheduleAppt?.customer_name ? `For ${rescheduleAppt.customer_name}` : "Pick a new date and time."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-3 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="reschedule-date">New date</Label>
+              <Input
+                id="reschedule-date"
+                data-testid="reschedule-date-input"
+                type="date"
+                value={rescheduleDate}
+                onChange={(e) => setRescheduleDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="reschedule-time">New time</Label>
+              <Input
+                id="reschedule-time"
+                data-testid="reschedule-time-input"
+                type="time"
+                value={rescheduleTime}
+                onChange={(e) => setRescheduleTime(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRescheduleAppt(null)}>Cancel</Button>
+            <Button
+              onClick={handleReschedule}
+              disabled={rescheduleSaving || !rescheduleDate || !rescheduleTime}
+              data-testid="reschedule-submit"
+            >
+              {rescheduleSaving ? "Saving..." : "Reschedule"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
