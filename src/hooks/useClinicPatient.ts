@@ -1,6 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Single patient row + everything linked to them. All queries pass through
 // RLS — there is no service-role bypass. If the patient id belongs to
@@ -150,5 +151,63 @@ export function useClinicPatient(patientId: string | undefined) {
       };
     },
     enabled: !!tenantId && !!patientId,
+  });
+}
+
+// ============================================================================
+// Add Prescription — Phase 5a
+// Writes a row into public.clinic_prescriptions for the current tenant +
+// patient. medicines is a jsonb array of {name, dosage, frequency, duration}.
+// Invalidates the parent useClinicPatient query so the Care tab refetches.
+// ============================================================================
+export interface NewPrescriptionInput {
+  patient_id: string;
+  consultation_id?: string | null;
+  prescribed_by: string;
+  medicines: Array<{ name: string; dosage?: string; frequency?: string; duration?: string }>;
+  notes?: string | null;
+  pharmacy_name?: string | null;
+}
+
+export function useCreatePrescription(patientId: string | undefined) {
+  const { tenantId } = useTenant();
+  const { authUser } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: NewPrescriptionInput) => {
+      if (!tenantId) throw new Error("No tenant");
+      if (!input.patient_id) throw new Error("Patient required");
+      if (!input.medicines || input.medicines.length === 0) {
+        throw new Error("At least one medicine required");
+      }
+      // Filter out completely empty medicines (name is required per row)
+      const meds = input.medicines.filter(m => (m?.name || "").trim().length > 0);
+      if (meds.length === 0) {
+        throw new Error("At least one medicine with a name is required");
+      }
+      const prescribedBy = (input.prescribed_by || authUser?.full_name || authUser?.email || "Practitioner").slice(0, 200);
+
+      const { data, error } = await supabase
+        .from("clinic_prescriptions" as any)
+        .insert({
+          tenant_id: tenantId,
+          patient_id: input.patient_id,
+          consultation_id: input.consultation_id || null,
+          prescribed_by: prescribedBy,
+          medicines: meds,
+          notes: input.notes || null,
+          pharmacy_name: input.pharmacy_name || null,
+          status: "active",
+        } as any)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      // Refetch the patient's data — Care tab will show the new prescription
+      queryClient.invalidateQueries({ queryKey: ["clinic_patient", tenantId, patientId] });
+    },
   });
 }

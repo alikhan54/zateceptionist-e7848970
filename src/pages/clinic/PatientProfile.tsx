@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,11 +8,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { useClinicPatient } from "@/hooks/useClinicPatient";
+import { AddPrescriptionDialog } from "@/components/clinic/AddPrescriptionDialog";
 import {
   ArrowLeft, Phone, Mail, Cake, User, Stethoscope, Activity,
   Heart, AlertCircle, Calendar, FileText, Star, Sparkles,
   ClipboardList, Image as ImageIcon, MessageSquare, Pencil,
-  ChevronRight, ShieldCheck, BookOpen,
+  ChevronRight, ShieldCheck, BookOpen, Plus,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
@@ -51,6 +52,7 @@ export default function PatientProfile() {
   const { patientId } = useParams<{ patientId: string }>();
   const navigate = useNavigate();
   const { data, isLoading } = useClinicPatient(patientId);
+  const [addRxOpen, setAddRxOpen] = useState(false);
 
   const patient = data?.patient;
   const consultations = data?.consultations ?? [];
@@ -376,11 +378,20 @@ export default function PatientProfile() {
                 </CardContent>
               </Card>
               <Card>
-                <CardHeader className="pb-2">
+                <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
                   <CardTitle className="text-sm flex items-center gap-2">
                     <FileText className="h-4 w-4 text-amber-500" />
                     Prescriptions <span className="text-muted-foreground font-normal">({prescriptions.length})</span>
                   </CardTitle>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => setAddRxOpen(true)}
+                    data-testid="add-prescription-button"
+                  >
+                    <Plus className="h-3 w-3 mr-1" /> Add
+                  </Button>
                 </CardHeader>
                 <CardContent className="space-y-2.5">
                   {prescriptions.length === 0 ? (
@@ -474,6 +485,14 @@ export default function PatientProfile() {
           )}
         </TabsContent>
       </Tabs>
+
+      <AddPrescriptionDialog
+        open={addRxOpen}
+        onOpenChange={setAddRxOpen}
+        patientId={patient.id}
+        patientName={patient.full_name}
+        consultations={consultations}
+      />
     </div>
   );
 }
