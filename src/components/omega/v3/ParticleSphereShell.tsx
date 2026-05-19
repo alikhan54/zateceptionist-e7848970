@@ -171,13 +171,45 @@ export function ParticleSphereShell() {
       </div>
 
       {/* Floating transcript (single line, no card) */}
-      <div className="v3-transcript">{transcript}</div>
+      <div className="v3-transcript" data-testid="omega-transcript">{transcript}</div>
 
-      {/* State pill */}
-      <div className={`v3-state-pill ${state}`}>
+      {/* State pill with progress hint — Phase 5d UX polish.
+          LangGraph + MEDICA round-trips take 30-90s; without a hint users
+          assumed the chat was frozen. Now the "THINKING" state shows
+          animated dots, and we surface that responses can take up to 90s. */}
+      <div className={`v3-state-pill ${state}`} data-testid="omega-state-pill">
         <span className="dot" />
         {STATE_LABEL[state]}
+        {(state === "thinking" || state === "listening") && (
+          <span
+            aria-label="working"
+            style={{ marginLeft: 8, opacity: 0.85, fontVariantNumeric: "tabular-nums" }}
+          >
+            <span className="omega-dot omega-dot-1">·</span>
+            <span className="omega-dot omega-dot-2">·</span>
+            <span className="omega-dot omega-dot-3">·</span>
+          </span>
+        )}
       </div>
+      {state === "thinking" && (
+        <div
+          className="omega-progress-hint"
+          data-testid="omega-progress-hint"
+          style={{
+            position: "absolute",
+            bottom: "calc(50% - 220px)",
+            left: 0,
+            right: 0,
+            textAlign: "center",
+            fontSize: "0.72rem",
+            letterSpacing: "0.08em",
+            opacity: 0.55,
+            pointerEvents: "none",
+          }}
+        >
+          OMEGA is consulting the brain — typically 30–90s for clinical queries.
+        </div>
+      )}
 
       {/* Minimal command bar — Enter submits a real OMEGA query.
           The mic button replays the intro teaser; speech recognition lives in

@@ -1325,3 +1325,23 @@ body.cathedral-open .omega-shell-v3 .v3-wordmark {
   color: var(--pulse-ink-3);
 }
 
+
+/* Phase 5d — OMEGA progress dots (thinking/listening state) */
+@keyframes omega-dot-bounce {
+  0%, 80%, 100% { opacity: 0.25; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-2px); }
+}
+.omega-dot {
+  display: inline-block;
+  animation: omega-dot-bounce 1.2s infinite ease-in-out;
+}
+.omega-dot-1 { animation-delay: 0s; }
+.omega-dot-2 { animation-delay: 0.15s; }
+.omega-dot-3 { animation-delay: 0.3s; }
+.omega-progress-hint {
+  animation: omega-fade-pulse 2.4s infinite ease-in-out;
+}
+@keyframes omega-fade-pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.75; }
+}
