@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useClinicConsultations, ClinicConsultation } from "@/hooks/useClinicConsultations";
 import { useClinicPatients } from "@/hooks/useClinicPatients";
-import { FileText, Plus, Calendar, Stethoscope, Printer } from "lucide-react";
+import { FileText, Plus, Calendar, Stethoscope, Printer, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 // Helpers to unwrap jsonb fields back to display strings
@@ -54,11 +54,23 @@ const ALL_PATIENTS = "__all__";
 export default function ConsultationNotes() {
   const [selectedPatient, setSelectedPatient] = useState<string>(ALL_PATIENTS);
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const { consultations, isLoading, createConsultation } = useClinicConsultations(
+  const { consultations, isLoading, createConsultation, updateConsultation } = useClinicConsultations(
     selectedPatient === ALL_PATIENTS ? undefined : selectedPatient
   );
   const { patients } = useClinicPatients();
   const { toast } = useToast();
+
+  const handleMarkComplete = async (id: string) => {
+    try {
+      await updateConsultation.mutateAsync({
+        id,
+        updates: { report_status: "completed", doctor_approved: true } as any,
+      });
+      toast({ title: "Consultation completed", description: "Status updated." });
+    } catch (err: any) {
+      toast({ title: "Could not update", description: err?.message || "Unknown error", variant: "destructive" });
+    }
+  };
 
   const blankConsult = {
     patient_id: "",
@@ -121,7 +133,7 @@ export default function ConsultationNotes() {
         </div>
         <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
           <DialogTrigger asChild>
-            <Button><Plus className="mr-2 h-4 w-4" /> New Consultation</Button>
+            <Button data-testid="new-consultation-button"><Plus className="mr-2 h-4 w-4" /> New Consultation</Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
             <DialogHeader><DialogTitle>New Consultation</DialogTitle></DialogHeader>
@@ -209,6 +221,16 @@ export default function ConsultationNotes() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge variant={status === 'completed' ? 'default' : 'secondary'}>{status}</Badge>
+                      {status !== 'completed' && (
+                        <Button
+                          variant="outline" size="sm"
+                          onClick={() => handleMarkComplete(c.id)}
+                          disabled={updateConsultation.isPending}
+                          data-testid={`mark-complete-${c.id}`}
+                        >
+                          <CheckCircle2 className="h-3 w-3 mr-1" /> Mark complete
+                        </Button>
+                      )}
                       <Button variant="outline" size="sm" onClick={() => handlePrintReport(c)}>
                         <Printer className="h-3 w-3 mr-1" /> Report
                       </Button>
