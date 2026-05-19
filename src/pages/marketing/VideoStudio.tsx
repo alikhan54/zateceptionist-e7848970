@@ -623,10 +623,13 @@ export default function VideoStudio() {
       return;
     }
     setIsGeneratingAvatar(true);
+    const tenantUuid = tenantConfig?.tenant_id || tid;
     try {
-      const projectId = `avatar_${Date.now()}`;
-      const resp = await fetch(
-        "https://webhooks.zatesystems.com/webhook/video/generate-avatar",
+      // Async pattern (Layer 3, 2026-05-19): submit to /generate-avatar-async,
+      // receive 202 + job_id, poll /job-status until terminal. Avoids the
+      // Cloudflare 100s edge timeout that broke the legacy sync endpoint.
+      const submitResp = await fetch(
+        "https://webhooks.zatesystems.com/webhook/video/generate-avatar-async",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -635,44 +638,75 @@ export default function VideoStudio() {
             provider: "auto",
             voice_id: selectedVoice,
             language: language !== "en" ? language : undefined,
-            tenant_id: tenantConfig?.tenant_id || tid,
-            project_id: projectId,
-            ...(customAvatarUrl ? { source_image_url: customAvatarUrl } : {}),
+            tenant_id: tenantUuid,
+            aspect_ratio: "9:16",
+            ...(customAvatarUrl ? { avatar_image_url: customAvatarUrl } : {}),
           }),
         }
       );
 
-      // Best-effort JSON parse — webhook may return text on error
-      let result: any = {};
-      try { result = await resp.json(); } catch { result = { error: `HTTP ${resp.status}` }; }
-      const videoUrl: string | undefined = result?.video_url || result?.clip_url;
-
-      if (videoUrl) {
-        await supabase.from("video_projects" as any).insert({
-          tenant_id: tid,
-          title: avatarScript.slice(0, 80),
-          video_url: videoUrl,
-          rendered_video_url: videoUrl,
-          render_status: "complete",
-          status: "complete",
-          source_type: "avatar",
-          video_type: "avatar",
-          aspect_ratio: "9:16",
-          ai_generated: true,
-          voice_style: selectedVoice,
-          ai_optimization_notes: { provider: result?.source || "auto", voice: selectedVoice },
+      let submitJson: any = {};
+      try { submitJson = await submitResp.json(); } catch { /* keep empty */ }
+      const jobId: string | undefined = submitJson?.job_id;
+      if (!submitResp.ok || !jobId) {
+        toast({
+          title: "Avatar submit failed",
+          description: (submitJson?.error || `HTTP ${submitResp.status}`).toString().slice(0, 200),
+          variant: "destructive",
         });
-        qc.invalidateQueries({ queryKey: ["video-projects-studio"] });
-        toast({ title: "Avatar video created ✨", description: "Open My Videos to watch it." });
+        return;
+      }
+
+      toast({ title: "Avatar queued ✨", description: "Generating — this usually takes 1-2 minutes." });
+      // Refresh My Videos so the placeholder row (status='rendering') appears immediately
+      qc.invalidateQueries({ queryKey: ["video-projects-studio"] });
+
+      // Poll job-status. 5s × 120 attempts = 10 minute ceiling.
+      const POLL_INTERVAL_MS = 5000;
+      const MAX_ATTEMPTS = 120;
+      let finalUrl: string | undefined;
+      let finalError: string | undefined;
+      for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+        await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+        try {
+          const pollResp = await fetch(
+            `https://webhooks.zatesystems.com/webhook/video/job-status?job_id=${encodeURIComponent(jobId)}&tenant_id=${encodeURIComponent(tenantUuid)}`,
+          );
+          if (!pollResp.ok) continue;
+          const pollJson: any = await pollResp.json().catch(() => ({}));
+          if (pollJson?.status === "complete" && pollJson?.video_url) {
+            finalUrl = pollJson.video_url;
+            break;
+          }
+          if (pollJson?.status === "failed") {
+            finalError = pollJson?.error || "render failed";
+            break;
+          }
+        } catch {
+          // Transient poll error — keep trying
+        }
+      }
+
+      // Re-fetch list either way so the workflow-updated row is visible
+      qc.invalidateQueries({ queryKey: ["video-projects-studio"] });
+
+      if (finalUrl) {
+        toast({ title: "Avatar video ready ✨", description: "Open My Videos to watch it." });
         setTab("videos");
         setSelectedTemplate(null);
         setAvatarScript("");
-      } else {
+      } else if (finalError) {
         toast({
-          title: "Avatar generation didn't return a video",
-          description: (result?.error || `HTTP ${resp.status}`).toString().slice(0, 200),
+          title: "Avatar generation failed",
+          description: finalError.slice(0, 200),
           variant: "destructive",
         });
+      } else {
+        toast({
+          title: "Still rendering",
+          description: "Your avatar is taking longer than expected. Check My Videos in a few minutes.",
+        });
+        setTab("videos");
       }
     } catch (err) {
       toast({ title: "Connection error", description: String(err).slice(0, 200), variant: "destructive" });
