@@ -759,6 +759,13 @@ export function NavigationSidebar() {
     ? ({ "--sidebar-accent": tenantConfig.primary_color } as React.CSSProperties)
     : {};
 
+  // Smart Ledger minimal-sidebar gate (Phase J fix, 2026-05-19).
+  // Accounting-tenant users (non-master-admin) see only MAIN + Accounting section.
+  // Master admins (Zate Systems internal) bypass — see full sidebar for debugging.
+  // All 35 non-accounting tenants: gate evaluates false → existing render path unchanged.
+  const renderAccountingMinimal =
+    isAccountingPracticeUK && isFeatureEnabled("accountant_dept") && !isMasterAdmin;
+
   const NavItemComponent = ({ item, indent = false }: { item: NavItem; indent?: boolean }) => {
     if (item.children && item.children.length > 0 && !collapsed) {
       const groupActive = isGroupActive(item);
@@ -902,7 +909,7 @@ export function NavigationSidebar() {
             <div className="flex flex-col overflow-hidden">
               <span className="font-semibold text-sm truncate">{tenantConfig?.company_name || "Zateceptionist"}</span>
               <span className="text-xs text-muted-foreground truncate">
-                {tenantConfig?.industry ? tenantConfig.industry.replace("_", " ") : "Business Hub"}
+                {tenantConfig?.industry ? tenantConfig.industry.replace(/_/g, " ") : "Business Hub"}
               </span>
             </div>
           )}
@@ -961,6 +968,18 @@ export function NavigationSidebar() {
       )}
 
       <SidebarContent className="px-2 py-2 space-y-1">
+        {/* Smart Ledger minimal sidebar (Phase J fix, 2026-05-19).
+            Accounting-tenant non-master-admin users see only Main + Accounting.
+            Master admins + all other 35 tenants fall through to the existing render below. */}
+        {renderAccountingMinimal && (
+          <>
+            <StaticSection section={mainSection} />
+            <CollapsibleSection section={accountingSection} sectionKey="accounting" />
+          </>
+        )}
+
+        {!renderAccountingMinimal && (
+        <>
         {/* Staff Section - Only for staff */}
         {authUser?.role === "staff" && <StaticSection section={staffSection} />}
 
@@ -1045,6 +1064,8 @@ export function NavigationSidebar() {
 
         {/* Admin Section - Only for admin and master_admin */}
         {canAccessSection(adminSection) && <CollapsibleSection section={adminSection} sectionKey="admin" />}
+        </>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="p-2 border-t">

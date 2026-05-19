@@ -1,5 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
 import { NavigationSidebar } from "@/components/NavigationSidebar";
@@ -64,8 +64,9 @@ class MobileErrorBoundary extends Component<
 }
 
 export default function Layout() {
-  const { user, isLoading: authLoading } = useAuth();
-  const { isLoading: tenantLoading, tenantConfig, brandBackgroundColor } = useTenant();
+  const { user, isLoading: authLoading, isMasterAdmin } = useAuth();
+  const { isLoading: tenantLoading, tenantConfig, brandBackgroundColor, isAccountingPracticeUK } = useTenant();
+  const location = useLocation();
 
   const isLoading = authLoading || tenantLoading;
 
@@ -87,6 +88,21 @@ export default function Layout() {
   // ADD THIS: Redirect to onboarding wizard if not completed
   if (tenantConfig && tenantConfig.onboarding_completed === false) {
     return <Navigate to="/onboarding" replace />;
+  }
+
+  // Smart Ledger (industry=accounting_practice_uk + features.accountant_dept=true):
+  // accounting-tenant non-master-admin users see /accounting/dashboard as their
+  // landing route. Master admins (Zate Systems internal) bypass this gate so they
+  // can debug the generic /dashboard view. All other 35 tenants: gate falls through.
+  const accountantDeptEnabled =
+    !!(tenantConfig?.features && (tenantConfig.features as Record<string, boolean>).accountant_dept === true);
+  const isAccountingTenantUser =
+    isAccountingPracticeUK && accountantDeptEnabled && !isMasterAdmin;
+  if (
+    isAccountingTenantUser &&
+    (location.pathname === "/" || location.pathname === "/dashboard")
+  ) {
+    return <Navigate to="/accounting/dashboard" replace />;
   }
 
   const tenantStyle: React.CSSProperties = {
