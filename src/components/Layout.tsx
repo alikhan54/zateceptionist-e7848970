@@ -127,7 +127,11 @@ export default function Layout() {
             </main>
           </div>
           <InstallPrompt />
-          <OnboardingFlow />
+          {/* Skip the generic CRM onboarding tutorial for accounting tenants — Adil sees
+              Smart Ledger's own Dashboard with "Welcome, Adil Vohra" + "Coming May 25"
+              cards instead. The generic tutorial overlay was blocking mobile sidebar/hamburger
+              taps on first login (Phase J mobile fix, 2026-05-19). */}
+          {!isAccountingTenantUser && <OnboardingFlow />}
           <OmegaFloatingChat />
         </SidebarProvider>
         {/* BottomTabBar OUTSIDE SidebarProvider — zero context dependency */}

@@ -968,13 +968,15 @@ export function NavigationSidebar() {
       )}
 
       <SidebarContent className="px-2 py-2 space-y-1">
-        {/* Smart Ledger minimal sidebar (Phase J fix, 2026-05-19).
-            Accounting-tenant non-master-admin users see only Main + Accounting.
+        {/* Smart Ledger minimal sidebar (Phase J fix, 2026-05-19; mobile re-order 2026-05-19).
+            Accounting-tenant non-master-admin users see only Accounting + Main + Logout.
+            Accounting section is rendered FIRST so its items stay above-the-fold on mobile
+            (iPhone 12 height = 844px; bottom-nav strip eats the lowest 64px).
             Master admins + all other 35 tenants fall through to the existing render below. */}
         {renderAccountingMinimal && (
           <>
-            <StaticSection section={mainSection} />
             <CollapsibleSection section={accountingSection} sectionKey="accounting" />
+            <StaticSection section={mainSection} />
           </>
         )}
 

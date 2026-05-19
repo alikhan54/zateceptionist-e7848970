@@ -80,5 +80,15 @@ export default defineConfig({
       testMatch: /cross-tenant-verification\.spec\.ts/,
       use: { browserName: 'chromium' }, // no setup dep — 6 industries, env-var credentials
     },
+    {
+      name: 'ops-ui-e2e',
+      testMatch: /ops-ui-e2e\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — uses BBQ_EMAIL/BBQ_PASSWORD
+    },
+    {
+      name: 'smart-ledger-mobile',
+      testMatch: /smart-ledger-mobile\.spec\.ts/,
+      use: { browserName: 'chromium' }, // mobile viewport configured inside spec via test.use(devices['iPhone 12'])
+    },
   ],
 });
