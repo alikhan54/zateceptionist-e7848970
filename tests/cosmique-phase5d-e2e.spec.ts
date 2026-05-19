@@ -60,12 +60,15 @@ test('J12. Adjust pharmacy stock via UI dialog', async ({ page }) => {
   const originalStock: number = product.stock_quantity;
 
   await page.goto('/clinic/products', { waitUntil: 'networkidle' });
-  await page.waitForTimeout(2500);
+  // Wait for the product cards grid to render — clinic_products hook can take
+  // 5-10s under cold cache.
+  await page.waitForSelector(`[data-testid^="product-card-"]`, { timeout: 20_000 }).catch(()=>{});
+  await page.waitForTimeout(500);
 
   // Verify product card is on the page; if the testid is missing, the deploy
   // hasn't propagated — record DEPLOY_PENDING and bail.
   const adjustBtn = page.getByTestId(`adjust-stock-${product.id}`);
-  if (!await adjustBtn.isVisible({ timeout: 5000 }).catch(()=>false)) {
+  if (!await adjustBtn.isVisible({ timeout: 8000 }).catch(()=>false)) {
     const ss = path.join(SS_DIR, `phase5d-j12-deploy-pending.png`);
     await page.screenshot({ path: ss, fullPage: true });
     results.push({
@@ -106,10 +109,13 @@ test('J12. Adjust pharmacy stock via UI dialog', async ({ page }) => {
   const newStock = after.data[0].stock_quantity;
   expect(newStock).toBe(originalStock + 1);
 
-  // UI assertion — the product-stock-{id} element reflects the new number
-  await page.waitForTimeout(500);
-  const stockText = await page.getByTestId(`product-stock-${product.id}`).innerText();
-  expect(stockText).toContain(String(newStock));
+  // UI assertion — the product-stock-{id} element reflects the new number.
+  // React Query invalidate + refetch can take a few seconds; poll instead
+  // of single-shot read.
+  await expect.poll(
+    async () => (await page.getByTestId(`product-stock-${product.id}`).innerText()),
+    { timeout: 10_000, intervals: [500, 500, 1000] },
+  ).toContain(String(newStock));
 
   // Multi-tenant gate — fetch any product mutation log; verify it's cosmique
   // (we don't have a stock_adjustments table per handover, so we just confirm
@@ -157,10 +163,11 @@ test('J13. Edit treatment price via UI dialog', async ({ page }) => {
   const newPrice = originalPrice + 1;
 
   await page.goto('/clinic/treatments', { waitUntil: 'networkidle' });
-  await page.waitForTimeout(2500);
+  await page.waitForSelector(`[data-testid^="treatment-card-"]`, { timeout: 20_000 }).catch(()=>{});
+  await page.waitForTimeout(500);
 
   const editBtn = page.getByTestId(`edit-treatment-${treatment.id}`);
-  if (!await editBtn.isVisible({ timeout: 5000 }).catch(()=>false)) {
+  if (!await editBtn.isVisible({ timeout: 8000 }).catch(()=>false)) {
     const ss = path.join(SS_DIR, `phase5d-j13-deploy-pending.png`);
     await page.screenshot({ path: ss, fullPage: true });
     results.push({
@@ -197,11 +204,13 @@ test('J13. Edit treatment price via UI dialog', async ({ page }) => {
   expect(Number(after.data[0].price)).toBe(newPrice);
   expect(after.data[0].tenant_id).toBe(COSMIQUE_SLUG); // multi-tenant gate
 
-  // UI assertion — the treatment card should now show the new price
-  await page.waitForTimeout(500);
+  // UI assertion — the treatment card should now show the new price.
+  // Poll for refetch like J12.
   const card = page.getByTestId(`treatment-card-${treatment.id}`);
-  const cardText = await card.innerText();
-  expect(cardText).toContain(String(newPrice));
+  await expect.poll(
+    async () => (await card.innerText()),
+    { timeout: 10_000, intervals: [500, 500, 1000] },
+  ).toContain(String(newPrice));
 
   const ss = path.join(SS_DIR, `phase5d-j13-edit-treatment.png`);
   await page.screenshot({ path: ss, fullPage: true });
@@ -233,10 +242,12 @@ test('J15. Export patient CSV via UI button', async ({ page }) => {
   test.setTimeout(90_000);
 
   await page.goto('/clinic/patients', { waitUntil: 'networkidle' });
-  await page.waitForTimeout(2500);
+  // Wait for header to render with the Export button visible
+  await page.waitForSelector('[data-testid="export-patients-csv"], [data-testid="add-patient-button"]', { timeout: 20_000 }).catch(()=>{});
+  await page.waitForTimeout(500);
 
   const exportBtn = page.getByTestId('export-patients-csv');
-  if (!await exportBtn.isVisible({ timeout: 5000 }).catch(()=>false)) {
+  if (!await exportBtn.isVisible({ timeout: 8000 }).catch(()=>false)) {
     const ss = path.join(SS_DIR, `phase5d-j15-deploy-pending.png`);
     await page.screenshot({ path: ss, fullPage: true });
     results.push({
@@ -297,16 +308,20 @@ test('J15. Export patient CSV via UI button', async ({ page }) => {
 // hint testid is visible while state=thinking. We don't wait for the response
 // — just confirm the new UX element renders.
 test('OMEGA. Progress hint appears while thinking', async ({ page }) => {
-  test.setTimeout(60_000);
-  await page.goto('/omega', { waitUntil: 'networkidle' }).catch(async () => {
-    // Some tenants land OMEGA on /omega-shell or root
-    await page.goto('/', { waitUntil: 'networkidle' });
-  });
-  await page.waitForTimeout(3000);
+  test.setTimeout(120_000);
+  page.setDefaultNavigationTimeout(60_000);
+
+  // ParticleSphereShell lives at /dashboard by default (CLAUDE.md § 22A —
+  // DashboardRouter picks NeuralDashboardV3 when ui query is unset).
+  await page.goto('/dashboard', { waitUntil: 'domcontentloaded', timeout: 60_000 });
+  // The sphere shell mounts after auth resolves — wait for the input pill or
+  // bail with DEPLOY_PENDING.
+  await page.waitForSelector('.v3-input-pill', { timeout: 25_000 }).catch(()=>{});
+  await page.waitForTimeout(1500);
 
   // Find the omega input pill
   const input = page.locator('.v3-input-pill').first();
-  if (!await input.isVisible({ timeout: 5000 }).catch(()=>false)) {
+  if (!await input.isVisible({ timeout: 8000 }).catch(()=>false)) {
     results.push({
       journey: 'OMEGA_PROGRESS',
       verdict: 'DEPLOY_PENDING',
@@ -317,14 +332,38 @@ test('OMEGA. Progress hint appears while thinking', async ({ page }) => {
     return;
   }
 
-  await input.fill('What is the total revenue this month?');
-  await input.press('Enter');
-
-  // Within ~2s, we should see the thinking state pill + the progress hint
-  const hint = page.getByTestId('omega-progress-hint');
+  // Wait for the intro cycle to finish — sendQuery early-returns if state
+  // !== 'idle'. Intro takes ~9s after mount (listening 1.4s → thinking 1.2s →
+  // type ~3s → idle delay 3s). Poll state pill text until it reads IDLE.
   const pill = page.getByTestId('omega-state-pill');
+  await expect.poll(async () => (await pill.innerText()).trim().split(/\s+/)[0], {
+    timeout: 20_000, intervals: [500, 500, 1000],
+  }).toBe('IDLE');
 
-  const hintVisible = await hint.isVisible({ timeout: 8000 }).catch(()=>false);
+  // Install a MutationObserver BEFORE we submit so we catch the hint element
+  // even if state=thinking only lasts a few hundred ms (warm cache / fast
+  // webhook). Polling-based isVisible can miss transient renders.
+  await page.evaluate(() => {
+    (window as any).__omegaHintSeen = false;
+    const obs = new MutationObserver(() => {
+      if (document.querySelector('[data-testid="omega-progress-hint"]')) {
+        (window as any).__omegaHintSeen = true;
+      }
+    });
+    obs.observe(document.body, { childList: true, subtree: true });
+    (window as any).__omegaObserver = obs;
+  });
+
+  // Type char-by-char so each onChange has time to commit; then Enter.
+  await input.click();
+  await page.keyboard.type('What is the total revenue this month?', { delay: 25 });
+  await page.waitForTimeout(400);
+  await page.keyboard.press('Enter');
+
+  // Wait through the listening → thinking → speaking cycle.
+  await page.waitForTimeout(15_000);
+
+  const hintVisible: boolean = await page.evaluate(() => (window as any).__omegaHintSeen === true);
   const pillText = await pill.innerText().catch(()=>'');
 
   const ss = path.join(SS_DIR, `phase5d-omega-progress.png`);
