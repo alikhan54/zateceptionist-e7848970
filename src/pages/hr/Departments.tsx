@@ -43,8 +43,13 @@ export default function DepartmentsPage() {
 
   const navigate = useNavigate();
 
+  // Phase 5a polish: enforce non-empty name before mutating. Previously the
+  // form let blank submissions through (text NOT NULL only blocks NULL).
+  const nameError = !newDept.name.trim() ? "Department name is required" : null;
+
   const handleCreateDepartment = () => {
-    createDepartment.mutate(newDept);
+    if (nameError) return;
+    createDepartment.mutate({ ...newDept, name: newDept.name.trim() });
     setIsDialogOpen(false);
     setNewDept({ name: '', code: '', manager_id: '' });
   };
@@ -94,12 +99,18 @@ export default function DepartmentsPage() {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>Department Name</Label>
+                <Label htmlFor="dept-name">Department Name *</Label>
                 <Input
+                  id="dept-name"
+                  data-testid="dept-name-input"
                   placeholder="e.g., Engineering"
                   value={newDept.name}
                   onChange={(e) => setNewDept({ ...newDept, name: e.target.value })}
+                  aria-invalid={!!nameError}
                 />
+                {nameError && (
+                  <p className="text-xs text-destructive" data-testid="dept-name-error">{nameError}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Department Code</Label>
@@ -135,7 +146,11 @@ export default function DepartmentsPage() {
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleCreateDepartment} disabled={createDepartment.isPending}>
+              <Button
+                onClick={handleCreateDepartment}
+                disabled={createDepartment.isPending || !!nameError}
+                data-testid="dept-create-submit"
+              >
                 {createDepartment.isPending ? 'Creating...' : 'Create Department'}
               </Button>
             </DialogFooter>
