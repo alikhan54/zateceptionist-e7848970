@@ -856,11 +856,21 @@ export default function AppointmentsPage() {
                             <DropdownMenuItem onClick={() => handleUpdateStatus(appointment.id, "completed")}>
                               Complete
                             </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => openReschedule(appointment)}
+                              data-testid={`reschedule-${appointment.id}`}
+                            >
+                              <CalendarIcon className="h-4 w-4 mr-2" />
+                              Reschedule
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleSendReminder(appointment)}>
                               Send Reminder
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleUpdateStatus(appointment.id, "cancelled")}>
+                            <DropdownMenuItem
+                              onClick={() => handleUpdateStatus(appointment.id, "cancelled")}
+                              data-testid={`cancel-appt-${appointment.id}`}
+                            >
                               Cancel
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleUpdateStatus(appointment.id, "no-show")}>
