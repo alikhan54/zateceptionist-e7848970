@@ -444,17 +444,18 @@ export default function Inbox() {
     isLoading: messagesLoading,
     refetch: refetchMessages,
   } = useQuery({
-    queryKey: ["conversation-messages", selectedConversationId],
+    queryKey: ["conversation-messages", selectedConversationId, tenantUuid],
     queryFn: async () => {
-      if (!selectedConversationId) return [];
+      if (!selectedConversationId || !tenantUuid) return [];
       const { data } = await supabase
         .from("messages")
         .select("*")
         .eq("conversation_id", selectedConversationId)
+        .eq("tenant_id", tenantUuid)  // Wave 1B: defense-in-depth — messages.tenant_id is UUID
         .order("created_at", { ascending: true });
       return (data || []) as Message[];
     },
-    enabled: !!selectedConversationId,
+    enabled: !!selectedConversationId && !!tenantUuid,
   });
 
   const { data: staffMembers = [] } = useQuery({
@@ -607,7 +608,8 @@ export default function Inbox() {
           ai_handled: false,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", conversationId);
+        .eq("id", conversationId)
+        .eq("tenant_id", tenantUuid);  // Wave 1B: defense-in-depth — conversations.tenant_id is UUID
 
       // Call webhook for actual send
       await callWebhook(
@@ -904,7 +906,8 @@ export default function Inbox() {
           ai_handled: false,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", selectedConversationId);
+        .eq("id", selectedConversationId)
+        .eq("tenant_id", tenantUuid);  // Wave 1B: defense-in-depth — conversations.tenant_id is UUID
 
       if (error) throw error;
 
@@ -941,7 +944,11 @@ export default function Inbox() {
         updates.priority = "normal";
       }
 
-      const { error } = await supabase.from("conversations").update(updates).eq("id", id);
+      const { error } = await supabase
+        .from("conversations")
+        .update(updates)
+        .eq("id", id)
+        .eq("tenant_id", tenantUuid);  // Wave 1B: defense-in-depth — conversations.tenant_id is UUID
       if (error) throw error;
     },
     onSuccess: () => {
@@ -961,7 +968,8 @@ export default function Inbox() {
           assigned_to: selectedStaffId,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", selectedConversationId);
+        .eq("id", selectedConversationId)
+        .eq("tenant_id", tenantUuid);  // Wave 1B: defense-in-depth — conversations.tenant_id is UUID
     },
     onSuccess: () => {
       setShowTransferDialog(false);
@@ -983,7 +991,8 @@ export default function Inbox() {
           ai_handled: false,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", selectedConversationId);
+        .eq("id", selectedConversationId)
+        .eq("tenant_id", tenantUuid);  // Wave 1B: defense-in-depth — conversations.tenant_id is UUID
     },
     onSuccess: () => {
       setShowAssignDialog(false);
@@ -1047,7 +1056,11 @@ export default function Inbox() {
   // Mark read
   const markAsReadMutation = useMutation({
     mutationFn: async (id: string) => {
-      await supabase.from("conversations").update({ unread_count: 0 }).eq("id", id);
+      await supabase
+        .from("conversations")
+        .update({ unread_count: 0 })
+        .eq("id", id)
+        .eq("tenant_id", tenantUuid);  // Wave 1B: defense-in-depth — conversations.tenant_id is UUID
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["inbox-conversations"] }),
   });

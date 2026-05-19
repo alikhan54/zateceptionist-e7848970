@@ -472,31 +472,32 @@ export default function Inbox() {
     isLoading: messagesLoading,
     refetch: refetchMessages,
   } = useQuery({
-    queryKey: ["conversation-messages", selectedConversationId],
+    queryKey: ["conversation-messages", selectedConversationId, tenantUuid],
     queryFn: async () => {
-      if (!selectedConversationId) return [];
+      if (!selectedConversationId || !tenantUuid) return [];
       console.log("[Inbox] Fetching messages for conversation:", selectedConversationId);
       const { data, error } = await supabase
         .from("messages")
         .select("*")
         .eq("conversation_id", selectedConversationId)
+        .eq("tenant_id", tenantUuid)  // Wave 1B: defense-in-depth — messages.tenant_id is UUID
         .order("created_at", { ascending: true });
       console.log("[Inbox] Messages result:", { count: data?.length, error: error?.message, firstMsg: data?.[0]?.content?.slice(0,30) });
       return (data || []) as Message[];
     },
-    enabled: !!selectedConversationId,
+    enabled: !!selectedConversationId && !!tenantUuid,
     staleTime: 0,
   });
 
-  // Staff members query - uses UUID for users table
+  // Staff members query - users.tenant_id is TEXT/SLUG (verified Session 7, 2026-05-19)
   const { data: staffMembers = [] } = useQuery({
-    queryKey: ["staff-members", tenantUuid],
+    queryKey: ["staff-members", tenantId],
     queryFn: async () => {
-      if (!tenantUuid) return [];
-      const { data } = await supabase.from("users").select("id, full_name, email").eq("tenant_id", tenantUuid);
+      if (!tenantId) return [];
+      const { data } = await supabase.from("users").select("id, full_name, email").eq("tenant_id", tenantId);
       return (data || []) as StaffMember[];
     },
-    enabled: !!tenantUuid,
+    enabled: !!tenantId,
   });
 
   // Canned responses query (for "/" picker)
@@ -722,7 +723,8 @@ export default function Inbox() {
           ai_handled: false,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", conversationId);
+        .eq("id", conversationId)
+        .eq("tenant_id", tenantUuid);  // Wave 1B: defense-in-depth — conversations.tenant_id is UUID
 
       // Call universal-outbound webhook to actually send (skip for internal notes)
       // NOTE: conversations.contact_id references the CUSTOMERS table (legacy V3 Comm naming),
@@ -738,6 +740,7 @@ export default function Inbox() {
               "phone_number,phone,email,whatsapp_id,facebook_id,instagram_id,telegram_id,twitter_id,linkedin_id,chat_session_id",
             )
             .eq("id", conv.contact_id)
+            .eq("tenant_id", tenantId!)  // Wave 1B: defense-in-depth — customers.tenant_id is SLUG
             .maybeSingle();
 
           if (lookupErr) {
@@ -1031,7 +1034,8 @@ export default function Inbox() {
           ai_handled: false,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", selectedConversationId);
+        .eq("id", selectedConversationId)
+        .eq("tenant_id", tenantUuid);  // Wave 1B: defense-in-depth — conversations.tenant_id is UUID
 
       // Also update customer if exists
       if (selectedConversation?.contact_id) {
@@ -1041,7 +1045,8 @@ export default function Inbox() {
             assigned_to: selectedStaffId,
             updated_at: new Date().toISOString(),
           })
-          .eq("id", selectedConversation.contact_id);
+          .eq("id", selectedConversation.contact_id)
+          .eq("tenant_id", tenantId!);  // Wave 1B: defense-in-depth — customers.tenant_id is SLUG
       }
 
       return { staffId: selectedStaffId };
@@ -1070,7 +1075,8 @@ export default function Inbox() {
           ai_handled: false,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", selectedConversationId);
+        .eq("id", selectedConversationId)
+        .eq("tenant_id", tenantUuid);  // Wave 1B: defense-in-depth — conversations.tenant_id is UUID
 
       if (error) throw error;
 
@@ -1104,7 +1110,11 @@ export default function Inbox() {
         updates.requires_human = false;
         updates.priority = "normal";
       }
-      const { error } = await supabase.from("conversations").update(updates).eq("id", id);
+      const { error } = await supabase
+        .from("conversations")
+        .update(updates)
+        .eq("id", id)
+        .eq("tenant_id", tenantUuid);  // Wave 1B: defense-in-depth — conversations.tenant_id is UUID
       if (error) throw error;
     },
     onSuccess: () => {
@@ -1124,7 +1134,8 @@ export default function Inbox() {
           assigned_to: selectedStaffId,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", selectedConversationId);
+        .eq("id", selectedConversationId)
+        .eq("tenant_id", tenantUuid);  // Wave 1B: defense-in-depth — conversations.tenant_id is UUID
       return { staffId: selectedStaffId };
     },
     onSuccess: (data) => {
@@ -1177,7 +1188,11 @@ export default function Inbox() {
   // Mark read
   const markAsReadMutation = useMutation({
     mutationFn: async (id: string) => {
-      await supabase.from("conversations").update({ unread_count: 0 }).eq("id", id);
+      await supabase
+        .from("conversations")
+        .update({ unread_count: 0 })
+        .eq("id", id)
+        .eq("tenant_id", tenantUuid);  // Wave 1B: defense-in-depth — conversations.tenant_id is UUID
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["inbox-conversations"] }),
   });
@@ -1781,7 +1796,8 @@ export default function Inbox() {
                                   await supabase
                                     .from("conversations")
                                     .update({ snoozed_until: until, status: "snoozed", updated_at: new Date().toISOString() })
-                                    .eq("id", selectedConversation.id);
+                                    .eq("id", selectedConversation.id)
+                                    .eq("tenant_id", tenantUuid);  // Wave 1B: defense-in-depth — conversations.tenant_id is UUID
                                   refetchConversations();
                                   toast.success(`Snoozed for ${opt.label}`);
                                 }}
