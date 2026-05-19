@@ -52,5 +52,22 @@ export default defineConfig({
       dependencies: ['setup'],
       use: { browserName: 'chromium', storageState: STORAGE_PATH },
     },
+    {
+      name: 'phase4b',
+      testMatch: /cosmique-phase4b-e2e\.spec\.ts/,
+      dependencies: ['setup'],
+      use: { browserName: 'chromium', storageState: STORAGE_PATH },
+    },
+    {
+      name: 'phase4b-diag',
+      testMatch: /cosmique-phase4b-omega-direct\.spec\.ts/,
+      dependencies: ['setup'],
+      use: { browserName: 'chromium', storageState: STORAGE_PATH },
+    },
+    {
+      name: 'smart-ledger-verify',
+      testMatch: /smart-ledger-verification\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — fresh login as Smart Ledger user
+    },
   ],
 });
