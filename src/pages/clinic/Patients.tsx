@@ -8,8 +8,25 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useClinicPatients } from "@/hooks/useClinicPatients";
-import { Search, UserPlus, Phone, Mail, Heart, Star, ChevronRight } from "lucide-react";
+import { Search, UserPlus, Phone, Mail, Heart, Star, ChevronRight, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+function csvEscape(v: any): string {
+  if (v == null) return "";
+  const s = String(v);
+  if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+function calcAge(dob: string | null | undefined): string {
+  if (!dob) return "";
+  const d = new Date(dob);
+  if (isNaN(d.getTime())) return "";
+  const now = new Date();
+  let age = now.getFullYear() - d.getFullYear();
+  if (now.getMonth() < d.getMonth() || (now.getMonth() === d.getMonth() && now.getDate() < d.getDate())) age--;
+  return String(age);
+}
 
 export default function Patients() {
   const navigate = useNavigate();
@@ -18,6 +35,26 @@ export default function Patients() {
   const [newPatient, setNewPatient] = useState({ full_name: "", phone: "", email: "", gender: "female", skin_type: "", preferred_contact: "whatsapp" });
   const { patients, isLoading, stats, createPatient } = useClinicPatients(searchTerm);
   const { toast } = useToast();
+
+  const handleExportCsv = () => {
+    const headers = ['id', 'name', 'phone', 'email', 'gender', 'age', 'skin_type', 'loyalty_tier', 'total_visits', 'total_spent', 'created_at'];
+    const rows = (patients || []).map((p: any) => [
+      p.id, p.full_name, p.phone, p.email, p.gender,
+      calcAge(p.date_of_birth), p.skin_type, p.loyalty_tier,
+      p.total_visits ?? 0, p.total_spent ?? 0, p.created_at,
+    ]);
+    const csv = [headers.join(','), ...rows.map(r => r.map(csvEscape).join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `patients_export_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast({ title: "Patients exported", description: `${rows.length} row${rows.length === 1 ? "" : "s"} downloaded` });
+  };
 
   const handleAddPatient = async () => {
     if (!newPatient.full_name || !newPatient.phone) {
@@ -41,10 +78,19 @@ export default function Patients() {
           <h1 className="text-3xl font-bold tracking-tight">Patients</h1>
           <p className="text-muted-foreground">Manage patient profiles and history</p>
         </div>
-        <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-          <DialogTrigger asChild>
-            <Button data-testid="add-patient-button"><UserPlus className="mr-2 h-4 w-4" /> Add Patient</Button>
-          </DialogTrigger>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={handleExportCsv}
+            disabled={!patients || patients.length === 0}
+            data-testid="export-patients-csv"
+          >
+            <Download className="mr-2 h-4 w-4" /> Export CSV
+          </Button>
+          <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+            <DialogTrigger asChild>
+              <Button data-testid="add-patient-button"><UserPlus className="mr-2 h-4 w-4" /> Add Patient</Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>New Patient</DialogTitle></DialogHeader>
             <div className="grid gap-4 py-4">
@@ -92,6 +138,7 @@ export default function Patients() {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="relative max-w-md">
