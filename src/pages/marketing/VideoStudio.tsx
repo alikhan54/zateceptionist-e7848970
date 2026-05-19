@@ -215,6 +215,159 @@ const timeAgo = (iso?: string): string => {
 };
 
 // ============================================================
+// LAYER 6 — PROVIDER METADATA (2026-05-19)
+// Provider-of-record per scene.method, surfaced as chips/cost/progress.
+// ============================================================
+
+type ProviderMeta = { label: string; icon: string; color: string; cost: number };
+
+const PROVIDER_META: Record<string, ProviderMeta> = {
+  remotion: { label: "Motion graphics", icon: "✨", color: "bg-indigo-50 text-indigo-700 border-indigo-200", cost: 0 },
+  pexels:   { label: "Stock motion",    icon: "🎥", color: "bg-emerald-50 text-emerald-700 border-emerald-200", cost: 0 },
+  musetalk: { label: "AI avatar",       icon: "🧑", color: "bg-violet-50 text-violet-700 border-violet-200", cost: 0 },
+  flux:     { label: "AI image",        icon: "🖼️", color: "bg-amber-50 text-amber-700 border-amber-200", cost: 0 },
+  ltx:      { label: "AI motion",       icon: "🌀", color: "bg-sky-50 text-sky-700 border-sky-200", cost: 0 },
+};
+
+const METHOD_TO_PROVIDER: Record<string, string> = {
+  hook_callout: "remotion",
+  hook_question: "remotion",
+  kinetic_typography: "remotion",
+  data_card: "remotion",
+  branded_outro: "remotion",
+  text_overlay: "remotion",
+  pexels_video: "pexels",
+  avatar: "musetalk",
+  flux: "flux",
+  ltx: "ltx",
+};
+
+const AVATAR_PROVIDERS = [
+  { value: "auto",     label: "Auto",        desc: "Smart routing (recommended)" },
+  { value: "musetalk", label: "MuseTalk",    desc: "Self-hosted · Free" },
+  { value: "heygen",   label: "HeyGen",      desc: "Premium · Paid" },
+  { value: "did",      label: "D-ID",        desc: "Premium · Paid" },
+];
+
+// Resolve scenes from a video_projects row. Tolerant of (string | array | null).
+function resolveScenes(item: any): Array<{ method?: string }> {
+  if (!item) return [];
+  const raw = item.scenes;
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === "string") {
+    try { const j = JSON.parse(raw); return Array.isArray(j) ? j : []; } catch { return []; }
+  }
+  return [];
+}
+
+function ProviderChips({ scenes }: { scenes: Array<{ method?: string }> }) {
+  if (!scenes || scenes.length === 0) return null;
+  const counts: Record<string, number> = {};
+  for (const s of scenes) {
+    const m = s?.method;
+    if (!m) continue;
+    const p = METHOD_TO_PROVIDER[m] || "remotion";
+    counts[p] = (counts[p] || 0) + 1;
+  }
+  const entries = Object.entries(counts);
+  if (entries.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {entries.map(([provider, count]) => {
+        const meta = PROVIDER_META[provider];
+        if (!meta) return null;
+        return (
+          <span
+            key={provider}
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${meta.color}`}
+            title={`${meta.label} · ${count} scene${count === 1 ? "" : "s"}`}
+          >
+            <span aria-hidden>{meta.icon}</span>
+            <span>{meta.label}</span>
+            {count > 1 && <span className="opacity-60">×{count}</span>}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+function CostBadge({ scenes }: { scenes: Array<{ method?: string; estimated_cost?: number }> }) {
+  if (!scenes || scenes.length === 0) return null;
+  let total = 0;
+  for (const s of scenes) {
+    if (typeof s?.estimated_cost === "number") {
+      total += s.estimated_cost;
+    } else {
+      const p = METHOD_TO_PROVIDER[s?.method || ""] || "remotion";
+      total += PROVIDER_META[p]?.cost ?? 0;
+    }
+  }
+  const isFree = total === 0;
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-[10px]"
+      title={isFree ? "Self-hosted providers — no per-clip cost" : "Estimated provider cost"}
+    >
+      <span className="text-slate-500">Cost</span>
+      <span className={`font-semibold ${isFree ? "text-emerald-600" : "text-slate-700"}`}>
+        ${total.toFixed(2)}
+      </span>
+      {isFree && <span className="text-emerald-600 text-[9px] font-semibold tracking-wide">FREE</span>}
+    </span>
+  );
+}
+
+function RenderProgress({
+  visible,
+  label,
+  progress,
+  currentSceneIndex,
+  totalScenes,
+  currentMethod,
+}: {
+  visible: boolean;
+  label?: string;
+  progress?: number;
+  currentSceneIndex?: number;
+  totalScenes?: number;
+  currentMethod?: string;
+}) {
+  if (!visible) return null;
+  const pct = Math.max(0, Math.min(100, progress ?? 0));
+  const meta = currentMethod ? PROVIDER_META[METHOD_TO_PROVIDER[currentMethod] || "remotion"] : null;
+  const sceneText = totalScenes && currentSceneIndex
+    ? `Scene ${Math.min(currentSceneIndex, totalScenes)}/${totalScenes}`
+    : "";
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4 mt-4 shadow-sm">
+      <div className="flex items-center justify-between mb-2 gap-3">
+        <div className="text-sm font-medium text-slate-700 flex items-center gap-2">
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-500" />
+          <span>{label || "Generating"}</span>
+          {sceneText && <span className="text-slate-400 text-xs">· {sceneText}</span>}
+        </div>
+        <div className="text-xs text-slate-500 font-medium tabular-nums">{pct}%</div>
+      </div>
+      <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mb-3">
+        <div
+          className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-500"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      {meta && (
+        <div className="flex items-center gap-2 text-[11px] text-slate-500">
+          <span aria-hidden>{meta.icon}</span>
+          <span className="font-medium text-slate-600">{meta.label}</span>
+          <span className="opacity-50">·</span>
+          <span className="opacity-70">Self-hosted</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
 // COMPONENT
 // ============================================================
 
@@ -252,6 +405,11 @@ export default function VideoStudio() {
   const [customAvatarUrl, setCustomAvatarUrl] = useState<string | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const avatarFileInputRef = useRef<HTMLInputElement | null>(null);
+  // Layer 6: provider selector (auto | musetalk | heygen | did). Default "auto".
+  const [avatarProvider, setAvatarProvider] = useState<string>("auto");
+  // Layer 6: poll-driven render progress (separate from existing isGenerating flags).
+  const [avatarJobProgress, setAvatarJobProgress] = useState<number>(0);
+  const [avatarJobStatus, setAvatarJobStatus] = useState<string>("");
 
   // ----- Scene editor (still preserved when project clicked) -----
   const [sceneEdits, setSceneEdits] = useState<any[]>([]);
@@ -623,6 +781,8 @@ export default function VideoStudio() {
       return;
     }
     setIsGeneratingAvatar(true);
+    setAvatarJobProgress(5);
+    setAvatarJobStatus("queued");
     const tenantUuid = tenantConfig?.tenant_id || tid;
     try {
       // Async pattern (Layer 3, 2026-05-19): submit to /generate-avatar-async,
@@ -635,7 +795,8 @@ export default function VideoStudio() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             script: avatarScript,
-            provider: "auto",
+            // Layer 6: user-selected provider (auto | musetalk | heygen | did)
+            provider: avatarProvider || "auto",
             voice_id: selectedVoice,
             language: language !== "en" ? language : undefined,
             tenant_id: tenantUuid,
@@ -674,8 +835,12 @@ export default function VideoStudio() {
           );
           if (!pollResp.ok) continue;
           const pollJson: any = await pollResp.json().catch(() => ({}));
+          // Layer 6: feed progress + status into the on-screen RenderProgress
+          if (typeof pollJson?.progress === "number") setAvatarJobProgress(pollJson.progress);
+          if (typeof pollJson?.status === "string") setAvatarJobStatus(pollJson.status);
           if (pollJson?.status === "complete" && pollJson?.video_url) {
             finalUrl = pollJson.video_url;
+            setAvatarJobProgress(100);
             break;
           }
           if (pollJson?.status === "failed") {
@@ -712,6 +877,8 @@ export default function VideoStudio() {
       toast({ title: "Connection error", description: String(err).slice(0, 200), variant: "destructive" });
     } finally {
       setIsGeneratingAvatar(false);
+      // Reset progress state shortly after, so a re-open doesn't flash stale UI
+      setTimeout(() => { setAvatarJobProgress(0); setAvatarJobStatus(""); }, 1500);
     }
   };
 
@@ -963,6 +1130,24 @@ export default function VideoStudio() {
                     </div>
                   </div>
 
+                  {/* Layer 6: Avatar provider selector (Auto / MuseTalk / HeyGen / D-ID) */}
+                  <div className="mb-4">
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5 flex items-center gap-1.5">
+                      <span>🎬</span> Provider
+                    </div>
+                    <Select value={avatarProvider} onValueChange={setAvatarProvider}>
+                      <SelectTrigger className="bg-slate-50 border-slate-200"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {AVATAR_PROVIDERS.map(p => (
+                          <SelectItem key={p.value} value={p.value}>
+                            <span className="font-medium">{p.label}</span>
+                            <span className="ml-2 text-xs text-slate-400">{p.desc}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                   {/* Script textarea */}
                   <div className="mb-2">
                     <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
@@ -983,6 +1168,14 @@ export default function VideoStudio() {
                       <span className="text-[11px] text-slate-400">Talking Head mode</span>
                     </div>
                   </div>
+
+                  {/* Layer 6: RenderProgress while polling */}
+                  <RenderProgress
+                    visible={isGeneratingAvatar}
+                    label={avatarJobStatus === "complete" ? "Finishing" : "Generating avatar"}
+                    progress={avatarJobProgress}
+                    currentMethod={"avatar"}
+                  />
 
                   {/* Generate */}
                   <div className="flex justify-center mt-6">
@@ -1734,11 +1927,16 @@ function VideoCard({
         <h3 className="font-semibold text-sm text-slate-800 line-clamp-2 leading-snug min-h-[2.5rem]">
           {p.title || "Untitled"}
         </h3>
-        {/* Source-type badge (Fix 2) */}
-        <div className="mt-2">
+        {/* Source-type badge (Fix 2) + Layer 6: cost badge */}
+        <div className="mt-2 flex items-center gap-2 flex-wrap">
           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${sourceLabel.color}`}>
             {sourceLabel.text}
           </span>
+          <CostBadge scenes={resolveScenes(p)} />
+        </div>
+        {/* Layer 6: provider chips — only render when scenes carry method values */}
+        <div className="mt-2">
+          <ProviderChips scenes={resolveScenes(p)} />
         </div>
         <div className="flex items-center gap-2 mt-2 text-[11px] text-slate-500">
           <span className={`inline-block w-1.5 h-1.5 rounded-full ${tier === "premium" ? "bg-violet-500" : "bg-slate-300"}`} />
