@@ -24,6 +24,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useCurrencyFormatter } from "@/lib/formatCurrency";
 
 interface InventoryItem {
   id: string;
@@ -45,16 +46,32 @@ function useInventory() {
   const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["restaurant-inventory", tenantId],
+    queryKey: ["ops_inventory_items", tenantId],
     queryFn: async (): Promise<InventoryItem[]> => {
       if (!tenantId) return [];
+      // ops_inventory_items uses different column names than the legacy
+      // restaurant_inventory table this UI was originally written for.
+      // Map fields so the rest of the component renders unchanged.
       const { data, error } = await supabase
-        .from("restaurant_inventory")
+        .from("ops_inventory_items")
         .select("*")
         .eq("tenant_id", tenantId)
-        .order("item_name");
+        .order("name");
       if (error) throw error;
-      return (data || []) as InventoryItem[];
+      return ((data || []) as any[]).map((r) => ({
+        id: r.id,
+        tenant_id: r.tenant_id,
+        item_name: r.name ?? "",
+        category: r.category ?? "",
+        unit: r.unit ?? "",
+        current_stock: Number(r.current_stock ?? 0),
+        min_stock_level: Number(r.reorder_point ?? 0),
+        reorder_quantity: Number((r.max_stock ?? 0) - (r.reorder_point ?? 0)) || 10,
+        unit_cost: Number(r.unit_cost ?? 0),
+        supplier_id: null,
+        created_at: r.created_at,
+        updated_at: r.updated_at,
+      })) as InventoryItem[];
     },
     enabled: !!tenantId,
   });
@@ -62,24 +79,34 @@ function useInventory() {
   const updateStock = useMutation({
     mutationFn: async ({ id, stock }: { id: string; stock: number }) => {
       const { error } = await supabase
-        .from("restaurant_inventory")
+        .from("ops_inventory_items")
         .update({ current_stock: stock, updated_at: new Date().toISOString() })
         .eq("id", id)
         .eq("tenant_id", tenantId);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["restaurant-inventory", tenantId] });
+      queryClient.invalidateQueries({ queryKey: ["ops_inventory_items", tenantId] });
     },
   });
 
   const addItem = useMutation({
     mutationFn: async (item: Omit<InventoryItem, "id" | "created_at" | "updated_at">) => {
-      const { error } = await supabase.from("restaurant_inventory").insert(item);
+      // Translate the form's restaurant_inventory shape back to ops_inventory_items columns.
+      const { error } = await supabase.from("ops_inventory_items").insert({
+        tenant_id: item.tenant_id,
+        name: item.item_name,
+        category: item.category,
+        unit: item.unit,
+        current_stock: item.current_stock,
+        reorder_point: item.min_stock_level,
+        max_stock: item.min_stock_level + item.reorder_quantity,
+        unit_cost: item.unit_cost,
+      });
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["restaurant-inventory", tenantId] });
+      queryClient.invalidateQueries({ queryKey: ["ops_inventory_items", tenantId] });
     },
   });
 
@@ -103,6 +130,7 @@ export default function Inventory() {
   const { tenantId } = useTenant();
   const { items, isLoading, lowStock, outOfStock, inStock, updateStock, addItem } = useInventory();
   const { toast } = useToast();
+  const formatCurrency = useCurrencyFormatter();
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -242,7 +270,7 @@ export default function Inventory() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Unit Cost (AED)</Label>
+                  <Label>Unit Cost</Label>
                   <Input
                     type="number"
                     value={newItem.unit_cost}
@@ -368,7 +396,7 @@ export default function Inventory() {
                       <div className="min-w-[180px]">
                         <p className="font-semibold">{item.item_name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {item.category} | {item.unit_cost} AED/{item.unit}
+                          {item.category} | {formatCurrency(item.unit_cost)}/{item.unit}
                         </p>
                       </div>
                       <Badge variant="outline" className={status.bg}>
