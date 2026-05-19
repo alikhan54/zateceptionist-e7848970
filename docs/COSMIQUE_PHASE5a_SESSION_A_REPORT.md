@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-19
 **Tenant:** cosmique
-**Live deployment at session end:** `268c712d` (next-cycle deploy of commits `60ed6b6` + `f22d88d` is still propagating from Lovable — see "Outstanding" section)
+**Live deployment at re-verification:** `ad7f0b04` (includes all Phase 5a commits — J3 + J4 now confirmed REAL_PASS end-to-end)
 **Methodology:** `E2E_TESTING_RULES.md` 8-step gate. Method A (Playwright UI flow) for every new write, Method B (direct REST round-trip with SUPABASE_SERVICE_KEY) for the DB assertion + setup/cleanup.
 
 ## What this session shipped
@@ -11,8 +11,8 @@
 |---|---|---|:---:|
 | 1 | J8 Add Prescription UI on PatientProfile Care tab | `d5c78cc` | **REAL_PASS** ✓ |
 | 2 | J10 Mark consultation complete button | `c0c541b` | **REAL_PASS** ✓ |
-| 3 | J3 Reschedule Appointment action + dialog | `86e1556` | **PASS (data layer); UI pending deploy** |
-| 4 | J4 Per-row Cancel — verified existing + added testid | `86e1556` | **PASS (data layer); UI pending deploy** |
+| 3 | J3 Reschedule Appointment action + dialog | `86e1556` | **REAL_PASS** ✓ (confirmed post-deploy `ad7f0b04`) |
+| 4 | J4 Per-row Cancel — verified existing + added testid | `86e1556` | **REAL_PASS** ✓ (confirmed post-deploy `ad7f0b04`) |
 | 5 | Department name required validation | `f951f46` | **REAL_PASS** ✓ |
 | 6 | data-testid attributes for stable e2e | `ac8c8f2` | n/a (pure HTML attribute) |
 | + | Phase 5a Playwright spec (6 scenarios + setup) | `fc05143` | shipped |
@@ -53,11 +53,11 @@ Final Phase 5a spec invocation against deployment `268c712d`:
 | **J8** Add Prescription | ✓ **REAL_PASS** | Care tab → + Add → fill medicine → submit → DB row asserted via SUPABASE_SERVICE_KEY (tenant_id='cosmique', patient_id=Fatima, prescribed_by=TEST_CC_PHASE5A_*) → UI Care tab refetch shows new med → cleanup DELETE confirmed |
 | **J8b** Empty medicine validation | ✓ **REAL_PASS** | Submit disabled when no medicine name; "at least one medicine" validation message visible |
 | **J10** Mark consultation complete | ✓ **REAL_PASS** | Seed draft consultation via REST → click Mark complete → DB confirms `report_status='completed'` + `doctor_approved=true` → UI button hides (count=0 assertion) → cleanup |
-| **J3** Reschedule appointment | ✗ FAIL (deploy lag) | Method B (REST PATCH all 4 columns) verified working in Phase 9; Method A failed because Lovable hasn't yet built commit `60ed6b6` which adds the Reschedule menu item to the list-view dropdown |
-| **J4** Cancel appointment | ✗ FAIL (deploy lag) | Same as J3 — list-view `cancel-appt-{id}` testid was added in commit `60ed6b6`; deployed `268c712d` predates that |
+| **J3** Reschedule appointment | ✓ **REAL_PASS** | Post-deploy `ad7f0b04`: seed appt via REST → open list-view dropdown → click Reschedule → fill date + time → submit → DB confirms `scheduled_at` + `appointment_date` + `start_time` updated → cleanup |
+| **J4** Cancel appointment | ✓ **REAL_PASS** | Post-deploy `ad7f0b04`: seed appt → open list-view dropdown → click Cancel → DB confirms `status='cancelled'` → cleanup |
 | **DEPT_VAL** Empty name blocks submit | ✓ **REAL_PASS** | Submit disabled; error message visible; no DB write attempted |
 
-**5 of 6 cosmique tests confirmed REAL_PASS end-to-end against the deployed build.** J3 + J4 are paused on Lovable's next build cycle — the code is on `origin/main`. Per Phase 9, the underlying PATCH paths already returned 200 with the multi-column shape (the same shape J3/J4 use). Re-run will flip them to PASS once Lovable's deployment_id rolls.
+**All 6 cosmique tests confirmed REAL_PASS end-to-end against the deployed build `ad7f0b04`.** Final run: 7/7 passed (setup + 6 cosmique journeys). Zero TEST_CC_PHASE5A_ leaks; multi-tenant baseline restored on all 4 touched tables. Each test self-cleaned via its own REST DELETE after the assertions.
 
 ## Files touched
 
@@ -101,19 +101,9 @@ Duplicate `cosmique-df4dd00d` users count: 1 (unchanged).
 
 **Multi-tenant gate: PASS — zero drift.**
 
-## Outstanding (next-deploy cycle)
+## Outstanding (none)
 
-When Lovable's `deployment_id` rolls past `268c712d`, the following should immediately flip green without any code change from this session:
-
-- J3 (Reschedule UI) — list-view dropdown gets the Reschedule item in `60ed6b6`
-- J4 (Cancel testid) — list-view dropdown gets `cancel-appt-{id}` testid in `60ed6b6`
-
-To re-verify after deploy:
-```
-cd D:/420-system/frontend
-COSMIQUE_PASSWORD=<your reset password> SUPABASE_SERVICE_KEY=<service key> \
-  npx playwright test --project=phase5a -g "J3|J4"
-```
+J3 + J4 confirmed REAL_PASS against the deployed `ad7f0b04` build. No deferred verifications remain for Session A.
 
 ## Known follow-ups (queued for Phase 5b)
 
@@ -139,7 +129,7 @@ The 8-step gate from `E2E_TESTING_RULES.md` was strictly followed for every new 
 
 ## Summary
 
-- 6 user-facing builds + 1 spec, all pushed to `origin/main`.
-- 5 of 6 confirmed REAL_PASS via end-to-end test today. J3+J4 will flip to PASS on the next Lovable deploy of commit `60ed6b6` (testid parity for list-view dropdown).
+- 6 user-facing builds + 1 spec, all pushed to `origin/main` and deployed (`ad7f0b04`).
+- **All 6 cosmique tests confirmed REAL_PASS** via final end-to-end Playwright run (7/7 incl. setup).
 - Zero regressions introduced. Multi-tenant gate: PASS. Cleanup verified.
 - Surfaced 2 follow-up bugs during e2e and shipped fixes inline (empty-state CTA; list-view testid parity).
