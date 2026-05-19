@@ -41,14 +41,17 @@ export function BottomTabBar() {
   return (
     <>
       {/* Inline style tag to hide on desktop — cannot be purged by Tailwind.
-          Also: when ANY Radix dialog/sheet is open on mobile, hide the bottom nav so
-          the sheet's tap targets aren't blocked by the bottom nav strip (2026-05-19 Phase J mobile fix). */}
+          Also: when the SIDEBAR SHEET specifically is open on mobile, hide the bottom nav so
+          the sheet's tap targets aren't blocked by the bottom nav strip (2026-05-19 Phase J mobile fix).
+          Scoped to [data-sidebar="sidebar"] so it does NOT fire for other dialogs (e.g. the
+          OnboardingFlow modal that still appears for non-accounting tenants on first login). */}
       <style dangerouslySetInnerHTML={{ __html: `
         @media (min-width: 768px) {
           .mobile-bottom-tabs { display: none !important; }
         }
-        /* Hide bottom nav whenever a Radix Sheet/Dialog is open — prevents tap interception. */
-        body:has([data-state="open"][role="dialog"]) .mobile-bottom-tabs {
+        /* Hide bottom nav ONLY when the sidebar Sheet is open. Other Radix dialogs
+           (onboarding tutorial, modal forms, confirm dialogs) keep the bottom nav visible. */
+        body:has([data-sidebar="sidebar"][data-state="open"]) .mobile-bottom-tabs {
           display: none !important;
         }
       `}} />

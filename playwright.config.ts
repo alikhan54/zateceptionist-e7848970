@@ -96,5 +96,10 @@ export default defineConfig({
       testMatch: /smart-ledger-mobile\.spec\.ts/,
       use: { browserName: 'chromium' }, // mobile viewport configured inside spec via test.use(devices['iPhone 12'])
     },
+    {
+      name: 'cross-tenant-mobile',
+      testMatch: /cross-tenant-mobile\.spec\.ts/,
+      use: { browserName: 'chromium' }, // mobile viewport configured inside spec; no setup dep
+    },
   ],
 });
