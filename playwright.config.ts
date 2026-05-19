@@ -65,9 +65,20 @@ export default defineConfig({
       use: { browserName: 'chromium', storageState: STORAGE_PATH },
     },
     {
+      name: 'phase5a',
+      testMatch: /cosmique-phase5a-e2e\.spec\.ts/,
+      dependencies: ['setup'],
+      use: { browserName: 'chromium', storageState: STORAGE_PATH },
+    },
+    {
       name: 'smart-ledger-verify',
       testMatch: /smart-ledger-verification\.spec\.ts/,
       use: { browserName: 'chromium' }, // no setup dep — fresh login as Smart Ledger user
+    },
+    {
+      name: 'cross-tenant-verification',
+      testMatch: /cross-tenant-verification\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — 6 industries, env-var credentials
     },
   ],
 });
