@@ -43,7 +43,7 @@ export default function Patients() {
         </div>
         <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
           <DialogTrigger asChild>
-            <Button><UserPlus className="mr-2 h-4 w-4" /> Add Patient</Button>
+            <Button data-testid="add-patient-button"><UserPlus className="mr-2 h-4 w-4" /> Add Patient</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>New Patient</DialogTitle></DialogHeader>
@@ -117,6 +117,8 @@ export default function Patients() {
               key={patient.id}
               role="link"
               tabIndex={0}
+              data-testid={`patient-card-${patient.id}`}
+              data-patient-name={patient.full_name}
               onClick={() => navigate(`/clinic/patients/${patient.id}`)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
