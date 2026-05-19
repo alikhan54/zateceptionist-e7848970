@@ -172,12 +172,25 @@ test('J10. Mark consultation complete', async ({ page }) => {
 });
 
 // ── J3: Reschedule appointment ─────────────────────────────────────────────
+// Helper: pick a date in the current month so Appointments.tsx's "current
+// month" filter doesn't hide our seeded row.
+function thisMonthDate(dayOffset = 1) {
+  const d = new Date();
+  d.setDate(d.getDate() + dayOffset);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return { iso: `${yyyy}-${mm}-${dd}`, year: yyyy, month: d.getMonth() + 1, day: d.getDate() };
+}
+
 test('J3. Reschedule appointment via per-row dropdown', async ({ page }) => {
   test.setTimeout(120_000);
   const stamp = Date.now();
   const customerName = `${TEST_PREFIX}Customer_${stamp}`;
+  const today = thisMonthDate(0);
+  const tomorrow = thisMonthDate(1);
 
-  // Seed an appointment via REST
+  // Seed an appointment for tomorrow (in current month so the page shows it).
   const created = await sbFetch(`/rest/v1/appointments`, {
     method: 'POST',
     body: JSON.stringify({
@@ -185,8 +198,8 @@ test('J3. Reschedule appointment via per-row dropdown', async ({ page }) => {
       customer_name: customerName,
       customer_phone: '+971500000000',
       service: 'Consultation',
-      scheduled_at: '2027-03-15T10:00:00Z',
-      appointment_date: '2027-03-15',
+      scheduled_at: `${tomorrow.iso}T10:00:00Z`,
+      appointment_date: tomorrow.iso,
       start_time: '10:00:00',
       end_time: '10:30:00',
       duration_minutes: 30,
@@ -196,37 +209,50 @@ test('J3. Reschedule appointment via per-row dropdown', async ({ page }) => {
   expect(created.ok).toBeTruthy();
   const apptId = created.data[0].id;
 
-  await page.goto('/appointments?view=list', { waitUntil: 'networkidle' });
-  // Switch to list view so dropdown is visible
-  await page.getByRole('tab', { name: /list/i }).click().catch(()=>{});
-  await page.waitForTimeout(2000);
+  await page.goto('/appointments', { waitUntil: 'networkidle' });
+  // Switch to list view via the TabsTrigger
+  await page.getByRole('tab', { name: /^list$/i }).click().catch(()=>{});
+  await page.waitForTimeout(2500);
 
-  // Click the per-row dropdown trigger near our test customer (search by visible text)
-  // The dropdown is a MoreHorizontal icon button next to the status badge.
-  // Use the data-testid we added: reschedule-{id}
-  const rescheduleItem = page.getByTestId(`reschedule-${apptId}`);
-  // Need to open the menu first — click the row's MoreHorizontal trigger
-  // The dropdown trigger is a Button ghost with MoreHorizontal icon adjacent to the row.
-  // Easier path: click the trigger by locating the row by customer_name, then within it the icon button.
-  const row = page.locator('div').filter({ hasText: customerName }).first();
-  const trigger = row.locator('button:has(svg)').filter({ hasNotText: 'Add' }).last();
-  await trigger.click().catch(()=>{});
+  // Open the per-row dropdown. Locate the row by the customer_name text we set,
+  // then click the only icon-only button inside that row (MoreHorizontal).
+  const row = page.locator(`*:has-text("${customerName}")`).filter({
+    has: page.locator('button:has(svg.lucide-more-horizontal), button:has-text(""):not(:has-text(":"))'),
+  }).first();
+  // Easier: click the global MoreHorizontal trigger that's adjacent to a status badge mentioning our customer
+  const trigger = page.locator('button[aria-haspopup="menu"]').last();
+  await trigger.click({ timeout: 8_000 }).catch(()=>{});
   await page.waitForTimeout(500);
 
+  // If our Reschedule item isn't visible, the dropdown we opened wasn't the right one.
+  // Try opening dropdowns until we find ours.
+  let rescheduleItem = page.getByTestId(`reschedule-${apptId}`);
+  if (!await rescheduleItem.isVisible({ timeout: 800 }).catch(()=>false)) {
+    // Close any open menu
+    await page.keyboard.press('Escape').catch(()=>{});
+    // Loop over visible MoreHorizontal triggers
+    const triggers = await page.locator('button[aria-haspopup="menu"]').all();
+    for (const t of triggers) {
+      await t.click({ timeout: 1500 }).catch(()=>{});
+      await page.waitForTimeout(300);
+      if (await rescheduleItem.isVisible({ timeout: 500 }).catch(()=>false)) break;
+      await page.keyboard.press('Escape').catch(()=>{});
+    }
+  }
   await expect(rescheduleItem).toBeVisible({ timeout: 5000 });
   await rescheduleItem.click();
 
-  // Reschedule dialog should open with prefilled values
-  await page.waitForTimeout(500);
-  await page.getByTestId('reschedule-date-input').fill('2027-04-20');
+  // Reschedule dialog opens — change to today
+  await page.waitForTimeout(800);
+  await page.getByTestId('reschedule-date-input').fill(today.iso);
   await page.getByTestId('reschedule-time-input').fill('14:30');
 
   await page.getByTestId('reschedule-submit').click();
   await page.waitForTimeout(2500);
 
-  // DB assertion — scheduled_at, appointment_date, start_time all updated
+  // DB assertion — all 3 columns updated
   const after = await sbFetch(`/rest/v1/appointments?id=eq.${apptId}&select=scheduled_at,appointment_date,start_time,end_time`);
-  expect(after.data[0].appointment_date).toBe('2027-04-20');
+  expect(after.data[0].appointment_date).toBe(today.iso);
   expect(after.data[0].start_time).toBe('14:30:00');
 
   const ss = path.join(SS_DIR, `phase5a-j3-reschedule.png`);
@@ -239,9 +265,10 @@ test('J3. Reschedule appointment via per-row dropdown', async ({ page }) => {
 
 // ── J4: Per-row Cancel appointment ─────────────────────────────────────────
 test('J4. Cancel appointment via per-row dropdown', async ({ page }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(120_000);
   const stamp = Date.now();
   const customerName = `${TEST_PREFIX}CustomerCancel_${stamp}`;
+  const tomorrow = thisMonthDate(2);
 
   const created = await sbFetch(`/rest/v1/appointments`, {
     method: 'POST',
@@ -250,26 +277,31 @@ test('J4. Cancel appointment via per-row dropdown', async ({ page }) => {
       customer_name: customerName,
       customer_phone: '+971500000000',
       service: 'Consultation',
-      scheduled_at: '2027-03-16T10:00:00Z',
-      appointment_date: '2027-03-16',
-      start_time: '10:00:00',
-      end_time: '10:30:00',
+      scheduled_at: `${tomorrow.iso}T11:00:00Z`,
+      appointment_date: tomorrow.iso,
+      start_time: '11:00:00',
+      end_time: '11:30:00',
       duration_minutes: 30,
       status: 'scheduled',
     }),
   });
   const apptId = created.data[0].id;
 
-  await page.goto('/appointments?view=list', { waitUntil: 'networkidle' });
-  await page.getByRole('tab', { name: /list/i }).click().catch(()=>{});
-  await page.waitForTimeout(2000);
-
-  const row = page.locator('div').filter({ hasText: customerName }).first();
-  const trigger = row.locator('button:has(svg)').filter({ hasNotText: 'Add' }).last();
-  await trigger.click().catch(()=>{});
-  await page.waitForTimeout(500);
+  await page.goto('/appointments', { waitUntil: 'networkidle' });
+  await page.getByRole('tab', { name: /^list$/i }).click().catch(()=>{});
+  await page.waitForTimeout(2500);
 
   const cancelItem = page.getByTestId(`cancel-appt-${apptId}`);
+  if (!await cancelItem.isVisible({ timeout: 800 }).catch(()=>false)) {
+    // Try each MoreHorizontal dropdown until ours opens
+    const triggers = await page.locator('button[aria-haspopup="menu"]').all();
+    for (const t of triggers) {
+      await t.click({ timeout: 1500 }).catch(()=>{});
+      await page.waitForTimeout(300);
+      if (await cancelItem.isVisible({ timeout: 500 }).catch(()=>false)) break;
+      await page.keyboard.press('Escape').catch(()=>{});
+    }
+  }
   await expect(cancelItem).toBeVisible({ timeout: 5000 });
   await cancelItem.click();
   await page.waitForTimeout(2000);

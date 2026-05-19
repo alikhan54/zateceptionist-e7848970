@@ -347,11 +347,26 @@ export default function PatientProfile() {
         {/* Care (consultations + prescriptions) */}
         <TabsContent value="treatments" className="space-y-3">
           {consultations.length === 0 && prescriptions.length === 0 ? (
-            <EmptyState
-              icon={<Stethoscope className="h-10 w-10" />}
-              title="No clinical records"
-              body="Consultations and prescriptions for this patient will show up here."
-            />
+            <Card>
+              <CardContent className="py-12 text-center">
+                <div className="mx-auto mb-3 text-muted-foreground opacity-60 inline-block">
+                  <Stethoscope className="h-10 w-10" />
+                </div>
+                <h3 className="font-semibold mb-1.5">No clinical records</h3>
+                <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                  Consultations and prescriptions for this patient will show up here.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-4"
+                  onClick={() => setAddRxOpen(true)}
+                  data-testid="add-prescription-button"
+                >
+                  <Plus className="h-3.5 w-3.5 mr-1.5" /> Add first prescription
+                </Button>
+              </CardContent>
+            </Card>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               <Card>
