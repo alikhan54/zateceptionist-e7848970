@@ -11,7 +11,25 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { useHealthReports, HealthReport, HealthAnalysis } from "@/hooks/useHealthReports";
 import { useClinicPatients } from "@/hooks/useClinicPatients";
-import { FileText, Upload, Activity, Brain, TrendingUp, AlertTriangle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { FileText, Upload, Activity, Brain, TrendingUp, AlertTriangle, Video, X } from "lucide-react";
+import { DoctorAvatarVideoPlayer } from "@/components/clinic/DoctorAvatarVideoPlayer";
+
+// Read a File as base64 (no data: prefix). 10MB cap to stay under typical
+// n8n webhook payload limits.
+const MAX_UPLOAD_MB = 10;
+async function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      const idx = result.indexOf(",");
+      resolve(idx >= 0 ? result.slice(idx + 1) : result);
+    };
+    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.readAsDataURL(file);
+  });
+}
 
 const REPORT_TYPES = [
   { value: "skin_analysis", label: "Skin Analysis" },
@@ -51,21 +69,64 @@ function ScoreBar({ label, score, max = 100 }: { label: string; score: number; m
 export default function HealthReports() {
   const { reports, analyses, stats, isLoading, uploadReport, isUploading } = useHealthReports();
   const { patients } = useClinicPatients();
+  const { toast } = useToast();
   const [uploadOpen, setUploadOpen] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState("");
   const [selectedReportType, setSelectedReportType] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
   const [expandedReport, setExpandedReport] = useState<string | null>(null);
   const [expandedAnalysis, setExpandedAnalysis] = useState<string | null>(null);
+  const [videoPatient, setVideoPatient] = useState<{ id: string; name: string } | null>(null);
+
+  const onPickFile = (file: File | null) => {
+    setFileError(null);
+    if (!file) {
+      setSelectedFile(null);
+      return;
+    }
+    const allowed = ["application/pdf", "image/jpeg", "image/png"];
+    if (!allowed.includes(file.type)) {
+      setFileError("Only PDF, JPG, or PNG accepted");
+      setSelectedFile(null);
+      return;
+    }
+    if (file.size > MAX_UPLOAD_MB * 1024 * 1024) {
+      setFileError(`File too large — max ${MAX_UPLOAD_MB} MB`);
+      setSelectedFile(null);
+      return;
+    }
+    setSelectedFile(file);
+  };
 
   const handleUpload = async () => {
     if (!selectedPatientId || !selectedReportType) return;
-    await uploadReport({
-      patient_id: selectedPatientId,
-      report_type: selectedReportType,
-    });
-    setUploadOpen(false);
-    setSelectedPatientId("");
-    setSelectedReportType("");
+    let pdf_base64 = "";
+    let pdf_filename = "report.pdf";
+    if (selectedFile) {
+      try {
+        pdf_base64 = await fileToBase64(selectedFile);
+        pdf_filename = selectedFile.name;
+      } catch (e: any) {
+        toast({ title: "File read failed", description: e?.message || "Unknown error", variant: "destructive" });
+        return;
+      }
+    }
+    try {
+      await uploadReport({
+        patient_id: selectedPatientId,
+        report_type: selectedReportType,
+        pdf_base64,
+        pdf_filename,
+      });
+      setUploadOpen(false);
+      setSelectedPatientId("");
+      setSelectedReportType("");
+      setSelectedFile(null);
+      setFileError(null);
+    } catch {
+      /* upload mutation shows its own toast on error */
+    }
   };
 
   const getPatientName = (patientId: string) => {
@@ -111,10 +172,32 @@ export default function HealthReports() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label>Report File <span className="text-xs text-muted-foreground">(PDF / JPG / PNG, max {MAX_UPLOAD_MB} MB)</span></Label>
+                <Input
+                  type="file"
+                  accept="application/pdf,image/jpeg,image/png"
+                  onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
+                  data-testid="health-report-file-input"
+                />
+                {selectedFile && (
+                  <div className="flex items-center justify-between text-xs text-muted-foreground bg-muted rounded px-2 py-1.5">
+                    <span className="truncate">{selectedFile.name} · {(selectedFile.size / 1024).toFixed(0)} KB</span>
+                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setSelectedFile(null); setFileError(null); }} aria-label="Clear file">
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+                {fileError && <p className="text-xs text-destructive" data-testid="file-error">{fileError}</p>}
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setUploadOpen(false)}>Cancel</Button>
-              <Button onClick={handleUpload} disabled={isUploading || !selectedPatientId || !selectedReportType}>
+              <Button
+                onClick={handleUpload}
+                disabled={isUploading || !selectedPatientId || !selectedReportType}
+                data-testid="upload-report-submit"
+              >
                 {isUploading ? "Uploading..." : "Upload & Analyze"}
               </Button>
             </DialogFooter>
@@ -184,7 +267,7 @@ export default function HealthReports() {
             </Card>
           ) : (
             reports.map((report) => (
-              <Card key={report.id} className="cursor-pointer" onClick={() => setExpandedReport(expandedReport === report.id ? null : report.id)}>
+              <Card key={report.id} className="cursor-pointer" data-testid={`report-card-${report.id}`} onClick={() => setExpandedReport(expandedReport === report.id ? null : report.id)}>
                 <CardContent className="pt-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -204,6 +287,15 @@ export default function HealthReports() {
                         </span>
                       )}
                       <Badge className={statusColors[report.status] || ""}>{report.status}</Badge>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs"
+                        onClick={(e) => { e.stopPropagation(); setVideoPatient({ id: report.patient_id, name: getPatientName(report.patient_id) }); }}
+                        data-testid={`view-video-${report.id}`}
+                      >
+                        <Video className="h-3 w-3 mr-1" /> View Video
+                      </Button>
                     </div>
                   </div>
 
@@ -323,6 +415,21 @@ export default function HealthReports() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Doctor Avatar video modal — opens when user clicks "View Video" on a report row. */}
+      <Dialog open={!!videoPatient} onOpenChange={(v) => !v && setVideoPatient(null)}>
+        <DialogContent className="max-w-2xl" data-testid="doctor-avatar-video-dialog">
+          <DialogHeader>
+            <DialogTitle>Dr. AI explains the findings — {videoPatient?.name}</DialogTitle>
+          </DialogHeader>
+          {videoPatient && (
+            <DoctorAvatarVideoPlayer patientId={videoPatient.id} />
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setVideoPatient(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
