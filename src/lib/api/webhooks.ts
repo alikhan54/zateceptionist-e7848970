@@ -101,6 +101,10 @@ export const WEBHOOKS = {
   // FIXED: Changed from '/onboarding/train-knowledge' to '/onboarding/train-agents'
   // to match n8n OBT.1 webhook path
   TRAIN_AI_KNOWLEDGE: "/onboarding/train-agents",
+  // Working provisioner — bypasses broken OBC chain in Comm v3.8.
+  // Owned by workflow CnprwtMEc3gPGPEk (420 Onboarding Orchestrator v1.0).
+  // Returns module status for sales/marketing/hr/comms/voice/ops/agents.
+  PROVISION_ORCHESTRATE: "/provision-orchestrate",
   // OBD workflow for document analysis
   ANALYZE_DOCUMENT: "/onboarding/analyze-document",
   // OMEGA AI Proxy (Phase 7)

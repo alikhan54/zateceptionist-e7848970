@@ -129,5 +129,10 @@ export default defineConfig({
       testMatch: /onboarding-isolation-quick\.spec\.ts/,
       use: { browserName: 'chromium' }, // no setup dep — uses ADEEL_EMAIL/ADEEL_PASSWORD
     },
+    {
+      name: 'hr-e2e',
+      testMatch: /hr-e2e-verification\.spec\.ts/,
+      use: { browserName: 'chromium' }, // uses saved .auth-state.json (set inside spec via test.use)
+    },
   ],
 });

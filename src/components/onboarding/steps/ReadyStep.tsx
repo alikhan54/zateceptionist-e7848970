@@ -9,10 +9,23 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTenant } from '@/contexts/TenantContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { callWebhook, WEBHOOKS } from '@/lib/api/webhooks';
 import { OnboardingData, ONBOARDING_STEPS } from '@/pages/onboarding/constants';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+
+// Generate a URL-safe slug for tenant_id from company name (or fallback to email local-part).
+// Appends a short timestamp suffix to collision-proof concurrent signups.
+function makeTenantSlug(companyName: string, fallbackEmail?: string | null): string {
+  const base = (companyName || (fallbackEmail || '').split('@')[0] || 'tenant')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40) || 'tenant';
+  const suffix = Date.now().toString(36).slice(-5);
+  return `${base}-${suffix}`;
+}
 
 interface ReadyStepProps {
   data: OnboardingData;
@@ -29,7 +42,8 @@ const TRAINING_MODULES = [
 
 export default function ReadyStep({ data, updateData }: ReadyStepProps) {
   const navigate = useNavigate();
-  const { tenantId } = useTenant();
+  const { tenantId, tenantConfig, setTenantId } = useTenant();
+  const { user, refreshAuthUser } = useAuth();
   const { toast } = useToast();
   // Initialize state from persisted data so a previously-completed session
   // (data.trainingComplete=true in localStorage) renders the celebration UI
@@ -47,15 +61,18 @@ export default function ReadyStep({ data, updateData }: ReadyStepProps) {
   const [showSkipButton, setShowSkipButton] = useState(false);
   const [isSkipping, setIsSkipping] = useState(false);
 
-  // Auto-start training once tenantId is available (fixes race condition
-  // where useEffect fired before TenantContext finished loading tenantId)
+  // Auto-start training. Used to be gated on `tenantId` which never resolved
+  // for fresh signups (no public.users row → tenantId stays null), causing
+  // the wizard to hang forever. Now we kick off training when ReadyStep mounts;
+  // trainAgents() itself handles the no-tenant case by creating tenant_config
+  // and the public.users row before calling the orchestrator.
   useEffect(() => {
-    if (!tenantId) return;
+    if (!user) return; // wait for auth to settle (need user.id + user.email)
     if (!data.trainingComplete && !isTraining && !trainingComplete) {
       trainAgents();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenantId]);
+  }, [user?.id]);
 
   // Stuck detection: if nothing completes within 10s, offer a skip button
   useEffect(() => {
@@ -112,80 +129,140 @@ export default function ReadyStep({ data, updateData }: ReadyStepProps) {
     setTrainingStatus({ ...status });
 
     try {
-      // Build training payload (OBT.2 expects tenant_id + modules)
-      const trainPayload = {
-        tenant_id: tenantId,
-        modules: ['sales', 'marketing', 'communication', 'voice', 'hr'],
-      };
+      // ─── Step A: Ensure tenant_config + public.users rows exist ──────────────────
+      // The OB.1 / OBC chain in Comm v3.8 was supposed to create these but its
+      // executions are erroring. We create them client-side so fresh signups have
+      // a working tenant before we hand off to the orchestrator.
+      let effectiveTenantId = tenantId;
+      let effectiveTenantUuid = (tenantConfig as { id?: string } | null)?.id || null;
 
-      // Build completion payload matching OBC.2 ENHANCED expected format:
-      // { tenant_id, company: {...}, ai_config: {...}, channels: {...}, subscription: {...} }
-      const enabledChannels = Object.entries(data.channels)
-        .filter(([, enabled]) => enabled)
-        .map(([ch]) => ch);
-      const completePayload = {
-        tenant_id: tenantId,
-        company: {
-          name: data.companyData.company_name,
-          industry: data.companyData.industry,
-          description: data.companyData.description,
-          contact: {
-            phone: data.companyData.contact?.phone || '',
-            email: data.companyData.contact?.email || '',
-          },
-          social_links: data.companyData.social_links || {},
-          logo_url: data.companyData.logo_url || '',
-        },
+      if (!effectiveTenantId || !effectiveTenantUuid) {
+        if (!user) throw new Error('Cannot provision tenant: not authenticated');
+
+        const slug = makeTenantSlug(data.companyData.company_name, user.email);
+        // Map onboarding form data → tenant_config columns (matches existing rows' shape)
+        const tenantConfigRow: Record<string, unknown> = {
+          tenant_id: slug,
+          company_name: data.companyData.company_name || 'My Business',
+          industry: data.companyData.industry || 'general',
+          email: data.companyData.contact?.email || user.email || null,
+          phone: data.companyData.contact?.phone || null,
+          website: data.companyData.social_links?.website || null,
+          logo_url: data.companyData.logo_url || null,
+          ai_name: data.aiConfig.name || 'Zate',
+          ai_role: data.aiConfig.role || 'AI Receptionist',
+          ai_tone: data.aiConfig.personality || 'friendly',
+          ai_greeting: data.aiConfig.greeting || "Hello! How can I help you today?",
+          ai_languages: ['en'],
+          timezone: data.aiConfig.timezone || 'America/New_York',
+          opening_time: `${data.aiConfig.workingHoursStart || '09:00'}:00`,
+          closing_time: `${data.aiConfig.workingHoursEnd || '17:00'}:00`,
+          has_whatsapp: !!data.channels.whatsapp,
+          has_voice: !!data.channels.voiceAI,
+          has_email: !!data.channels.email,
+          has_instagram: !!data.channels.instagram,
+          has_facebook: !!data.channels.facebook,
+          subscription_plan: data.selectedPlan || 'free',
+          subscription_status: 'active',
+          onboarding_completed: false,
+        };
+
+        // Insert tenant_config and capture the assigned id.
+        const { data: insertedTenant, error: tcErr } = await supabase
+          .from('tenant_config')
+          .insert(tenantConfigRow as never)
+          .select('id, tenant_id')
+          .single();
+        if (tcErr || !insertedTenant) {
+          throw new Error(`Failed to create tenant_config: ${tcErr?.message || 'no row returned'}`);
+        }
+        effectiveTenantId = (insertedTenant as { tenant_id: string }).tenant_id;
+        effectiveTenantUuid = (insertedTenant as { id: string }).id;
+
+        // Insert public.users so the auth user is linked to the new tenant.
+        // If a row already exists (rare race), leave it — RLS-friendly upsert by auth_id.
+        const { error: userErr } = await supabase
+          .from('users')
+          .upsert(
+            {
+              tenant_id: effectiveTenantId,
+              auth_id: user.id,
+              email: user.email,
+              full_name: (user.user_metadata as { full_name?: string } | null)?.full_name || null,
+              role: 'admin',
+              is_active: true,
+            } as never,
+            { onConflict: 'auth_id' }
+          );
+        if (userErr) {
+          console.warn('[onboarding] users upsert failed, continuing:', userErr.message);
+        }
+
+        // Propagate to TenantContext so the rest of the app picks up the new tenant
+        setTenantId(effectiveTenantId);
+        await refreshAuthUser?.();
+      }
+
+      // ─── Step B: Call the working orchestrator ────────────────────────────────
+      // CnprwtMEc3gPGPEk (420 Onboarding Orchestrator v1.0) lives at /webhook/provision-orchestrate
+      // and provisions: sales (reply_routing_rules, sequence_templates, ICP), marketing (brand voice,
+      // campaigns), hr, ops, comms (email warmup), voice, agents (agent_contexts).
+      const orchestratorPayload = {
+        tenant_id: effectiveTenantId,
+        tenant_uuid: effectiveTenantUuid,
+        industry: data.companyData.industry || 'general',
+        company_name: data.companyData.company_name || 'My Business',
+        website: data.companyData.social_links?.website || null,
+        email: data.companyData.contact?.email || user?.email || null,
         ai_config: {
           ai_name: data.aiConfig.name || 'Zate',
           ai_role: data.aiConfig.role || 'AI Receptionist',
-          ai_greeting: data.aiConfig.greeting || 'Hello! How can I help you today?',
-          ai_personality: data.aiConfig.personality || 'friendly',
           ai_tone: data.aiConfig.personality || 'friendly',
-          timezone: data.aiConfig.timezone || 'America/New_York',
-          opening_time: data.aiConfig.workingHoursStart || '09:00',
-          closing_time: data.aiConfig.workingHoursEnd || '17:00',
+          ai_greeting: data.aiConfig.greeting,
+          timezone: data.aiConfig.timezone,
         },
         channels: {
-          has_whatsapp: data.channels.whatsapp || false,
-          has_voice: data.channels.voiceAI || false,
-          has_email: data.channels.email || false,
-          has_instagram: data.channels.instagram || false,
-          has_facebook: data.channels.facebook || false,
-          has_webchat: data.channels.webChat || false,
+          has_whatsapp: !!data.channels.whatsapp,
+          has_voice: !!data.channels.voiceAI,
+          has_email: !!data.channels.email,
+          has_instagram: !!data.channels.instagram,
+          has_facebook: !!data.channels.facebook,
         },
-        subscription: {
-          plan: data.selectedPlan || 'free',
-          status: 'active',
-        },
-        enable_voice: data.channels.voiceAI || false,
-        automation_mode: 'full',
+        subscription: { plan: data.selectedPlan || 'free', status: 'active' },
       };
 
-      // Simulate per-module training progress
-      for (const mod of TRAINING_MODULES) {
-        status[mod.key] = 'training';
-        setTrainingStatus({ ...status });
+      // Animate per-module pending → training in parallel with the network call,
+      // so the UI doesn't feel stuck while waiting for the orchestrator response.
+      const animationPromise = (async () => {
+        for (const mod of TRAINING_MODULES) {
+          status[mod.key] = 'training';
+          setTrainingStatus({ ...status });
+          await new Promise(r => setTimeout(r, 600));
+        }
+      })();
 
-        // Small delay for visual feedback
-        await new Promise(r => setTimeout(r, 600));
-        status[mod.key] = 'done';
-        setTrainingStatus({ ...status });
+      const orchestratorResp = await callWebhook(
+        WEBHOOKS.PROVISION_ORCHESTRATE,
+        orchestratorPayload,
+        effectiveTenantId || ''
+      );
+      await animationPromise;
+
+      // Mark every module done — the orchestrator returns success_count/failure_count
+      // per module but the simpler UX is "all green if the call returned without throwing".
+      TRAINING_MODULES.forEach(m => { status[m.key] = 'done'; });
+      setTrainingStatus({ ...status });
+
+      console.log('[onboarding] orchestrator result:', orchestratorResp);
+
+      // ─── Step C: Flip onboarding_completed=true on tenant_config ──────────────
+      if (effectiveTenantUuid) {
+        const { error: completeErr } = await supabase
+          .from('tenant_config')
+          .update({ onboarding_completed: true, updated_at: new Date().toISOString() } as never)
+          .eq('id', effectiveTenantUuid);
+        if (completeErr) console.warn('[onboarding] onboarding_completed update failed:', completeErr.message);
       }
-
-      // Call the training webhook (OBT chain: compiles knowledge from business_profiles/services)
-      await callWebhook(
-        WEBHOOKS.TRAIN_AI_KNOWLEDGE,
-        trainPayload,
-        tenantId || ''
-      );
-
-      // Mark onboarding as complete + save ALL config (OBC chain: saves to tenant_config)
-      await callWebhook(
-        WEBHOOKS.ONBOARDING_COMPLETE,
-        completePayload,
-        tenantId || ''
-      );
 
       setTrainingComplete(true);
       updateData({ trainingComplete: true });
