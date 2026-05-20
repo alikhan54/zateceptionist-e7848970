@@ -654,7 +654,7 @@ export default function VideoStudio() {
     setIsGenerating(true);
     setGenStep("Preparing…");
 
-    // Layer 5 fix (2026-05-20): when no card is selected but the user typed a
+    // Fix 1 (2026-05-20): when no card is selected but the user typed a
     // substantial prompt (>40 chars), default to Social Reel so the AIDA branch
     // in VID.5 fires.  Short prompts keep the legacy path intentionally.
     const implicitReel = !selectedTemplate && aiPrompt.length > 40;
