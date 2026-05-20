@@ -9,6 +9,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { useClinicPatient } from "@/hooks/useClinicPatient";
 import { AddPrescriptionDialog } from "@/components/clinic/AddPrescriptionDialog";
+import { PatientPhotosTab } from "@/components/clinic/PatientPhotosTab";
+import { useTenant } from "@/contexts/TenantContext";
 import {
   ArrowLeft, Phone, Mail, Cake, User, Stethoscope, Activity,
   Heart, AlertCircle, Calendar, FileText, Star, Sparkles,
@@ -52,6 +54,8 @@ export default function PatientProfile() {
   const { patientId } = useParams<{ patientId: string }>();
   const navigate = useNavigate();
   const { data, isLoading } = useClinicPatient(patientId);
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id || "";
   const [addRxOpen, setAddRxOpen] = useState(false);
 
   const patient = data?.patient;
@@ -430,13 +434,9 @@ export default function PatientProfile() {
           )}
         </TabsContent>
 
-        {/* Photos */}
+        {/* Photos — Phase 7 C.1 */}
         <TabsContent value="photos">
-          <EmptyState
-            icon={<ImageIcon className="h-10 w-10" />}
-            title="No progress photos yet"
-            body="Before / after photos uploaded during consultations will appear here."
-          />
+          {patientId && <PatientPhotosTab patientId={patientId} tenantUuid={tenantUuid} />}
         </TabsContent>
 
         {/* Files */}

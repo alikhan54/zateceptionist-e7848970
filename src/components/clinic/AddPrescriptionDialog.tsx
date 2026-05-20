@@ -5,11 +5,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Pill } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Trash2, Pill, Sparkles, Loader2 } from "lucide-react";
 import { useCreatePrescription } from "@/hooks/useClinicPatient";
 import { useToast } from "@/hooks/use-toast";
+import { useTenant } from "@/contexts/TenantContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { callWebhook, WEBHOOKS } from "@/lib/api/webhooks";
 
-type Medicine = { name: string; dosage: string; frequency: string; duration: string };
+type Medicine = { name: string; dosage: string; frequency: string; duration: string; ai_suggested?: boolean };
 const NO_CONSULTATION = "__none__";
 
 interface Props {
@@ -23,19 +27,75 @@ interface Props {
 export function AddPrescriptionDialog({ open, onOpenChange, patientId, patientName, consultations = [] }: Props) {
   const { toast } = useToast();
   const create = useCreatePrescription(patientId);
+  const { tenantId, tenantConfig } = useTenant();
+  const { user, isAdmin } = useAuth();
   const [prescribedBy, setPrescribedBy] = useState("");
   const [consultationId, setConsultationId] = useState<string>(NO_CONSULTATION);
   const [notes, setNotes] = useState("");
   const [pharmacyName, setPharmacyName] = useState("");
+  const [suggesting, setSuggesting] = useState(false);
+  const [diagnosis, setDiagnosis] = useState("");
   const [medicines, setMedicines] = useState<Medicine[]>([
     { name: "", dosage: "", frequency: "", duration: "" },
   ]);
+
+  // Phase 7 D.1 — ask MEDICA to suggest medicines for the typed diagnosis.
+  // Populates the medicines array; user must REVIEW and click Save themselves.
+  const handleSuggest = async () => {
+    const dx = diagnosis.trim();
+    if (!dx) {
+      toast({ title: "Add a diagnosis first", description: "Type a diagnosis (e.g. \"acne vulgaris\") then click Suggest." });
+      return;
+    }
+    setSuggesting(true);
+    try {
+      const prompt = `Suggest a prescription regimen for: "${dx}". Reply ONLY with a JSON array of medicines (no prose, no markdown fences). Each item: {"name":"...","dosage":"...","frequency":"...","duration":"..."}. Use common evidence-based dermatology / aesthetic-clinic dosing. Cap at 4 medicines.`;
+      const res = await callWebhook(WEBHOOKS.OMEGA_CHAT, {
+        message: prompt,
+        channel: "web_chat",
+        sender_identifier: user?.email || "",
+        sender_type: isAdmin ? "admin" : "team_member",
+        tenant_uuid: tenantConfig?.id || "",
+        agent_hint: "medica",
+      }, tenantId);
+      const data = (res?.data ?? {}) as any;
+      const reply = String(data.response || data.message || "");
+      // Extract first JSON array we find — tolerate code fences / preamble.
+      const m = reply.match(/\[\s*\{[\s\S]*?\}\s*\]/);
+      if (!m) throw new Error("MEDICA replied but didn't include a JSON array");
+      const parsed: any[] = JSON.parse(m[0]);
+      if (!Array.isArray(parsed) || parsed.length === 0) throw new Error("Empty suggestion list");
+      const cleaned: Medicine[] = parsed.slice(0, 4).map((p) => ({
+        name: String(p.name || "").trim(),
+        dosage: String(p.dosage || "").trim(),
+        frequency: String(p.frequency || "").trim(),
+        duration: String(p.duration || "").trim(),
+        ai_suggested: true,
+      })).filter((m) => m.name.length > 0);
+      if (cleaned.length === 0) throw new Error("Suggestions had no usable names");
+      setMedicines(cleaned);
+      toast({
+        title: `MEDICA suggested ${cleaned.length} medicine${cleaned.length === 1 ? "" : "s"}`,
+        description: "Review each row carefully before saving — you are responsible for the final prescription.",
+      });
+    } catch (err: any) {
+      toast({
+        title: "AI suggestion failed",
+        description: err?.message || "Could not parse MEDICA reply. Enter medicines manually.",
+        variant: "destructive",
+      });
+    } finally {
+      setSuggesting(false);
+    }
+  };
 
   const reset = () => {
     setPrescribedBy("");
     setConsultationId(NO_CONSULTATION);
     setNotes("");
     setPharmacyName("");
+    setDiagnosis("");
+    setSuggesting(false);
     setMedicines([{ name: "", dosage: "", frequency: "", duration: "" }]);
   };
 
@@ -117,6 +177,40 @@ export function AddPrescriptionDialog({ open, onOpenChange, patientId, patientNa
             </div>
           </div>
 
+          {/* AI suggest — Phase 7 D.1 */}
+          <div className="rounded-lg border bg-primary/5 p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <Label className="text-sm" htmlFor="rx-diagnosis">Diagnosis / chief complaint</Label>
+            </div>
+            <div className="flex gap-2">
+              <Input
+                id="rx-diagnosis"
+                data-testid="rx-diagnosis-input"
+                placeholder="e.g. acne vulgaris, melasma, post-Botox bruising…"
+                value={diagnosis}
+                onChange={(e) => setDiagnosis(e.target.value)}
+                disabled={suggesting}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleSuggest}
+                disabled={suggesting || !diagnosis.trim()}
+                data-testid="rx-ai-suggest"
+              >
+                {suggesting ? (
+                  <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Asking MEDICA…</>
+                ) : (
+                  <><Sparkles className="h-3.5 w-3.5 mr-1" /> Suggest with AI</>
+                )}
+              </Button>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              MEDICA will populate the medicines list below. You stay responsible — review each row before saving.
+            </p>
+          </div>
+
           {/* Medicines list */}
           <div className="space-y-2.5">
             <div className="flex items-center justify-between">
@@ -128,7 +222,14 @@ export function AddPrescriptionDialog({ open, onOpenChange, patientId, patientNa
             {medicines.map((m, idx) => (
               <div key={idx} className="rounded-lg border bg-card p-3 space-y-2.5">
                 <div className="flex items-start justify-between gap-2">
-                  <span className="text-xs text-muted-foreground">Medicine {idx + 1}</span>
+                  <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    Medicine {idx + 1}
+                    {m.ai_suggested && (
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4" data-testid={`rx-ai-badge-${idx}`}>
+                        <Sparkles className="h-2.5 w-2.5 mr-0.5" /> MEDICA-suggested
+                      </Badge>
+                    )}
+                  </span>
                   {medicines.length > 1 && (
                     <Button
                       type="button" variant="ghost" size="icon"
