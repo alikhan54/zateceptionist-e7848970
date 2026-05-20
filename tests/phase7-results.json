@@ -1,0 +1,53 @@
+[
+  {
+    "test": "7.B.1.q1",
+    "question": "what services do you offer?",
+    "answer": "**[OMEGA Cross-Brain Orchestrator]** COSMIQUE offers a range of advanced skincare and aesthetic treatments including: - **M-ounjaro Weight Loss:** A cutting-edge weight loss program designed for sustainable results. - **HIFU Non-Surgical Facelift:** A revolutionary procedure that tightens skin without invasive surgery. - **MNRF Collagen Treatment:** A non-invasive treatment to enhance skin elasticity and reduce the appearance of wrinkles. - **HydraFacial MD:** A hydrating facial that exfoliates, extracts impurities, and infuses your skin with moisture. - **Laser Treatments (Fotona SP Dynamis):** Advanced laser tec",
+    "length": 621,
+    "clinical_term_present": true,
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase7-omega-q1.png"
+  },
+  {
+    "test": "7.B.1.q2",
+    "question": "how many patients do I have?",
+    "answer": "**[MEDICA Healthcare Intelligence Agent]** Hello! According to our records, you currently have 1 active customer and 3 leads (2 enriched, 1 from Fortress), all marked as COLD. Would you like more detailed information on any of these or as",
+    "length": 238,
+    "patient_mention": true,
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase7-omega-q2.png"
+  },
+  {
+    "test": "7.B.1.q3",
+    "question": "Do you have HydraFacial?",
+    "answer": "**[MEDICA Healthcare Intelligence Agent]** Yes, we offer the HydraFacial MD treatment at COSMIQUE. It's an advanced facial treatment that cleanses, extracts, and hydrates your skin using patented technology. It removes dead skin cells and impurities while simultaneously delivering moisturizing serums. This treatment is suitable for all skin types and pro",
+    "length": 356,
+    "hydrafacial_mentioned": true,
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase7-omega-q3.png"
+  },
+  {
+    "test": "7.B.1.summary",
+    "distinct": true,
+    "topic_hits": {
+      "q1": true,
+      "q2": true,
+      "q3": true
+    }
+  },
+  {
+    "test": "7.C.1",
+    "verdict": "DEPLOY_PENDING",
+    "notes": "add-photos-button testid not found — needs Lovable Publish",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase7-c1-deploy-pending.png"
+  },
+  {
+    "test": "7.D.1",
+    "verdict": "DEPLOY_PENDING",
+    "notes": "rx-ai-suggest testid not found — needs Lovable Publish",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase7-d1-deploy-pending.png"
+  },
+  {
+    "test": "Part_A_DA2_fix",
+    "verdict": "REAL_PASS",
+    "notes": "Workflow lhdU0HUxmdgSSDpD DA.2 node patched (1 line, backward-compatible). Verified via direct webhook POST: success=true, health_score=75, status=analyzed. Created report_id + health_analysis_id + video_script_id + review_id. Pipeline runs end-to-end. Multi-tenant gate confirms zero rows in other tenants.",
+    "evidence_command": "curl -s -X POST http://localhost:5678/webhook/doctor-avatar-upload -d '{\"tenant_id\":\"cosmique\",\"patient_id\":\"178729e2-bc49-45f8-bb89-c0c8962e2594\",\"report_type\":\"general\",\"pdf_base64\":\"JVBERi0xLjQK\",\"pdf_filename\":\"TEST_CC_PHASE7_E_verify.pdf\"}'"
+  }
+]
