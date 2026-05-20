@@ -92,3 +92,81 @@ These are NOT outlier bugs. They are the pattern that emerges when "PASS" is gra
 - The spec file naming convention: `cosmique-phase<N>-e2e.spec.ts` for UI flow, paired with a `phase<N>-action-audit.py` for the REST round-trips.
 - Reports must include both the screenshot (visual proof) AND the REST verification (correctness proof).
 - If a feature is BLOCKED_ON_DEPLOY, that is a fact about the deployment — not a feature verdict. Note it separately and re-test after deploy.
+
+---
+
+## Test infrastructure conventions (hardened in Phase 5d)
+
+Phase 5d's strict "Method A only — UI click drives every PASS verdict" mandate forced three rounds of surgical hardening before all 4 specs ran 4/4 REAL_PASS in serial. The patterns below are now the **starting baseline** for new specs — start here, don't re-discover.
+
+### 1. Replace fixed `waitForTimeout(N)` after navigation with `waitForSelector` on real content
+Pages with React-Query-driven data take 5–10s to populate under cold cache. A 2.5s sleep then a 5s `isVisible` budget will flake on the slow path. Anchor on a testid attached to the first row of the grid:
+```ts
+await page.goto('/clinic/products', { waitUntil: 'domcontentloaded' });
+await page.waitForSelector('[data-testid^="product-card-"]', { timeout: 20_000 }).catch(()=>{});
+await page.waitForTimeout(500); // tiny buffer for layout
+```
+
+### 2. UI assertions after mutations: use `expect.poll`, not single-shot `innerText`
+React Query's `invalidateQueries` + refetch lands 1–3s **after** the mutation success toast. A single `expect(text).toContain(newValue)` fired at t+500ms catches the stale DOM and fails. Poll the value:
+```ts
+await expect.poll(
+  async () => await page.getByTestId(`product-stock-${id}`).innerText(),
+  { timeout: 10_000, intervals: [500, 500, 1000] },
+).toContain(String(newStock));
+```
+
+### 3. `waitUntil: 'networkidle'` hangs on dashboards with continuous polling
+The OMEGA `/dashboard` route polls indefinitely (omega-autonomous, pulse data). `networkidle` waits for 500ms of zero requests — which never happens. Default to `domcontentloaded` + an explicit `waitForSelector` on a sentinel element:
+```ts
+page.setDefaultNavigationTimeout(60_000);
+await page.goto('/dashboard', { waitUntil: 'domcontentloaded', timeout: 60_000 });
+await page.waitForSelector('.v3-input-pill', { timeout: 25_000 });
+```
+
+### 4. Use `page.keyboard.type({delay})` + in-input Enter; avoid `input.fill()` + external click
+`input.fill('x')` updates the DOM value synchronously but React `setState` from `onChange` may not have committed by the time you click an external submit button — the button's onClick closure reads the **previous** inputValue. Two safe patterns:
+- (preferred) Type char-by-char with `keyboard.type(s, { delay: 25 })` then `keyboard.press('Enter')` inside the focused input (onKeyDown reads latest closure).
+- Or, if you must click an external button, `await expect(input).toHaveValue(text)` first to wait for the value to land, then click.
+
+### 5. Detect transient renders with a MutationObserver, not polling-based `isVisible`
+For an element that's only mounted while `state === 'thinking'` (a few hundred ms in the warm-cache case), `isVisible({timeout: 15000})` polling every 80ms can miss the entire window. Install an observer BEFORE the submit:
+```ts
+await page.evaluate(() => {
+  (window as any).__seen = false;
+  const obs = new MutationObserver(() => {
+    if (document.querySelector('[data-testid="omega-progress-hint"]')) (window as any).__seen = true;
+  });
+  obs.observe(document.body, { childList: true, subtree: true });
+});
+await submitButton.click();
+await page.waitForTimeout(15_000); // through the listening → thinking → speaking cycle
+const seen = await page.evaluate(() => (window as any).__seen);
+```
+
+### 6. Test data hygiene: seed via REST, drive verdict via UI, clean up in the test
+For UI tests that need a row to click, **seed via REST** in the test body (fast, deterministic) and **always include cleanup** in the same test. Multi-tenant gate runs after the suite catches any leak. Use a `TEST_CC_PHASE<N>_` prefix so a grep can spot leftover rows:
+```ts
+const seeded = await sbFetch('/rest/v1/clinic_consultations', { method: 'POST', body: ... });
+const id = seeded.data[0].id;
+try { /* click stuff */ } finally {
+  await sbFetch(`/rest/v1/clinic_consultations?id=eq.${id}`, { method: 'DELETE' });
+}
+```
+
+### 7. Reverts MUST happen even when a test fails mid-flight
+J13 (treatment price edit) updates a real Cosmique price (Botox AED 1800). If the test fails between the UPDATE and the revert PATCH, the real catalog is corrupted. Two options:
+- Wrap the mutation+assertion+revert in `try/finally` so revert always runs.
+- After the suite, run a baseline scan (`SELECT name, price FROM clinic_treatments WHERE tenant_id='cosmique'`) and revert any drift before declaring REAL_PASS.
+
+### 8. `DEPLOY_PENDING` is a valid verdict — never downgrade to "Method B PASS"
+If the deployed Lovable bundle doesn't yet contain the new testid, the test cannot produce a PASS verdict for that feature. The spec must:
+1. Detect via `await page.waitForSelector(testid).catch(()=>{})` + `isVisible({timeout: 8s})`.
+2. Record `DEPLOY_PENDING` to the results JSON.
+3. Call `test.skip(true, 'DEPLOY_PENDING')` so Playwright marks it as skipped, not failed.
+4. **Do NOT** fall back to a REST PATCH and call it PASS. The whole point of Method A is that the UI click drove the change.
+
+### 9. Webhook delay races: route-mock or MutationObserver, never just longer waits
+For tests verifying transient UX states tied to an external HTTP call (OMEGA "thinking" while LangGraph runs), neither `page.route(/url/, async r => { await sleep(); await r.continue(); })` nor a longer `isVisible` timeout is reliable on its own. The route-mock can fail to intercept cross-origin requests; the longer timeout still races a warm-cache reply. Combine MutationObserver (pattern 5) for the transient element with a stub on the real webhook only when you need deterministic state windows.
+
+These nine are **starting equipment**, not Phase-5d-specific. Every new spec uses them.
