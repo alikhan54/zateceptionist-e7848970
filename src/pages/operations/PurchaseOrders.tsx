@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { PageLoading } from "@/components/shared/PageLoading";
-import { useCurrencyFormatter } from "@/lib/formatCurrency";
+import { useCurrencyFormatter, formatCurrencyAmount } from "@/lib/formatCurrency";
 
 const STATUS_TABS = [
   { key: "all", label: "All" },
@@ -199,7 +199,9 @@ export default function PurchaseOrders() {
                       <td className="py-3 font-mono font-medium">{po.po_number || "--"}</td>
                       <td className="py-3">{po.vendor_name || "--"}</td>
                       <td className="py-3 text-right font-medium">
-                        {po.total_amount != null ? formatCurrency(Number(po.total_amount)) : "--"}
+                        {po.total_amount != null
+                          ? formatCurrencyAmount(Number(po.total_amount), po.currency)
+                          : "--"}
                       </td>
                       <td className="py-3 text-muted-foreground">{po.currency || "USD"}</td>
                       <td className="py-3">
