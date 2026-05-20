@@ -83,6 +83,12 @@ export default defineConfig({
       use: { browserName: 'chromium', storageState: STORAGE_PATH },
     },
     {
+      name: 'phase6_5',
+      testMatch: /cosmique-phase6_5-verify\.spec\.ts/,
+      dependencies: ['setup'],
+      use: { browserName: 'chromium', storageState: STORAGE_PATH },
+    },
+    {
       name: 'smart-ledger-verify',
       testMatch: /smart-ledger-verification\.spec\.ts/,
       use: { browserName: 'chromium' }, // no setup dep — fresh login as Smart Ledger user
@@ -106,6 +112,16 @@ export default defineConfig({
       name: 'cross-tenant-mobile',
       testMatch: /cross-tenant-mobile\.spec\.ts/,
       use: { browserName: 'chromium' }, // mobile viewport configured inside spec; no setup dep
+    },
+    {
+      name: 'onboarding-fresh-tenant',
+      testMatch: /onboarding-fresh-tenant\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — Admin-API-creates its own user
+    },
+    {
+      name: 'onboarding-isolation-quick',
+      testMatch: /onboarding-isolation-quick\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — uses ADEEL_EMAIL/ADEEL_PASSWORD
     },
   ],
 });
