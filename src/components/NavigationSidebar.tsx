@@ -976,7 +976,7 @@ export function NavigationSidebar() {
         {renderAccountingMinimal && (
           <>
             <CollapsibleSection section={accountingSection} sectionKey="accounting" />
-            <StaticSection section={mainSection} />
+            <CollapsibleSection section={mainSection} sectionKey="main" />
           </>
         )}
 
@@ -986,7 +986,7 @@ export function NavigationSidebar() {
         {authUser?.role === "staff" && <StaticSection section={staffSection} />}
 
         {/* Main Section - For non-staff or if not showing staff section */}
-        {authUser?.role !== "staff" && <StaticSection section={mainSection} />}
+        {authUser?.role !== "staff" && <CollapsibleSection section={mainSection} sectionKey="main" />}
 
         {/* Sales AI Section */}
         {canAccessSection(salesSection) && <CollapsibleSection section={salesSection} sectionKey="sales" />}

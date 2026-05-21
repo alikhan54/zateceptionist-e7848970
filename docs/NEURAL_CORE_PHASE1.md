@@ -643,3 +643,82 @@ All other ~95 protected routes remain under the existing `<Layout />` parent —
 - Real agent registry data in v2 (currently 70-agent placeholder)
 - Tenant-aware sphere coloring
 - Full revolving conic-gradient sword-light edge (deferred from Phase 2A.5 for browser-compat — fallback static gradient ships now)
+
+---
+
+# Phase 6 Path A — Sidebar + V3 Rail surgical fix (2026-05-19)
+
+Recovery from Phase 5 (reverted via `92e5513`). The lesson Phase 5 taught us: sacred-zone files demand surgical, mockup-pinned changes verified against the production build — not the dev server.
+
+## Mockup contract
+
+User approved a 2-panel before/after mockup in Claude web chat:
+- **LEFT (current)**: full sidebar + 4-icon v3 rail (Home / Inbox / Users / LayoutGrid). MAIN section non-collapsible (only section without a chevron).
+- **RIGHT (target)**: sidebar with MAIN now collapsible (matches other 17 sections) + 2-icon v3 rail (Home / LayoutGrid only). Inbox + Users dropped from rail.
+
+This phase implements the RIGHT panel exactly. Nothing else.
+
+## Exactly 2 changes
+
+### Change 1 — `src/components/omega/v3/nav/NavRail.tsx`
+Dropped Inbox + Users items from `ITEMS` array. Removed `Inbox, Users` from lucide-react import to keep lint clean.
+- Diff: +1 / −3 (3 lines removed, 1 import line shortened)
+- Rationale: Inbox + Customers already accessible via OLD sidebar + via Pulse cathedral cards. Triple-redundancy → 2x. Sphere page breathes more.
+- Existing `i === ITEMS.length - 1` divider still works (divider before LayoutGrid).
+
+### Change 2 — `src/components/NavigationSidebar.tsx`
+Two render-site swaps: `<StaticSection section={mainSection} />` → `<CollapsibleSection section={mainSection} sectionKey="main" />`.
+- Sites: line 979 (accounting-minimal path) + line 989 (default path, non-staff).
+- Diff: +2 / −2
+- Rationale: MAIN was the only non-collapsible section among 17. Visual consistency.
+- Pattern: zero new components, zero new state, zero new CSS. Re-uses existing `CollapsibleSection`, `openSections` state, `toggleSection`, `isInSection` auto-open logic, `Collapsible`/`CollapsibleTrigger`/`CollapsibleContent` from shadcn.
+- Behavior: when route is in MAIN (`/dashboard`, `/inbox`, `/appointments`, `/customers`, `/tasks`) MAIN auto-opens via `isInSection(allUrls)`. User can toggle anywhere. Icon-mode shows first 3 items (matches established pattern for every other section).
+
+## Backup procedure (mandatory before edit)
+
+```
+cp src/components/omega/v3/nav/NavRail.tsx src/components/omega/v3/nav/NavRail.tsx.backup-pre-pathA
+cp src/components/NavigationSidebar.tsx src/components/NavigationSidebar.tsx.backup-pre-pathA
+```
+
+Both files untracked. Instant file-level rollback path.
+
+## npm run preview verification (added this phase — lesson from Phase 5)
+
+Phase 5 was masked by Vite dev-server hot-CSS-injection magic. The production build behaves like Lovable's deploy. From this phase forward, ALL chrome/layout changes verify against `npm run preview`, not `npm run dev`.
+
+This phase passed:
+- `npm run build` ✓ 20.27s · zero TS errors · zero new bundle chunks
+- `npm run preview` boots ✓
+- HTTP 200 sweep across 13 routes: `/`, `/dashboard`, `/dashboard?ui=v3`, `/dashboard?ui=legacy`, `/inbox`, `/customers`, `/sales/dashboard`, `/marketing`, `/hr/dashboard`, `/operations`, `/communications`, `/analytics`, `/settings/business-profile/company`
+- `git diff --stat`: 2 files, +3 / −5 lines
+- All sacred files BYTE-IDENTICAL (Layout.tsx, OmegaFloatingChat.tsx, all hooks/contexts, all v2/v3 sphere files, App.tsx routing, etc.)
+
+Visual verification (user's eyes, on preview URL `http://127.0.0.1:4173`):
+- `/dashboard` (no flag) → sphere + Pulse intact (Phase 4 baseline)
+- `/dashboard?ui=v3` → 2-icon rail (Home + LayoutGrid only). Click LayoutGrid → Cathedral opens.
+- `/dashboard?ui=legacy` → old Dashboard renders (per-device rollback intact)
+- `/inbox` → OLD sidebar, MAIN section now shows chevron. Click chevron → collapses smooth. Click again → expands.
+- Other sections (SALES AI, MARKETING AI, etc.) collapse/expand untouched
+- MAIN items (Dashboard / Inbox / Appointments / Customers / Tasks) navigate to correct routes
+- Mobile (380px viewport) → BottomTabBar intact, no layout breakage
+
+## Rollback procedures
+
+| Scope | Command |
+|---|---|
+| **Per-device** | `?ui=legacy` on `/dashboard` → Phase 4 rollback (Dashboard.tsx legacy) |
+| **File-level** | `cp src/components/omega/v3/nav/NavRail.tsx.backup-pre-pathA src/components/omega/v3/nav/NavRail.tsx` (same for NavigationSidebar.tsx) |
+| **Git-level** | `git revert HEAD` → push → Lovable Publish (~60s) |
+
+## Sacred zone discipline (Path A specific)
+
+Touched 2 files that had been on the sacred list for 7 phases. Discipline required:
+- Backups before any edit (`.backup-pre-pathA` extension reserved for this phase).
+- Production-build verification (`npm run preview`), not dev-server.
+- Zero changes to: Layout.tsx, OmegaFloatingChat.tsx, ThemeToggle, MobileErrorBoundary, Header, BottomTabBar, InstallPrompt, OnboardingFlow, all hooks/contexts, all v2/v3 sphere files, App.tsx routing, all Supabase/n8n/agent/VAPI.
+
+## Out of scope (still future)
+
+- Tier 2/3 routes still on old NavigationSidebar. Cross-chrome navigation acceptable but jarring.
+- Spotlight + Cathedral coverage hasn't expanded — same set as Phase 2A.5/2B/2B.1.

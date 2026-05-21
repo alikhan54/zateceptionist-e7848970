@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { Home, Inbox, Users, LayoutGrid } from "lucide-react";
+import { Home, LayoutGrid } from "lucide-react";
 
 interface NavRailProps {
   onOpenSpotlight: () => void; // unused for now; Spotlight opens via ⌘K. Kept for future affordance.
@@ -19,8 +19,6 @@ interface RailItem {
 
 const ITEMS: RailItem[] = [
   { id: "home",      label: "OMEGA",    shortcut: "⌘1", Icon: Home,        route: "/dashboard" },
-  { id: "inbox",     label: "Inbox",    shortcut: "⌘2", Icon: Inbox,       route: "/inbox" },
-  { id: "clients",   label: "Clients",  shortcut: "⌘3", Icon: Users,       route: "/customers" },
   { id: "all-apps",  label: "All apps", shortcut: "⌘K", Icon: LayoutGrid,  action: "cathedral" },
 ];
 
