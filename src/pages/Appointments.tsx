@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useLocation } from "react-router-dom";
 import { useTenant } from "@/contexts/TenantContext";
 import { supabase, callWebhook, WEBHOOKS } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -96,6 +97,9 @@ const statusIcons: Record<string, React.ReactNode> = {
 export default function AppointmentsPage() {
   const { tenantId, translate, tenantConfig, isLoading: tenantLoading } = useTenant();
   const { toast } = useToast();
+  const location = useLocation();
+  // Phase 9 A.2 — accept prefill from /clinic/patients/:id "Book" button
+  const prefill = (location.state as { prefillPatientId?: string; prefillPhone?: string; prefillName?: string } | null) || null;
 
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -255,6 +259,20 @@ export default function AppointmentsPage() {
   useEffect(() => {
     fetchDropdownData();
   }, [fetchDropdownData]);
+
+  // Phase 9 A.2 — when navigated from a patient profile, auto-open Add dialog
+  // and pre-fill the customer field (by phone match if available).
+  useEffect(() => {
+    if (!prefill?.prefillPatientId && !prefill?.prefillPhone) return;
+    if (customers.length === 0) return;
+    let match: Customer | undefined;
+    if (prefill.prefillName) match = customers.find(c => c.name?.toLowerCase() === prefill.prefillName!.toLowerCase());
+    if (!match && prefill.prefillName) match = customers.find(c => c.name?.toLowerCase().includes(prefill.prefillName!.toLowerCase()));
+    if (match) {
+      setNewAppointment(prev => ({ ...prev, customer_id: match!.id, notes: prev.notes || `Booked from patient profile (${prefill.prefillName || ""})` }));
+      setIsAddDialogOpen(true);
+    }
+  }, [prefill, customers]);
 
   const handleAddAppointment = async () => {
     if (!tenantId || !newAppointment.customer_id) return;

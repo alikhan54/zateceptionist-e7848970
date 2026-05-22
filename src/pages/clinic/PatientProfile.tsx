@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { useClinicPatient } from "@/hooks/useClinicPatient";
 import { AddPrescriptionDialog } from "@/components/clinic/AddPrescriptionDialog";
 import { PatientPhotosTab } from "@/components/clinic/PatientPhotosTab";
+import { EditPatientDialog } from "@/components/clinic/EditPatientDialog";
 import { useTenant } from "@/contexts/TenantContext";
 import {
   ArrowLeft, Phone, Mail, Cake, User, Stethoscope, Activity,
@@ -57,6 +58,7 @@ export default function PatientProfile() {
   const { tenantConfig } = useTenant();
   const tenantUuid = tenantConfig?.id || "";
   const [addRxOpen, setAddRxOpen] = useState(false);
+  const [editPatientOpen, setEditPatientOpen] = useState(false);
 
   const patient = data?.patient;
   const consultations = data?.consultations ?? [];
@@ -247,7 +249,12 @@ export default function PatientProfile() {
 
               {/* Actions */}
               <div className="flex flex-wrap gap-2">
-                <Button variant="default" size="sm">
+                <Button
+                  variant="default"
+                  size="sm"
+                  data-testid="patient-book-button"
+                  onClick={() => navigate('/appointments', { state: { prefillPatientId: patient.id, prefillPhone: patient.phone, prefillName: patient.full_name } })}
+                >
                   <Calendar className="h-4 w-4 mr-1.5" /> Book
                 </Button>
                 <Button variant="outline" size="sm">
@@ -256,7 +263,12 @@ export default function PatientProfile() {
                 <Button variant="outline" size="sm">
                   <MessageSquare className="h-4 w-4 mr-1.5" /> Message
                 </Button>
-                <Button variant="ghost" size="sm">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  data-testid="patient-edit-button"
+                  onClick={() => setEditPatientOpen(true)}
+                >
                   <Pencil className="h-4 w-4 mr-1.5" /> Edit
                 </Button>
               </div>
@@ -507,6 +519,12 @@ export default function PatientProfile() {
         patientId={patient.id}
         patientName={patient.full_name}
         consultations={consultations}
+      />
+
+      <EditPatientDialog
+        open={editPatientOpen}
+        onOpenChange={setEditPatientOpen}
+        patient={patient as any}
       />
     </div>
   );

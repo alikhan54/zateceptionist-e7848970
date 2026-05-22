@@ -40,6 +40,8 @@ export function PatientPhotosTab({ patientId, tenantUuid }: Props) {
   const [fileError, setFileError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const [compare, setCompare] = useState<{ before: string; after: string } | null>(null);
+  const [comparePos, setComparePos] = useState(50);
 
   // Pull all consultations for this patient, extract before/after photos
   // arrays into a flat pair list ordered by date desc.
@@ -185,6 +187,17 @@ export function PatientPhotosTab({ patientId, tenantUuid }: Props) {
                     <div className="aspect-square rounded bg-muted/40 flex items-center justify-center text-[10px] text-muted-foreground">no after</div>
                   )}
                 </div>
+                {p.before_url && p.after_url && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="mt-2 w-full text-xs h-7"
+                    onClick={() => { setComparePos(50); setCompare({ before: p.before_url!, after: p.after_url! }); }}
+                    data-testid={`photo-compare-${i}`}
+                  >
+                    Compare before / after
+                  </Button>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -237,6 +250,45 @@ export function PatientPhotosTab({ patientId, tenantUuid }: Props) {
       <Dialog open={!!lightbox} onOpenChange={(v) => !v && setLightbox(null)}>
         <DialogContent className="max-w-3xl p-2" data-testid="photo-lightbox">
           {lightbox && <img src={lightbox} alt="enlarged" className="w-full h-auto rounded" />}
+        </DialogContent>
+      </Dialog>
+
+      {/* Phase 9 A.5 — Before/after slider compare */}
+      <Dialog open={!!compare} onOpenChange={(v) => !v && setCompare(null)}>
+        <DialogContent className="max-w-3xl p-3" data-testid="photo-compare-dialog">
+          <DialogHeader>
+            <DialogTitle className="text-sm">Before / after compare</DialogTitle>
+          </DialogHeader>
+          {compare && (
+            <>
+              <div className="relative w-full aspect-video bg-muted overflow-hidden rounded select-none">
+                <img src={compare.after} alt="after" className="absolute inset-0 w-full h-full object-cover" />
+                <div
+                  className="absolute inset-y-0 left-0 overflow-hidden"
+                  style={{ width: `${comparePos}%` }}
+                  aria-label="before"
+                >
+                  <img src={compare.before} alt="before" className="absolute inset-0 h-full w-auto object-cover" style={{ width: `${100 / (comparePos / 100)}%`, maxWidth: 'none' }} />
+                </div>
+                <div
+                  className="absolute inset-y-0 w-0.5 bg-white shadow-lg pointer-events-none"
+                  style={{ left: `${comparePos}%` }}
+                />
+                <div className="absolute top-2 left-2 text-[10px] bg-black/60 text-white px-1.5 py-0.5 rounded">BEFORE</div>
+                <div className="absolute top-2 right-2 text-[10px] bg-primary/80 text-primary-foreground px-1.5 py-0.5 rounded">AFTER</div>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={comparePos}
+                onChange={(e) => setComparePos(parseInt(e.target.value, 10))}
+                className="w-full mt-3"
+                data-testid="photo-compare-slider"
+                aria-label="Compare slider"
+              />
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>
