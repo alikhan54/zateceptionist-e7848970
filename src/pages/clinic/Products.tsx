@@ -9,6 +9,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { useClinicProducts, ClinicProduct } from "@/hooks/useClinicProducts";
 import { Package, AlertTriangle, DollarSign, Pencil, Minus, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useBulkSelect } from "@/hooks/useBulkSelect";
+import { BulkActionBar } from "@/components/shared/BulkActionBar";
+import { FilterBar } from "@/components/shared/FilterBar";
+import { useMemo } from "react";
+import { useTenant } from "@/contexts/TenantContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const PRODUCT_CATEGORIES = ["skincare", "haircare", "consumable", "device", "supplement", "other"];
 
@@ -28,6 +36,56 @@ export default function Products() {
   const [addPrice, setAddPrice] = useState("");
   const [addStock, setAddStock] = useState("0");
   const [creating, setCreating] = useState(false);
+
+  // Phase 11 C — bulk + filter
+  const { tenantId } = useTenant();
+  const queryClient = useQueryClient();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterCategory, setFilterCategory] = useState("all");
+  const [sortBy, setSortBy] = useState("name");
+  const [bulkBusy, setBulkBusy] = useState(false);
+
+  const filteredProducts = useMemo(() => {
+    let list = products;
+    if (filterCategory !== "all") list = list.filter(p => p.category === filterCategory);
+    const q = searchQuery.trim().toLowerCase();
+    if (q) list = list.filter(p => (p.name + " " + (p.brand || "")).toLowerCase().includes(q));
+    list = [...list].sort((a, b) => {
+      if (sortBy === "price") return (b.price || 0) - (a.price || 0);
+      if (sortBy === "stock") return (b.stock_quantity || 0) - (a.stock_quantity || 0);
+      return (a.name || "").localeCompare(b.name || "");
+    });
+    return list;
+  }, [products, searchQuery, filterCategory, sortBy]);
+
+  const filteredIds = filteredProducts.map(p => p.id);
+  const bulk = useBulkSelect<string>(filteredIds);
+
+  const productCategories = useMemo(() => {
+    const set = new Set<string>();
+    products.forEach(p => p.category && set.add(p.category));
+    return Array.from(set);
+  }, [products]);
+
+  const handleBulkArchive = async () => {
+    if (bulk.count === 0) return;
+    setBulkBusy(true);
+    try {
+      const { error } = await supabase
+        .from("clinic_products" as any)
+        .update({ is_active: false, updated_at: new Date().toISOString() } as any)
+        .in("id", bulk.selectedIds)
+        .eq("tenant_id", tenantId);
+      if (error) throw error;
+      toast({ title: `Archived ${bulk.count} product${bulk.count === 1 ? "" : "s"}` });
+      bulk.clear();
+      queryClient.invalidateQueries({ queryKey: ["clinic_products", tenantId] });
+    } catch (err: any) {
+      toast({ title: "Bulk archive failed", description: err?.message || "Unknown error", variant: "destructive" });
+    } finally {
+      setBulkBusy(false);
+    }
+  };
 
   const resetAdd = () => {
     setAddName(""); setAddCategory("skincare"); setAddBrand(""); setAddPrice(""); setAddStock("0");
@@ -139,19 +197,49 @@ export default function Products() {
         </Card>
       </div>
 
+      <FilterBar
+        value={searchQuery}
+        onSearch={setSearchQuery}
+        placeholder="Search products by name or brand…"
+        category={{
+          value: filterCategory,
+          onChange: setFilterCategory,
+          options: [{ value: "all", label: "All categories" }, ...productCategories.map(c => ({ value: c, label: c }))],
+        }}
+        sort={{
+          value: sortBy,
+          onChange: setSortBy,
+          options: [
+            { value: "name", label: "Sort: name (A→Z)" },
+            { value: "price", label: "Sort: price (high→low)" },
+            { value: "stock", label: "Sort: stock (high→low)" },
+          ],
+        }}
+        testidPrefix="products-filter"
+      />
+
       {isLoading ? (
         <p className="text-muted-foreground">Loading products...</p>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {products.map((product) => {
+          {filteredProducts.map((product) => {
             const isLow = product.stock_quantity <= product.min_stock_level;
             return (
               <Card key={product.id} className={isLow ? "border-orange-300" : ""} data-testid={`product-card-${product.id}`}>
                 <CardContent className="pt-6">
                   <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <h3 className="font-semibold">{product.name}</h3>
-                      <p className="text-sm text-muted-foreground">{product.brand}</p>
+                    <div className="flex items-start gap-2">
+                      <Checkbox
+                        checked={bulk.isSelected(product.id)}
+                        onCheckedChange={() => bulk.toggleId(product.id)}
+                        className="mt-1"
+                        data-testid={`product-select-${product.id}`}
+                        aria-label={`Select ${product.name}`}
+                      />
+                      <div>
+                        <h3 className="font-semibold">{product.name}</h3>
+                        <p className="text-sm text-muted-foreground">{product.brand}</p>
+                      </div>
                     </div>
                     <Badge variant="outline">{product.category}</Badge>
                   </div>
@@ -298,6 +386,14 @@ export default function Products() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <BulkActionBar
+        count={bulk.count}
+        onClear={bulk.clear}
+        onArchive={handleBulkArchive}
+        busy={bulkBusy}
+        entityNoun="product"
+      />
     </div>
   );
 }
