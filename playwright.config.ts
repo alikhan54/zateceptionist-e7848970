@@ -134,5 +134,19 @@ export default defineConfig({
       testMatch: /hr-e2e-verification\.spec\.ts/,
       use: { browserName: 'chromium' }, // uses saved .auth-state.json (set inside spec via test.use)
     },
+    {
+      name: 'zate-setup',
+      testMatch: /zate-auth\.setup\.ts/,
+      use: { browserName: 'chromium' },
+    },
+    {
+      name: 'hr-e2e-round2',
+      testMatch: /hr-e2e-round2-zate\.spec\.ts/,
+      dependencies: ['zate-setup'],
+      use: {
+        browserName: 'chromium',
+        storageState: path.join(__dirname, 'tests', '.auth-state-zate.json'),
+      },
+    },
   ],
 });

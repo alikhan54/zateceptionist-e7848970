@@ -276,11 +276,7 @@ export function useAIInterviews(applicationId?: string) {
       if (!tenantUuid) return [];
       let query = supabase
         .from('hr_ai_interviews')
-        .select(`
-          *,
-          candidate:hr_candidates(id, first_name, last_name, email),
-          requisition:hr_job_requisitions(id, job_title)
-        `)
+        .select('*')
         .eq('tenant_id', tenantUuid)
         .order('created_at', { ascending: false });
 

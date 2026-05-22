@@ -950,7 +950,7 @@ export function useShifts(weekStart: string) {
       // Get active employees
       const { data: employees } = await supabase
         .from("hr_employees")
-        .select("id, first_name, last_name, full_name, department_name, employment_type")
+        .select("id, first_name, last_name, full_name, department_name:department, employment_type")
         .eq("tenant_id", tenantUuid)
         .eq("employment_status", "active");
 
@@ -1053,7 +1053,7 @@ export function useAttritionRisk() {
 
       const { data: employees } = await supabase
         .from("hr_employees")
-        .select("id, first_name, last_name, full_name, department_name, date_of_joining, employment_status, salary, employment_type")
+        .select("id, first_name, last_name, full_name, department_name:department, date_of_joining, employment_status, salary, employment_type")
         .eq("tenant_id", tenantUuid)
         .eq("employment_status", "active");
 
@@ -1137,7 +1137,7 @@ export function useCompensationOverview() {
 
       const { data: employees } = await supabase
         .from("hr_employees")
-        .select("salary, salary_currency, department_name, employment_type, employment_status")
+        .select("salary, salary_currency, department_name:department, employment_type, employment_status")
         .eq("tenant_id", tenantUuid)
         .eq("employment_status", "active");
 

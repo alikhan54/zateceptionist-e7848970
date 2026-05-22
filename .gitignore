@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Playwright auth state — contains live session tokens
+tests/.auth-state*.json
+test-results/

@@ -43,10 +43,17 @@ export default function DocumentsPage() {
   const [newDoc, setNewDoc] = useState({ name: '', category: '' });
   const { data: documents, isLoading, uploadDocument } = useHRDocuments(selectedCategory !== 'all' ? selectedCategory : undefined);
 
-  const displayDocuments = documents || [];
-  const filteredDocuments = displayDocuments.filter(doc => 
+  const displayDocuments = (documents || []).map((doc: any) => ({
+    ...doc,
+    name: doc.name ?? doc.title ?? doc.document_name ?? 'Untitled',
+    file_type: doc.file_type ?? doc.document_type ?? doc.mime_type ?? '',
+    uploaded_by: doc.uploaded_by ?? doc.verified_by ?? '—',
+    uploaded_at: doc.uploaded_at ?? doc.created_at ?? '',
+    acknowledged: doc.acknowledged ?? !!doc.is_verified,
+  }));
+  const filteredDocuments = displayDocuments.filter(doc =>
     (selectedCategory === 'all' || doc.category === selectedCategory) &&
-    doc.name.toLowerCase().includes(searchQuery.toLowerCase())
+    (doc.name ?? '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const categories = [
