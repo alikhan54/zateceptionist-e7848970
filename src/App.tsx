@@ -36,6 +36,9 @@ const CreateSequence = lazy(() => import("./pages/sales/CreateSequence"));
 const Proposals = lazy(() => import("./pages/sales/Proposals"));
 const ProposalDetail = lazy(() => import("./pages/sales/ProposalDetail"));
 const SalesAnalytics = lazy(() => import("./pages/sales/Analytics"));
+const PricingCalculator = lazy(() => import("./pages/sales/PricingCalculator"));
+const ClinicDoctors = lazy(() => import("./pages/clinic/Doctors"));
+const AIConfigsPage = lazy(() => import("./pages/settings/AIConfigs"));
 const Forecasting = lazy(() => import("./pages/sales/Forecast"));
 const LtvCac = lazy(() => import("./pages/sales/LtvCac"));
 const EmailWarmup = lazy(() => import("./pages/sales/EmailWarmup"));
@@ -568,6 +571,14 @@ const App = () => (
                     element={
                       <LazyPage>
                         <ProposalDetail />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/sales/pricing"
+                    element={
+                      <LazyPage>
+                        <PricingCalculator />
                       </LazyPage>
                     }
                   />
@@ -1256,6 +1267,22 @@ const App = () => (
                     element={
                       <LazyPage>
                         <ClinicProducts />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/clinic/doctors"
+                    element={
+                      <LazyPage>
+                        <ClinicDoctors />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/settings/ai-configs"
+                    element={
+                      <LazyPage>
+                        <AIConfigsPage />
                       </LazyPage>
                     }
                   />

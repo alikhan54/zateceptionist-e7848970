@@ -12,6 +12,7 @@ import { Clock, DollarSign, AlertCircle, CheckCircle, Pencil, Plus } from "lucid
 import { useToast } from "@/hooks/use-toast";
 
 const KNOWN_CATEGORIES = ["aesthetics", "dermatology", "body", "hair", "skincare"];
+const PACKAGE_CATEGORY = "package";
 
 export default function Treatments() {
   const { treatments, isLoading, categories, updateTreatment, createTreatment } = useClinicTreatments();
@@ -34,6 +35,64 @@ export default function Treatments() {
 
   const resetAdd = () => {
     setAddName(""); setAddCategory("aesthetics"); setAddPrice(""); setAddDuration("30"); setAddDescription("");
+  };
+
+  // Phase 9 C.1 — Package builder state
+  const [pkgOpen, setPkgOpen] = useState(false);
+  const [pkgName, setPkgName] = useState("");
+  const [pkgSelected, setPkgSelected] = useState<Set<string>>(new Set());
+  const [pkgPriceMode, setPkgPriceMode] = useState<"sum" | "custom">("sum");
+  const [pkgCustomPrice, setPkgCustomPrice] = useState("");
+  const [pkgDiscount, setPkgDiscount] = useState("0");
+  const [creatingPkg, setCreatingPkg] = useState(false);
+
+  const singleTreatments = treatments.filter(t => t.category !== PACKAGE_CATEGORY);
+  const sumPrice = Array.from(pkgSelected).reduce((s, id) => {
+    const t = treatments.find(x => x.id === id);
+    return s + (t?.price || 0);
+  }, 0);
+  const discountPct = Math.max(0, Math.min(50, parseFloat(pkgDiscount) || 0));
+  const finalSumPrice = Math.round(sumPrice * (1 - discountPct / 100));
+
+  const handleCreatePackage = async () => {
+    const name = pkgName.trim();
+    if (!name) {
+      toast({ title: "Package name required", variant: "destructive" });
+      return;
+    }
+    if (pkgSelected.size < 2) {
+      toast({ title: "Select at least 2 treatments", description: "A package needs 2 or more components", variant: "destructive" });
+      return;
+    }
+    const componentIds = Array.from(pkgSelected);
+    const price = pkgPriceMode === "custom" ? parseFloat(pkgCustomPrice) : finalSumPrice;
+    if (isNaN(price) || price < 0) {
+      toast({ title: "Invalid price", variant: "destructive" });
+      return;
+    }
+    const componentNames = componentIds.map(id => treatments.find(t => t.id === id)?.name || "?").filter(Boolean);
+    setCreatingPkg(true);
+    try {
+      await createTreatment.mutateAsync({
+        name,
+        category: PACKAGE_CATEGORY,
+        price,
+        duration_minutes: componentIds.reduce((s, id) => s + (treatments.find(t => t.id === id)?.duration_minutes || 0), 0),
+        currency: "AED",
+        // Overload the existing recommended_products column with the component IDs.
+        // No DDL needed; we identify a package by category=='package'.
+        recommended_products: componentIds,
+        description: `Bundle: ${componentNames.join(" + ")}${discountPct > 0 ? ` · ${discountPct}% off` : ""}`,
+        is_active: true,
+      } as any);
+      toast({ title: "Package created", description: `${name} → AED ${price}` });
+      setPkgOpen(false);
+      setPkgName(""); setPkgSelected(new Set()); setPkgCustomPrice(""); setPkgDiscount("0");
+    } catch (err: any) {
+      toast({ title: "Could not create", description: err?.message || "Unknown error", variant: "destructive" });
+    } finally {
+      setCreatingPkg(false);
+    }
   };
 
   const handleCreate = async () => {
@@ -116,9 +175,14 @@ export default function Treatments() {
           <h1 className="text-3xl font-bold tracking-tight">Treatments</h1>
           <p className="text-muted-foreground">Treatment catalog and service management</p>
         </div>
-        <Button onClick={() => setAddOpen(true)} data-testid="add-treatment-button">
-          <Plus className="mr-2 h-4 w-4" /> Add Treatment
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setPkgOpen(true)} data-testid="create-package-button">
+            <Plus className="mr-2 h-4 w-4" /> Create Package
+          </Button>
+          <Button onClick={() => setAddOpen(true)} data-testid="add-treatment-button">
+            <Plus className="mr-2 h-4 w-4" /> Add Treatment
+          </Button>
+        </div>
       </div>
 
       <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
@@ -246,6 +310,81 @@ export default function Treatments() {
             <Button variant="outline" onClick={() => { setAddOpen(false); resetAdd(); }}>Cancel</Button>
             <Button onClick={handleCreate} disabled={creating} data-testid="add-treatment-submit">
               {creating ? "Adding..." : "Add treatment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Phase 9 C.1 — Create Package dialog */}
+      <Dialog open={pkgOpen} onOpenChange={(v) => { if (!v) { setPkgOpen(false); } }}>
+        <DialogContent className="max-w-lg" data-testid="create-package-dialog">
+          <DialogHeader>
+            <DialogTitle>Create treatment package</DialogTitle>
+            <DialogDescription>Bundle 2 or more treatments and price the bundle.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="pkg-name">Package name</Label>
+              <Input id="pkg-name" data-testid="package-name-input" value={pkgName} onChange={(e) => setPkgName(e.target.value)} placeholder="e.g. Bridal Glow Package" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Include treatments</Label>
+              <div className="max-h-48 overflow-y-auto border rounded-md p-2 space-y-1" data-testid="package-components-list">
+                {singleTreatments.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No standalone treatments to bundle yet.</p>
+                ) : singleTreatments.map(t => (
+                  <label key={t.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/40 px-1.5 py-1 rounded">
+                    <input
+                      type="checkbox"
+                      data-testid={`package-component-${t.id}`}
+                      checked={pkgSelected.has(t.id)}
+                      onChange={(e) => {
+                        const next = new Set(pkgSelected);
+                        if (e.target.checked) next.add(t.id); else next.delete(t.id);
+                        setPkgSelected(next);
+                      }}
+                    />
+                    <span className="flex-1">{t.name}</span>
+                    <span className="text-xs text-muted-foreground">{t.currency} {t.price}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground" data-testid="package-component-count">{pkgSelected.size} selected · sum AED {sumPrice}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Pricing</Label>
+                <select
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  data-testid="package-price-mode"
+                  value={pkgPriceMode}
+                  onChange={(e) => setPkgPriceMode(e.target.value as any)}
+                >
+                  <option value="sum">Sum with discount %</option>
+                  <option value="custom">Custom price</option>
+                </select>
+              </div>
+              {pkgPriceMode === "sum" ? (
+                <div className="space-y-1.5">
+                  <Label htmlFor="pkg-discount">Discount (%)</Label>
+                  <Input id="pkg-discount" data-testid="package-discount-input" type="number" min="0" max="50" value={pkgDiscount} onChange={(e) => setPkgDiscount(e.target.value)} />
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <Label htmlFor="pkg-custom-price">Custom price (AED)</Label>
+                  <Input id="pkg-custom-price" data-testid="package-custom-price-input" type="number" min="0" value={pkgCustomPrice} onChange={(e) => setPkgCustomPrice(e.target.value)} />
+                </div>
+              )}
+            </div>
+            <div className="rounded-md bg-muted/40 px-3 py-2 text-sm" data-testid="package-price-preview">
+              Bundle price: <span className="font-semibold">AED {pkgPriceMode === "custom" ? (parseFloat(pkgCustomPrice) || 0) : finalSumPrice}</span>
+              {pkgPriceMode === "sum" && discountPct > 0 && <span className="text-xs text-muted-foreground ml-2">({discountPct}% off sum AED {sumPrice})</span>}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPkgOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreatePackage} disabled={creatingPkg} data-testid="package-submit">
+              {creatingPkg ? "Creating..." : "Create package"}
             </Button>
           </DialogFooter>
         </DialogContent>
