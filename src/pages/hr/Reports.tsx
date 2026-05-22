@@ -2,6 +2,8 @@ import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { useTenant } from '@/contexts/TenantContext';
 import { useEmployees, useDepartments, useAttendance, useLeaveRequests } from '@/hooks/useHR';
+import { AskAIButton } from '@/components/hr/AskAIButton';
+import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -37,6 +39,33 @@ export default function ReportsPage() {
   const employeeList = employees || [];
   const departmentList = departments || [];
   const leaveRequests = leaveData || [];
+
+  const handleExportReport = () => {
+    if (selectedReport === 'headcount' && headcountData.length > 0) {
+      const csv = 'Department,Headcount\n' + headcountData.map(r => `"${r.name}",${r.count}`).join('\n');
+      downloadCsv(csv, 'headcount');
+    } else if (selectedReport === 'leave' && leaveUtilData.length > 0) {
+      const csv = 'Leave Type,Days\n' + leaveUtilData.map(r => `"${r.name}",${r.days}`).join('\n');
+      downloadCsv(csv, 'leave-utilization');
+    } else if (selectedReport === 'turnover') {
+      const active = employeeList.filter((e: any) => e.employment_status === 'active').length;
+      const terminated = employeeList.filter((e: any) => e.employment_status !== 'active').length;
+      const csv = 'Status,Count\n' + `Active,${active}\nTerminated,${terminated}\n`;
+      downloadCsv(csv, 'turnover');
+    } else {
+      toast.info('No data to export for the selected report');
+    }
+  };
+  const downloadCsv = (csv: string, name: string) => {
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `hr-${name}-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Report exported');
+  };
 
   const reportTypes = [
     { id: 'headcount', label: 'Headcount Report', icon: Users, description: 'Employee count by department and time' },
@@ -146,10 +175,16 @@ export default function ReportsPage() {
             Analytics and insights for workforce management
           </p>
         </div>
-        <Button variant="outline" className="gap-2">
-          <Download className="h-4 w-4" />
-          Export Report
-        </Button>
+        <div className="flex items-center gap-2">
+          <AskAIButton
+            message="Generate a comprehensive HR analytics summary covering headcount, turnover, leave utilisation and key workforce metrics for this tenant"
+            label="AI Report Summary"
+          />
+          <Button variant="outline" className="gap-2" onClick={handleExportReport}>
+            <Download className="h-4 w-4" />
+            Export Report
+          </Button>
+        </div>
       </div>
 
       {/* Quick Stats */}

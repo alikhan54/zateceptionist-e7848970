@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { useTenant } from '@/contexts/TenantContext';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { useShifts, type Shift } from '@/hooks/useHR';
+import { AskAIButton } from '@/components/hr/AskAIButton';
 export type { Shift };
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -126,6 +127,10 @@ export default function ShiftsPage() {
               ))}
             </SelectContent>
           </Select>
+          <AskAIButton
+            message="Analyze the weekly shift schedule for coverage gaps, weekend balance and suggested rotations"
+            label="AI Shift Analysis"
+          />
         </div>
       </div>
 

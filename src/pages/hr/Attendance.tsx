@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
 import { AskAIButton } from '@/components/hr/AskAIButton';
-import { useAttendance, useDepartments } from '@/hooks/useHR';
+import { useAttendance, useDepartments, useEmployees } from '@/hooks/useHR';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,7 +29,20 @@ export default function AttendancePage() {
   const [filterDepartment, setFilterDepartment] = useState('all');
   const { data, isLoading, checkIn, checkOut } = useAttendance(format(selectedDate, 'yyyy-MM-dd'));
   const { data: departments } = useDepartments();
+  const { data: employees } = useEmployees();
   const departmentList = departments || [];
+  const [isManualCheckInOpen, setIsManualCheckInOpen] = useState(false);
+  const [manualEmployeeId, setManualEmployeeId] = useState('');
+
+  const handleManualCheckIn = () => {
+    if (!manualEmployeeId) {
+      toast.error('Please select an employee');
+      return;
+    }
+    checkIn.mutate({ employee_id: manualEmployeeId });
+    setIsManualCheckInOpen(false);
+    setManualEmployeeId('');
+  };
 
   const handleCheckIn = async () => {
     try {
@@ -113,6 +128,43 @@ export default function AttendancePage() {
           </Tooltip>
           <AskAIButton message="Analyze attendance patterns, identify late trends, and suggest improvements" label="AI Attendance Report" />
         </TooltipProvider>
+        <Dialog open={isManualCheckInOpen} onOpenChange={setIsManualCheckInOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm" className="gap-2">
+              <Clock className="h-4 w-4" />
+              Manual Check-in
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Record Manual Check-in</DialogTitle>
+              <DialogDescription>Record a check-in for an employee on their behalf.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Employee *</Label>
+                <Select value={manualEmployeeId} onValueChange={setManualEmployeeId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select employee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(employees || []).map((emp: any) => (
+                      <SelectItem key={emp.id} value={emp.id}>
+                        {emp.full_name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim() || emp.company_email || emp.id}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsManualCheckInOpen(false)}>Cancel</Button>
+              <Button onClick={handleManualCheckIn} disabled={checkIn.isPending || !manualEmployeeId}>
+                {checkIn.isPending ? 'Recording…' : 'Record Check-in'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Large Clock + Check In/Out */}

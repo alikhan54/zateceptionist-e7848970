@@ -12,16 +12,36 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { AnimatedNumber } from '@/components/hr/AnimatedNumber';
 import { CircularProgress } from '@/components/hr/CircularProgress';
-import { 
+import {
   GraduationCap, BookOpen, Clock, Users, Award, Play,
-  CheckCircle2, Search, Calendar, TrendingUp, Sparkles, Trophy
+  CheckCircle2, Search, Calendar, TrendingUp, Sparkles, Trophy, Plus
 } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 export default function TrainingPage() {
   const { t } = useTenant();
-  const { programs, enrollments, enroll } = useTraining();
+  const { programs, enrollments, enroll, createProgram } = useTraining();
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [newProgram, setNewProgram] = useState({ name: '', description: '', duration_hours: '', max_participants: '' });
+
+  const handleCreateProgram = () => {
+    if (!newProgram.name.trim()) return;
+    createProgram.mutate({
+      name: newProgram.name.trim(),
+      description: newProgram.description || undefined,
+      duration_hours: newProgram.duration_hours ? Number(newProgram.duration_hours) : undefined,
+      max_participants: newProgram.max_participants ? Number(newProgram.max_participants) : undefined,
+    }, {
+      onSuccess: () => {
+        setIsCreateOpen(false);
+        setNewProgram({ name: '', description: '', duration_hours: '', max_participants: '' });
+      },
+    });
+  };
 
   const displayPrograms = programs.data || [];
   const displayEnrollments = enrollments.data || [];
@@ -52,7 +72,67 @@ export default function TrainingPage() {
           </h1>
           <p className="text-muted-foreground mt-1">Develop skills and advance your career</p>
         </div>
-        <AskAIButton message="Recommend training programs based on performance gaps and skill requirements" label="AI Training Plan" />
+        <div className="flex items-center gap-2">
+          <AskAIButton message="Recommend training programs based on performance gaps and skill requirements" label="AI Training Plan" />
+          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
+                Create Program
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create Training Program</DialogTitle>
+                <DialogDescription>Add a new training program to the catalogue.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Name *</Label>
+                  <Input
+                    placeholder="e.g. Leadership Essentials"
+                    value={newProgram.name}
+                    onChange={e => setNewProgram({ ...newProgram, name: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Description</Label>
+                  <Textarea
+                    placeholder="What participants will learn"
+                    value={newProgram.description}
+                    onChange={e => setNewProgram({ ...newProgram, description: e.target.value })}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Duration (hours)</Label>
+                    <Input
+                      type="number"
+                      placeholder="8"
+                      value={newProgram.duration_hours}
+                      onChange={e => setNewProgram({ ...newProgram, duration_hours: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Max Participants</Label>
+                    <Input
+                      type="number"
+                      placeholder="20"
+                      value={newProgram.max_participants}
+                      onChange={e => setNewProgram({ ...newProgram, max_participants: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
+                <Button onClick={handleCreateProgram} disabled={createProgram.isPending || !newProgram.name.trim()}>
+                  {createProgram.isPending ? 'Creating…' : 'Create Program'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Stats */}

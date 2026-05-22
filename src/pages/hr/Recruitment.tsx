@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTenant } from "@/contexts/TenantContext";
+import { AskAIButton } from "@/components/hr/AskAIButton";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -644,6 +645,11 @@ export default function RecruitmentPage() {
           </h1>
           <p className="text-muted-foreground mt-1">AI-powered hiring pipeline</p>
         </div>
+        <div className="flex items-center gap-2">
+          <AskAIButton
+            message="Analyze the current recruitment pipeline: open roles, candidate quality, time-to-hire bottlenecks, and which jobs need the most attention"
+            label="AI Hiring Insights"
+          />
         <Dialog open={isAddJobOpen} onOpenChange={setIsAddJobOpen}>
           <DialogTrigger asChild>
             <Button>
@@ -871,6 +877,7 @@ export default function RecruitmentPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Stats */}

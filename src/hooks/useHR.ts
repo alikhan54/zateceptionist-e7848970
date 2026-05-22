@@ -632,7 +632,37 @@ export function useTraining() {
     onError: () => toast.error("Failed to enroll"),
   });
 
-  return { programs, enrollments, enroll };
+  const createProgram = useMutation({
+    mutationFn: async (data: {
+      name: string;
+      description?: string;
+      duration_hours?: number;
+      max_participants?: number;
+    }) => {
+      if (!tenantUuid) throw new Error('No tenant');
+      const { data: result, error } = await supabase
+        .from("hr_training_programs")
+        .insert({
+          tenant_id: tenantUuid,
+          name: data.name,
+          description: data.description ?? null,
+          duration_hours: data.duration_hours ?? null,
+          max_participants: data.max_participants ?? null,
+          status: "active",
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["training-programs", tenantUuid] });
+      toast.success("Training program created");
+    },
+    onError: () => toast.error("Failed to create program"),
+  });
+
+  return { programs, enrollments, enroll, createProgram };
 }
 
 // ═══════════════════════════════════════════════════════════
