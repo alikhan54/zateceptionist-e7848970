@@ -118,6 +118,11 @@ export default defineConfig({
       use: { browserName: 'chromium' }, // no setup dep — fresh login as Smart Ledger user
     },
     {
+      name: 'smart-ledger-jobs',
+      testMatch: /smart-ledger-jobs\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — fresh login as Smart Ledger user; D7-A CRUD verification
+    },
+    {
       name: 'cross-tenant-verification',
       testMatch: /cross-tenant-verification\.spec\.ts/,
       use: { browserName: 'chromium' }, // no setup dep — 6 industries, env-var credentials
