@@ -10,13 +10,62 @@ import { useClinicProducts, ClinicProduct } from "@/hooks/useClinicProducts";
 import { Package, AlertTriangle, DollarSign, Pencil, Minus, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+const PRODUCT_CATEGORIES = ["skincare", "haircare", "consumable", "device", "supplement", "other"];
+
 export default function Products() {
-  const { products, isLoading, lowStockProducts, totalValue, updateStock } = useClinicProducts();
+  const { products, isLoading, lowStockProducts, totalValue, updateStock, createProduct } = useClinicProducts();
   const { toast } = useToast();
   const [adjustProduct, setAdjustProduct] = useState<ClinicProduct | null>(null);
   const [adjustment, setAdjustment] = useState<number>(0);
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Phase 10A — Add Product dialog state
+  const [addOpen, setAddOpen] = useState(false);
+  const [addName, setAddName] = useState("");
+  const [addCategory, setAddCategory] = useState("skincare");
+  const [addBrand, setAddBrand] = useState("");
+  const [addPrice, setAddPrice] = useState("");
+  const [addStock, setAddStock] = useState("0");
+  const [creating, setCreating] = useState(false);
+
+  const resetAdd = () => {
+    setAddName(""); setAddCategory("skincare"); setAddBrand(""); setAddPrice(""); setAddStock("0");
+  };
+
+  const handleCreate = async () => {
+    const name = addName.trim();
+    if (!name) {
+      toast({ title: "Name required", description: "Please give the product a name", variant: "destructive" });
+      return;
+    }
+    const priceNum = parseFloat(addPrice);
+    if (isNaN(priceNum) || priceNum < 0) {
+      toast({ title: "Invalid price", description: "Enter a non-negative number", variant: "destructive" });
+      return;
+    }
+    const stockNum = parseInt(addStock, 10);
+    setCreating(true);
+    try {
+      await createProduct.mutateAsync({
+        name,
+        category: addCategory,
+        brand: addBrand.trim() || null,
+        price: priceNum,
+        currency: "AED",
+        stock_quantity: isNaN(stockNum) ? 0 : Math.max(0, stockNum),
+        min_stock_level: 5,
+        is_active: true,
+      } as any);
+      toast({ title: "Product added", description: `${name} → AED ${priceNum}` });
+      setAddOpen(false);
+      resetAdd();
+    } catch (err: any) {
+      toast({ title: "Could not create", description: err?.message || "Unknown error", variant: "destructive" });
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const openAdjust = (p: ClinicProduct) => {
     setAdjustProduct(p);
@@ -44,9 +93,14 @@ export default function Products() {
 
   return (
     <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Products</h1>
-        <p className="text-muted-foreground">Product inventory and skincare catalog</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Products</h1>
+          <p className="text-muted-foreground">Product inventory and skincare catalog</p>
+        </div>
+        <Button onClick={() => setAddOpen(true)} data-testid="add-product-button">
+          <Plus className="mr-2 h-4 w-4" /> Add Product
+        </Button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -139,6 +193,54 @@ export default function Products() {
           })}
         </div>
       )}
+
+      {/* Add Product dialog — Phase 10A */}
+      <Dialog open={addOpen} onOpenChange={(v) => { if (!v) { setAddOpen(false); resetAdd(); } }}>
+        <DialogContent className="max-w-md" data-testid="add-product-dialog">
+          <DialogHeader>
+            <DialogTitle>Add product</DialogTitle>
+            <DialogDescription>Add a new SKU to the product catalog.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="add-p-name">Name</Label>
+              <Input id="add-p-name" data-testid="add-product-name-input" value={addName} onChange={(e) => setAddName(e.target.value)} placeholder="e.g. Vitamin C Serum 30ml" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="add-p-category">Category</Label>
+              <select
+                id="add-p-category"
+                data-testid="add-product-category-input"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={addCategory}
+                onChange={(e) => setAddCategory(e.target.value)}
+              >
+                {PRODUCT_CATEGORIES.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="add-p-brand">Brand</Label>
+              <Input id="add-p-brand" data-testid="add-product-brand-input" value={addBrand} onChange={(e) => setAddBrand(e.target.value)} placeholder="(optional)" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="add-p-price">Price (AED)</Label>
+              <Input id="add-p-price" data-testid="add-product-price-input" type="number" step="1" min="0" value={addPrice} onChange={(e) => setAddPrice(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="add-p-stock">Opening stock</Label>
+              <Input id="add-p-stock" data-testid="add-product-stock-input" type="number" step="1" min="0" value={addStock} onChange={(e) => setAddStock(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setAddOpen(false); resetAdd(); }}>Cancel</Button>
+            <Button onClick={handleCreate} disabled={creating} data-testid="add-product-submit">
+              {creating ? "Adding..." : "Add product"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Adjust Stock dialog — Phase 5d J12 */}
       <Dialog open={!!adjustProduct} onOpenChange={(v) => !v && setAdjustProduct(null)}>

@@ -95,6 +95,18 @@ export default defineConfig({
       use: { browserName: 'chromium', storageState: STORAGE_PATH },
     },
     {
+      name: 'phase10a',
+      testMatch: /cosmique-phase10a-audit\.spec\.ts/,
+      dependencies: ['setup'],
+      use: { browserName: 'chromium', storageState: STORAGE_PATH },
+    },
+    {
+      name: 'phase10a-e2e',
+      testMatch: /cosmique-phase10a-e2e\.spec\.ts/,
+      dependencies: ['setup'],
+      use: { browserName: 'chromium', storageState: STORAGE_PATH },
+    },
+    {
       name: 'smart-ledger-verify',
       testMatch: /smart-ledger-verification\.spec\.ts/,
       use: { browserName: 'chromium' }, // no setup dep — fresh login as Smart Ledger user
@@ -146,6 +158,29 @@ export default defineConfig({
       use: {
         browserName: 'chromium',
         storageState: path.join(__dirname, 'tests', '.auth-state-zate.json'),
+      },
+    },
+    {
+      name: 'hr-e2e-round3',
+      testMatch: /hr-e2e-round3-interactive\.spec\.ts/,
+      dependencies: ['zate-setup'],
+      use: {
+        browserName: 'chromium',
+        storageState: path.join(__dirname, 'tests', '.auth-state-zate.json'),
+      },
+    },
+    {
+      name: 'settings-acsfx-setup',
+      testMatch: /settings-acsfx-auth\.setup\.ts/,
+      use: { browserName: 'chromium' },
+    },
+    {
+      name: 'settings-audit',
+      testMatch: /settings-audit\.spec\.ts/,
+      dependencies: ['settings-acsfx-setup'],
+      use: {
+        browserName: 'chromium',
+        storageState: path.join(__dirname, 'tests', '.auth-state-acsfx.json'),
       },
     },
   ],

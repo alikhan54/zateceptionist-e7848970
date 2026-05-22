@@ -8,11 +8,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useClinicTreatments, ClinicTreatment } from "@/hooks/useClinicTreatments";
-import { Clock, DollarSign, AlertCircle, CheckCircle, Pencil } from "lucide-react";
+import { Clock, DollarSign, AlertCircle, CheckCircle, Pencil, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+const KNOWN_CATEGORIES = ["aesthetics", "dermatology", "body", "hair", "skincare"];
+
 export default function Treatments() {
-  const { treatments, isLoading, categories, updateTreatment } = useClinicTreatments();
+  const { treatments, isLoading, categories, updateTreatment, createTreatment } = useClinicTreatments();
   const { toast } = useToast();
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [editTreatment, setEditTreatment] = useState<ClinicTreatment | null>(null);
@@ -20,6 +22,52 @@ export default function Treatments() {
   const [editDuration, setEditDuration] = useState<string>("");
   const [editDescription, setEditDescription] = useState<string>("");
   const [saving, setSaving] = useState(false);
+
+  // Phase 10A — Add Treatment dialog state
+  const [addOpen, setAddOpen] = useState(false);
+  const [addName, setAddName] = useState("");
+  const [addCategory, setAddCategory] = useState("aesthetics");
+  const [addPrice, setAddPrice] = useState("");
+  const [addDuration, setAddDuration] = useState("30");
+  const [addDescription, setAddDescription] = useState("");
+  const [creating, setCreating] = useState(false);
+
+  const resetAdd = () => {
+    setAddName(""); setAddCategory("aesthetics"); setAddPrice(""); setAddDuration("30"); setAddDescription("");
+  };
+
+  const handleCreate = async () => {
+    const name = addName.trim();
+    if (!name) {
+      toast({ title: "Name required", description: "Please give the treatment a name", variant: "destructive" });
+      return;
+    }
+    const priceNum = parseFloat(addPrice);
+    if (isNaN(priceNum) || priceNum < 0) {
+      toast({ title: "Invalid price", description: "Enter a non-negative number", variant: "destructive" });
+      return;
+    }
+    const durationNum = parseInt(addDuration, 10);
+    setCreating(true);
+    try {
+      await createTreatment.mutateAsync({
+        name,
+        category: addCategory,
+        price: priceNum,
+        duration_minutes: isNaN(durationNum) ? 30 : durationNum,
+        currency: "AED",
+        description: addDescription.trim() || null,
+        is_active: true,
+      } as any);
+      toast({ title: "Treatment added", description: `${name} → AED ${priceNum}` });
+      setAddOpen(false);
+      resetAdd();
+    } catch (err: any) {
+      toast({ title: "Could not create", description: err?.message || "Unknown error", variant: "destructive" });
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const openEdit = (t: ClinicTreatment) => {
     setEditTreatment(t);
@@ -63,9 +111,14 @@ export default function Treatments() {
 
   return (
     <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Treatments</h1>
-        <p className="text-muted-foreground">Treatment catalog and service management</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Treatments</h1>
+          <p className="text-muted-foreground">Treatment catalog and service management</p>
+        </div>
+        <Button onClick={() => setAddOpen(true)} data-testid="add-treatment-button">
+          <Plus className="mr-2 h-4 w-4" /> Add Treatment
+        </Button>
       </div>
 
       <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
@@ -149,6 +202,54 @@ export default function Treatments() {
           ))}
         </div>
       )}
+
+      {/* Add treatment dialog — Phase 10A */}
+      <Dialog open={addOpen} onOpenChange={(v) => { if (!v) { setAddOpen(false); resetAdd(); } }}>
+        <DialogContent className="max-w-md" data-testid="add-treatment-dialog">
+          <DialogHeader>
+            <DialogTitle>Add treatment</DialogTitle>
+            <DialogDescription>Create a new entry in the treatment catalog.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="add-name">Name</Label>
+              <Input id="add-name" data-testid="add-treatment-name-input" value={addName} onChange={(e) => setAddName(e.target.value)} placeholder="e.g. Microneedling Premium" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="add-category">Category</Label>
+              <select
+                id="add-category"
+                data-testid="add-treatment-category-input"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={addCategory}
+                onChange={(e) => setAddCategory(e.target.value)}
+              >
+                {KNOWN_CATEGORIES.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="add-price">Price (AED)</Label>
+              <Input id="add-price" data-testid="add-treatment-price-input" type="number" step="1" min="0" value={addPrice} onChange={(e) => setAddPrice(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="add-duration">Duration (minutes)</Label>
+              <Input id="add-duration" data-testid="add-treatment-duration-input" type="number" step="5" min="5" value={addDuration} onChange={(e) => setAddDuration(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="add-description">Description</Label>
+              <Textarea id="add-description" data-testid="add-treatment-description-input" rows={3} value={addDescription} onChange={(e) => setAddDescription(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setAddOpen(false); resetAdd(); }}>Cancel</Button>
+            <Button onClick={handleCreate} disabled={creating} data-testid="add-treatment-submit">
+              {creating ? "Adding..." : "Add treatment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit treatment dialog — Phase 5d J13 */}
       <Dialog open={!!editTreatment} onOpenChange={(v) => !v && setEditTreatment(null)}>
