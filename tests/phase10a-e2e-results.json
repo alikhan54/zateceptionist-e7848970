@@ -1,0 +1,26 @@
+[
+  {
+    "test": "10A.T.error_path",
+    "verdict": "PASS",
+    "notes": "submit with empty name does not close dialog"
+  },
+  {
+    "test": "10A.T.happy_path",
+    "verdict": "REAL_PASS",
+    "row_id": "114fda0a-7fe4-4577-b550-89c8efb1e483",
+    "name": "TEST_CC_PHASE10A_TreatmentX_1779486009104",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase10a-treatment-added.png"
+  },
+  {
+    "test": "10A.P.error_path",
+    "verdict": "PASS",
+    "notes": "submit with empty name does not close dialog"
+  },
+  {
+    "test": "10A.P.happy_path",
+    "verdict": "REAL_PASS",
+    "row_id": "89172093-8ec8-4517-97bd-2fb3c9efa15a",
+    "name": "TEST_CC_PHASE10A_ProductX_1779486021530",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase10a-product-added.png"
+  }
+]

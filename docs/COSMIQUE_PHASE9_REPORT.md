@@ -161,16 +161,28 @@ These need a future Phase that explicitly allocates schema-design + RLS + migrat
 
 ## E2E status
 
-**No e2e specs authored for Phase 9 builds this session.** Reason: per Phase 5d hardening pattern #8, e2e against ai.zatesystems.com can only flip REAL_PASS once Lovable rebuilds with commits `cb3942c` + `3b52000`. Authoring specs that pre-emptively DEPLOY_PENDING is acceptable (Phase 10A pattern) but consumes calls without verifying live behavior.
+**No phase9-specific spec was authored** (Phase 9 deferred spec writing per the original report). However, a **post-deploy bundle verification was performed 2026-05-23** confirming all Phase 9 testids reached production:
+
+| Chunk | Phase 9 testids present? |
+|---|---|
+| `PatientProfile-BezBv4EU.js` | ✓ `patient-edit-button`, `patient-book-button`, `photo-compare-dialog`, `photo-compare-slider` |
+| `Treatments-PzCOP_0n.js` | ✓ `create-package-button`, `create-package-dialog` (alongside Phase 10A `add-treatment-*`) |
+
+Bundle currently serving: `index-BePSPvf0.js` (advanced from prior `index-rR89d7sV.js`).
+
+**Indirect verification via Phase 10A spec post-deploy run**: the spec exercises `Treatments.tsx` + `Products.tsx`. Phase 9 C.1 lives in the same Treatments.tsx file as Phase 10A's Add Treatment; both share the same `createTreatment` mutation and `treatment-card-${id}` render path. Phase 10A run was 4/4 REAL_PASS in 46.2s with cleanup verified — so the surrounding page renders without regression, which is the strongest signal short of a dedicated phase9-e2e spec.
 
 **Phase 10B/11 should:**
-1. Wait for Lovable bundle to advance past current `index-rR89d7sV.js`
-2. Run a phase9-e2e spec covering all 8 ship paths (Edit Patient, Book Prefill, Compare Slider, Add Package, Save Quote, Doctors Page, AI Configs Page, Notification bell click)
-
-Specs reference for Phase 11:
-- `tests/cosmique-phase9-e2e.spec.ts` (to be authored)
-- 8-step PASS gate per build
-- TEST_CC_PHASE9_ prefix for any DB inserts
+1. Author `tests/cosmique-phase9-e2e.spec.ts` with 8-step PASS gate for each of the 8 ship paths:
+   - Edit Patient (PATCH clinic_patients + UI refresh)
+   - Book Prefill (navigate from PatientProfile → Appointments dialog auto-opens with correct customer pre-selected)
+   - Compare Slider (open Photos tab on a patient with both before+after photos → click Compare → range input drives split view)
+   - Create Package (multi-select 2+ singletons → set discount → submit → INSERT with category='package' + recommended_products=[ids])
+   - Save Quote (add line items → set discount/VAT → Save → INSERT into sales_leads with source='pricing_calculator')
+   - Doctors page renders cards
+   - AI Configs page renders cards + Training Log modal opens
+   - Notification bell click opens dropdown
+2. TEST_CC_PHASE9_ prefix for any DB inserts; cleanup in `finally`.
 
 ---
 

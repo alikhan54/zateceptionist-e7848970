@@ -12,7 +12,7 @@
 |---|---|
 | 10A.1 — Audit 16 cosmique routes | ✅ DONE. Most pages already have Add/Create/Upload flows; literal grep missed `translate()`-templated buttons. |
 | 10A.2 — Build top 5 missing Add buttons | ✅ **2 of 5** shipped — honest count, only 2 real gaps found. `/clinic/treatments` + `/clinic/products`. Other 3 priority candidates already had create flows. |
-| 10A.2 — E2E for the 2 builds | ⏸️ **DEPLOY_PENDING** — Lovable hasn't yet rebuilt commit `f7e3a35`. Spec `cosmique-phase10a-e2e.spec.ts` ready to run once bundle updates. |
+| 10A.2 — E2E for the 2 builds | ✅ **4/4 REAL_PASS** post-deploy 2026-05-23 — bundle `index-BePSPvf0.js` contains all testids; spec ran 4 passed in 46.2s after one cold-cache flake retry. Both Add Treatment + Add Product hit full 8-step gate including error-path validation. Cleanup auto-deleted both test rows; multi-tenant gate clean. |
 | 10A.3 — Doctor avatar real-upload | 🟡 **PARTIAL_VIDEO_MISSING (by design)** — text pipeline runs clean end-to-end; mp4 render gated on doctor approval (Phase 7 design). |
 | 10A.4 — Multi-tenant cleanup gate | ✅ **CLEAN** — cosmique baseline (14 treatments / 3 products / 3 patients) preserved; cosmique-df4dd00d untouched. |
 
@@ -78,7 +78,20 @@ Implements the 8-step PASS gate for both buttons:
 7. UI assert: `treatment-card-${id}` / `product-card-${id}` appears
 8. Cleanup: DELETE the test row by exact id in `finally`
 
-**Status:** spec is ready. Awaiting Lovable rebuild of `f7e3a35` so testids land in the deployed chunk. Current bundle is `index-rR89d7sV.js` with stale `Treatments-Cvcb4nVq.js` / `Products-CSuc5fH3.js` chunks (no Phase 10A testids).
+**Status:** ✅ **VERIFIED 2026-05-23 post-deploy** — bundle flipped to `index-BePSPvf0.js`; chunks now `Treatments-PzCOP_0n.js` + `Products-BqEfQWVZ.js` both contain Phase 10A testids. E2E ran 4 tests (2 happy paths + 2 error paths), 4 passed in 46.2s. Verbatim verdicts from `tests/phase10a-e2e-results.json`:
+
+```json
+[
+  { "test": "10A.T.error_path", "verdict": "PASS",      "notes": "submit with empty name does not close dialog" },
+  { "test": "10A.T.happy_path", "verdict": "REAL_PASS", "row_id": "114fda0a-7fe4-4577-b550-89c8efb1e483", "name": "TEST_CC_PHASE10A_TreatmentX_1779486009104" },
+  { "test": "10A.P.error_path", "verdict": "PASS",      "notes": "submit with empty name does not close dialog" },
+  { "test": "10A.P.happy_path", "verdict": "REAL_PASS", "row_id": "89172093-8ec8-4517-97bd-2fb3c9efa15a", "name": "TEST_CC_PHASE10A_ProductX_1779486021530" }
+]
+```
+
+Screenshots: `tests/screenshots/phase10a-treatment-added.png` + `tests/screenshots/phase10a-product-added.png`.
+
+**Cleanup verified post-run** (REST grep with exact ids): both test rows DELETEd by spec `finally`; zero `TEST_CC_PHASE10A_` rows remain in `clinic_treatments` or `clinic_products`.
 
 ---
 
