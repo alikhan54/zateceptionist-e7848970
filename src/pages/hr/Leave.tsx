@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
 import { AskAIButton } from '@/components/hr/AskAIButton';
-import { useLeaveBalance, useLeaveRequests, type LeaveBalance } from '@/hooks/useHR';
+import { useEmployees, useLeaveBalance, useLeaveRequests, type LeaveBalance } from '@/hooks/useHR';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,8 +45,10 @@ export default function LeavePage() {
   const { data: balances, isLoading: balanceLoading } = useLeaveBalance();
   const { data: requests, isLoading: requestsLoading, requestLeave, approveLeave } = useLeaveRequests();
   const { data: pendingRequests } = useLeaveRequests('pending');
-  
+  const { data: employees } = useEmployees();
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [employeeId, setEmployeeId] = useState('');
   const [leaveType, setLeaveType] = useState('');
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [isHalfDay, setIsHalfDay] = useState(false);
@@ -59,12 +61,13 @@ export default function LeavePage() {
   const displayPendingApprovals = pendingRequests || [];
 
   const handleSubmitLeave = () => {
-    if (!leaveType || !dateRange?.from) {
+    if (!employeeId || !leaveType || !dateRange?.from) {
       toast({ title: 'Please fill all required fields', variant: 'destructive' });
       return;
     }
-    
+
     requestLeave.mutate({
+      employee_id: employeeId,
       leave_type: leaveType,
       start_date: format(dateRange.from, 'yyyy-MM-dd'),
       end_date: dateRange.to ? format(dateRange.to, 'yyyy-MM-dd') : format(dateRange.from, 'yyyy-MM-dd'),
@@ -78,6 +81,7 @@ export default function LeavePage() {
   };
 
   const resetForm = () => {
+    setEmployeeId('');
     setLeaveType('');
     setDateRange(undefined);
     setIsHalfDay(false);
@@ -163,6 +167,22 @@ export default function LeavePage() {
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Employee *</Label>
+                  <Select value={employeeId} onValueChange={setEmployeeId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select employee" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(employees || []).map((emp) => (
+                        <SelectItem key={emp.id} value={emp.id}>
+                          {emp.full_name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim() || emp.company_email || emp.id}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div className="space-y-2">
                   <Label>Leave Type *</Label>
                   <Select value={leaveType} onValueChange={setLeaveType}>

@@ -386,6 +386,7 @@ export function useLeaveRequests(status?: string) {
 
   const requestLeave = useMutation({
     mutationFn: async (data: {
+      employee_id: string;
       leave_type: string;
       start_date: string;
       end_date: string;

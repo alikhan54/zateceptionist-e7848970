@@ -46,6 +46,7 @@ export default function LeaveManagementPage() {
     if (!leaveType || !dateRange?.from) return;
     
     requestLeave.mutate({
+      employee_id: '',
       leave_type: leaveType,
       start_date: format(dateRange.from, 'yyyy-MM-dd'),
       end_date: dateRange.to ? format(dateRange.to, 'yyyy-MM-dd') : format(dateRange.from, 'yyyy-MM-dd'),

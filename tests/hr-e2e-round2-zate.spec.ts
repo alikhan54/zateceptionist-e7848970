@@ -117,14 +117,16 @@ async function visitAndDiagnose(
   let hasErrBoundary = false;
 
   try {
-    const resp = await page.goto(route, { waitUntil: 'networkidle', timeout: 30_000 });
+    const resp = await page.goto(route, { waitUntil: 'domcontentloaded', timeout: 30_000 });
     httpStatus = resp?.status();
     loaded = true;
   } catch (e: any) {
     notes.push(`navigation: ${e.message}`);
   }
 
-  await page.waitForTimeout(2800);
+  // Settle wait — don't rely on networkidle (some prod pages keep long-poll connections open)
+  await page.waitForLoadState('networkidle', { timeout: 8_000 }).catch(() => {});
+  await page.waitForTimeout(2200);
   await dismissTutorialOverlay(page);
   await page.waitForTimeout(700);
 
