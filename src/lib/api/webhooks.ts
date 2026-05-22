@@ -193,6 +193,37 @@ export interface WebhookResponse<T = unknown> {
 /**
  * Call an N8N webhook endpoint (POST)
  */
+/**
+ * Mutation-safe wrapper around callWebhook.
+ *
+ * `callWebhook` always RESOLVES — it returns `{ success: false }` on HTTP
+ * failure rather than throwing. That works fine for queries where the
+ * caller inspects the result, but in TanStack Query mutations a resolved
+ * value (even one with success=false) triggers `onSuccess`, firing a
+ * misleading "Created!" toast even when nothing was created.
+ *
+ * Use this helper in `mutationFn`. It promotes BOTH layers of failure
+ * (HTTP error AND n8n's `{success:false}` body pattern) to thrown errors
+ * so the mutation's `onError` runs instead of `onSuccess`.
+ */
+export async function callWebhookOrThrow<T = unknown>(
+  endpoint: WebhookEndpoint | string,
+  data: object,
+  tenantId: string,
+): Promise<WebhookResponse<T>> {
+  const result = await callWebhook<T>(endpoint, data, tenantId);
+  if (!result.success) {
+    throw new Error(result.error || `Webhook ${endpoint} failed`);
+  }
+  // n8n pattern: HTTP 200 with body { success:false, error/message } indicates
+  // an app-level failure even though the HTTP layer succeeded.
+  const body = result.data as { success?: boolean; error?: string; message?: string } | undefined;
+  if (body && typeof body === 'object' && body.success === false) {
+    throw new Error(body.message || body.error || `Webhook ${endpoint} reported failure`);
+  }
+  return result;
+}
+
 export async function callWebhook<T = unknown>(
   endpoint: WebhookEndpoint | string,
   data: object,

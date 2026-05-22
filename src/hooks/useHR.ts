@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTenant } from "@/contexts/TenantContext";
 import { supabase } from "@/integrations/supabase/client";
 import { callWebhook } from "@/lib/webhook";
-import { WEBHOOKS } from "@/lib/api/webhooks";
+import { WEBHOOKS, callWebhookOrThrow } from "@/lib/api/webhooks";
 import { toast } from "sonner";
 
 // ═══════════════════════════════════════════════════════════
@@ -233,19 +233,19 @@ export function useEmployees() {
   const createEmployee = useMutation({
     mutationFn: async (employeeData: Partial<Employee>) => {
       if (!tenantUuid) throw new Error('No tenant');
-      return callWebhook(WEBHOOKS.EMPLOYEE_ONBOARDING, employeeData, tenantUuid);
+      return callWebhookOrThrow(WEBHOOKS.EMPLOYEE_ONBOARDING, employeeData, tenantUuid);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["employees", tenantUuid] });
       toast.success("Employee added successfully");
     },
-    onError: () => toast.error("Failed to add employee"),
+    onError: (e: any) => toast.error(`Failed to add employee: ${e?.message || 'unknown error'}`),
   });
 
   const updateEmployee = useMutation({
     mutationFn: async (data: Partial<Employee> & { id: string }) => {
       if (!tenantUuid) throw new Error('No tenant');
-      return callWebhook(WEBHOOKS.UPDATE_EMPLOYEE, data, tenantUuid);
+      return callWebhookOrThrow(WEBHOOKS.UPDATE_EMPLOYEE, data, tenantUuid);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["employees", tenantUuid] });
@@ -257,7 +257,7 @@ export function useEmployees() {
   const terminateEmployee = useMutation({
     mutationFn: async (data: { id: string; reason?: string; effective_date?: string }) => {
       if (!tenantUuid) throw new Error('No tenant');
-      return callWebhook(WEBHOOKS.TERMINATE_EMPLOYEE, data, tenantUuid);
+      return callWebhookOrThrow(WEBHOOKS.TERMINATE_EMPLOYEE, data, tenantUuid);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["employees", tenantUuid] });
@@ -310,7 +310,7 @@ export function useAttendance(date?: string) {
   const checkIn = useMutation({
     mutationFn: async (data: { employee_id: string; location?: { lat: number; lng: number } }) => {
       if (!tenantUuid) throw new Error('No tenant');
-      return callWebhook(WEBHOOKS.ATTENDANCE_CHECK_IN, data, tenantUuid);
+      return callWebhookOrThrow(WEBHOOKS.ATTENDANCE_CHECK_IN, data, tenantUuid);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["attendance", tenantUuid] });
@@ -322,7 +322,7 @@ export function useAttendance(date?: string) {
   const checkOut = useMutation({
     mutationFn: async (data: { employee_id: string }) => {
       if (!tenantUuid) throw new Error('No tenant');
-      return callWebhook(WEBHOOKS.ATTENDANCE_CHECK_OUT, data, tenantUuid);
+      return callWebhookOrThrow(WEBHOOKS.ATTENDANCE_CHECK_OUT, data, tenantUuid);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["attendance", tenantUuid] });
@@ -394,20 +394,20 @@ export function useLeaveRequests(status?: string) {
       is_half_day?: boolean;
     }) => {
       if (!tenantUuid) throw new Error('No tenant');
-      return callWebhook(WEBHOOKS.LEAVE_REQUEST, data, tenantUuid);
+      return callWebhookOrThrow(WEBHOOKS.LEAVE_REQUEST, data, tenantUuid);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["leave-requests", tenantUuid] });
       queryClient.invalidateQueries({ queryKey: ["leave-balance", tenantUuid] });
       toast.success("Leave request submitted");
     },
-    onError: () => toast.error("Failed to submit leave request"),
+    onError: (e: any) => toast.error(`Failed to submit leave: ${e?.message || 'unknown error'}`),
   });
 
   const approveLeave = useMutation({
     mutationFn: async (data: { leave_id: string; action: "approve" | "reject"; comments?: string }) => {
       if (!tenantUuid) throw new Error('No tenant');
-      return callWebhook(WEBHOOKS.LEAVE_APPROVE, data, tenantUuid);
+      return callWebhookOrThrow(WEBHOOKS.LEAVE_APPROVE, data, tenantUuid);
     },
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ["leave-requests", tenantUuid] });
