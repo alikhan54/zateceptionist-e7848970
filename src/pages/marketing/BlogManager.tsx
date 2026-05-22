@@ -15,7 +15,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, FileText, Eye, Sparkles, Clock, CheckCircle, PenTool, RotateCw, RefreshCw, Copy, Download, ExternalLink, Layout, Info, Palette, Film, HelpCircle } from "lucide-react";
+import { Plus, FileText, Eye, Sparkles, Clock, CheckCircle, PenTool, RotateCw, RefreshCw, Copy, Download, ExternalLink, Layout, Info, Palette, Film, HelpCircle, Pencil } from "lucide-react";
+import { EditBlogDialog } from "@/components/marketing/EditBlogDialog";
 import { useBrandVoice } from "@/hooks/useBrandVoice";
 import { RepurposeDialog } from "@/components/marketing/RepurposeDialog";
 import { SEOScoreWidget } from "@/components/marketing/SEOScoreWidget";
@@ -42,6 +43,8 @@ export default function BlogManager() {
   const [previewPost, setPreviewPost] = useState<any>(null);
   const [repurposeResult, setRepurposeResult] = useState<any>(null);
   const [repurposeDialogPost, setRepurposeDialogPost] = useState<any>(null);
+  // Phase 11 B.3 — Edit blog post
+  const [editPost, setEditPost] = useState<any>(null);
   const [creatingLPId, setCreatingLPId] = useState<string | null>(null);
 
   const { data: posts = [], isLoading } = useQuery({
@@ -469,6 +472,11 @@ export default function BlogManager() {
                       </Button>
                     )}
 
+                    {/* Phase 11 B.3 — Edit */}
+                    <Button size="sm" variant="outline" onClick={() => setEditPost(post)} data-testid={`blog-edit-${post.id}`}>
+                      <Pencil className="h-3 w-3 mr-1" /> Edit
+                    </Button>
+
                     {/* Public Link */}
                     {post.status === 'published' && (
                       <Button size="sm" variant="outline" asChild>
@@ -621,6 +629,12 @@ export default function BlogManager() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <EditBlogDialog
+        open={!!editPost}
+        onOpenChange={(v) => { if (!v) setEditPost(null); }}
+        post={editPost}
+      />
     </div>
   );
 }

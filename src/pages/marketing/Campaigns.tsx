@@ -74,6 +74,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { RepurposeDialog } from "@/components/marketing/RepurposeDialog";
+import { EditCampaignDialog } from "@/components/marketing/EditCampaignDialog";
 
 // Types
 interface Campaign {
@@ -196,6 +197,8 @@ export default function MarketingCampaigns() {
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [repurposeCampaign, setRepurposeCampaign] = useState<Campaign | null>(null);
+  // Phase 11 B.1 — Edit campaign
+  const [editCampaign, setEditCampaign] = useState<Campaign | null>(null);
 
   const getTypeIcon = (type: Campaign["type"]) => {
     const icons = {
@@ -829,7 +832,7 @@ export default function MarketingCampaigns() {
                               <Eye className="h-4 w-4 mr-2" />
                               View Details
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setEditCampaign(campaign)} data-testid={`campaign-edit-${campaign.id}`}>
                               <Edit className="h-4 w-4 mr-2" />
                               Edit
                             </DropdownMenuItem>
@@ -1039,6 +1042,12 @@ export default function MarketingCampaigns() {
           sourceTitle={repurposeCampaign.name || "Campaign"}
         />
       )}
+
+      <EditCampaignDialog
+        open={!!editCampaign}
+        onOpenChange={(v) => { if (!v) setEditCampaign(null); }}
+        campaign={editCampaign as any}
+      />
     </div>
   );
 }

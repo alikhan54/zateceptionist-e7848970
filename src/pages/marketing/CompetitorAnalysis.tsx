@@ -18,9 +18,10 @@ import { useToast } from '@/hooks/use-toast';
 import {
   Plus, Eye, Target, Lightbulb, BarChart3, Globe, Search,
   CheckCircle, Trash2, ExternalLink, Sparkles, RefreshCw,
-  AlertTriangle, Shield, Zap, FileText, Radar,
+  AlertTriangle, Shield, Zap, FileText, Radar, Pencil,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { EditCompetitorDialog } from '@/components/marketing/EditCompetitorDialog';
 
 // ─── Helper Components ───
 
@@ -66,6 +67,8 @@ export default function CompetitorAnalysis() {
   const queryClient = useQueryClient();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  // Phase 11 B.2 — Edit competitor
+  const [editComp, setEditComp] = useState<any | null>(null);
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
   const [isAnalyzingAll, setIsAnalyzingAll] = useState(false);
   const [isDiscovering, setIsDiscovering] = useState(false);
@@ -578,6 +581,9 @@ export default function CompetitorAnalysis() {
                         <Button size="sm" variant="outline" className="text-xs" disabled={analyzingId === comp.id} onClick={() => analyzeCompetitor(comp)}>
                           {analyzingId === comp.id ? <><RefreshCw className="h-3 w-3 mr-1 animate-spin" />Analyzing...</> : <><RefreshCw className="h-3 w-3 mr-1" />Analyze Now</>}
                         </Button>
+                        <Button size="sm" variant="ghost" className="text-xs" onClick={() => setEditComp(comp)} data-testid={`competitor-edit-${comp.id}`}>
+                          <Pencil className="h-3 w-3 mr-1" /> Edit
+                        </Button>
                         <Button size="sm" variant="ghost" className="text-xs text-destructive" onClick={() => setDeleteConfirm(comp.id)}>
                           <Trash2 className="h-3 w-3 mr-1" /> Delete
                         </Button>
@@ -959,6 +965,12 @@ export default function CompetitorAnalysis() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <EditCompetitorDialog
+        open={!!editComp}
+        onOpenChange={(v) => { if (!v) setEditComp(null); }}
+        competitor={editComp}
+      />
     </div>
   );
 }

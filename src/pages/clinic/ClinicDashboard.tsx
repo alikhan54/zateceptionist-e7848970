@@ -6,6 +6,7 @@ import { useClinicProducts } from "@/hooks/useClinicProducts";
 import { useHealthReports } from "@/hooks/useHealthReports";
 import { useReviewQueue } from "@/hooks/useReviewQueue";
 import { Users, Calendar, DollarSign, AlertTriangle, Syringe, Brain, ClipboardList, FileText } from "lucide-react";
+import { IndustryTab } from "@/components/pulse/IndustryTab";
 
 export default function ClinicDashboard() {
   const { patients, stats: patientStats, isLoading: pLoading } = useClinicPatients();
@@ -22,6 +23,11 @@ export default function ClinicDashboard() {
         <h1 className="text-3xl font-bold tracking-tight">Clinic Dashboard</h1>
         <p className="text-muted-foreground">Healthcare & Aesthetics Management</p>
       </div>
+
+      {/* Phase 11 Group A — Industry-specific Pulse tab (dispatches by tenant_config.industry).
+          Renders only when industry has a tab — otherwise null. ADDITIVE; existing
+          stat cards below are unchanged. */}
+      <IndustryTab />
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
