@@ -391,4 +391,15 @@ html {
   [data-sidebar="menu-button"] {
     min-height: 44px;
   }
+  /* Phase 13.B — collapsible section triggers (SALES AI, MARKETING AI, etc.).
+     SidebarGroupLabel becomes a tap target via Radix CollapsibleTrigger asChild.
+     shadcn default h-8 (32px) misses iOS 44px minimum → sections looked
+     unclickable on mobile. The [data-state] qualifier ensures we only
+     enlarge group-labels that are actually collapsible triggers (Radix
+     sets data-state="open|closed" on the asChild target). */
+  [data-sidebar="group-label"][data-state] {
+    min-height: 44px;
+    touch-action: manipulation;
+    cursor: pointer;
+  }
 }

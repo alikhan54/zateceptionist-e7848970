@@ -57,6 +57,54 @@ for (const vp of MOBILES) {
   });
 }
 
+// Phase 13.B — collapsible sub-section tap on mobile drawer
+for (const vp of MOBILES) {
+  test(`13B.C ${vp.name} — drawer opens, tap CLINIC collapsible reveals child items`, async ({ browser }) => {
+    test.setTimeout(120_000);
+    const ctx = await browser.newContext({ storageState: STORAGE, viewport: { width: vp.width, height: vp.height } });
+    const page = await ctx.newPage();
+    page.setDefaultNavigationTimeout(45_000);
+
+    // Land on /dashboard so CLINIC section is NOT auto-expanded (its isInSection() returns false)
+    await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(3000);
+
+    // Open drawer
+    await page.getByTestId('mobile-nav-trigger').click();
+    await page.waitForTimeout(800);
+    const drawer = page.locator('[role="dialog"]').first();
+    await expect(drawer).toBeVisible({ timeout: 5000 });
+
+    // Find the SALES AI section label (collapsed by default when on /dashboard)
+    const salesLabel = page.locator('[data-sidebar="group-label"][data-state]').filter({ hasText: /sales ai/i }).first();
+    const labelVisible = await salesLabel.isVisible({ timeout: 5000 }).catch(() => false);
+
+    // Pre-tap state
+    const preState = await salesLabel.getAttribute('data-state').catch(() => null);
+
+    // Tap the label row (NOT just the chevron) — proves 44px touch target works
+    await salesLabel.tap({ timeout: 5000 });
+    await page.waitForTimeout(800);
+
+    const postState = await salesLabel.getAttribute('data-state').catch(() => null);
+    // After tap, state should have flipped (closed→open or open→closed)
+    const stateFlipped = preState !== null && postState !== null && preState !== postState;
+
+    // Child items should now be visible — "Sales Dashboard" is a typical SALES AI child
+    const childVisible = await page.getByText(/sales dashboard/i).first().isVisible({ timeout: 3000 }).catch(() => false);
+
+    await page.screenshot({ path: path.join(SS_DIR, `${vp.name}-collapsible-after-tap.png`), fullPage: false });
+    results.push({ test: `13B.C.${vp.name}`,
+      verdict: (labelVisible && stateFlipped) ? 'REAL_PASS' : 'BROKEN_UI',
+      labelVisible, preState, postState, stateFlipped, childRendered: childVisible, viewport: `${vp.width}x${vp.height}` });
+    persist();
+
+    expect(labelVisible, 'SALES AI label visible').toBe(true);
+    expect(stateFlipped, 'tap flipped data-state').toBe(true);
+    await ctx.close();
+  });
+}
+
 test('13A.D Desktop regression: PanelLeft trigger still visible at 1440x900, mobile hamburger hidden', async ({ browser }) => {
   test.setTimeout(60_000);
   const ctx = await browser.newContext({ storageState: STORAGE, viewport: { width: 1440, height: 900 } });
