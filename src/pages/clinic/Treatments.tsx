@@ -1,4 +1,11 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useBulkSelect } from "@/hooks/useBulkSelect";
+import { BulkActionBar } from "@/components/shared/BulkActionBar";
+import { FilterBar } from "@/components/shared/FilterBar";
+import { Checkbox } from "@/components/ui/checkbox";
+import { supabase } from "@/integrations/supabase/client";
+import { useTenant } from "@/contexts/TenantContext";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -162,7 +169,45 @@ export default function Treatments() {
     }
   };
 
-  const filtered = selectedCategory === "all" ? treatments : treatments.filter(t => t.category === selectedCategory);
+  // Phase 12.C — bulk + search filter (sort by name/price)
+  const { tenantId } = useTenant();
+  const queryClient = useQueryClient();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState("name");
+  const [bulkBusy, setBulkBusy] = useState(false);
+
+  const filtered = useMemo(() => {
+    let list = selectedCategory === "all" ? treatments : treatments.filter(t => t.category === selectedCategory);
+    const q = searchQuery.trim().toLowerCase();
+    if (q) list = list.filter(t => (t.name + " " + (t.description || "")).toLowerCase().includes(q));
+    return [...list].sort((a, b) => {
+      if (sortBy === "price") return (b.price || 0) - (a.price || 0);
+      if (sortBy === "duration") return (b.duration_minutes || 0) - (a.duration_minutes || 0);
+      return (a.name || "").localeCompare(b.name || "");
+    });
+  }, [treatments, selectedCategory, searchQuery, sortBy]);
+
+  const bulk = useBulkSelect<string>(filtered.map(t => t.id));
+
+  const handleBulkArchive = async () => {
+    if (bulk.count === 0) return;
+    setBulkBusy(true);
+    try {
+      const { error } = await supabase
+        .from("clinic_treatments" as any)
+        .update({ is_active: false, updated_at: new Date().toISOString() } as any)
+        .in("id", bulk.selectedIds)
+        .eq("tenant_id", tenantId);
+      if (error) throw error;
+      toast({ title: `Archived ${bulk.count} treatment${bulk.count === 1 ? "" : "s"}` });
+      bulk.clear();
+      queryClient.invalidateQueries({ queryKey: ["clinic_treatments", tenantId] });
+    } catch (err: any) {
+      toast({ title: "Bulk archive failed", description: err?.message || "Unknown error", variant: "destructive" });
+    } finally {
+      setBulkBusy(false);
+    }
+  };
 
   const categoryLabels: Record<string, string> = {
     aesthetics: "Aesthetics", dermatology: "Dermatology", body: "Body", hair: "Hair", skincare: "Skincare",
@@ -196,6 +241,22 @@ export default function Treatments() {
         </TabsList>
       </Tabs>
 
+      <FilterBar
+        value={searchQuery}
+        onSearch={setSearchQuery}
+        placeholder="Search treatments by name or description…"
+        sort={{
+          value: sortBy,
+          onChange: setSortBy,
+          options: [
+            { value: "name", label: "Sort: name (A→Z)" },
+            { value: "price", label: "Sort: price (high→low)" },
+            { value: "duration", label: "Sort: duration" },
+          ],
+        }}
+        testidPrefix="treatments-filter"
+      />
+
       {isLoading ? (
         <p className="text-muted-foreground">Loading treatments...</p>
       ) : (
@@ -204,7 +265,15 @@ export default function Treatments() {
             <Card key={treatment.id} data-testid={`treatment-card-${treatment.id}`}>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">{treatment.name}</CardTitle>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Checkbox
+                      checked={bulk.isSelected(treatment.id)}
+                      onCheckedChange={() => bulk.toggleId(treatment.id)}
+                      data-testid={`treatment-select-${treatment.id}`}
+                      aria-label={`Select ${treatment.name}`}
+                    />
+                    <CardTitle className="text-lg truncate">{treatment.name}</CardTitle>
+                  </div>
                   <div className="flex items-center gap-2">
                     <Badge>{treatment.category}</Badge>
                     <Button
@@ -445,6 +514,14 @@ export default function Treatments() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <BulkActionBar
+        count={bulk.count}
+        onClear={bulk.clear}
+        onArchive={handleBulkArchive}
+        busy={bulkBusy}
+        entityNoun="treatment"
+      />
     </div>
   );
 }

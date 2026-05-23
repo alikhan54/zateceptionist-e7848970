@@ -1,4 +1,11 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useBulkSelect } from "@/hooks/useBulkSelect";
+import { BulkActionBar } from "@/components/shared/BulkActionBar";
+import { FilterBar } from "@/components/shared/FilterBar";
+import { Checkbox } from "@/components/ui/checkbox";
+import { supabase } from "@/integrations/supabase/client";
+import { useTenant } from "@/contexts/TenantContext";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -34,6 +41,45 @@ export default function Patients() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [newPatient, setNewPatient] = useState({ full_name: "", phone: "", email: "", gender: "female", skin_type: "", preferred_contact: "whatsapp" });
   const { patients, isLoading, stats, createPatient } = useClinicPatients(searchTerm);
+
+  // Phase 12.C — bulk + filter
+  const { tenantId } = useTenant();
+  const queryClient = useQueryClient();
+  const [sortBy, setSortBy] = useState("created");
+  const [bulkBusy, setBulkBusy] = useState(false);
+
+  const sortedPatients = useMemo(() => {
+    return [...patients].sort((a: any, b: any) => {
+      if (sortBy === "name") return (a.full_name || "").localeCompare(b.full_name || "");
+      if (sortBy === "spent") return (b.total_spent || 0) - (a.total_spent || 0);
+      return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+    });
+  }, [patients, sortBy]);
+
+  const bulk = useBulkSelect<string>(sortedPatients.map((p: any) => p.id));
+
+  const handleBulkArchive = async () => {
+    if (bulk.count === 0) return;
+    setBulkBusy(true);
+    try {
+      // clinic_patients doesn't have is_active per schema; use tags instead — non-destructive.
+      // Tag each selected patient with "archived" to mark.
+      for (const id of bulk.selectedIds) {
+        const row = patients.find((p: any) => p.id === id);
+        if (!row) continue;
+        const tags = Array.isArray(row.tags) ? row.tags : [];
+        if (!tags.includes("archived")) tags.push("archived");
+        await supabase.from("clinic_patients" as any).update({ tags, updated_at: new Date().toISOString() } as any).eq("id", id).eq("tenant_id", tenantId);
+      }
+      toast({ title: `Archived ${bulk.count} patient${bulk.count === 1 ? "" : "s"}` });
+      bulk.clear();
+      queryClient.invalidateQueries({ queryKey: ["clinic_patients"] });
+    } catch (err: any) {
+      toast({ title: "Bulk archive failed", description: err?.message || "Unknown error", variant: "destructive" });
+    } finally {
+      setBulkBusy(false);
+    }
+  };
   const { toast } = useToast();
 
   const handleExportCsv = () => {
@@ -153,13 +199,29 @@ export default function Patients() {
         <Card><CardContent className="pt-6"><div className="text-2xl font-bold">AED {stats.totalRevenue.toLocaleString()}</div><p className="text-xs text-muted-foreground">Total Revenue</p></CardContent></Card>
       </div>
 
+      <FilterBar
+        value={searchTerm}
+        onSearch={setSearchTerm}
+        placeholder="Search patients by name or phone…"
+        sort={{
+          value: sortBy,
+          onChange: setSortBy,
+          options: [
+            { value: "created", label: "Sort: newest first" },
+            { value: "name", label: "Sort: name (A→Z)" },
+            { value: "spent", label: "Sort: lifetime spend" },
+          ],
+        }}
+        testidPrefix="patients-filter"
+      />
+
       {isLoading ? (
         <p className="text-muted-foreground">Loading patients...</p>
       ) : patients.length === 0 ? (
         <Card><CardContent className="py-8 text-center text-muted-foreground">No patients found. Add your first patient to get started.</CardContent></Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {patients.map((patient) => (
+          {sortedPatients.map((patient) => (
             <Card
               key={patient.id}
               role="link"
@@ -177,7 +239,20 @@ export default function Patients() {
             >
               <CardContent className="pt-6">
                 <div className="flex items-start justify-between mb-3">
-                  <div className="min-w-0">
+                  <div className="flex items-start gap-2 min-w-0">
+                    <span
+                      onClick={(e) => { e.stopPropagation(); }}
+                      onKeyDown={(e) => { e.stopPropagation(); }}
+                      className="pt-0.5"
+                    >
+                      <Checkbox
+                        checked={bulk.isSelected(patient.id)}
+                        onCheckedChange={() => bulk.toggleId(patient.id)}
+                        data-testid={`patient-select-${patient.id}`}
+                        aria-label={`Select ${patient.full_name}`}
+                      />
+                    </span>
+                    <div className="min-w-0">
                     <h3 className="font-semibold flex items-center gap-1.5">
                       {patient.full_name}
                       <ChevronRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -190,6 +265,7 @@ export default function Patients() {
                         <Mail className="h-3 w-3" /> {patient.email}
                       </div>
                     )}
+                  </div>
                   </div>
                   <Badge variant={patient.loyalty_tier === 'VIP' ? 'default' : 'outline'}>{patient.loyalty_tier}</Badge>
                 </div>
@@ -219,6 +295,14 @@ export default function Patients() {
           ))}
         </div>
       )}
+
+      <BulkActionBar
+        count={bulk.count}
+        onClear={bulk.clear}
+        onArchive={handleBulkArchive}
+        busy={bulkBusy}
+        entityNoun="patient"
+      />
     </div>
   );
 }
