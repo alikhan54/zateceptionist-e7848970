@@ -1,0 +1,15 @@
+[
+  {
+    "test": "13B.STYLE",
+    "verdict": "REAL_PASS",
+    "minHeight": "44px",
+    "touchAction": "manipulation"
+  },
+  {
+    "test": "13A.D.desktop",
+    "verdict": "REAL_PASS",
+    "mobileHamburgerHidden": true,
+    "desktopTriggerVisible": true,
+    "sidebarVisible": true
+  }
+]

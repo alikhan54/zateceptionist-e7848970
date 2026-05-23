@@ -78,19 +78,17 @@ for (const vp of MOBILES) {
     const drawer = page.locator('[role="dialog"]').first();
     await expect(drawer).toBeVisible({ timeout: 5000 });
 
-    // Find the SALES AI section label (collapsed by default when on /dashboard)
-    const salesLabel = page.locator('[data-sidebar="group-label"][data-state]').filter({ hasText: /sales ai/i }).first();
+    // Phase 13.C — CollapsibleTrigger now renders a native <button> with
+    // data-state directly on it. The button's accessible name isn't reliably
+    // computed from nested span text (no aria-label), so we use attribute
+    // selector + text filter on the parent button element.
+    const salesLabel = page.locator('button[data-state]').filter({ hasText: /sales ai/i }).first();
     const labelVisible = await salesLabel.isVisible({ timeout: 5000 }).catch(() => false);
 
-    // Pre-tap state
+    // Pre-tap state (read from the native button's data-state)
     const preState = await salesLabel.getAttribute('data-state').catch(() => null);
 
-    // Click the label row (Playwright's tap() doesn't reliably trigger Radix
-    // CollapsibleTrigger's onOpenChange via Slot when asChild target is a div;
-    // click() emulates a real user interaction at the same coordinates with
-    // a synthetic click event Radix recognises. The 44px CSS fix is
-    // separately verified by inspecting the deployed computed style — see
-    // 13B.STYLE test below.)
+    // Click the label row — native button onClick=Radix.onOpenToggle now fires reliably
     await salesLabel.click({ timeout: 5000 });
     await page.waitForTimeout(800);
 
