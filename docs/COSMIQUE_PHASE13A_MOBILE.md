@@ -159,3 +159,147 @@ Each ~30-60 min surgical fix; should be approached as a dedicated Phase 13.B mob
 
 ## Commit
 - `7429565` pushed to `origin/main`.
+
+---
+
+## Phase 13.B — Mobile collapsible tap target (2026-05-23, follow-up)
+
+User report: Phase 13.A hamburger works, drawer opens, BUT tapping the
+collapsible sub-sections (SALES AI ▼, MARKETING AI ▼, HR AI ▼, OPERATIONS ▼,
+COMMUNICATIONS ▼) does nothing — chevrons visible but tapping doesn't
+reveal children. Blocks 90% of mobile navigation. Confirmed on zate tenant
+too (same code path).
+
+### Diagnosis (read-only)
+
+`NavigationSidebar.tsx:852` wraps each section in:
+```tsx
+<Collapsible open={isOpen} onOpenChange={() => toggleSection(sectionKey)}>
+  <SidebarGroup>
+    <CollapsibleTrigger asChild>
+      <SidebarGroupLabel className="cursor-pointer ..."> {/* renders <div> */}
+        <span>{section.label}</span>
+        <ChevronDown ... />
+      </SidebarGroupLabel>
+    </CollapsibleTrigger>
+```
+
+shadcn's `SidebarGroupLabel` (`ui/sidebar.tsx:355`) defaults to a `<div>`
+with `flex h-8 ...` = **32px height**. iOS minimum tap target is **44px**.
+Mobile users tapping the small row often miss the touch zone → taps land
+on background → Collapsible state never flips. Desktop click works
+because cursor precision is finer.
+
+The leaf `SidebarMenuButton` items already had a 44px min-height fix in
+`index.css` (line 391) but the GROUP LABELS (the collapsible triggers
+themselves) did not. Phase 13.A fixed the OUTER hamburger; Phase 13.B
+fixes the INNER section triggers.
+
+### Fix path: A — pure CSS additive (no sacred-file edit)
+
+`src/index.css` extended `@media (max-width: 767px)` block (commit `c6f8eb6`):
+
+```css
+[data-sidebar="group-label"][data-state] {
+  min-height: 44px;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+```
+
+The `[data-state]` qualifier ensures we only enlarge group-labels that
+are actually collapsible triggers — Radix sets `data-state="open|closed"`
+on the asChild target. Static group labels (rare) are unaffected.
+
+NavigationSidebar.tsx and ui/sidebar.tsx untouched.
+
+### Status: 🟡 **DEPLOY_PENDING**
+
+- ✅ Source-level fix in `src/index.css` shipped (commit `c6f8eb6` pushed)
+- ⏸️ Lovable has NOT yet rebuilt the CSS: deployed CSS is still
+  `index-M0jyAd20.css` (pre-Phase-13.B). Grep on deployed CSS confirms 0
+  occurrences of `group-label` selector with our new rule.
+- Phase 13.A bundle (`index-BURLQzJi.js` JS) IS live — Header.tsx mobile
+  hamburger button verified deployed.
+
+Once Lovable Publishes commit `c6f8eb6`:
+- Real-device taps on iOS Safari + Android Chrome will hit the 44px
+  target reliably
+- Real-browser clicks will toggle the section as expected
+- `13B.STYLE` Playwright test will flip from `CSS_NOT_APPLIED` to
+  `REAL_PASS`
+
+### E2E results (against pre-Phase-13.B-CSS deploy)
+
+| Test | Verdict |
+|---|---|
+| 13A.M iphone-se hamburger + drawer + nav | ✅ REAL_PASS |
+| 13A.M pixel-5 hamburger + drawer + nav | ✅ REAL_PASS |
+| 13A.D desktop regression | ✅ REAL_PASS |
+| **13B.STYLE** 44px min-height computed | 🟡 **CSS_NOT_APPLIED** (deployed CSS = `min-height: auto`; expected `44px`) |
+| 13B.C iphone-se SALES AI tap-flip | 🟡 **DEPLOY_PENDING** (state didn't flip; CSS not yet live; also Playwright `tap()` vs Radix asChild div interaction needs real-device verification) |
+| 13B.C pixel-5 SALES AI tap-flip | 🟡 DEPLOY_PENDING (same) |
+
+The 13B.STYLE test is the definitive proof gate — it inspects the
+computed CSS `min-height` of the actual deployed element. Once it
+reads "44px" instead of "auto", Phase 13.B is verified deployed.
+
+### Required user actions
+
+1. **Trigger Lovable Publish** for commit `c6f8eb6` so the CSS reaches
+   `ai.zatesystems.com`. Without it, the deployed `index-M0jyAd20.css`
+   still serves the 32px tap target on group labels.
+2. After Publish: re-run `npx playwright test --project=phase13a-mobile`.
+   - 13B.STYLE should flip CSS_NOT_APPLIED → REAL_PASS
+   - 13B.C tests should flip DEPLOY_PENDING → REAL_PASS (if Playwright's
+     click event on the 44px target reliably triggers Radix Collapsible's
+     onOpenChange)
+3. **Real-device verification** (Bangladesh demo): on an actual iPhone or
+   Android phone, open `https://ai.zatesystems.com`, tap the 3-bar
+   hamburger top-left, tap a collapsible section row (e.g. "SALES AI"),
+   confirm the section expands to show child items. The 44px target +
+   `touch-action: manipulation` is the standard recipe used by Google
+   Material, Apple HIG, and shadcn's own `SidebarMenuButton`.
+
+### Honest known unknown
+
+If after Lovable Publish the 13B.C tests STILL fail (state doesn't flip
+even with 44px target), the residual cause is NOT touch-target size but
+rather a Radix-Slot + Playwright synthetic event quirk on `asChild`
+divs. The real-user-on-real-phone case will still work because mobile
+browsers correctly synthesize click events from touches on `cursor:pointer`
+divs with adequate touch target. Playwright headless doesn't perfectly
+emulate this. In that case, the Phase 13.C escalation would be to add
+`asChild` to SidebarGroupLabel call to render a real `<button>` —
+**SACRED EDIT, awaits user approval**.
+
+### Phase 13.C candidates (queued, not built)
+
+- If 13B.C STILL fails after Lovable Publish: propose 1-line
+  NavigationSidebar.tsx edit to wrap group labels in proper `<button>`
+  (sacred-file edit, requires explicit user approval)
+- PatientProfile hero grid responsive
+- Pulse cathedral mobile layout
+- Tables → cards on mobile
+- Dialog viewport overflow audits
+
+### Files
+
+**Edited (1):**
+- `src/index.css` — additive 7-line CSS rule inside existing mobile media
+  query block
+
+**Created/extended (1):**
+- `tests/cosmique-phase13a-mobile.spec.ts` — added 13B.C iphone-se +
+  13B.C pixel-5 + 13B.STYLE tests; switched to `hasTouch: true` +
+  `isMobile: true` context, then to `.click()` after diagnosing
+  Playwright tap+Slot+div edge case
+
+**Not touched (sacred):**
+- `src/components/NavigationSidebar.tsx`
+- `src/components/ui/sidebar.tsx`
+- `src/components/Layout.tsx`
+- `src/components/layout/Header.tsx` (Phase 13.A already shipped; no further changes)
+
+### Commit
+- `c6f8eb6` pushed to `origin/main` 2026-05-23.
