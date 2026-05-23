@@ -851,7 +851,7 @@ export function NavigationSidebar() {
     return (
       <Collapsible open={isOpen} onOpenChange={() => toggleSection(sectionKey)}>
         <SidebarGroup>
-          <CollapsibleTrigger asChild>
+          <CollapsibleTrigger className="block w-full text-left min-h-[44px] md:min-h-0 outline-none rounded-md focus-visible:ring-2 focus-visible:ring-sidebar-ring">
             <SidebarGroupLabel className="cursor-pointer hover:bg-sidebar-accent/50 rounded-md px-2 py-1.5 flex items-center justify-between transition-colors">
               <span className="text-xs font-semibold uppercase tracking-wider">{section.label}</span>
               <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", isOpen && "rotate-180")} />
