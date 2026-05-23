@@ -11,6 +11,8 @@ import { useClinicPatient } from "@/hooks/useClinicPatient";
 import { AddPrescriptionDialog } from "@/components/clinic/AddPrescriptionDialog";
 import { PatientPhotosTab } from "@/components/clinic/PatientPhotosTab";
 import { EditPatientDialog } from "@/components/clinic/EditPatientDialog";
+import { PatientFilesTab } from "@/components/clinic/PatientFilesTab";
+import { PatientNotesTab } from "@/components/clinic/PatientNotesTab";
 import { useTenant } from "@/contexts/TenantContext";
 import {
   ArrowLeft, Phone, Mail, Cake, User, Stethoscope, Activity,
@@ -451,31 +453,26 @@ export default function PatientProfile() {
           {patientId && <PatientPhotosTab patientId={patientId} tenantUuid={tenantUuid} />}
         </TabsContent>
 
-        {/* Files */}
+        {/* Files — Phase 12.B */}
         <TabsContent value="files">
-          <EmptyState
-            icon={<BookOpen className="h-10 w-10" />}
-            title="No files uploaded"
-            body="Medical reports, lab results, and other documents will appear here once uploaded."
-          />
+          <PatientFilesTab patientId={patient.id} tenantUuid={tenantUuid} />
         </TabsContent>
 
-        {/* Notes */}
+        {/* Notes — Phase 12.B */}
         <TabsContent value="notes">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Pencil className="h-4 w-4 text-muted-foreground" /> Practitioner notes
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {patient.notes ? (
+          <PatientNotesTab patientId={patient.id} />
+          {patient.notes && (
+            <Card className="mt-4">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Pencil className="h-4 w-4 text-muted-foreground" /> Legacy intake notes
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
                 <p className="text-sm whitespace-pre-line leading-relaxed">{patient.notes}</p>
-              ) : (
-                <p className="text-sm text-muted-foreground">No notes recorded for this patient.</p>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
           {(patient.preferred_practitioner || patient.preferred_contact) && (
             <>
               <Separator className="my-4" />

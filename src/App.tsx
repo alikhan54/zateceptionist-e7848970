@@ -38,6 +38,8 @@ const ProposalDetail = lazy(() => import("./pages/sales/ProposalDetail"));
 const SalesAnalytics = lazy(() => import("./pages/sales/Analytics"));
 const PricingCalculator = lazy(() => import("./pages/sales/PricingCalculator"));
 const ClinicDoctors = lazy(() => import("./pages/clinic/Doctors"));
+const ConsentForms = lazy(() => import("./pages/clinic/ConsentForms"));
+const Testimonials = lazy(() => import("./pages/marketing/Testimonials"));
 const AIConfigsPage = lazy(() => import("./pages/settings/AIConfigs"));
 const Forecasting = lazy(() => import("./pages/sales/Forecast"));
 const LtvCac = lazy(() => import("./pages/sales/LtvCac"));
@@ -1275,6 +1277,22 @@ const App = () => (
                     element={
                       <LazyPage>
                         <ClinicDoctors />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/clinic/consent-forms"
+                    element={
+                      <LazyPage>
+                        <ConsentForms />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/marketing/testimonials"
+                    element={
+                      <LazyPage>
+                        <Testimonials />
                       </LazyPage>
                     }
                   />
