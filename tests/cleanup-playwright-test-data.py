@@ -199,6 +199,24 @@ if d > 0:
     total_deleted += d
     print(f"  sweep removed {d} rows from hr_job_requisitions (description)")
 
+# Round 6 also: Gemini-rewritten jobs from URL mode (T4) can land with
+# title "N/A" + description starting with "Example Domain" (example.com
+# scrape). And T3 text-mode jobs can become "DevOps Engineer" without
+# any PW-HIRE-TEST tag because Gemini condenses our description.
+# Catch these by URL pattern in description OR known Gemini-generic title.
+for pattern, desc in [
+    ("job_description=ilike.%Example%Domain%", "Example Domain (T4 URL probe)"),
+    ("job_title=eq.N%2FA", "N/A (T4 URL probe title)"),
+]:
+    d = delete_where(
+        "hr_job_requisitions",
+        f"{pattern}&tenant_id=eq.{TENANT_UUID}",
+        f"sweep jobs-T4 [{desc}]",
+    )
+    if d > 0:
+        total_deleted += d
+        print(f"  sweep removed {d} rows from hr_job_requisitions [{desc}]")
+
 print(f"\nTotal rows deleted: {total_deleted}")
 
 # Confirm baselines
