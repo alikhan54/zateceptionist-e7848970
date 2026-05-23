@@ -154,6 +154,51 @@ for tbl, col in [
         total_deleted += d
         print(f"  sweep removed {d} rows from {tbl}")
 
+# Round 6 — sweep for PW-HIRE-TEST + PWHire patterns (hiring pipeline spec)
+for tbl, col in [
+    ("hr_employees", "first_name"),
+    ("hr_job_requisitions", "job_title"),
+    ("hr_candidates", "first_name"),
+]:
+    d = delete_where(
+        tbl,
+        f"{col}=like.{urllib.parse.quote('%PW-HIRE-TEST%')}&tenant_id=eq.{TENANT_UUID}",
+        f"sweep {tbl}-PW",
+    )
+    if d > 0:
+        total_deleted += d
+        print(f"  sweep removed {d} rows from {tbl} (PW-HIRE-TEST)")
+# Also sweep PWHireTest candidates (no dash variant we use in spec)
+d = delete_where(
+    "hr_candidates",
+    f"first_name=eq.PWHireTest&tenant_id=eq.{TENANT_UUID}",
+    "sweep candidates PWHireTest",
+)
+if d > 0: total_deleted += d
+# And sweep by email patterns
+for tbl, col in [("hr_candidates", "email"), ("hr_employees", "company_email")]:
+    d = delete_where(
+        tbl,
+        f"{col}=like.{urllib.parse.quote('%pw-hire-test%')}&tenant_id=eq.{TENANT_UUID}",
+        f"sweep {tbl}-email",
+    )
+    if d > 0:
+        total_deleted += d
+        print(f"  sweep removed {d} rows from {tbl} (email)")
+
+# Round 6 — sweep any hr_job_requisitions row whose description contains
+# PW-HIRE-TEST. Gemini extraction can rewrite the job_title (e.g. our
+# "PW-HIRE-TEST Text DevOps" → "DevOps Engineer") so we also check the
+# description field which preserves our tag.
+d = delete_where(
+    "hr_job_requisitions",
+    f"job_description=ilike.{urllib.parse.quote('%PW-HIRE-TEST%')}&tenant_id=eq.{TENANT_UUID}",
+    "sweep jobs-by-description",
+)
+if d > 0:
+    total_deleted += d
+    print(f"  sweep removed {d} rows from hr_job_requisitions (description)")
+
 print(f"\nTotal rows deleted: {total_deleted}")
 
 # Confirm baselines

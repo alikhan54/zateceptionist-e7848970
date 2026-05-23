@@ -361,6 +361,8 @@ export default function RecruitmentPage() {
       payload.department_id = departmentId || null;
       payload.priority = priority;
     } else if (inputMode === 'text') {
+      // Webhook expects 'description' field; keep raw_text for any legacy consumers.
+      payload.description = rawText;
       payload.raw_text = rawText;
       payload.department_id = departmentId || null;
       payload.priority = priority;
@@ -2171,31 +2173,31 @@ export default function RecruitmentPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>First Name *</Label>
-                <Input value={candidateForm.first_name} onChange={(e) => setCandidateForm((f) => ({ ...f, first_name: e.target.value }))} />
+                <Input placeholder="e.g. Jane" value={candidateForm.first_name} onChange={(e) => setCandidateForm((f) => ({ ...f, first_name: e.target.value }))} />
               </div>
               <div className="space-y-2">
                 <Label>Last Name *</Label>
-                <Input value={candidateForm.last_name} onChange={(e) => setCandidateForm((f) => ({ ...f, last_name: e.target.value }))} />
+                <Input placeholder="e.g. Smith" value={candidateForm.last_name} onChange={(e) => setCandidateForm((f) => ({ ...f, last_name: e.target.value }))} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Email</Label>
-                <Input type="email" value={candidateForm.email} onChange={(e) => setCandidateForm((f) => ({ ...f, email: e.target.value }))} />
+                <Input type="email" placeholder="jane.smith@example.com" value={candidateForm.email} onChange={(e) => setCandidateForm((f) => ({ ...f, email: e.target.value }))} />
               </div>
               <div className="space-y-2">
                 <Label>Phone</Label>
-                <Input value={candidateForm.phone} onChange={(e) => setCandidateForm((f) => ({ ...f, phone: e.target.value }))} />
+                <Input placeholder="+971 50 123 4567" value={candidateForm.phone} onChange={(e) => setCandidateForm((f) => ({ ...f, phone: e.target.value }))} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Current Company</Label>
-                <Input value={candidateForm.current_company} onChange={(e) => setCandidateForm((f) => ({ ...f, current_company: e.target.value }))} />
+                <Input placeholder="e.g. Acme Inc." value={candidateForm.current_company} onChange={(e) => setCandidateForm((f) => ({ ...f, current_company: e.target.value }))} />
               </div>
               <div className="space-y-2">
                 <Label>Current Position</Label>
-                <Input value={candidateForm.current_position} onChange={(e) => setCandidateForm((f) => ({ ...f, current_position: e.target.value }))} />
+                <Input placeholder="e.g. Senior Engineer" value={candidateForm.current_position} onChange={(e) => setCandidateForm((f) => ({ ...f, current_position: e.target.value }))} />
               </div>
             </div>
             <div className="space-y-2">

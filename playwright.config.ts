@@ -135,6 +135,11 @@ export default defineConfig({
       use: { browserName: 'chromium' }, // no setup dep — fresh login as Smart Ledger user; D7-A CRUD verification
     },
     {
+      name: 'smart-ledger-comprehensive-e2e',
+      testMatch: /smart-ledger-comprehensive-e2e\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — full E2E matrix (auth + dashboard + clients + jobs + placeholders + nav + mobile + cross-tenant + session security)
+    },
+    {
       name: 'cross-tenant-verification',
       testMatch: /cross-tenant-verification\.spec\.ts/,
       use: { browserName: 'chromium' }, // no setup dep — 6 industries, env-var credentials
@@ -204,6 +209,15 @@ export default defineConfig({
     {
       name: 'hr-create-employee-bug',
       testMatch: /hr-create-employee-bug\.spec\.ts/,
+      dependencies: ['zate-setup'],
+      use: {
+        browserName: 'chromium',
+        storageState: path.join(__dirname, 'tests', '.auth-state-zate.json'),
+      },
+    },
+    {
+      name: 'hr-hiring-pipeline',
+      testMatch: /hr-hiring-pipeline\.spec\.ts/,
       dependencies: ['zate-setup'],
       use: {
         browserName: 'chromium',
