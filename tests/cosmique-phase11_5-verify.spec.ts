@@ -53,7 +53,9 @@ test('11.5.B2 Edit Competitor PATCH + revert', async ({ page }) => {
   page.setDefaultNavigationTimeout(45_000);
 
   // Pick first competitor for cosmique
-  const list = await sb(`/rest/v1/competitor_tracking?tenant_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&select=id,competitor_name,notes&limit=1`);
+  // Phase 12.E fix: competitor_tracking.tenant_id stores the SLUG (verified via
+  // baseline snapshot 2026-05-23 — cosmique has 3 rows when queried by slug).
+  const list = await sb(`/rest/v1/competitor_tracking?tenant_id=eq.${COSMIQUE}&select=id,competitor_name,notes&limit=1`);
   if (!list.data?.length) {
     results.push({ test: '11.5.B2', verdict: 'SKIPPED', notes: 'no competitor for cosmique' }); persist();
     test.skip(true, 'no competitor');

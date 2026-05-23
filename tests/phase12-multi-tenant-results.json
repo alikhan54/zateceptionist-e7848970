@@ -1,0 +1,66 @@
+[
+  {
+    "test": "12.G.1",
+    "verdict": "REAL_PASS",
+    "clinicTabVisible": true,
+    "otherTabsMounted": {
+      "industry-tab-restaurant": false,
+      "industry-tab-real_estate": false,
+      "industry-tab-banking_collections": false,
+      "industry-tab-technology": false
+    },
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase12g-cosmique-industry-tab.png"
+  },
+  {
+    "test": "12.G.2",
+    "verdict": "REAL_PASS",
+    "dispatcher_mapping": {
+      "healthcare_clinic": true,
+      "restaurant": true,
+      "real_estate": true,
+      "banking_collections": true,
+      "technology": true
+    },
+    "returnsNullDefault": true
+  },
+  {
+    "test": "12.G.3",
+    "verdict": "REAL_PASS",
+    "probes": [
+      {
+        "table": "clinic_treatments",
+        "tenant": "bbqtonight",
+        "count": 0
+      },
+      {
+        "table": "clinic_products",
+        "tenant": "bbqtonight",
+        "count": 0
+      },
+      {
+        "table": "clinic_patients",
+        "tenant": "bbqtonight",
+        "count": 0
+      },
+      {
+        "table": "clinic_consultations",
+        "tenant": "bbqtonight",
+        "count": 0
+      }
+    ],
+    "leaks": []
+  },
+  {
+    "test": "12.G.4",
+    "verdict": "SCHEMA_PENDING_USER_PASTE",
+    "tables": {
+      "clinic_patient_files": false,
+      "clinic_patient_notes": false,
+      "patient_testimonials": false,
+      "clinic_consent_templates": false,
+      "clinic_consent_forms": false,
+      "consent_signatures": false
+    },
+    "hint": "User must paste docs/PHASE12A_SCHEMA.sql into Supabase Studio"
+  }
+]

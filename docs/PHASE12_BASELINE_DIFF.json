@@ -1,0 +1,195 @@
+{
+  "baseline_snapshot": {
+    "clinic_treatments": {
+      "cosmique": 14,
+      "bbqtonight": 0,
+      "zateceptionist": 6,
+      "aamerah": 0,
+      "cosmique-df4dd00d": 0
+    },
+    "clinic_products": {
+      "cosmique": 3,
+      "bbqtonight": 0,
+      "zateceptionist": 5,
+      "aamerah": 0,
+      "cosmique-df4dd00d": 0
+    },
+    "clinic_patients": {
+      "cosmique": 3,
+      "bbqtonight": 0,
+      "zateceptionist": 3,
+      "aamerah": 0,
+      "cosmique-df4dd00d": 0
+    },
+    "clinic_consultations": {
+      "cosmique": 1,
+      "bbqtonight": 0,
+      "zateceptionist": 0,
+      "aamerah": 0,
+      "cosmique-df4dd00d": 0
+    },
+    "appointments": {
+      "cosmique": 0,
+      "bbqtonight": 0,
+      "zateceptionist": 18,
+      "aamerah": 0,
+      "cosmique-df4dd00d": 0
+    },
+    "sales_leads": {
+      "cosmique": 4,
+      "bbqtonight": 0,
+      "zateceptionist": 578,
+      "aamerah": 0,
+      "cosmique-df4dd00d": 0
+    },
+    "sales_sequences": {
+      "cosmique": 0,
+      "bbqtonight": 0,
+      "zateceptionist": 0,
+      "aamerah": 0,
+      "cosmique-df4dd00d": 0
+    },
+    "sequences": {
+      "cosmique": 3,
+      "bbqtonight": 0,
+      "zateceptionist": 18,
+      "aamerah": 3,
+      "cosmique-df4dd00d": 3
+    },
+    "hr_employees": {
+      "cosmique": 0,
+      "bbqtonight": 0,
+      "zateceptionist": 0,
+      "aamerah": 0,
+      "cosmique-df4dd00d": 0
+    },
+    "hr_departments": {
+      "cosmique": 0,
+      "bbqtonight": 0,
+      "zateceptionist": 0,
+      "aamerah": 0,
+      "cosmique-df4dd00d": 0
+    },
+    "marketing_campaigns": {
+      "cosmique": 2,
+      "zateceptionist": 9,
+      "aamerah": 0,
+      "cosmique-df4dd00d": 0
+    },
+    "competitor_tracking": {
+      "cosmique": 3,
+      "zateceptionist": 2,
+      "aamerah": 0,
+      "cosmique-df4dd00d": 0
+    },
+    "blog_posts": {
+      "cosmique": 1,
+      "zateceptionist": 12,
+      "aamerah": 0,
+      "cosmique-df4dd00d": 0
+    },
+    "agent_contexts": {
+      "cosmique": 0,
+      "zateceptionist": 0,
+      "aamerah": 0,
+      "cosmique-df4dd00d": 0
+    }
+  },
+  "current_snapshot": {
+    "clinic_treatments": {
+      "cosmique": 14,
+      "bbqtonight": 0,
+      "zateceptionist": 6,
+      "aamerah": 0,
+      "cosmique-df4dd00d": 0
+    },
+    "clinic_products": {
+      "cosmique": 3,
+      "bbqtonight": 0,
+      "zateceptionist": 5,
+      "aamerah": 0,
+      "cosmique-df4dd00d": 0
+    },
+    "clinic_patients": {
+      "cosmique": 3,
+      "bbqtonight": 0,
+      "zateceptionist": 3,
+      "aamerah": 0,
+      "cosmique-df4dd00d": 0
+    },
+    "clinic_consultations": {
+      "cosmique": 1,
+      "bbqtonight": 0,
+      "zateceptionist": 0,
+      "aamerah": 0,
+      "cosmique-df4dd00d": 0
+    },
+    "appointments": {
+      "cosmique": 0,
+      "bbqtonight": 0,
+      "zateceptionist": 18,
+      "aamerah": 0,
+      "cosmique-df4dd00d": 0
+    },
+    "sales_leads": {
+      "cosmique": 4,
+      "bbqtonight": 0,
+      "zateceptionist": 578,
+      "aamerah": 0,
+      "cosmique-df4dd00d": 0
+    },
+    "sales_sequences": {
+      "cosmique": 0,
+      "bbqtonight": 0,
+      "zateceptionist": 0,
+      "aamerah": 0,
+      "cosmique-df4dd00d": 0
+    },
+    "sequences": {
+      "cosmique": 3,
+      "bbqtonight": 0,
+      "zateceptionist": 18,
+      "aamerah": 3,
+      "cosmique-df4dd00d": 3
+    },
+    "hr_employees": {
+      "cosmique": 0,
+      "bbqtonight": 0,
+      "zateceptionist": 0,
+      "aamerah": 0,
+      "cosmique-df4dd00d": 0
+    },
+    "hr_departments": {
+      "cosmique": 0,
+      "bbqtonight": 0,
+      "zateceptionist": 0,
+      "aamerah": 0,
+      "cosmique-df4dd00d": 0
+    },
+    "marketing_campaigns": {
+      "cosmique": 2,
+      "zateceptionist": 9,
+      "aamerah": 0,
+      "cosmique-df4dd00d": 0
+    },
+    "competitor_tracking": {
+      "cosmique": 3,
+      "zateceptionist": 2,
+      "aamerah": 0,
+      "cosmique-df4dd00d": 0
+    },
+    "blog_posts": {
+      "cosmique": 1,
+      "zateceptionist": 12,
+      "aamerah": 0,
+      "cosmique-df4dd00d": 0
+    },
+    "agent_contexts": {
+      "cosmique": 0,
+      "zateceptionist": 0,
+      "aamerah": 0,
+      "cosmique-df4dd00d": 0
+    }
+  },
+  "drift": []
+}

@@ -312,7 +312,7 @@ export default function Proposals() {
           </Button>
           <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
             <DialogTrigger asChild>
-              <Button>
+              <Button data-testid="create-proposal-button" aria-label="Create Proposal">
                 <Plus className="h-4 w-4 mr-1" /> Create Proposal
               </Button>
             </DialogTrigger>

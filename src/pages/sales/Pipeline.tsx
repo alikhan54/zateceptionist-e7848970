@@ -1354,7 +1354,7 @@ export default function Pipeline() {
             <RefreshCcw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-          <Button size="sm" onClick={() => setShowAddDialog(true)}>
+          <Button size="sm" onClick={() => setShowAddDialog(true)} data-testid="add-contact-button" aria-label="Add Contact">
             <Plus className="h-4 w-4 mr-2" />
             Add Contact
           </Button>
