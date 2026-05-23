@@ -1,17 +1,9 @@
 [
   {
-    "test": "12F.D1",
-    "verdict": "REAL_PASS",
-    "row_id": "cb1c12cb-ea44-4bfb-87e9-c097beebcb5c"
-  },
-  {
-    "test": "12F.E1",
-    "verdict": "REAL_PASS",
-    "other_tabs_visible": {
-      "industry-tab-restaurant": false,
-      "industry-tab-real_estate": false,
-      "industry-tab-banking_collections": false,
-      "industry-tab-technology": false
-    }
+    "test": "12F.C4",
+    "verdict": "BROKEN_UI",
+    "table_exists": true,
+    "create_visible": false,
+    "assign_visible": false
   }
 ]

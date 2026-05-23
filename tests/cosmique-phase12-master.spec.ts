@@ -129,11 +129,13 @@ test('12F.C2 PatientNotesTab renders or schema-pending', async ({ page }) => {
 });
 
 test('12F.C3 Testimonials page renders or schema-pending', async ({ page }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(90_000);
   const exists = await tableExists('patient_testimonials');
   await page.goto('/marketing/testimonials', { waitUntil: 'domcontentloaded' });
-  await page.waitForTimeout(2500);
-  const addBtn = await page.getByTestId('add-testimonial-button').isVisible().catch(() => false);
+  await page.waitForLoadState('load', { timeout: 30_000 }).catch(() => {});
+  // Phase 5d pattern #3 — lazy chunk on cold load. Wait long for either the
+  // page H1 or the testid.
+  const addBtn = await page.getByTestId('add-testimonial-button').isVisible({ timeout: 40_000 }).catch(() => false);
   const verdict = addBtn ? (exists ? 'REAL_PASS' : 'UI_PASS_SCHEMA_PENDING') : 'BROKEN_UI';
   results.push({ test: '12F.C3', verdict, table_exists: exists, button_visible: addBtn });
   persist();
@@ -141,12 +143,12 @@ test('12F.C3 Testimonials page renders or schema-pending', async ({ page }) => {
 });
 
 test('12F.C4 ConsentForms page renders or schema-pending', async ({ page }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(90_000);
   const exists = await tableExists('clinic_consent_templates');
   await page.goto('/clinic/consent-forms', { waitUntil: 'domcontentloaded' });
-  await page.waitForTimeout(2500);
-  const createBtn = await page.getByTestId('create-template-button').isVisible().catch(() => false);
-  const assignBtn = await page.getByTestId('assign-consent-button').isVisible().catch(() => false);
+  await page.waitForLoadState('load', { timeout: 30_000 }).catch(() => {});
+  const createBtn = await page.getByTestId('create-template-button').isVisible({ timeout: 40_000 }).catch(() => false);
+  const assignBtn = await page.getByTestId('assign-consent-button').isVisible({ timeout: 5_000 }).catch(() => false);
   const verdict = createBtn ? (exists ? 'REAL_PASS' : 'UI_PASS_SCHEMA_PENDING') : 'BROKEN_UI';
   results.push({ test: '12F.C4', verdict, table_exists: exists, create_visible: createBtn, assign_visible: assignBtn });
   persist();
