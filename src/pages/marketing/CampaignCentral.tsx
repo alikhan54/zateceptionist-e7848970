@@ -29,6 +29,7 @@ import {
   AlertCircle, FileEdit, Megaphone, Sparkles, UserPlus, Star, ShieldCheck, Loader2, Activity, Film,
 } from 'lucide-react';
 import { format, formatDistanceToNow, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths } from 'date-fns';
+import { EditCampaignDialog } from '@/components/marketing/EditCampaignDialog';
 
 // M2: Channel icons with emoji
 const channelDisplay: Record<string, { icon: React.ReactNode; emoji: string }> = {
@@ -70,6 +71,8 @@ export default function CampaignCentral() {
   const [confirmSendCampaign, setConfirmSendCampaign] = useState<any | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newCampaign, setNewCampaign] = useState({ name: '', type: 'email', subject: '', content: '' });
+  // Phase 11.5 — Edit campaign wired into the actual rendered page
+  const [editCampaign, setEditCampaign] = useState<any | null>(null);
 
   // Campaign activity log
   const { data: campaignLog = [] } = useQuery({
@@ -364,6 +367,7 @@ export default function CampaignCentral() {
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-1">
                                 <Button variant="ghost" size="icon" onClick={() => handleViewDetails(campaign)}><Eye className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" onClick={() => setEditCampaign(campaign)} data-testid={`campaign-edit-${campaign.id}`} title="Edit"><FileEdit className="h-4 w-4" /></Button>
                                 {(campaign.status === 'draft' || campaign.status === 'scheduled') && (
                                   <TooltipProvider><Tooltip><TooltipTrigger asChild>
                                     <Button variant="ghost" size="icon" onClick={() => setConfirmSendCampaign(campaign)}><Send className="h-4 w-4" /></Button>
@@ -587,6 +591,12 @@ export default function CampaignCentral() {
           )}
         </CardContent>
       </Card>
+
+      <EditCampaignDialog
+        open={!!editCampaign}
+        onOpenChange={(v) => { if (!v) setEditCampaign(null); }}
+        campaign={editCampaign}
+      />
     </div>
   );
 }

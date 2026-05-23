@@ -131,7 +131,7 @@ export default function EmployeesPage() {
           <AskAIButton message="Analyze workforce demographics, headcount by department, and staffing concerns" label="AI Analysis" />
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
-              <Button><Plus className="h-4 w-4 mr-2" />Add {t('staff')}</Button>
+              <Button data-testid="add-staff-button"><Plus className="h-4 w-4 mr-2" />Add {t('staff')}</Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl">
               <DialogHeader>

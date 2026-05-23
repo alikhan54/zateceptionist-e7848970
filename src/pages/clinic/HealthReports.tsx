@@ -143,7 +143,7 @@ export default function HealthReports() {
         </div>
         <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
           <DialogTrigger asChild>
-            <Button><Upload className="h-4 w-4 mr-2" />Upload Report</Button>
+            <Button data-testid="upload-report-button"><Upload className="h-4 w-4 mr-2" />Upload Report</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>

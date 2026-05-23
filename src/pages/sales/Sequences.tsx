@@ -321,7 +321,7 @@ export default function Sequences() {
           <Button onClick={fetchSequences} variant="outline" size="sm">
             <RefreshCw className="h-4 w-4 mr-1" /> Refresh
           </Button>
-          <Button onClick={() => navigate("/sales/sequences/new")}>
+          <Button onClick={() => navigate("/sales/sequences/new")} data-testid="create-sequence-button">
             <Plus className="h-4 w-4 mr-1" /> Create Sequence
           </Button>
         </div>

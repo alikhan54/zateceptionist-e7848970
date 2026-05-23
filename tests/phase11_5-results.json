@@ -1,0 +1,19 @@
+[
+  {
+    "test": "11.5.B3",
+    "verdict": "REAL_PASS",
+    "target_ids": [
+      "62225f0a-9453-400f-8b6d-8204c232a06c",
+      "c94c88a0-4227-478a-bfd6-b479c22714e1"
+    ],
+    "archived_count": 2
+  },
+  {
+    "test": "11.5.B4",
+    "verdict": "REAL_PASS",
+    "initial": 3,
+    "filtered": 1,
+    "restored": 3,
+    "slice": "Retinol"
+  }
+]

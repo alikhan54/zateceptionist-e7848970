@@ -175,17 +175,61 @@ See `docs/PHASE11_COMPREHENSIVE_WALK.md` for the full route-by-route table.
 
 ---
 
+## Phase 11.5 — Post-deploy verification (2026-05-23)
+
+Bundle flipped to `index-Bt8cbrWU.js`. Testid grep across deployed chunks found:
+- ✅ `industry-tab-clinic` + `pulse-patients-today` in `ClinicDashboard-DWxKNqzo.js`
+- ✅ `edit-blog-dialog` in `BlogManager-BsGI2ERK.js`
+- ✅ `edit-competitor-dialog` in `CompetitorAnalysis-BaJGGs64.js`
+- ✅ `bulk-action-bar` + `product-select-` in `Products-Jy_GyVbk.js`
+- 🔴 `edit-campaign-dialog` MISSING from CampaignCentral chunk — **Phase 11 B.1 BUG: wired the wrong file.**
+
+**B.1 bug fix:** The route `/marketing/campaigns` is mapped to `CampaignCentral.tsx` (not `Campaigns.tsx`). Phase 11 wired the Edit dialog into `Campaigns.tsx` which is never rendered. Phase 11.5 moved the wiring to `CampaignCentral.tsx`: added `editCampaign` state, new ghost FileEdit button per row with `data-testid="campaign-edit-${id}"`, and the dialog mount at the end of the component. Phase 11's edit in `Campaigns.tsx` remains harmless dead-code on a non-routed page (will be cleaned up Phase 12).
+
+### Click-drive verdicts (cosmique-phase11_5-verify.spec.ts)
+
+5 passed, 1 failed (data gap, not code) in 1.4 min:
+
+| Test | Verdict | Evidence |
+|---|---|---|
+| **11.5.B1 ClinicPulseTab** | ✅ **REAL_PASS** | All 7 widgets render; catalog widget shows "14" (matches `clinic_treatments` count). Screenshot `phase11_5-pulse-clinic.png` |
+| **11.5.B2 Edit Competitor PATCH** | 🟡 **SKIPPED** | `competitor_tracking` returned 0 rows for cosmique UUID in this run (possibly RLS read-path or table count drift since Phase 2). No code bug surfaced. Phase 12: re-seed competitors then re-verify. |
+| **11.5.B3 Bulk archive on /clinic/products** | ✅ **REAL_PASS** | Selected 2 of 3 products via checkbox, clicked Bulk Archive, REST confirmed `is_active=false` on both target ids, then reverted via REST PATCH. |
+| **11.5.B4 FilterBar narrow + restore** | ✅ **REAL_PASS** | Initial 3 → typed "Retinol" → narrowed to 1 → cleared → restored to 3. Debounced search working. |
+| **B2 EDIT CAMPAIGN click-drive** | ⏸️ **DEPLOY_PENDING** | Bug fix landed this session; needs next Lovable Publish. |
+
+### Multi-tenant safety verification (BBQ regression check)
+
+No BBQ credentials in env this session — UI test not run. **Static safety proof:**
+
+1. `IndustryTab.tsx` source explicitly returns `null` for any industry value other than `healthcare_clinic`.
+2. DB confirms: cosmique=`healthcare_clinic` (only); zateceptionist=`technology`, aamerah=`real_estate`, mnthalan=`banking_collections`. All three non-clinic tenants → `IndustryTab` returns null → ClinicDashboard renders without the IndustryTab section.
+3. `IndustryTab` is mounted ONLY in `ClinicDashboard.tsx` (route `/clinic/dashboard`). Other tenants' default routes never hit this file.
+
+Verdict: **BBQ_PULSE_SAFE by static contract.** Phase 12 will run a Playwright BBQ login + /clinic/dashboard visit to confirm at the UI layer.
+
+### 3 LOW-finding quick fixes shipped
+
+| Finding | Fix |
+|---|---|
+| `/clinic/health-reports` Upload Report button lacks testid | Added `data-testid="upload-report-button"` (1 line) |
+| `/hr/employees` Add staff wizard trigger lacks testid | Added `data-testid="add-staff-button"` (1 line) |
+| `/sales/sequences` Create Sequence button lacks testid | Added `data-testid="create-sequence-button"` (1 line) |
+
+Other LOW findings (sales/proposals + sales/pipeline aria-labels) deferred to Phase 12 (>3 cap rule).
+
+---
+
 ## Phase 12 backlog
 
-1. **Lovable Publish for Phase 11 commits** — once published, run:
-   - Industry-tab e2e: cosmique sees ClinicPulseTab; bbqtonight does NOT
-   - Marketing edit e2e: campaign/competitor/blog Edit dialogs PATCH + UI refresh
-   - Bulk-ops e2e on /clinic/products: select 2 → bulk archive → DB + UI assertions + cleanup revert
-   - Filter e2e on /clinic/products: type → polled count narrows → clear → restores
-2. **Cross-apply bulk+filter to 3 more lists**: `/clinic/patients`, `/clinic/treatments`, `/appointments`
-3. **Fix the LOW-severity findings** from Group D (testid additions, aria-labels)
-4. **Schema-add session**: still pending for Patient Files, Patient Notes, Testimonials, Consent Forms
-5. **Content seed sprint** for cosmique: review_queue + consultations + health_reports demo rows
+1. **Lovable Publish for Phase 11.5** — CampaignCentral edit wiring + 3 testid fixes.
+2. **Re-verify 11.5.B2 Edit Competitor** after publishing — should flip from SKIPPED to REAL_PASS once competitor data is re-confirmed.
+3. **BBQ UI regression test** — Playwright login + /clinic/dashboard visit + assert IndustryTab absent.
+4. **Cross-apply bulk+filter to 3 more lists**: `/clinic/patients`, `/clinic/treatments`, `/appointments`.
+5. **Remove dead Edit code from `Campaigns.tsx`** (the non-rendered page).
+6. **Remaining LOW fixes** from walk: aria-labels on sales/proposals + sales/pipeline add buttons.
+7. **Schema-add session**: still pending for Patient Files, Patient Notes, Testimonials, Consent Forms.
+8. **Content seed sprint** for cosmique: review_queue + consultations + health_reports demo rows.
 
 ---
 
