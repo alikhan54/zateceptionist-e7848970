@@ -131,6 +131,12 @@ export default defineConfig({
       use: { browserName: 'chromium', storageState: STORAGE_PATH },
     },
     {
+      name: 'phase12-master',
+      testMatch: /cosmique-phase12-master\.spec\.ts/,
+      dependencies: ['setup'],
+      use: { browserName: 'chromium', storageState: STORAGE_PATH },
+    },
+    {
       name: 'smart-ledger-verify',
       testMatch: /smart-ledger-verification\.spec\.ts/,
       use: { browserName: 'chromium' }, // no setup dep — fresh login as Smart Ledger user
