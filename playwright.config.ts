@@ -137,6 +137,18 @@ export default defineConfig({
       use: { browserName: 'chromium', storageState: STORAGE_PATH },
     },
     {
+      name: 'phase13a-mobile-baseline',
+      testMatch: /cosmique-phase13a-mobile-baseline\.spec\.ts/,
+      dependencies: ['setup'],
+      use: { browserName: 'chromium' },
+    },
+    {
+      name: 'phase13a-mobile',
+      testMatch: /cosmique-phase13a-mobile\.spec\.ts/,
+      dependencies: ['setup'],
+      use: { browserName: 'chromium' },
+    },
+    {
       name: 'smart-ledger-verify',
       testMatch: /smart-ledger-verification\.spec\.ts/,
       use: { browserName: 'chromium' }, // no setup dep — fresh login as Smart Ledger user
@@ -244,6 +256,15 @@ export default defineConfig({
     {
       name: 'settings-audit',
       testMatch: /settings-audit\.spec\.ts/,
+      dependencies: ['settings-acsfx-setup'],
+      use: {
+        browserName: 'chromium',
+        storageState: path.join(__dirname, 'tests', '.auth-state-acsfx.json'),
+      },
+    },
+    {
+      name: 'settings-discovery',
+      testMatch: /settings-discovery\.spec\.ts/,
       dependencies: ['settings-acsfx-setup'],
       use: {
         browserName: 'chromium',

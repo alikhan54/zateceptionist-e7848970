@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
-import { SidebarTrigger } from '@/components/ui/sidebar';
+import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
+import { Menu } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,12 +22,30 @@ import { OmegaAlertBell } from '@/components/OmegaAlertBell';
 export function Header() {
   const { user, signOut } = useAuth();
   const { tenantConfig } = useTenant();
+  // Phase 13.A — mobile-recognizable hamburger. shadcn's <SidebarTrigger>
+  // uses a PanelLeft icon which Bangladesh/iOS users didn't recognize as a
+  // menu opener. We add a parallel button with a Menu (3-bar) icon visible
+  // only on mobile, wired to the SAME useSidebar() toggle. Desktop keeps
+  // the original PanelLeft trigger.
+  const { toggleSidebar } = useSidebar();
 
   const userInitials = user?.email?.slice(0, 2).toUpperCase() || 'U';
 
   return (
     <header className="h-14 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex items-center px-4 sticky top-0 z-50 gap-4">
-      <SidebarTrigger className="mr-2" />
+      {/* Mobile: 3-bar hamburger (recognizable everywhere) */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="md:hidden mr-2"
+        onClick={toggleSidebar}
+        aria-label="Open menu"
+        data-testid="mobile-nav-trigger"
+      >
+        <Menu className="h-5 w-5" />
+      </Button>
+      {/* Desktop: original sidebar-toggle trigger */}
+      <SidebarTrigger className="mr-2 hidden md:inline-flex" />
       
       <div className="flex-1 max-w-md">
         <CommandPalette />
