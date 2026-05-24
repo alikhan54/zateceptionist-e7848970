@@ -41,52 +41,30 @@ User runs 2-3 Claude Code sessions in parallel on this repo. Sessions can clobbe
   - `frontend/tests/smart-ledger-*` (Smart Ledger session)
   - `frontend/tests/hr-*` (HR session if running)
 
-### Session B — Cosmique Settings Audit (Phase 2 + Phase 3→4 transition)
+### Session B — Cosmique Settings Audit / "Settings v3" (PARKED 2026-05-24)
 
-**Current phase**: Phase 3 findings file delivered; F0 (permission-gap fix) awaiting user re-approval before Phase 4 code lands.
-
-- **Scope (read + write — tests + helpers — IN EFFECT NOW):**
-  - `frontend/tests/settings-audit.spec.ts`
-  - `frontend/tests/settings-audit-deep.spec.ts`
-  - `frontend/tests/settings-audit-empty-state.spec.ts`
-  - `frontend/tests/settings-audit-isolation.spec.ts`
-  - `frontend/tests/settings-aamerah-auth.setup.ts`
-  - `frontend/tests/settings-acsfx-auth.setup.ts`
-  - `frontend/tests/settings-discovery.spec.ts`
-  - `frontend/tests/settings-q1-team-access.spec.ts`
-  - `frontend/tests/helpers/dismiss-onboarding.ts`
-  - `frontend/tests/helpers/supabase-snapshot.ts` (added 2026-05-24 for isolation tests)
-  - `frontend/playwright.config.ts` — **additions only**, never remove existing projects
-  - `frontend/docs/SETTINGS_AUDIT_*.md`
-  - `frontend/docs/COSMIQUE_STATUS.md` — settings phase rows only
-
-- **Read-only (static analysis):**
-  - `frontend/src/pages/settings/*.tsx`
-  - `frontend/src/contexts/AuthContext.tsx`, `TenantContext.tsx`
-  - `frontend/src/hooks/useTeam.ts`, `useKnowledgeBase.ts`, `useIntegrationsV2.ts`
-  - `frontend/src/App.tsx` (route-guard audit only)
-
-- **PROPOSED write expansion — PENDING USER APPROVAL (F0-A in chat 2026-05-24)**:
-  These files will NOT be touched until user explicitly approves F0-A and Phase 4 begins. Other sessions: do not edit these in parallel — coordinate with Session B owner if a conflict arises.
-  - NEW file: `frontend/src/lib/settings-permissions.ts` (per-page role allowlist helper)
-  - NEW file: `frontend/src/components/settings/AccessRestricted.tsx` (reusable gate component)
-  - MODIFY: `frontend/src/pages/settings/Billing.tsx`
-  - MODIFY: `frontend/src/pages/settings/Integrations.tsx`
-  - MODIFY: `frontend/src/pages/settings/OutreachSettings.tsx`
-  - MODIFY (if F0-A=(a) full 7-page rollout): `CompanyInfo.tsx`, `KnowledgeBase.tsx`, `AITraining.tsx`, `Notifications.tsx`
-  - OPTIONAL data-only: `public.user_roles` INSERTs for 6 missing-row tenants via service-role SQL (pending F0-B approval)
-
+- **Status:** PARKED. F0 work (per-page role gates) + F1 data fix already shipped to `origin/main` as commit `8a9f8c5` (piggyback-pushed by HR-V3 session before user's explicit push approval — see Notes below). Audit completed by multi-session coordinator audit: report at `D:/420-system/.tmp_diag/multi_session_coordinator_audit.md`.
+- **No additional parked branch:** Case D at park time — clean working tree, all of this session's work already on `origin/main`. No WIP to checkpoint.
+- **Resume:** state doc at `frontend/docs/.session-state-settings-v3.md`. Full session artifacts under `D:/420-system/.tmp_settings_v2/` (inventory, findings, fix diffs, Playwright results, F0-B + F1 SQL logs).
+- **Last shipped commits (all already on origin/main):**
+  - `8a9f8c5` feat(settings): per-page role gates via universal user_roles source — 8 pages gated (Billing/Integrations/Outreach/CompanyInfo/KnowledgeBase/AITraining/Notifications/Team) via `useAuth().authUser.role` + `SETTINGS_PAGE_ACCESS` allowlist + reusable `AccessRestricted` component
+  - `e71b9e1` chore(coordination): backfill commit hash
+  - `03175a5` chore(coordination): register Session B scope update
+  - `adc623f` chore(coordination): add multi-session coordination file (initial)
 - **Out-of-band SQL executed this session (data-only, no DDL):**
-  - F1: removed duplicate `email_warmup_status` row for `mnthalan-845d46b5` (older row, id `721286f9-4d90-453b-a480-9a27e58e56e4`, created 2026-03-19). Pre-count 2 → post-count 1. Log: `D:/420-system/.tmp_settings_v2/06_fix_diffs/f1_mnthalan_dedupe.log.json`. User-approved 2026-05-24 (Phase 1 decision [4]=a).
-
-- **MUST NOT TOUCH:**
-  - `frontend/src/components/layout/Header.tsx`, `NavigationSidebar.tsx`, `Layout.tsx`, `ui/sidebar.tsx`, `index.css` (Session A territory)
+  - **F1 cleanup**: removed duplicate `email_warmup_status` row for `mnthalan-845d46b5` (older row id `721286f9-4d90-453b-a480-9a27e58e56e4`, created 2026-03-19). Pre-count 2 → post-count 1. Log: `.tmp_settings_v2/06_fix_diffs/f1_mnthalan_dedupe.log.json`. User-approved.
+  - **F0-B backfill**: inserted 6 `user_roles` rows for owners of `zateceptionist`/`master-zate`/`marhama-group`/`rewerck-roofing` (aamerah + zk-realestate had 0 users — no-op). Coverage went 31/41 → 35/41. Pre/post snapshots + assertions in transaction. Log: `.tmp_settings_v2/06_fix_diffs/f0_backfill_user_roles.log.json`. User-approved.
+- **Scope when active (preserved for resume):**
+  - Tests + helpers: `frontend/tests/settings-audit*.spec.ts`, `frontend/tests/settings-discovery.spec.ts`, `frontend/tests/settings-q1-team-access.spec.ts`, `frontend/tests/settings-aamerah-auth.setup.ts`, `frontend/tests/settings-acsfx-auth.setup.ts`, `frontend/tests/helpers/dismiss-onboarding.ts`, `frontend/tests/helpers/supabase-snapshot.ts`
+  - Source: `frontend/src/lib/settings-permissions.ts`, `frontend/src/components/settings/AccessRestricted.tsx`, `frontend/src/pages/settings/*.tsx`
+  - Playwright config: additive project entries only
+- **MUST NOT TOUCH (when resumed):**
+  - `frontend/src/components/layout/Header.tsx`, `NavigationSidebar.tsx`, `Layout.tsx`, `ui/sidebar.tsx`, `index.css` (Session A)
   - `frontend/src/pages/accounting/**` (Session C)
-  - `frontend/src/pages/clinic/`, `marketing/`, `sales/`, `hr/` (other surfaces)
-  - `frontend/tests/cosmique-phase13*` (Session A)
-  - `frontend/tests/smart-ledger-*` (Session C)
-  - `frontend/tests/hr-*` (Session D if active)
+  - `frontend/src/pages/clinic/`, `marketing/`, `sales/`, `hr/`
+  - `frontend/tests/cosmique-phase*`, `frontend/tests/smart-ledger-*`, `frontend/tests/hr-*`
   - n8n workflows, LangGraph agents, Supabase schema (DDL), VAPI configs — sacred across all sessions
+- **Notes — F0 push gate bypass (recorded for protocol learning):** the F0 commit `8a9f8c5` was made locally with directive instruction to STOP before push. The HR-V3 ops commit `1268ea2` was pushed onto local main on 2026-05-24 21:15, which carried `8a9f8c5` to `origin/main` as a side effect of the shared working tree. No work lost; Lovable rebuild already complete. Implication: parallel CC sessions sharing a worktree CANNOT enforce "wait for user approval before push" via a single session's discipline — any other session running `git push` ships all local commits. Future park protocols should either (a) work in separate `git worktree` checkouts, or (b) commit to a per-session branch (not main) until explicit push approval.
 
 ### Session C — Smart Ledger Phase 1 / D7-B Finance
 
