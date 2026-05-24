@@ -1,6 +1,6 @@
 # CC Multi-Session Coordination
 
-**Last updated:** 2026-05-24 (Session D HR: PARKED — 6 rounds shipped, 1 spec-hardening on `parked/hr-session-d-20260524`)
+**Last updated:** 2026-05-24 (Session F ACSFX-Synthetic-Purge: PARKED — DB-only, zero frontend repo touch, state doc: `docs/.session-state-acsfx-synthetic-purge.md`)
 
 User runs 2-3 Claude Code sessions in parallel on this repo. Sessions can clobber each other unless they declare scope + coordinate via this file.
 
@@ -104,6 +104,33 @@ User runs 2-3 Claude Code sessions in parallel on this repo. Sessions can clobbe
   - `frontend/tests/settings-*`
   - `frontend/src/index.css` (mobile media query is owned by Session A)
 
+### Session F — ACSFX Synthetic-Data Purge + Real-Lead Verification (PARKED 2026-05-24)
+
+- **Status:** PARKED. Cross-session task that touched only Supabase data + work scratch outside the frontend repo. ZERO files in `frontend/` were created or modified. No git commit, no branch needed.
+- **What shipped (DB-only, acsfx-tenant-scoped):**
+  - Prior session purged 469 synthetic rows across 17 tables (verified intact).
+  - This session: scrubbed 6 fabricated emails + 1 fake phone (`0123456789` on Finance Magnates) via whitelist `UPDATE` on `sales_leads` + `contacts`.
+  - Final ACSFX state: 12 verifiable B2B prospect leads in `sales_leads`, all with `website` (source URL), 3 with verified email, 4 with verified phone, zero fabrication.
+  - Multi-tenant isolation gate: PASS — all other-tenant deltas explained by post-pre-snapshot `created_at` timestamps (background workflow traffic, not us). Bounded SQL (`WHERE tenant_id::text = ANY(['acsfx','8899f7c1-...'])`) was structurally incapable of writing to other tenants.
+  - Playwright UI verification: all 12 leads render at `/sales/pipeline`; 0 fake-name leakage across 16 pages.
+- **Resume:** state doc at `frontend/docs/.session-state-acsfx-synthetic-purge.md`. Forensic evidence: `D:/420-system/.tmp_acsfx_purge/`. Full narrative: `D:/420-system/session_state/acsfx_onboarding_complete.md` (last 2 sections).
+- **Scope (when active):** entirely outside `frontend/`. No git operations needed.
+- **MUST NOT TOUCH:** entire `frontend/` repo — this session's role is purely DB cleanup + verification.
+- **Out-of-band SQL executed this session (data-only, no DDL):**
+  - F-cleanup: `UPDATE sales_leads SET email=NULL WHERE tenant_id='acsfx' AND contact_name IN (...)` and matching `UPDATE contacts ...`. NULLed 6 fabricated emails + Finance Magnates fake phone. Log: `D:/420-system/.tmp_acsfx_purge/cleanup_log.json`.
+
+### Session E — Onboarding Verification (PARKED 2026-05-24)
+
+- **Status:** PARKED. Verification-only session — made ZERO code changes. Ran `onboarding-fresh-tenant` Playwright project against `https://ai.zatesystems.com` to confirm commit `62fb4f1` (BUG-1..6 fix in `ReadyStep.tsx`) is live and working end-to-end. Result: PASS — all 5 onboarding steps complete, tenant_config + users + 8 reply_routing_rules + 3 sequence_templates + 5 agent_contexts + 1 tenant_icp_config + brand_voice + 4 campaigns provisioned for the fresh test user. Isolation test blocked on stale handover-doc password (`Zate2024!` rejected; real value per Session D state doc is `Zate2024!-!`).
+- **Resume:** state doc at `frontend/docs/.session-state-onboarding-verify.md`. No branch — nothing to merge.
+- **Scope (read-only, when active):**
+  - `frontend/tests/onboarding-fresh-tenant.spec.ts` (read-only — Session D / earlier sessions own writes)
+  - `frontend/tests/onboarding-isolation-quick.spec.ts` (read-only)
+  - `frontend/src/components/onboarding/steps/ReadyStep.tsx` (read-only — fix author owns writes)
+  - `frontend/src/lib/api/webhooks.ts` (read-only — Session D owns)
+  - `frontend/tests/screenshots/2026-05-19-onboarding-fresh-tenant-*` (test outputs, read-only)
+- **MUST NOT TOUCH:** literally everything — verification-only role. If extending to bug-fixes, re-declare scope first.
+
 ### Session D — HR (PARKED 2026-05-24)
 
 - **Status:** PARKED. All Round 1–6 work shipped to `origin/main` (commits 7e3a2b3, 23987d7, 86c91b8 etc.). 1 small spec-hardening change parked on branch `parked/hr-session-d-20260524` (`16dc4f7`).
@@ -182,6 +209,8 @@ Any session that needs a sacred edit MUST:
 
 (Append-only. Each session adds an entry after pushing.)
 
+- `2026-05-24` · Session F · `(no commit)` · **PARK** — ACSFX synthetic-data purge cleanup + verification. DB-only, zero frontend repo changes. Cleaned 6 fabricated emails + 1 fake phone via tenant-scoped `UPDATE`. Multi-tenant isolation gate PASS (timestamp-proven). All 12 verifiable B2B leads render at `/sales/pipeline`. State doc: `frontend/docs/.session-state-acsfx-synthetic-purge.md`.
+- `2026-05-24` · Session E · `(no commit)` · **PARK** — onboarding-fix verification only, zero code changes. Confirmed commit `62fb4f1` is live on bundle `assets/index-DiZwGbQD.js`; `onboarding-fresh-tenant` Playwright PASS (full 5-step + DB provisioning). State doc: `frontend/docs/.session-state-onboarding-verify.md`.
 - `2026-05-24` · Session D · `16dc4f7` · **PARK** — wait-hardening on `tests/hr-askai-navigation.spec.ts` (2-line). Pushed to branch `parked/hr-session-d-20260524` (NOT main). State doc: `frontend/docs/.session-state-hr-session-d.md`.
 - `2026-05-23` · Session D · `86c91b8` · Round 6 report — hiring pipeline 11/11 live + BUG-H fix (text-mode `description` field).
 - `2026-05-23` · Session D · `23987d7` · BUG-H fix in `Recruitment.tsx` + 11-test `hr-hiring-pipeline.spec.ts` + Add Candidate placeholders.
