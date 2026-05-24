@@ -1,6 +1,8 @@
 # CC Multi-Session Coordination
 
-**Last updated:** 2026-05-24 (Session D HR: PARKED — 6 rounds shipped, 1 spec-hardening on `parked/hr-session-d-20260524`)
+**Last updated:** 2026-05-24 21:15 PST (Session HR-V3 EMERGENCY ACTIVE — n8n DB-pool restart, see "Active sessions" + "Recent commits log")
+
+> **⚠️ EMERGENCY NOTICE 2026-05-24**: Session HR-V3 took control to diagnose a production-wide "Failed to fetch" outage. Root cause: n8n's TypeORM pool was stuck on Supabase pooler timeouts ("Database is not ready" 503 for all webhooks across all tenants). Frontend code was confirmed INTACT — no parallel-session corruption. Fix: `docker restart n8n` (32s downtime, RestartCount 0→1). Recovery verified — employee + ai-agent webhooks back to HTTP 200. User had reported the symptom as "Failed to fetch" on AI Agent Hire and "Employee creation not working" on Add Provider. Both are now working. **Coordination policy reaffirmed: only ONE session pushes to main at a time.** When 9 sessions race-push, no actual file corruption happened this time, but the perception of corruption obscured the real n8n outage for hours.
 
 User runs 2-3 Claude Code sessions in parallel on this repo. Sessions can clobber each other unless they declare scope + coordinate via this file.
 
@@ -104,6 +106,29 @@ User runs 2-3 Claude Code sessions in parallel on this repo. Sessions can clobbe
   - `frontend/tests/settings-*`
   - `frontend/src/index.css` (mobile media query is owned by Session A)
 
+### Session F — ACSFX Synthetic-Data Purge + Real-Lead Verification (PARKED 2026-05-24)
+
+- **Status:** PARKED. Cross-session task that touched only Supabase data + work scratch outside the frontend repo. ZERO files in `frontend/src/` or `frontend/tests/` were created or modified. No git commit, no branch needed.
+- **What shipped (DB-only, acsfx-tenant-scoped):**
+  - Prior session purged 469 synthetic rows across 17 tables (verified intact this session).
+  - This session: scrubbed 6 fabricated emails + 1 fake phone (`0123456789` on Finance Magnates) via whitelist `UPDATE` on `sales_leads` + `contacts`.
+  - Final ACSFX state: 12 verifiable B2B prospect leads in `sales_leads`, all with `website` (source URL), 3 with verified email, 4 with verified phone, zero fabrication.
+  - Multi-tenant isolation gate: PASS — all other-tenant deltas explained by post-pre-snapshot `created_at` timestamps (background workflow traffic, not us). Bounded SQL `WHERE tenant_id::text = ANY(['acsfx','8899f7c1-...'])` is structurally incapable of writing to other tenants.
+  - Playwright UI verification: all 12 leads render at `/sales/pipeline`; 0 fake-name leakage across 16 pages.
+- **Resume:** state doc at `frontend/docs/.session-state-acsfx-synthetic-purge.md`. Forensic evidence: `D:/420-system/.tmp_acsfx_purge/`. Full narrative: `D:/420-system/session_state/acsfx_onboarding_complete.md` (last 2 sections).
+- **Scope (when active):** entirely outside `frontend/src/` + `frontend/tests/`. Only `frontend/docs/.session-state-acsfx-synthetic-purge.md` + this coordination entry were written.
+- **MUST NOT TOUCH:** entire `frontend/src/` and `frontend/tests/` — this session's role is purely DB cleanup + verification.
+- **Out-of-band SQL executed this session (data-only, no DDL):**
+  - F-cleanup: `UPDATE sales_leads SET email=NULL WHERE tenant_id='acsfx' AND contact_name IN (...)` and matching `UPDATE contacts ...`. NULLed 6 fabricated emails + Finance Magnates fake phone. Log: `D:/420-system/.tmp_acsfx_purge/cleanup_log.json`.
+
+### Session HR-V3 — Emergency Outage Response (ACTIVE 2026-05-24)
+
+- **Status:** ACTIVE. Took control to diagnose user-reported "Failed to fetch" on `/hr/ai-agents/hire` + employee creation not working.
+- **Diagnosis:** n8n DB pool stuck on Supabase pooler timeouts; ALL webhooks (HR, sales, marketing, etc.) returning HTTP 503 `{"code":503,"message":"Database is not ready!"}`. Frontend code confirmed intact via git log — `lib/api/webhooks.ts`, `useHR.ts`, `useRecruitment.ts`, `AIAgentHire.tsx`, `App.tsx`, `NavigationSidebar.tsx`, `AskAIButton.tsx` all last touched by their owning sessions with no conflicts.
+- **Fix executed (USER-APPROVED):** `docker restart n8n` (~32s). Recovered: external root 200 (was 503), employee-onboarding-v2 200, ai-agent/create 200. Cleanup of FIXTEST probe rows + ai_agent `cbd0463f-...` complete.
+- **Active workflows post-restart:** 249 (above the ~226 baseline). Cron triggers will re-register naturally; toggle_crons.py only needed if executions show "not triggered" after 5 min.
+- **What this session did NOT touch:** zero `src/`, zero `tests/` (per HR-V3 mandate to fix frontend only — but the bug was backend). Only `docs/CC_SESSION_COORDINATION.md` updated.
+
 ### Session D — HR (PARKED 2026-05-24)
 
 - **Status:** PARKED. All Round 1–6 work shipped to `origin/main` (commits 7e3a2b3, 23987d7, 86c91b8 etc.). 1 small spec-hardening change parked on branch `parked/hr-session-d-20260524` (`16dc4f7`).
@@ -182,6 +207,8 @@ Any session that needs a sacred edit MUST:
 
 (Append-only. Each session adds an entry after pushing.)
 
+- `2026-05-24 21:15 PST` · Session HR-V3 · **NO COMMIT (ops-only)** — Emergency `docker restart n8n` to clear hung TypeORM pool. ALL webhooks recovered 503→200. Frontend code confirmed INTACT — no parallel-session corruption. RestartCount 0→1. 249 active workflows post-restart (above baseline). Only `docs/CC_SESSION_COORDINATION.md` written.
+- `2026-05-24` · Session F · `(no commit)` · **PARK** — ACSFX synthetic-data purge cleanup + verification. DB-only, zero `frontend/src/` or `frontend/tests/` changes. Cleaned 6 fabricated emails + 1 fake phone via tenant-scoped `UPDATE`. Multi-tenant isolation gate PASS (timestamp-proven). All 12 verifiable B2B leads render at `/sales/pipeline`. State doc: `frontend/docs/.session-state-acsfx-synthetic-purge.md`.
 - `2026-05-24` · Session D · `16dc4f7` · **PARK** — wait-hardening on `tests/hr-askai-navigation.spec.ts` (2-line). Pushed to branch `parked/hr-session-d-20260524` (NOT main). State doc: `frontend/docs/.session-state-hr-session-d.md`.
 - `2026-05-23` · Session D · `86c91b8` · Round 6 report — hiring pipeline 11/11 live + BUG-H fix (text-mode `description` field).
 - `2026-05-23` · Session D · `23987d7` · BUG-H fix in `Recruitment.tsx` + 11-test `hr-hiring-pipeline.spec.ts` + Add Candidate placeholders.
