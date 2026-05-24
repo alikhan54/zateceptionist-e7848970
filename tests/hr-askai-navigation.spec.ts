@@ -78,7 +78,9 @@ for (const { path: route, expectedSubstr } of PAGES_TO_CHECK) {
     await page.waitForLoadState('networkidle', { timeout: 6000 }).catch(() => {});
     await page.waitForTimeout(2000);
     await dismissOverlays(page);
-    await page.waitForTimeout(500);
+    // Wait for actual page content (h1) to render — production can be slow
+    await page.locator('h1').first().waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {});
+    await page.waitForTimeout(1500);
 
     // AskAI button: scoped to header area only — exclude sidebar menu buttons
     // which can match "AI Workforce/Assistant/Agents/Analytics" labels.
@@ -86,7 +88,7 @@ for (const { path: route, expectedSubstr } of PAGES_TO_CHECK) {
       .locator('button:not([data-sidebar="menu-button"])')
       .filter({ hasText: /^(AI |Ask AI)/ })
       .first();
-    const visible = await aiBtn.isVisible({ timeout: 3000 }).catch(() => false);
+    const visible = await aiBtn.isVisible({ timeout: 8000 }).catch(() => false);
 
     let urlAfter = '';
     let prefilled: string | null = null;
