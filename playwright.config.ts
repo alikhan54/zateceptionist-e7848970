@@ -149,6 +149,18 @@ export default defineConfig({
       use: { browserName: 'chromium' },
     },
     {
+      name: 'phase13d-diagnose',
+      testMatch: /cosmique-phase13d-diagnose\.spec\.ts/,
+      dependencies: ['setup'],
+      use: { browserName: 'chromium' },
+    },
+    {
+      name: 'phase13d-dispatch',
+      testMatch: /cosmique-phase13d-dispatch\.spec\.ts/,
+      dependencies: ['setup'],
+      use: { browserName: 'chromium' },
+    },
+    {
       name: 'smart-ledger-verify',
       testMatch: /smart-ledger-verification\.spec\.ts/,
       use: { browserName: 'chromium' }, // no setup dep — fresh login as Smart Ledger user
@@ -269,6 +281,38 @@ export default defineConfig({
       use: {
         browserName: 'chromium',
         storageState: path.join(__dirname, 'tests', '.auth-state-acsfx.json'),
+      },
+    },
+    {
+      name: 'settings-audit-deep',
+      testMatch: /settings-audit-deep\.spec\.ts/,
+      dependencies: ['settings-acsfx-setup'],
+      use: {
+        browserName: 'chromium',
+        storageState: path.join(__dirname, 'tests', '.auth-state-acsfx.json'),
+      },
+    },
+    {
+      name: 'settings-audit-isolation',
+      testMatch: /settings-audit-isolation\.spec\.ts/,
+      dependencies: ['settings-acsfx-setup'],
+      use: {
+        browserName: 'chromium',
+        storageState: path.join(__dirname, 'tests', '.auth-state-acsfx.json'),
+      },
+    },
+    {
+      name: 'settings-aamerah-setup',
+      testMatch: /settings-aamerah-auth\.setup\.ts/,
+      use: { browserName: 'chromium' },
+    },
+    {
+      name: 'settings-empty-state',
+      testMatch: /settings-audit-empty-state\.spec\.ts/,
+      dependencies: ['settings-aamerah-setup'],
+      use: {
+        browserName: 'chromium',
+        storageState: path.join(__dirname, 'tests', '.auth-state-aamerah.json'),
       },
     },
   ],

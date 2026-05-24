@@ -392,14 +392,26 @@ html {
     min-height: 44px;
   }
   /* Phase 13.B — collapsible section triggers (SALES AI, MARKETING AI, etc.).
-     SidebarGroupLabel becomes a tap target via Radix CollapsibleTrigger asChild.
-     shadcn default h-8 (32px) misses iOS 44px minimum → sections looked
-     unclickable on mobile. The [data-state] qualifier ensures we only
-     enlarge group-labels that are actually collapsible triggers (Radix
-     sets data-state="open|closed" on the asChild target). */
+     Pre-13.C structure (Radix asChild → div was the click target). Retained
+     as defensive depth in case any group-label survives without a button wrapper. */
   [data-sidebar="group-label"][data-state] {
     min-height: 44px;
     touch-action: manipulation;
     cursor: pointer;
+  }
+  /* Phase 13.D — post-13.C, the CollapsibleTrigger is a native button containing
+     a SidebarGroupLabel div. Phase 13.C made the button 44px tall but the inner
+     div stayed at h-8 (32px), leaving a 12px "button-only" strip below the div.
+     iOS taps in that strip target the button element directly; React's onClick
+     somehow doesn't fire for button-element-targeted events on Radix Collapsible
+     in this configuration (verified via Phase 13.D dispatch evidence: bubble-up
+     from child div → button.onClick FIRES; direct button click → DOES NOT FIRE).
+     Fix: stretch the inner div to fill the button so EVERY tap inside the 44px
+     target lands on the div and bubbles up. */
+  button[data-state] > [data-sidebar="group-label"] {
+    min-height: 44px;
+    height: 100%;
+    width: 100%;
+    touch-action: manipulation;
   }
 }
