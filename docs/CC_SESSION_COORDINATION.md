@@ -163,7 +163,7 @@ Any session that needs a sacred edit MUST:
 
 (Append-only. Each session adds an entry after pushing.)
 
-- `2026-05-24` · Session B · (this commit) · register Session B scope update — added helpers/supabase-snapshot.ts, declared pending F0 expansion surface in src/lib/, src/components/settings/, src/pages/settings/*.tsx.
+- `2026-05-24` · Session B · `03175a5` · register Session B scope update — added helpers/supabase-snapshot.ts, declared pending F0 expansion surface in src/lib/, src/components/settings/, src/pages/settings/*.tsx. F1 SQL execution logged.
 - `2026-05-24` · Session A · `3f50fe2` · Phase 13.D docs (report + STATUS row 31). CSS-only fix at `246fc8a`.
 - `2026-05-24` · Session A · `246fc8a` · Phase 13.D CSS additive (inner div stretches to 44px). No sacred edits.
 - `2026-05-24` · Session A · `c9733a1` · Phase 13.C closure report.
