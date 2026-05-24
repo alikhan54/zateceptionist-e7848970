@@ -525,9 +525,16 @@ export function useTriggerSourcing() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['hr_job_requisitions'] });
       queryClient.invalidateQueries({ queryKey: ['hr_sourcing_runs'] });
-      toast.success('AI sourcing started');
+      // The n8n /hr/job/trigger-sourcing workflow currently only creates a
+      // tracking row in hr_sourcing_runs — no Phase 1-4 scraping is wired up
+      // yet. Be honest about what just happened so users don't sit waiting
+      // for candidates that aren't coming. See HR-V3 diagnosis 2026-05-24.
+      toast.success(
+        'Sourcing request logged. Note: automated candidate discovery isn\'t live yet — please add candidates manually or via "Add Candidate".'
+      );
     },
-    onError: () => toast.error('Failed to trigger AI sourcing'),
+    onError: (e: any) =>
+      toast.error(`Failed to log sourcing request: ${e?.message || 'unknown error'}`),
   });
 }
 
