@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, UserPlus, Shield, Mail, RefreshCw, Activity, Sparkles } from "lucide-react";
 import { useTeam, usePermissions } from "@/hooks/useTeam";
+import { useAuth } from "@/contexts/AuthContext";
+import { canViewSettingsPage } from "@/lib/settings-permissions";
+import { AccessRestricted } from "@/components/settings/AccessRestricted";
 import { MemberList } from "./MemberList";
 import { InviteModal } from "./InviteModal";
 import { RoleManager } from "./RoleManager";
@@ -35,26 +38,27 @@ export default function Team() {
   } = useTeam();
 
   const { hasPermission, canManageMember, currentUserHierarchy } = usePermissions();
+  const { authUser } = useAuth();
 
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("members");
 
-  // Permission checks
-  const canViewMembers = hasPermission("team.view_members", 1);
+  // Page-level access gate — replaces the prior no-op
+  // `hasPermission("team.view_members", 1)` check (staff defaults granted
+  // level 1, making that gate ineffective). The new gate uses
+  // useAuth().authUser.role from user_roles — universally populated post
+  // the 2026-05-24 F0-B backfill.
+  const canView = canViewSettingsPage('team', authUser?.role);
+
+  // Sub-permissions still come from usePermissions for downstream button
+  // gating (Invite, Edit Roles, Remove). The page-level gate above is the
+  // primary access control; these refine the controls inside.
   const canInviteMembers = hasPermission("team.invite", 1);
   const canEditRoles = hasPermission("team.edit_roles", 1);
   const canRemoveMembers = hasPermission("team.remove_members", 1);
 
-  if (!canViewMembers) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
-        <Shield className="w-16 h-16 text-muted-foreground mb-4" />
-        <h2 className="text-xl font-semibold">Access Restricted</h2>
-        <p className="text-muted-foreground mt-2">
-          You don't have permission to view team members.
-        </p>
-      </div>
-    );
+  if (!canView) {
+    return <AccessRestricted pageName="team management" />;
   }
 
   const pendingInvitations = invitations.filter((i) => i.status === "pending");

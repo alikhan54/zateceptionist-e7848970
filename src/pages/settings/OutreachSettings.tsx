@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useTenant } from "@/contexts/TenantContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { canViewSettingsPage } from "@/lib/settings-permissions";
+import { AccessRestricted } from "@/components/settings/AccessRestricted";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -115,6 +118,8 @@ const ALL_DAYS = [
 
 export default function OutreachSettingsPage() {
   const { tenantId } = useTenant();
+  const { authUser } = useAuth();
+  const canView = canViewSettingsPage('outreach', authUser?.role);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [settings, setSettings] = useState<OutreachSettings>(defaultSettings);
@@ -200,6 +205,10 @@ export default function OutreachSettingsPage() {
     const newDays = current.includes(day) ? current.filter((d) => d !== day) : [...current, day];
     update("call", "allowed_days", newDays);
   };
+
+  if (!canView) {
+    return <AccessRestricted pageName="outreach &amp; safety settings" />;
+  }
 
   if (isLoading) {
     return (

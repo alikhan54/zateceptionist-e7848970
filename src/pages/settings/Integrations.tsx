@@ -6,6 +6,9 @@ import { INTEGRATION_CATEGORIES } from '@/types/integrations';
 import type { IntegrationCategory } from '@/types/integrations';
 import { useTenant } from '@/contexts/TenantContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { canViewSettingsPage } from '@/lib/settings-permissions';
+import { AccessRestricted } from '@/components/settings/AccessRestricted';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -641,6 +644,8 @@ function MarketingConnections() {
 export default function Integrations() {
   const { tenantConfig } = useTenant();
   const { tier } = useSubscription();
+  const { authUser } = useAuth();
+  const canView = canViewSettingsPage('integrations', authUser?.role);
   const {
     integrations, isLoading, connectIntegration, disconnectIntegration,
     testConnection, getWebhookUrl, getStoredCredentials, getStoredSettings,
@@ -686,6 +691,10 @@ export default function Integrations() {
   const handleTest = async () => { if (selectedIntegration) await testConnection.mutateAsync(selectedIntegration.id); };
   const clearFilters = () => { setSearch(''); setCategoryFilter('all'); setStatusFilter('all'); };
   const hasActiveFilters = search || categoryFilter !== 'all' || statusFilter !== 'all';
+
+  if (!canView) {
+    return <AccessRestricted pageName="integrations" />;
+  }
 
   if (isLoading) {
     return <div className="space-y-6 p-6"><Skeleton className="h-10 w-64" /><div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">{[...Array(9)].map((_, i) => <Skeleton key={i} className="h-48" />)}</div></div>;

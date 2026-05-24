@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
 import { useTenant, IndustryType } from "@/contexts/TenantContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { canViewSettingsPage } from "@/lib/settings-permissions";
+import { AccessRestricted } from "@/components/settings/AccessRestricted";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +37,8 @@ const INDUSTRIES: { value: IndustryType; label: string }[] = [
 
 export default function CompanyInfo() {
   const { tenantId, tenantConfig, refreshConfig } = useTenant();
+  const { authUser } = useAuth();
+  const canView = canViewSettingsPage('company_info', authUser?.role);
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
 
@@ -163,6 +168,10 @@ export default function CompanyInfo() {
   const updateField = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
+
+  if (!canView) {
+    return <AccessRestricted pageName="company information" />;
+  }
 
   return (
     <div className="space-y-6">

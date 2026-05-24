@@ -5,6 +5,8 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { useSubscription, SUBSCRIPTION_TIERS, SubscriptionTier } from "@/contexts/SubscriptionContext";
 import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { canViewSettingsPage } from "@/lib/settings-permissions";
+import { AccessRestricted } from "@/components/settings/AccessRestricted";
 import { openCheckout } from "@/lib/paddle";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -42,7 +44,8 @@ import { cn } from "@/lib/utils";
 export default function BillingSettings() {
   const { tier, tierConfig, limits, usage, allTiers, refreshUsage, isLoadingUsage } = useSubscription();
   const { tenantId } = useTenant();
-  const { user } = useAuth();
+  const { user, authUser } = useAuth();
+  const canView = canViewSettingsPage('billing', authUser?.role);
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -135,6 +138,10 @@ export default function BillingSettings() {
     const yearlyCost = plan.yearlyPrice;
     return monthlyCost - yearlyCost;
   };
+
+  if (!canView) {
+    return <AccessRestricted pageName="billing settings" />;
+  }
 
   if (isLoadingUsage) {
     return (

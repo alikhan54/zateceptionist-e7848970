@@ -5,6 +5,9 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Bell, Mail, MessageSquare, Phone, Calendar, Loader2, Save } from 'lucide-react';
 import { useTenant } from '@/contexts/TenantContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { canViewSettingsPage } from '@/lib/settings-permissions';
+import { AccessRestricted } from '@/components/settings/AccessRestricted';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -29,6 +32,8 @@ const DEFAULT_PREFS: Record<PrefKey, boolean> = {
 
 export default function NotificationSettings() {
   const { tenantId, tenantConfig, refreshConfig } = useTenant();
+  const { authUser } = useAuth();
+  const canView = canViewSettingsPage('notifications', authUser?.role);
   const { toast } = useToast();
   const [prefs, setPrefs] = useState<Record<PrefKey, boolean>>(DEFAULT_PREFS);
   const [saving, setSaving] = useState(false);
@@ -76,6 +81,10 @@ export default function NotificationSettings() {
       setSaving(false);
     }
   };
+
+  if (!canView) {
+    return <AccessRestricted pageName="notification settings" />;
+  }
 
   return (
     <div className="space-y-6">

@@ -320,5 +320,14 @@ export default defineConfig({
         storageState: path.join(__dirname, 'tests', '.auth-state-aamerah.json'),
       },
     },
+    {
+      name: 'settings-q1-team',
+      testMatch: /settings-q1-team-access\.spec\.ts/,
+      dependencies: ['settings-acsfx-setup'],
+      use: {
+        browserName: 'chromium',
+        storageState: path.join(__dirname, 'tests', '.auth-state-acsfx.json'),
+      },
+    },
   ],
 });

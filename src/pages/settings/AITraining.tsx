@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
 import { useTenant } from "@/contexts/TenantContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { canViewSettingsPage } from "@/lib/settings-permissions";
+import { AccessRestricted } from "@/components/settings/AccessRestricted";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,6 +46,8 @@ const STATUS_BADGE: Record<ModuleStatus, React.ReactNode> = {
 
 export default function AITraining() {
   const { tenantId } = useTenant();
+  const { authUser } = useAuth();
+  const canView = canViewSettingsPage('ai_training', authUser?.role);
   const { toast } = useToast();
   const [modules, setModules] = useState<TrainingModule[]>(INITIAL_MODULES);
   const [isTraining, setIsTraining] = useState(false);
@@ -156,6 +161,10 @@ export default function AITraining() {
   }, [tenantId]);
 
   const readyCount = modules.filter((m) => m.status === "ready").length;
+
+  if (!canView) {
+    return <AccessRestricted pageName="AI training" />;
+  }
 
   return (
     <div className="space-y-6">

@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { useKnowledgeBase, KnowledgeEntry } from '@/hooks/useKnowledgeBase';
+import { useAuth } from '@/contexts/AuthContext';
+import { canViewSettingsPage } from '@/lib/settings-permissions';
+import { AccessRestricted } from '@/components/settings/AccessRestricted';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +22,8 @@ const CATEGORIES = ['general', 'services', 'pricing', 'faq', 'policies', 'team',
 
 export default function KnowledgeBase() {
   const { entries, isLoading, addEntry, updateEntry, deleteEntry, trainAI } = useKnowledgeBase();
+  const { authUser } = useAuth();
+  const canView = canViewSettingsPage('knowledge_base', authUser?.role);
   const { toast } = useToast();
   
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -114,6 +119,10 @@ export default function KnowledgeBase() {
       default: return <FileText className="h-4 w-4" />;
     }
   };
+
+  if (!canView) {
+    return <AccessRestricted pageName="knowledge base" />;
+  }
 
   return (
     <div className="space-y-6">
