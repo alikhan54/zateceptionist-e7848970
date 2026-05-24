@@ -1,6 +1,6 @@
 # CC Multi-Session Coordination
 
-**Last updated:** 2026-05-24 (Session: Cosmique Mobile, Phase 13.D close)
+**Last updated:** 2026-05-24 (Session B: Cosmique Settings Audit, Phase 3→4 transition — F0 awaiting re-approval)
 
 User runs 2-3 Claude Code sessions in parallel on this repo. Sessions can clobber each other unless they declare scope + coordinate via this file.
 
@@ -39,9 +39,11 @@ User runs 2-3 Claude Code sessions in parallel on this repo. Sessions can clobbe
   - `frontend/tests/smart-ledger-*` (Smart Ledger session)
   - `frontend/tests/hr-*` (HR session if running)
 
-### Session B — Cosmique Settings Audit (Phase 2)
+### Session B — Cosmique Settings Audit (Phase 2 + Phase 3→4 transition)
 
-- **Scope (read + write):**
+**Current phase**: Phase 3 findings file delivered; F0 (permission-gap fix) awaiting user re-approval before Phase 4 code lands.
+
+- **Scope (read + write — tests + helpers — IN EFFECT NOW):**
   - `frontend/tests/settings-audit.spec.ts`
   - `frontend/tests/settings-audit-deep.spec.ts`
   - `frontend/tests/settings-audit-empty-state.spec.ts`
@@ -50,19 +52,39 @@ User runs 2-3 Claude Code sessions in parallel on this repo. Sessions can clobbe
   - `frontend/tests/settings-acsfx-auth.setup.ts`
   - `frontend/tests/settings-discovery.spec.ts`
   - `frontend/tests/settings-q1-team-access.spec.ts`
-  - `frontend/tests/helpers/dismiss-onboarding.ts` (and the rest of `tests/helpers/` if used)
+  - `frontend/tests/helpers/dismiss-onboarding.ts`
+  - `frontend/tests/helpers/supabase-snapshot.ts` (added 2026-05-24 for isolation tests)
   - `frontend/playwright.config.ts` — **additions only**, never remove existing projects
   - `frontend/docs/SETTINGS_AUDIT_*.md`
   - `frontend/docs/COSMIQUE_STATUS.md` — settings phase rows only
 
 - **Read-only (static analysis):**
   - `frontend/src/pages/settings/*.tsx`
-  - `frontend/src/contexts/AuthContext.tsx`, `RoleContext.tsx` (or wherever the role/permission gate lives)
+  - `frontend/src/contexts/AuthContext.tsx`, `TenantContext.tsx`
+  - `frontend/src/hooks/useTeam.ts`, `useKnowledgeBase.ts`, `useIntegrationsV2.ts`
+  - `frontend/src/App.tsx` (route-guard audit only)
+
+- **PROPOSED write expansion — PENDING USER APPROVAL (F0-A in chat 2026-05-24)**:
+  These files will NOT be touched until user explicitly approves F0-A and Phase 4 begins. Other sessions: do not edit these in parallel — coordinate with Session B owner if a conflict arises.
+  - NEW file: `frontend/src/lib/settings-permissions.ts` (per-page role allowlist helper)
+  - NEW file: `frontend/src/components/settings/AccessRestricted.tsx` (reusable gate component)
+  - MODIFY: `frontend/src/pages/settings/Billing.tsx`
+  - MODIFY: `frontend/src/pages/settings/Integrations.tsx`
+  - MODIFY: `frontend/src/pages/settings/OutreachSettings.tsx`
+  - MODIFY (if F0-A=(a) full 7-page rollout): `CompanyInfo.tsx`, `KnowledgeBase.tsx`, `AITraining.tsx`, `Notifications.tsx`
+  - OPTIONAL data-only: `public.user_roles` INSERTs for 6 missing-row tenants via service-role SQL (pending F0-B approval)
+
+- **Out-of-band SQL executed this session (data-only, no DDL):**
+  - F1: removed duplicate `email_warmup_status` row for `mnthalan-845d46b5` (older row, id `721286f9-4d90-453b-a480-9a27e58e56e4`, created 2026-03-19). Pre-count 2 → post-count 1. Log: `D:/420-system/.tmp_settings_v2/06_fix_diffs/f1_mnthalan_dedupe.log.json`. User-approved 2026-05-24 (Phase 1 decision [4]=a).
 
 - **MUST NOT TOUCH:**
-  - Anything else in `frontend/src/`
-  - `frontend/tests/cosmique-phase13*`
-  - `frontend/src/components/layout/Header.tsx`, `NavigationSidebar.tsx`, `Layout.tsx`, `ui/sidebar.tsx`, `index.css`
+  - `frontend/src/components/layout/Header.tsx`, `NavigationSidebar.tsx`, `Layout.tsx`, `ui/sidebar.tsx`, `index.css` (Session A territory)
+  - `frontend/src/pages/accounting/**` (Session C)
+  - `frontend/src/pages/clinic/`, `marketing/`, `sales/`, `hr/` (other surfaces)
+  - `frontend/tests/cosmique-phase13*` (Session A)
+  - `frontend/tests/smart-ledger-*` (Session C)
+  - `frontend/tests/hr-*` (Session D if active)
+  - n8n workflows, LangGraph agents, Supabase schema (DDL), VAPI configs — sacred across all sessions
 
 ### Session C — Smart Ledger Phase 1 / D7-B Finance
 
@@ -141,6 +163,7 @@ Any session that needs a sacred edit MUST:
 
 (Append-only. Each session adds an entry after pushing.)
 
+- `2026-05-24` · Session B · (this commit) · register Session B scope update — added helpers/supabase-snapshot.ts, declared pending F0 expansion surface in src/lib/, src/components/settings/, src/pages/settings/*.tsx.
 - `2026-05-24` · Session A · `3f50fe2` · Phase 13.D docs (report + STATUS row 31). CSS-only fix at `246fc8a`.
 - `2026-05-24` · Session A · `246fc8a` · Phase 13.D CSS additive (inner div stretches to 44px). No sacred edits.
 - `2026-05-24` · Session A · `c9733a1` · Phase 13.C closure report.
