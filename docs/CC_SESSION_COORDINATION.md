@@ -1,6 +1,6 @@
 # CC Multi-Session Coordination
 
-**Last updated:** 2026-05-24 (Session B: Cosmique Settings Audit, Phase 3→4 transition — F0 awaiting re-approval)
+**Last updated:** 2026-05-24 (Session D HR: PARKED — 6 rounds shipped, 1 spec-hardening on `parked/hr-session-d-20260524`)
 
 User runs 2-3 Claude Code sessions in parallel on this repo. Sessions can clobber each other unless they declare scope + coordinate via this file.
 
@@ -104,10 +104,29 @@ User runs 2-3 Claude Code sessions in parallel on this repo. Sessions can clobbe
   - `frontend/tests/settings-*`
   - `frontend/src/index.css` (mobile media query is owned by Session A)
 
-### Session D (potential) — HR fixes
+### Session D — HR (PARKED 2026-05-24)
 
-- **Scope:** `frontend/tests/hr-*` (already-running specs + result JSON), no `src/` edits expected
-- Should declare itself here if active
+- **Status:** PARKED. All Round 1–6 work shipped to `origin/main` (commits 7e3a2b3, 23987d7, 86c91b8 etc.). 1 small spec-hardening change parked on branch `parked/hr-session-d-20260524` (`16dc4f7`).
+- **Resume:** check out `parked/hr-session-d-20260524`, then continue per state doc at `frontend/docs/.session-state-hr-session-d.md`.
+- **Scope (read + write — when active):**
+  - `frontend/tests/hr-*.spec.ts`
+  - `frontend/tests/hr-*.json` (result outputs)
+  - `frontend/tests/HR_E2E_ROUND*.md` (reports)
+  - `frontend/tests/cleanup-playwright-test-data.py`
+  - `frontend/tests/zate-auth.setup.ts`
+  - `frontend/tests/screenshots/2026-05-2*-hr-*` + `2026-05-2*-hiring-*` + `2026-05-2*-askai-*` + `2026-05-2*-create-bug`
+  - `frontend/src/components/hr/AskAIButton.tsx` (Round 4)
+  - `frontend/src/hooks/useHR.ts` (Round 2, 3, 4, 5)
+  - `frontend/src/hooks/useRecruitment.ts` (Round 2)
+  - `frontend/src/lib/api/webhooks.ts` (Round 5 — added `callWebhookOrThrow`)
+  - `frontend/src/pages/hr/*.tsx` (Round 2, 3, 4, 6 — Recruitment/Reports/Shifts/Attendance/Training/AIAgentAnalytics/Documents/Leave/Employees/LeaveManagement)
+  - `frontend/playwright.config.ts` — additive HR project entries only
+
+- **MUST NOT TOUCH (other sessions' surface):**
+  - `frontend/src/pages/settings/`, `tests/settings-*` (Session B)
+  - `frontend/src/pages/accounting/`, `tests/smart-ledger-*` (Session C)
+  - `frontend/src/components/layout/`, `NavigationSidebar.tsx`, `Layout.tsx`, `index.css` (Session A)
+  - `frontend/tests/cosmique-phase*` (Session A/Cosmique)
 
 ---
 
@@ -163,6 +182,17 @@ Any session that needs a sacred edit MUST:
 
 (Append-only. Each session adds an entry after pushing.)
 
+- `2026-05-24` · Session D · `16dc4f7` · **PARK** — wait-hardening on `tests/hr-askai-navigation.spec.ts` (2-line). Pushed to branch `parked/hr-session-d-20260524` (NOT main). State doc: `frontend/docs/.session-state-hr-session-d.md`.
+- `2026-05-23` · Session D · `86c91b8` · Round 6 report — hiring pipeline 11/11 live + BUG-H fix (text-mode `description` field).
+- `2026-05-23` · Session D · `23987d7` · BUG-H fix in `Recruitment.tsx` + 11-test `hr-hiring-pipeline.spec.ts` + Add Candidate placeholders.
+- `2026-05-23` · Session D · `7e3a2b3` · Round 5 BUG-G fix — `callWebhookOrThrow` helper + 7 mutations in `useHR.ts` (false-success toast).
+- `2026-05-23` · Session D · `5535bef` · Round 5 report.
+- `2026-05-23` · Session D · `f33b0a9` · Round 4 — AskAIButton navigation fix + 5 missing affordances added (Shifts/Recruitment/Reports/AIAgentAnalytics + Attendance check-in + Training create program).
+- `2026-05-22` · Session D · `27f47bd` · Round 4 prep — AskAIButton stub fix.
+- `2026-05-22` · Session D · `06f0190` · Round 3 BUG-F fix — leave form missing `employee_id`.
+- `2026-05-21` · Session D · `116f661` · Round 2 — 5 frontend HR bugs (department_name, FK embed, Documents crash, Shifts 404, AI selector).
+- `2026-05-24` · Session C · `d9fd51f` · **D7-B Finance page** — 4 hooks + Finance.tsx (551 LOC) + smart-ledger-finance spec + playwright.config additive entry. Scope: `src/pages/accounting/Finance.tsx`, `src/hooks/useFinanceKpis.ts`, `src/hooks/useRevenueTrend.ts`, `src/hooks/useTopClientsByRevenue.ts`, `src/hooks/useRecentTransactions.ts`, `tests/smart-ledger-finance.spec.ts`, `playwright.config.ts` (additive entry only). Session B's `settings-q1-team` playwright.config block was surgically reverted at stage-time and restored to working tree post-commit (preserved for Session B).
+- `2026-05-22` · Session C · `e99d5e4` · **(retroactive)** D7-A Jobs page — 3 hooks + Jobs.tsx + smart-ledger-jobs spec + playwright.config additive entry. Scope: `src/pages/accounting/Jobs.tsx`, `src/hooks/useAccountingJobs.ts`, `src/hooks/useAccountingClientsList.ts`, `src/hooks/useAccountingTeam.ts`, `tests/smart-ledger-jobs.spec.ts`, `playwright.config.ts` (additive entry only).
 - `2026-05-24` · Session B · `03175a5` · register Session B scope update — added helpers/supabase-snapshot.ts, declared pending F0 expansion surface in src/lib/, src/components/settings/, src/pages/settings/*.tsx. F1 SQL execution logged.
 - `2026-05-24` · Session A · `3f50fe2` · Phase 13.D docs (report + STATUS row 31). CSS-only fix at `246fc8a`.
 - `2026-05-24` · Session A · `246fc8a` · Phase 13.D CSS additive (inner div stretches to 44px). No sacred edits.
