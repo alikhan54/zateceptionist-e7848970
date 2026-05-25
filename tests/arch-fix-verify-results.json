@@ -1,0 +1,70 @@
+{
+  "total": 3,
+  "pass": 3,
+  "partial": 0,
+  "fail": 0,
+  "results": [
+    {
+      "id": "V1",
+      "name": "AI Assistant routes through OMEGA bridge",
+      "verdict": "PASS",
+      "evidence": {
+        "hit_v2": true,
+        "no_legacy": true,
+        "policies": 2,
+        "employees": 21,
+        "ui_mentions_number": false
+      },
+      "notes": [
+        "seeded policy id=a4971391-53dc-411b-9ea5-37f9303e4252",
+        "endpoints_seen=[\"https://webhooks.zatesystems.com/webhook/hr/ai-assistant-v2\"]",
+        "hit_v2=true no_legacy=true",
+        "context_loaded={\"policies\":2,\"employees\":21}",
+        "ui_mentions_number=false ui_mentions_policy_word=true"
+      ],
+      "screenshot": "screenshots\\arch-fix\\v1_ai_v2_response.png"
+    },
+    {
+      "id": "V2",
+      "name": "Sourcing v2 completes with NULL careers URL",
+      "verdict": "PASS",
+      "evidence": {
+        "run_id": "52812c67-21bf-4249-b177-ce7fa4a57307",
+        "path": "direct-search",
+        "final": {
+          "status": "completed",
+          "phase1_status": "skipped",
+          "phase2_status": "completed",
+          "phase3_status": "completed",
+          "phase4_status": "completed",
+          "error_log": null
+        }
+      },
+      "notes": [
+        "seeded job_id=076bcc94-3e1b-4aa2-919b-2d621d7054a6 (source_url=null) raw=[{\"id\":\"076bcc94-3e1b-4aa2-919b-2d621d7054a6\",\"tenant_id\":\"ac308ab6-f381-4eef-88ec-4d5c7a860ff9\",\"requisition_number\":\"ARCHFIX-REQ-1779751702187\",\"job_title\":\"ARCHFIX-JOB 1779751702187\",\"department_id",
+        "trigger response={\"success\":true,\"data\":{\"sourcing_run_id\":\"52812c67-21bf-4249-b177-ce7fa4a57307\",\"job_requisition_id\":\"076bcc94-3e1b-4aa2-919b-2d621d7054a6\",\"job_title\":\"ARCHFIX-JOB 1779751702187\",\"status\":\"running\",\"trigger_type\":\"manual\",\"path\":\"direct-search\",\"message\":\"Sourcing v2 started.\"}}",
+        "run_id=52812c67-21bf-4249-b177-ce7fa4a57307 path=direct-search (expect 'direct-search')",
+        "final={\"status\":\"completed\",\"phase1_status\":\"skipped\",\"phase2_status\":\"completed\",\"phase3_status\":\"completed\",\"phase4_status\":\"completed\",\"error_log\":null}"
+      ]
+    },
+    {
+      "id": "V3",
+      "name": "Share button invokes Web Share API",
+      "verdict": "PASS",
+      "evidence": {
+        "opened": true,
+        "navigator_share_calls": 1,
+        "payload": {
+          "title": "ARCHFIX-SHARE 1779751702187",
+          "text": "ARCHFIX-SHARE 1779751702187\n\nShareable content body for arch-fix test."
+        }
+      },
+      "notes": [
+        "seeded doc_id=f7c37dd4-65b4-4b91-928b-41408ebcd533",
+        "clicked via row menu Share item",
+        "navigator.share calls=1 first={\"title\":\"ARCHFIX-SHARE 1779751702187\",\"text\":\"ARCHFIX-SHARE 1779751702187\\n\\nShareable content body for arch-fix test.\"}"
+      ],
+      "screenshot": "screenshots\\arch-fix\\v3_after_share_click.png"
+    }
+  ]
+}

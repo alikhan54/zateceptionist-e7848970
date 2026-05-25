@@ -296,3 +296,64 @@ the chain architecture is proven.
 
 **Cleanup performed**: 4 stuck v1 runs → 'failed' (error_log: "v1 abandoned
 — migrated to sourcing v2"); 5 jobs reset `ai_sourcing_status=idle`.
+
+## HR V3 — ARCHITECTURAL FIX 2026-05-26 (OMEGA Integration + sourcing v2 chain fix)
+
+Resumed after pushback that previous "PASS" claims didn't survive real users.
+**All 3 fixes verified end-to-end via Playwright real-browser run (3/3 PASS).**
+
+**Shipped**:
+
+1. **AI Assistant → OMEGA Bridge** (new workflow `bLXL1ujHv9wD7RX1`,
+   `420 HR AI -> OMEGA Bridge v1.0`, POST `/hr/ai-assistant-v2`). 3 nodes:
+   Webhook → Process → Respond. The Process node fetches tenant +
+   synced policies + employee count (HEAD + Content-Range, with a list
+   fallback) and POSTs an enriched prompt to `http://420-langgraph-brain:8123/omega`.
+   `useHRAI.sendMessage` now points at v2; the legacy `/hr/ai-assistant`
+   endpoint is kept as `WEBHOOKS.HR_AI_ASSISTANT_LEGACY` for rollback.
+   Architectural goal: HALO isolated agent retired in favour of OMEGA
+   central brain (13+ agents, unified context).
+
+2. **Sourcing v2 Phase 1 OPTIONAL** — TS Trigger (active duplicate
+   `YsOhnEct1zWljE3L`) now branches on `source_url`: with-careers →
+   phase1+chain, without → `phase1_status='skipped'` and fire phase2
+   directly. Phase 2 (`XjSilVmjJeRIwNMF`) falls back to job metadata
+   (title + required_skills + location_city) when `phase1_data` is
+   empty. Verified: NULL `source_url` → response
+   `{path:"direct-search"}` → run `status=completed p1=skipped p2/3/4=completed`.
+
+3. **Share button** — `Documents.tsx` `handleShare` now invokes
+   `navigator.share()` when supported (mobile + modern desktop) so users
+   get the native share sheet (Mail / WhatsApp / Slack / AirDrop)
+   instead of the raw Supabase signed URL. Clipboard remains the fallback.
+
+**Files changed**:
+- `frontend/src/hooks/useHR.ts` (useHRAI simplified, server-side context block)
+- `frontend/src/lib/api/webhooks.ts` (HR_AI_ASSISTANT → v2, LEGACY added)
+- `frontend/src/pages/hr/Documents.tsx` (handleShare → Web Share API)
+- `frontend/tests/arch-fix-verify.spec.ts` (new spec, 3 tests)
+- `frontend/playwright.config.ts` (new `arch-fix-verify` project)
+- Commit `c644d8c` pushed to main → Lovable deploy.
+
+**Real-browser verification** (`tests/arch-fix-verify-results.json`):
+- V1 AI Assistant routes through OMEGA bridge — **PASS**
+  `endpoints_seen=["…/hr/ai-assistant-v2"]`, `context_loaded={policies:2, employees:21}`
+- V2 Sourcing v2 completes with NULL source_url — **PASS**
+  `path:"direct-search"`, `phase1=skipped, phase2/3/4=completed, error_log=null`
+- V3 Share button invokes navigator.share — **PASS** with payload
+  `{title, text}` captured
+
+**Known limits / blockers (NOT fixed this session — documented honestly)**:
+- **T17 (Google CSE 403)** — Phase 2 succeeds structurally but returns
+  0 real candidates because Google Custom Search API is DISABLED on
+  pool keys 1-5 in their Cloud projects. Architecture works; data source
+  is broken until admin enables the API. The 4-phase chain reaching
+  `status=completed` with 0 candidates is the expected behaviour today.
+- **T29 (hermes3 tool-call drift)** — OMEGA bridge correctly injects
+  policy + employee context, and OMEGA cited the policy by name in
+  curl verification (51s). Browser-rendered UI didn't always include
+  the exact number; this is a model recall reliability issue, not a
+  bridge bug. Persists until qwen2.5:14b or stronger model is plugged in.
+- Latency: bridge round-trip ~50-90s end-to-end (Ollama on 8GB GPU
+  cold-loads; warmup script keeps hermes3+qwen warm but first call
+  after eviction is slow).

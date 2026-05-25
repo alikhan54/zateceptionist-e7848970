@@ -34,7 +34,8 @@ type Verdict = 'PASS' | 'FAIL' | 'PARTIAL';
 interface Result { id: string; name: string; verdict: Verdict; evidence: Record<string, unknown>; notes: string[]; screenshot?: string; error?: string; }
 const results: Result[] = [];
 
-test.describe.configure({ mode: 'serial' });
+// `default` (not serial) so a single test failure doesn't skip the rest.
+test.describe.configure({ mode: 'default' });
 test.use({ trace: 'off' });
 test.beforeAll(() => fs.mkdirSync(SHOT_DIR, { recursive: true }));
 test.afterAll(() => fs.writeFileSync(RESULTS_PATH, JSON.stringify({
@@ -165,12 +166,15 @@ test('V2 Sourcing v2 completes with NULL careers URL', async ({ page }) => {
   try {
     // Create a job WITHOUT source_url to force the direct-search code path
     const jobName = `ARCHFIX-JOB ${TS}`;
-    const create = await page.request.post(`${SUPA}/rest/v1/hr_jobs`, {
+    const create = await page.request.post(`${SUPA}/rest/v1/hr_job_requisitions`, {
       headers: { apikey: SVC_KEY, Authorization: `Bearer ${SVC_KEY}`, Prefer: 'return=representation' },
       data: {
         tenant_id: ZATE,
+        requisition_number: `ARCHFIX-REQ-${TS}`,
+        job_title: jobName,
         title: jobName,
-        location: 'Dubai, UAE',
+        location_city: 'Dubai',
+        location_country: 'UAE',
         status: 'active',
         required_skills: ['React', 'TypeScript', 'Node.js'],
         source_url: null,
@@ -178,20 +182,22 @@ test('V2 Sourcing v2 completes with NULL careers URL', async ({ page }) => {
     });
     const j = await create.json();
     jobId = Array.isArray(j) ? j[0]?.id : j?.id;
-    notes.push(`seeded job_id=${jobId} (source_url=null)`);
+    notes.push(`seeded job_id=${jobId} (source_url=null) raw=${JSON.stringify(j).slice(0, 200)}`);
     expect(jobId).toBeTruthy();
 
     // Trigger sourcing v2 via the webhook (this is what the frontend button does)
-    const trig = await page.request.post('http://localhost:5678/webhook/trigger-sourcing-v2', {
+    const trig = await page.request.post('http://localhost:5678/webhook/hr/job/trigger-sourcing-v2', {
       headers: { 'Content-Type': 'application/json' },
-      data: { job_id: jobId, tenant_id: ZATE },
+      data: { job_requisition_id: jobId, tenant_id: ZATE, trigger_type: 'manual' },
       timeout: 60_000,
     });
     const body = await trig.json().catch(() => ({}));
-    notes.push(`trigger response=${JSON.stringify(body).slice(0, 240)}`);
-    runId = body?.run_id || body?.runId;
-    const path1 = body?.path;
-    notes.push(`path=${path1} (expect 'direct-search')`);
+    notes.push(`trigger response=${JSON.stringify(body).slice(0, 320)}`);
+    // Response shape: { success, data: { sourcing_run_id, job_requisition_id, status, path, ... } }
+    const data = body?.data || body;
+    runId = data?.sourcing_run_id || data?.run_id || data?.runId;
+    const path1 = data?.path;
+    notes.push(`run_id=${runId} path=${path1} (expect 'direct-search')`);
 
     expect(path1).toBe('direct-search');
 
@@ -229,7 +235,7 @@ test('V2 Sourcing v2 completes with NULL careers URL', async ({ page }) => {
         { headers: { apikey: SVC_KEY, Authorization: `Bearer ${SVC_KEY}` } }).catch(() => {});
     }
     if (jobId) {
-      await page.request.delete(`${SUPA}/rest/v1/hr_jobs?id=eq.${jobId}`,
+      await page.request.delete(`${SUPA}/rest/v1/hr_job_requisitions?id=eq.${jobId}`,
         { headers: { apikey: SVC_KEY, Authorization: `Bearer ${SVC_KEY}` } }).catch(() => {});
     }
   }
