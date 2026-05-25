@@ -66,6 +66,7 @@ export const WEBHOOKS = {
   HR_TRAINING_PROGRAMS: "/hr/training/programs",
   HR_TRAINING_ENROLLMENTS: "/hr/training/enrollments",
   HR_DOCUMENTS: "/hr/documents",
+  HR_DOCUMENT_SYNC: "/hr/document/sync-to-agents",
   HR_GET_EMPLOYEES: "/hr/employees",
   HR_GET_EMPLOYEE: "/hr/employee",
   HR_UPDATE_EMPLOYEE: "/hr/employee/update",

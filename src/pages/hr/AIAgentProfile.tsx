@@ -10,7 +10,8 @@ import {
   Play, Pause, XCircle, Settings, Activity, Clock,
   Zap, CheckCircle, FileText, BookOpen, AlertTriangle,
   ChevronDown, ChevronUp, Send, Loader2, MessageCircle,
-  BarChart3, PhoneCall, CalendarCheck, AlertOctagon
+  BarChart3, PhoneCall, CalendarCheck, AlertOctagon,
+  Shield
 } from "lucide-react";
 import { useAIAgent, useUpdateAgent, useAgentTasks, useAgentMetrics, useAgentConversations, useAgentSuggestions } from "@/hooks/useAIAgents";
 import AgentKnowledgeEditor from "@/components/hr/AgentKnowledgeEditor";
@@ -299,6 +300,44 @@ export default function AIAgentProfile() {
               </CardContent>
             </Card>
           )}
+
+          {/* Policies Enforced — populated by 420 HR Policy Sync v1.0 when a tenant
+              uploads a policy/handbook/contract document. */}
+          {(() => {
+            const kb = (agent as any).knowledge_base || {};
+            const policies: any[] = Array.isArray(kb.policies) ? kb.policies.filter((p: any) => p && typeof p === 'object') : [];
+            if (policies.length === 0) return null;
+            return (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Shield className="h-4 w-4 text-blue-500" /> Policies Enforced
+                    <Badge variant="outline" className="ml-2">{policies.length}</Badge>
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Auto-synced from HR Documents. This agent will reference these policies in every conversation.
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {policies.map((p: any) => (
+                      <div key={p.document_id || p.document_name} className="border rounded p-3">
+                        <div className="flex items-center justify-between mb-1 gap-2">
+                          <span className="font-semibold text-sm truncate">{p.document_name || 'Untitled'}</span>
+                          <Badge variant="outline" className="capitalize">{(p.document_type || '').replace(/_/g, ' ')}</Badge>
+                        </div>
+                        {p.summary && <p className="text-xs text-muted-foreground line-clamp-2">{p.summary}</p>}
+                        <p className="text-xs mt-2 text-blue-500">
+                          {Array.isArray(p.rules) ? p.rules.length : 0} rules enforced
+                          {p.added_at && <span className="text-muted-foreground"> · added {new Date(p.added_at).toLocaleDateString()}</span>}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()}
 
           {/* Channels */}
           <Card>

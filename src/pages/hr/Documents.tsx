@@ -33,14 +33,20 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Textarea } from '@/components/ui/textarea';
 import { format } from 'date-fns';
+import { callWebhook, WEBHOOKS } from '@/lib/api/webhooks';
+import { toast } from 'sonner';
+
+// document_types that auto-sync to AI agents (via 420 HR Policy Sync v1.0)
+const SYNCABLE_TYPES = ['policy', 'contract', 'handbook', 'code_of_conduct', 'sop', 'guidelines'];
 
 export default function DocumentsPage() {
-  const { t } = useTenant();
+  const { t, tenantConfig } = useTenant();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isUploadOpen, setIsUploadOpen] = useState(false);
-  const [newDoc, setNewDoc] = useState({ name: '', category: '' });
+  const [newDoc, setNewDoc] = useState({ name: '', category: '', content: '' });
   const { data: documents, isLoading, uploadDocument } = useHRDocuments(selectedCategory !== 'all' ? selectedCategory : undefined);
 
   const displayDocuments = (documents || []).map((doc: any) => ({
@@ -134,18 +140,37 @@ export default function DocumentsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="policy">Policy</SelectItem>
+                    <SelectItem value="handbook">Handbook</SelectItem>
+                    <SelectItem value="code_of_conduct">Code of Conduct</SelectItem>
+                    <SelectItem value="sop">SOP</SelectItem>
+                    <SelectItem value="guidelines">Guidelines</SelectItem>
+                    <SelectItem value="contract">Contract</SelectItem>
                     <SelectItem value="template">Template</SelectItem>
                     <SelectItem value="personal">Personal</SelectItem>
-                    <SelectItem value="contract">Contract</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+              {SYNCABLE_TYPES.includes(newDoc.category) && (
+                <div className="space-y-2">
+                  <Label>Document Content</Label>
+                  <Textarea
+                    placeholder="Paste the full policy/handbook/contract text here. Our AI will extract rules and train every agent for this tenant."
+                    value={newDoc.content}
+                    onChange={(e) => setNewDoc({ ...newDoc, content: e.target.value })}
+                    rows={8}
+                    className="font-mono text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Tip: ≥ 20 characters required for AI sync. After upload, all active AI agents for your tenant will be updated to reference these rules.
+                  </p>
+                </div>
+              )}
               <div className="space-y-2">
-                <Label>File</Label>
-                <div className="border-2 border-dashed rounded-lg p-8 text-center">
-                  <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-                  <p className="text-sm text-muted-foreground">
-                    File upload coming soon — document metadata will be saved
+                <Label>File (optional)</Label>
+                <div className="border-2 border-dashed rounded-lg p-6 text-center">
+                  <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                  <p className="text-xs text-muted-foreground">
+                    File upload coming soon — for now paste content above (syncable types only).
                   </p>
                 </div>
               </div>
@@ -154,18 +179,30 @@ export default function DocumentsPage() {
               <Button variant="outline" onClick={() => setIsUploadOpen(false)}>
                 Cancel
               </Button>
-              <Button disabled={!newDoc.name || !newDoc.category} onClick={() => {
-                // hr_documents column is document_name (not name); category column exists.
-                // document_type mirrors category for downstream consumers.
-                uploadDocument.mutate({
-                  document_name: newDoc.name,
-                  title: newDoc.name,
-                  category: newDoc.category,
-                  document_type: newDoc.category,
-                  status: 'active',
-                } as any);
+              <Button disabled={!newDoc.name || !newDoc.category} onClick={async () => {
+                // hr_documents column is document_name; document_type mirrors category.
+                // For syncable types, document_content drives the n8n policy-sync workflow.
+                const isSyncable = SYNCABLE_TYPES.includes(newDoc.category);
+                try {
+                  const created: any = await (uploadDocument as any).mutateAsync({
+                    document_name: newDoc.name,
+                    title: newDoc.name,
+                    category: newDoc.category,
+                    document_type: newDoc.category,
+                    document_content: isSyncable ? newDoc.content : undefined,
+                    status: 'active',
+                  } as any);
+                  // Fire-and-forget sync for syncable types
+                  if (isSyncable && created?.id && tenantConfig?.id && (newDoc.content || '').length >= 20) {
+                    callWebhook(WEBHOOKS.HR_DOCUMENT_SYNC, {
+                      document_id: created.id,
+                      tenant_id: tenantConfig.id,
+                    }, tenantConfig.id).catch(() => { /* non-blocking */ });
+                    toast.info('AI agents are being trained on this document…');
+                  }
+                } catch (e) { /* upload mutation already toasts on error */ }
                 setIsUploadOpen(false);
-                setNewDoc({ name: '', category: '' });
+                setNewDoc({ name: '', category: '', content: '' });
               }}>Upload</Button>
             </DialogFooter>
           </DialogContent>
