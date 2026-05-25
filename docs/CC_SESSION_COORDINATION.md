@@ -1,6 +1,6 @@
 # CC Multi-Session Coordination
 
-**Last updated:** 2026-05-24 21:15 PST (Session HR-V3 EMERGENCY ACTIVE — n8n DB-pool restart, see "Active sessions" + "Recent commits log")
+**Last updated:** 2026-05-26 (Session A Cosmique PARKED — see Session A block)
 
 > **⚠️ EMERGENCY NOTICE 2026-05-24**: Session HR-V3 took control to diagnose a production-wide "Failed to fetch" outage. Root cause: n8n's TypeORM pool was stuck on Supabase pooler timeouts ("Database is not ready" 503 for all webhooks across all tenants). Frontend code was confirmed INTACT — no parallel-session corruption. Fix: `docker restart n8n` (32s downtime, RestartCount 0→1). Recovery verified — employee + ai-agent webhooks back to HTTP 200. User had reported the symptom as "Failed to fetch" on AI Agent Hire and "Employee creation not working" on Add Provider. Both are now working. **Coordination policy reaffirmed: only ONE session pushes to main at a time.** When 9 sessions race-push, no actual file corruption happened this time, but the perception of corruption obscured the real n8n outage for hours.
 
@@ -10,7 +10,12 @@ User runs 2-3 Claude Code sessions in parallel on this repo. Sessions can clobbe
 
 ## Active sessions
 
-### Session A — Cosmique Mobile (Phases 13.A → 13.D)
+### Session A — Cosmique Mobile (Phases 13.A → 13.E.3) — PARKED 2026-05-26
+
+- **Status:** PARKED at 2026-05-26. Will resume after HR/c3/Video/Settings sessions complete. See `frontend/docs/.session-state-cosmique-A.md` for resume context.
+- **Last shipped commit on `main`:** `246fc8a` Phase 13.D additive CSS fix (tip-of-main commits at park time belong to HR session).
+- **Latest progress beyond shipped commits:** Phase 13.E.3 multi-tenant role corruption fix verified — adeel's sidebar restored to full nav; 5 affected admins fixed (adeel, marhama1991, admin@rewerck-roofing, asra; zatesystems7 pending tomorrow). Diagnoses on disk at `docs/PHASE13E_REGRESSION_DIAGNOSIS.md` + `docs/PHASE13E2_REGRESSION_DIAGNOSIS.md` (untracked).
+- **No parked branch:** Case D park — working tree clean of Session A scope changes; pre-existing legacy untracked artifacts left in place.
 
 - **Scope (read + write):**
   - `frontend/src/index.css` (mobile media query block only)
