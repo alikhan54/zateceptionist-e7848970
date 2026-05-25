@@ -23,6 +23,7 @@ export interface Employee {
   job_title?: string;
   department_id?: string;
   department_name?: string;
+  department?: string;
   manager_id?: string;
   date_of_joining?: string;
   date_of_birth?: string;

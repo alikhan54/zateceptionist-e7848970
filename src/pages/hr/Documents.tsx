@@ -155,7 +155,15 @@ export default function DocumentsPage() {
                 Cancel
               </Button>
               <Button disabled={!newDoc.name || !newDoc.category} onClick={() => {
-                uploadDocument.mutate({ name: newDoc.name, category: newDoc.category, status: 'active' });
+                // hr_documents column is document_name (not name); category column exists.
+                // document_type mirrors category for downstream consumers.
+                uploadDocument.mutate({
+                  document_name: newDoc.name,
+                  title: newDoc.name,
+                  category: newDoc.category,
+                  document_type: newDoc.category,
+                  status: 'active',
+                } as any);
                 setIsUploadOpen(false);
                 setNewDoc({ name: '', category: '' });
               }}>Upload</Button>

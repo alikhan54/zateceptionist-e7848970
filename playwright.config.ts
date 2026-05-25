@@ -266,6 +266,33 @@ export default defineConfig({
       },
     },
     {
+      name: 'hr-sourcing-pipeline',
+      testMatch: /hr-sourcing-pipeline\.spec\.ts/,
+      dependencies: ['zate-setup'],
+      use: {
+        browserName: 'chromium',
+        storageState: path.join(__dirname, 'tests', '.auth-state-zate.json'),
+      },
+    },
+    {
+      name: 'hr-hiring-complete',
+      testMatch: /hr-hiring-complete\.spec\.ts/,
+      dependencies: ['zate-setup'],
+      use: {
+        browserName: 'chromium',
+        storageState: path.join(__dirname, 'tests', '.auth-state-zate.json'),
+      },
+    },
+    {
+      name: 'hr-data-integrity',
+      testMatch: /hr-data-integrity\.spec\.ts/,
+      dependencies: ['zate-setup'],
+      use: {
+        browserName: 'chromium',
+        storageState: path.join(__dirname, 'tests', '.auth-state-zate.json'),
+      },
+    },
+    {
       name: 'settings-acsfx-setup',
       testMatch: /settings-acsfx-auth\.setup\.ts/,
       use: { browserName: 'chromium' },

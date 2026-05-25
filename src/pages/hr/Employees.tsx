@@ -37,7 +37,7 @@ const emptyNewEmployee = {
 };
 
 export default function EmployeesPage() {
-  const { t } = useTenant();
+  const { t, tenantConfig } = useTenant();
   const { toast } = useToast();
   const navigate = useNavigate();
   const { data: employees, isLoading, createEmployee, updateEmployee } = useEmployees();
@@ -61,7 +61,7 @@ export default function EmployeesPage() {
       `${emp.first_name} ${emp.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (emp.company_email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (emp.position || '').toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesDept = filterDept === 'All' || emp.department_name === filterDept;
+    const matchesDept = filterDept === 'All' || (emp.department_name || emp.department) === filterDept;
     const matchesStatus = filterStatus === 'All' || (emp.employment_status || '').toLowerCase().replace('_', ' ') === filterStatus.toLowerCase();
     const matchesType = filterType === 'All' || emp.employment_type === filterType;
     return matchesSearch && matchesDept && matchesStatus && matchesType;
@@ -100,7 +100,14 @@ export default function EmployeesPage() {
     navigate(`/hr/employees/${employee.id}`);
   };
 
-  const formatCurrency = (amount: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(amount);
+  const formatCurrency = (amount: number, currency?: string) => {
+    const cur = currency || (tenantConfig as any)?.currency || 'AED';
+    try {
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency: cur, maximumFractionDigits: 0 }).format(amount);
+    } catch {
+      return `${cur} ${amount.toLocaleString()}`;
+    }
+  };
 
   const wizardSteps = [
     { step: 1, title: 'Personal Details', description: 'Basic information' },
@@ -256,7 +263,7 @@ export default function EmployeesPage() {
           { label: `Total ${t('staffs')}`, value: displayEmployees.length, icon: Users, color: 'primary' },
           { label: 'Active', value: displayEmployees.filter(e => e.employment_status === 'active').length, icon: CheckCircle2, color: 'chart-2' },
           { label: 'On Leave', value: displayEmployees.filter(e => e.employment_status === 'on_leave').length, icon: Clock, color: 'chart-4' },
-          { label: 'Departments', value: new Set(displayEmployees.map(e => e.department_name).filter(Boolean)).size, icon: Building2, color: 'chart-3' },
+          { label: 'Departments', value: new Set(displayEmployees.map(e => e.department_name || e.department).filter(Boolean)).size, icon: Building2, color: 'chart-3' },
         ].map((stat) => (
           <Card key={stat.label} className="hover:shadow-md transition-shadow">
             <CardContent className="p-4">
@@ -345,7 +352,7 @@ export default function EmployeesPage() {
                   <h3 className="font-semibold">{employee.full_name || `${employee.first_name} ${employee.last_name}`}</h3>
                   <p className="text-sm text-muted-foreground">{employee.position}</p>
                   <div className="flex items-center gap-2 mt-3">
-                    <Badge variant="secondary" className="rounded-full">{employee.department_name || 'Unassigned'}</Badge>
+                    <Badge variant="secondary" className="rounded-full">{employee.department_name || employee.department || 'Unassigned'}</Badge>
                     {getStatusBadge(employee.employment_status)}
                   </div>
                   <div className="mt-4 pt-4 border-t space-y-2 text-sm text-muted-foreground">
@@ -389,7 +396,7 @@ export default function EmployeesPage() {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>{employee.department_name || 'Unassigned'}</TableCell>
+                  <TableCell>{employee.department_name || employee.department || 'Unassigned'}</TableCell>
                   <TableCell>{employee.position}</TableCell>
                   <TableCell>{employee.date_of_joining}</TableCell>
                   <TableCell>{getStatusBadge(employee.employment_status)}</TableCell>
