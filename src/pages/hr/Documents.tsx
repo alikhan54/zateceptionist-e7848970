@@ -120,6 +120,85 @@ export default function DocumentsPage() {
   });
   const ackSet = new Set((acks || []).map((a) => a.document_id));
 
+  const handleView = (doc: any) => {
+    if (doc.file_url) {
+      window.open(doc.file_url, '_blank', 'noopener,noreferrer');
+    } else if (doc.document_content) {
+      setReviewDoc(doc);
+    } else {
+      toast.error('No file or content available for this document');
+    }
+  };
+
+  const handleDownload = async (doc: any) => {
+    try {
+      if (doc.file_url) {
+        const filePath = String(doc.file_url).split('/hr-documents/')[1];
+        if (!filePath) {
+          window.open(doc.file_url, '_blank');
+          return;
+        }
+        const { data, error } = await supabase.storage
+          .from('hr-documents')
+          .createSignedUrl(filePath, 3600);
+        if (error || !data?.signedUrl) {
+          toast.error(`Download failed: ${error?.message || 'no signed URL'}`);
+          return;
+        }
+        const link = document.createElement('a');
+        link.href = data.signedUrl;
+        link.download = doc.document_name || doc.name || 'document';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else if (doc.document_content) {
+        const blob = new Blob([doc.document_content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${doc.document_name || doc.name || 'document'}.txt`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } else {
+        toast.error('Nothing to download');
+      }
+    } catch (e: any) {
+      toast.error(`Download error: ${e?.message || 'unknown'}`);
+    }
+  };
+
+  const handleShare = async (doc: any) => {
+    try {
+      if (doc.file_url) {
+        const filePath = String(doc.file_url).split('/hr-documents/')[1];
+        if (filePath) {
+          const { data, error } = await supabase.storage
+            .from('hr-documents')
+            .createSignedUrl(filePath, 86400);
+          if (error || !data?.signedUrl) {
+            toast.error(`Share failed: ${error?.message || 'no signed URL'}`);
+            return;
+          }
+          await navigator.clipboard.writeText(data.signedUrl);
+          toast.success('Share link copied (expires in 24h)');
+          return;
+        }
+        await navigator.clipboard.writeText(doc.file_url);
+        toast.success('File URL copied');
+      } else if (doc.document_content) {
+        const summary = doc.document_content.slice(0, 500);
+        await navigator.clipboard.writeText(`${doc.document_name || 'Document'}\n\n${summary}${doc.document_content.length > 500 ? '…' : ''}`);
+        toast.success('Content copied to clipboard');
+      } else {
+        toast.error('Nothing to share');
+      }
+    } catch (e: any) {
+      toast.error(`Share error: ${e?.message || 'unknown'}`);
+    }
+  };
+
   const handleAcknowledge = async (docId: string) => {
     if (!tenantConfig?.id) return;
     setAckingId(docId);
@@ -532,15 +611,15 @@ export default function DocumentsPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleView(doc)} data-testid={`doc-view-${doc.id}`}>
                             <Eye className="h-4 w-4 mr-2" />
                             View
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDownload(doc)} data-testid={`doc-download-${doc.id}`}>
                             <Download className="h-4 w-4 mr-2" />
                             Download
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleShare(doc)} data-testid={`doc-share-${doc.id}`}>
                             <Share2 className="h-4 w-4 mr-2" />
                             Share
                           </DropdownMenuItem>

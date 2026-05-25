@@ -934,7 +934,55 @@ export function useHRAI() {
 
   const sendMessage = async (message: string, context?: { channel?: string; employee_id?: string }) => {
     if (!tenantUuid) return { success: false, error: "No tenant" };
-    return callWebhook(WEBHOOKS.HR_AI_ASSISTANT, { query: message, ...context }, tenantUuid);
+
+    // Inject this tenant's synced policy rules into the prompt context so
+    // HALO / LangGraph answers reference the actual company policies rather
+    // than hallucinating. Pulled from hr_documents where sync_status='synced'
+    // and document_type is one of the policy-like types. Capped to 20 rules
+    // per doc + 8 docs total to stay well under any context budget.
+    let policy_context = '';
+    try {
+      const { data: policies } = await supabase
+        .from('hr_documents')
+        .select('document_name, document_type, extracted_rules')
+        .eq('tenant_id', tenantUuid)
+        .eq('sync_status', 'synced')
+        .in('document_type', ['policy', 'contract', 'handbook', 'code_of_conduct', 'sop', 'guidelines'])
+        .order('created_at', { ascending: false })
+        .limit(8);
+      if (policies && policies.length > 0) {
+        const parts: string[] = ['\n\nCOMPANY POLICIES YOU MUST FOLLOW (always cite the specific policy name):\n'];
+        for (const p of policies as any[]) {
+          parts.push(`\n[${(p.document_type || 'POLICY').toUpperCase()}: ${p.document_name}]`);
+          const er = p.extracted_rules || {};
+          if (er.summary) parts.push(`Summary: ${er.summary}`);
+          if (Array.isArray(er.policy_rules) && er.policy_rules.length > 0) {
+            parts.push('Rules:');
+            for (const r of er.policy_rules.slice(0, 20)) {
+              const rule = typeof r === 'string' ? r : (r?.rule || JSON.stringify(r).slice(0, 200));
+              parts.push(`- ${rule}`);
+            }
+          }
+        }
+        policy_context = parts.join('\n');
+      }
+    } catch (e) {
+      // policy fetch is best-effort — never block the chat
+      console.warn('[useHRAI] policy fetch failed (non-blocking):', e);
+    }
+
+    // The HR AI Assistant backend (HR Part 2 G2 Parse → HALO/LangGraph) only
+    // forwards `message` / `query` to the model. Embed the policy context
+    // INTO the question so the existing pipeline carries it through without
+    // requiring a sacred-workflow patch.
+    const enrichedQuery = policy_context
+      ? `${message}\n\n${policy_context}`
+      : message;
+    return callWebhook(
+      WEBHOOKS.HR_AI_ASSISTANT,
+      { query: enrichedQuery, message: enrichedQuery, policy_context, ...context },
+      tenantUuid,
+    );
   };
 
   return { sendMessage };
