@@ -169,7 +169,14 @@ export default function DocumentsPage() {
     }
   };
 
+  // Build the payload, then try Web Share API (mobile / supported desktop),
+  // fall back to clipboard. Web Share lets the user pick the destination
+  // (mail, WhatsApp, Slack, etc.) instead of leaking a raw Supabase URL.
   const handleShare = async (doc: any) => {
+    const title = doc.document_name || doc.name || 'Document';
+    let shareUrl: string | undefined;
+    let shareText: string | undefined;
+
     try {
       if (doc.file_url) {
         const filePath = String(doc.file_url).split('/hr-documents/')[1];
@@ -181,18 +188,49 @@ export default function DocumentsPage() {
             toast.error(`Share failed: ${error?.message || 'no signed URL'}`);
             return;
           }
-          await navigator.clipboard.writeText(data.signedUrl);
-          toast.success('Share link copied (expires in 24h)');
-          return;
+          shareUrl = data.signedUrl;
+          shareText = `${title} — secure link (24h)`;
+        } else {
+          shareUrl = doc.file_url;
+          shareText = title;
         }
-        await navigator.clipboard.writeText(doc.file_url);
-        toast.success('File URL copied');
       } else if (doc.document_content) {
         const summary = doc.document_content.slice(0, 500);
-        await navigator.clipboard.writeText(`${doc.document_name || 'Document'}\n\n${summary}${doc.document_content.length > 500 ? '…' : ''}`);
-        toast.success('Content copied to clipboard');
+        shareText = `${title}\n\n${summary}${doc.document_content.length > 500 ? '…' : ''}`;
       } else {
         toast.error('Nothing to share');
+        return;
+      }
+
+      const payload: ShareData = {
+        title,
+        text: shareText,
+        ...(shareUrl ? { url: shareUrl } : {}),
+      };
+
+      // Prefer the native share sheet when available + payload is allowed.
+      const nav: any = navigator;
+      const canShare = typeof nav.share === 'function'
+        && (typeof nav.canShare !== 'function' || nav.canShare(payload));
+
+      if (canShare) {
+        try {
+          await nav.share(payload);
+          toast.success('Shared');
+          return;
+        } catch (err: any) {
+          // AbortError = user cancelled the sheet; treat as silent no-op.
+          if (err?.name === 'AbortError') return;
+          // Any other share error falls through to clipboard.
+        }
+      }
+
+      const clipboardText = shareUrl || shareText || title;
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(clipboardText);
+        toast.success(shareUrl ? 'Share link copied (expires in 24h)' : 'Copied to clipboard');
+      } else {
+        toast.info(clipboardText);
       }
     } catch (e: any) {
       toast.error(`Share error: ${e?.message || 'unknown'}`);
