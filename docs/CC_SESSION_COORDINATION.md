@@ -218,3 +218,39 @@ Paste this into other CC sessions so they sync with this file:
 
 - Untracked files visible in `git status` (numerous `tests/screenshots/`, JSON result files, marketing `.backup*` files) are local-only work artifacts. They're not under coordination scope until they're staged/committed.
 - `playwright.config.ts` may be modified by multiple sessions adding project entries — that's expected. Conflicts on this file should be merged by keeping ALL project entries (additive union).
+
+## HR V3 — PARKED 2026-05-25 21:21
+
+- **Branch**: `parked/hr-v3-20260525-212103` (pushed to origin)
+- **State file**: `frontend/docs/.session-state-hr-v3.md`
+- **Audit file**: `D:/420-system/.tmp_intent_audit/06_hr_new_workflows.md`
+- **Last commits on main**: `71ab404` (Lovable nudge) → `6d477be` (real file upload feature)
+
+**n8n workflows owned**:
+- `31qSIf2I6VAF2loU` — 420 HR Policy Sync v1.0 (NEW this session — Documents → Gemini → AI agent training)
+- `i39PJEW8Z7IkFkUY` — 420 HR Onboarding v2.0 (created earlier; OB.2 jsCode patched this session for BUG 1 / data-overwrite fix)
+- `Tu7QL8CZdiyQCYGG` — 420 HR Leave Request v2.0
+- `HIxXgBxEVAJI1KuL` — AI Agent Metrics
+- `FkEfBn8od7xrJWEX` — AI Agent Learning
+- `mlsC24hFDv6O7GyG` — AI Agent Activator
+- `azItflaNjJxpeYXu` — AI Agent Creator
+
+**n8n workflows TOUCHED (sacred, with user approval — DO NOT assume re-touchable)**:
+- `tHIN8s5hurqzRU7g` (HR Part 2 sourcing) — 6 nodes patched earlier session (TS.2b / Prepare HTML Data / AI Extract Job Links / Process Job URLs / prepare job data / Extract Job Details1). Details in `frontend/tests/HR_SOURCING_PIPELINE_FIX_REPORT.md`.
+
+**Frontend files owned**:
+- `src/pages/hr/*` (all HR pages including Documents.tsx, Employees.tsx, AIAgentProfile.tsx, etc.)
+- `src/hooks/useHR.ts`, `src/hooks/useAIAgents.ts`, `src/hooks/useRecruitment.ts`
+- `src/components/hr/*`
+- `src/lib/api/webhooks.ts` — only the HR-namespaced constants (HR_DOCUMENT_SYNC, EMPLOYEE_ONBOARDING, etc.). Other sessions own other lines.
+- `frontend/tests/hr-*.spec.ts`, `frontend/tests/HR_*_REPORT.md`
+
+**Pending for resume**:
+- Lovable deploy lag on commit `71ab404` (do NOT re-push; poll the Documents-*.js chunk hash)
+- Sourcing Task Runner timeout (Open Bug #96 — needs sourcing-workflow split, not a code fix in current code)
+- Contract compliance monitoring (new feature design — foundation exists in `hr_documents.extracted_rules`)
+
+**Supabase changes applied directly this session** (not in git, but live):
+- `storage.buckets` row `hr-documents` (private, 10 MB, mime allow-list)
+- 4 RLS policies on `storage.objects` for `bucket_id='hr-documents'`
+- `hr_documents` columns: `document_content TEXT`, `extracted_rules JSONB`, `sync_status TEXT`, `synced_at TIMESTAMPTZ`, `sync_error TEXT`, `uploaded_by UUID`
