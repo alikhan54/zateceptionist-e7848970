@@ -196,6 +196,9 @@ export interface HRDocument {
   category?: string;
   file_url?: string;
   file_type?: string;
+  file_size?: number;
+  document_name?: string;
+  document_content?: string;
   status?: string;
   expiry_date?: string;
   uploaded_by?: string;

@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTenant } from '@/contexts/TenantContext';
 import { AskAIButton } from '@/components/hr/AskAIButton';
 import { useHRDocuments } from '@/hooks/useHR';
@@ -41,11 +43,59 @@ import { toast } from 'sonner';
 // document_types that auto-sync to AI agents (via 420 HR Policy Sync v1.0)
 const SYNCABLE_TYPES = ['policy', 'contract', 'handbook', 'code_of_conduct', 'sop', 'guidelines'];
 
+// Browser-side text extraction from PDF / DOCX / TXT.
+// Dynamic imports so the lazy chunk for /hr/documents only pays for the parser
+// when the user actually uploads a file.
+async function extractTextFromFile(file: File): Promise<string> {
+  if (file.type === 'text/plain' || file.name.toLowerCase().endsWith('.txt')) {
+    return await file.text();
+  }
+  if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+    try {
+      const pdfjsLib: any = await import('pdfjs-dist');
+      // Workerless mode — avoids needing a Vite-bundled worker file path
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+      const ab = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: ab, useWorker: false, disableWorker: true }).promise;
+      let text = '';
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        text += (content.items as any[]).map((it) => it.str).join(' ') + '\n';
+      }
+      return text.trim();
+    } catch (e) {
+      console.error('PDF parse failed:', e);
+      return '';
+    }
+  }
+  if (
+    file.type.includes('wordprocessingml') ||
+    file.name.toLowerCase().endsWith('.docx')
+  ) {
+    try {
+      const mammoth: any = await import('mammoth');
+      const ab = await file.arrayBuffer();
+      const result = await mammoth.extractRawText({ arrayBuffer: ab });
+      return (result.value || '').trim();
+    } catch (e) {
+      console.error('DOCX parse failed:', e);
+      return '';
+    }
+  }
+  return `[Binary document: ${file.name}]`;
+}
+
 export default function DocumentsPage() {
   const { t, tenantConfig } = useTenant();
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [uploadMode, setUploadMode] = useState<'file' | 'text'>('file');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [newDoc, setNewDoc] = useState({ name: '', category: '', content: '' });
   const { data: documents, isLoading, uploadDocument } = useHRDocuments(selectedCategory !== 'all' ? selectedCategory : undefined);
 
@@ -127,69 +177,156 @@ export default function DocumentsPage() {
                 Add a new document to the HR document library
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Document Name</Label>
-                <Input placeholder="Enter document name" value={newDoc.name} onChange={(e) => setNewDoc({ ...newDoc, name: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Category</Label>
-                <Select value={newDoc.category} onValueChange={(v) => setNewDoc({ ...newDoc, category: v })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="policy">Policy</SelectItem>
-                    <SelectItem value="handbook">Handbook</SelectItem>
-                    <SelectItem value="code_of_conduct">Code of Conduct</SelectItem>
-                    <SelectItem value="sop">SOP</SelectItem>
-                    <SelectItem value="guidelines">Guidelines</SelectItem>
-                    <SelectItem value="contract">Contract</SelectItem>
-                    <SelectItem value="template">Template</SelectItem>
-                    <SelectItem value="personal">Personal</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {SYNCABLE_TYPES.includes(newDoc.category) && (
+            <Tabs value={uploadMode} onValueChange={(v) => setUploadMode(v as 'file' | 'text')} className="mt-2">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="file" data-testid="upload-tab-file">Upload File</TabsTrigger>
+                <TabsTrigger value="text" data-testid="upload-tab-text">Paste Text</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="file" className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label>Document Content</Label>
-                  <Textarea
-                    placeholder="Paste the full policy/handbook/contract text here. Our AI will extract rules and train every agent for this tenant."
-                    value={newDoc.content}
-                    onChange={(e) => setNewDoc({ ...newDoc, content: e.target.value })}
-                    rows={8}
-                    className="font-mono text-sm"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Tip: ≥ 20 characters required for AI sync. After upload, all active AI agents for your tenant will be updated to reference these rules.
-                  </p>
+                  <Label>Document Name</Label>
+                  <Input placeholder="e.g. Employee Handbook 2026" value={newDoc.name} onChange={(e) => setNewDoc({ ...newDoc, name: e.target.value })} />
                 </div>
-              )}
-              <div className="space-y-2">
-                <Label>File (optional)</Label>
-                <div className="border-2 border-dashed rounded-lg p-6 text-center">
-                  <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                  <p className="text-xs text-muted-foreground">
-                    File upload coming soon — for now paste content above (syncable types only).
-                  </p>
+                <div className="space-y-2">
+                  <Label>Document Type</Label>
+                  <Select value={newDoc.category} onValueChange={(v) => setNewDoc({ ...newDoc, category: v })}>
+                    <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="policy">Policy</SelectItem>
+                      <SelectItem value="contract">Contract</SelectItem>
+                      <SelectItem value="handbook">Handbook</SelectItem>
+                      <SelectItem value="code_of_conduct">Code of Conduct</SelectItem>
+                      <SelectItem value="sop">SOP / Process</SelectItem>
+                      <SelectItem value="guidelines">Guidelines</SelectItem>
+                      <SelectItem value="template">Template</SelectItem>
+                      <SelectItem value="personal">Personal</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-              </div>
-            </div>
+                <div className="space-y-2">
+                  <Label>File (PDF, DOCX, or TXT — max 10MB)</Label>
+                  <div
+                    className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-accent/40 cursor-pointer transition-colors"
+                    onClick={() => fileInputRef.current?.click()}
+                    data-testid="file-drop-zone"
+                  >
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".pdf,.docx,.txt,.doc"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (!f) return;
+                        if (f.size > 10 * 1024 * 1024) { toast.error('File too large (max 10MB)'); return; }
+                        setSelectedFile(f);
+                        if (!newDoc.name) setNewDoc({ ...newDoc, name: f.name.replace(/\.[^/.]+$/, '') });
+                      }}
+                      className="hidden"
+                      data-testid="file-input"
+                    />
+                    {selectedFile ? (
+                      <div>
+                        <FileText className="h-10 w-10 mx-auto mb-2 text-primary" />
+                        <p className="font-medium text-sm">{selectedFile.name}</p>
+                        <p className="text-xs text-muted-foreground">{(selectedFile.size / 1024).toFixed(1)} KB</p>
+                        <Button variant="ghost" size="sm" className="mt-2"
+                          onClick={(e) => { e.stopPropagation(); setSelectedFile(null); }}>Remove</Button>
+                      </div>
+                    ) : (
+                      <div>
+                        <Upload className="h-10 w-10 mx-auto mb-2 text-muted-foreground" />
+                        <p className="text-sm">Click to upload</p>
+                        <p className="text-xs text-muted-foreground mt-1">PDF, DOCX, TXT up to 10MB</p>
+                      </div>
+                    )}
+                  </div>
+                  {SYNCABLE_TYPES.includes(newDoc.category) && (
+                    <p className="text-xs text-muted-foreground">
+                      Once uploaded, we'll extract the text and train every AI agent for your tenant on these rules.
+                    </p>
+                  )}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="text" className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Document Name</Label>
+                  <Input placeholder="Enter document name" value={newDoc.name} onChange={(e) => setNewDoc({ ...newDoc, name: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Document Type</Label>
+                  <Select value={newDoc.category} onValueChange={(v) => setNewDoc({ ...newDoc, category: v })}>
+                    <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="policy">Policy</SelectItem>
+                      <SelectItem value="contract">Contract</SelectItem>
+                      <SelectItem value="handbook">Handbook</SelectItem>
+                      <SelectItem value="code_of_conduct">Code of Conduct</SelectItem>
+                      <SelectItem value="sop">SOP / Process</SelectItem>
+                      <SelectItem value="guidelines">Guidelines</SelectItem>
+                      <SelectItem value="template">Template</SelectItem>
+                      <SelectItem value="personal">Personal</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {SYNCABLE_TYPES.includes(newDoc.category) && (
+                  <div className="space-y-2">
+                    <Label>Document Content</Label>
+                    <Textarea
+                      placeholder="Paste the full policy/handbook/contract text here..."
+                      value={newDoc.content}
+                      onChange={(e) => setNewDoc({ ...newDoc, content: e.target.value })}
+                      rows={8}
+                      className="font-mono text-sm"
+                    />
+                    <p className="text-xs text-muted-foreground">≥ 20 characters required for AI sync.</p>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsUploadOpen(false)}>
+              <Button variant="outline" onClick={() => setIsUploadOpen(false)} disabled={isUploading}>
                 Cancel
               </Button>
-              <Button disabled={!newDoc.name || !newDoc.category} onClick={async () => {
-                // hr_documents column is document_name; document_type mirrors category.
-                // For syncable types, document_content drives the n8n policy-sync workflow.
+              <Button
+                disabled={isUploading || !newDoc.name || !newDoc.category || (uploadMode === 'file' && !selectedFile)}
+                onClick={async () => {
                 const isSyncable = SYNCABLE_TYPES.includes(newDoc.category);
+                setIsUploading(true);
+                let fileUrl: string | null = null;
+                let fileSize: number | null = null;
+                let fileType: string | null = null;
+                let extractedContent = uploadMode === 'text' ? (newDoc.content || '') : '';
                 try {
+                  if (uploadMode === 'file' && selectedFile) {
+                    const tenantId = tenantConfig?.id;
+                    const path = `${tenantId}/${Date.now()}-${selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+                    const { error: uploadErr } = await supabase.storage
+                      .from('hr-documents')
+                      .upload(path, selectedFile, { cacheControl: '3600', upsert: false });
+                    if (uploadErr) throw uploadErr;
+                    const { data: urlData } = supabase.storage.from('hr-documents').getPublicUrl(path);
+                    fileUrl = urlData?.publicUrl || null;
+                    fileSize = selectedFile.size;
+                    fileType = selectedFile.type || null;
+                    if (isSyncable) {
+                      toast.info('Extracting text from file…');
+                      extractedContent = await extractTextFromFile(selectedFile);
+                      if (!extractedContent || extractedContent.length < 20) {
+                        extractedContent = `[File uploaded: ${selectedFile.name}]`;
+                      }
+                    }
+                  }
                   const created: any = await (uploadDocument as any).mutateAsync({
                     document_name: newDoc.name,
                     title: newDoc.name,
                     category: newDoc.category,
                     document_type: newDoc.category,
-                    document_content: isSyncable ? newDoc.content : undefined,
+                    document_content: extractedContent || undefined,
+                    file_url: fileUrl,
+                    file_size: fileSize,
+                    file_type: fileType,
                     status: 'active',
                   } as any);
                   // Fire-and-forget sync for syncable types
@@ -200,10 +337,16 @@ export default function DocumentsPage() {
                     }, tenantConfig.id).catch(() => { /* non-blocking */ });
                     toast.info('AI agents are being trained on this document…');
                   }
-                } catch (e) { /* upload mutation already toasts on error */ }
+                } catch (e: any) {
+                  toast.error(`Upload failed: ${e?.message || 'unknown error'}`);
+                } finally {
+                  setIsUploading(false);
+                }
                 setIsUploadOpen(false);
                 setNewDoc({ name: '', category: '', content: '' });
-              }}>Upload</Button>
+                setSelectedFile(null);
+                if (fileInputRef.current) fileInputRef.current.value = '';
+              }}>{isUploading ? 'Uploading…' : 'Upload Document'}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

@@ -301,6 +301,155 @@ test('D2 Job posting — persists in DB and appears in UI after submit', async (
 });
 
 // ─────────────────────────────────────────────────────────
+// D5 REAL file upload — .txt file → Storage → extract → sync to agents
+// ─────────────────────────────────────────────────────────
+test('D5 Real file upload — file lands in Storage + content extracted + agents synced', async ({ page }) => {
+  test.setTimeout(180_000);
+  const fixturesDir = path.join(__dirname, 'fixtures');
+  if (!fs.existsSync(fixturesDir)) fs.mkdirSync(fixturesDir, { recursive: true });
+  const testFilePath = path.join(fixturesDir, `pwtest-policy-${TS}.txt`);
+  const policyContent = `COMPANY LEAVE POLICY 2026 — PWTEST-${TS}
+
+1. Annual Leave: Employees are entitled to 30 days annual paid leave per calendar year.
+2. Sick Leave: Up to 15 days sick leave per year, medical certificate required after 2 days.
+3. Maternity Leave: 90 days paid maternity leave for female employees.
+4. Notice Period: All leave requests must be submitted at least 7 days in advance.
+5. Approval: Leave is subject to manager approval and operational requirements.
+6. Carryover: Maximum 5 days annual leave can be carried over to the next year.
+7. Public Holidays: 14 public holidays are observed annually.
+8. Emergency Leave: Up to 3 days emergency leave for immediate family matters.
+`;
+  fs.writeFileSync(testFilePath, policyContent);
+  const docName = `PWTEST File Policy ${TS}`;
+
+  const notes: string[] = [];
+  let screenshot: string | undefined;
+  try {
+    await goto(page, '/hr/documents');
+    await page.waitForTimeout(2500);
+
+    // Open upload dialog
+    await page.locator('button:has-text("Upload Document")').first().click({ timeout: 5000 });
+    await page.waitForTimeout(1500);
+    const dialog = page.locator('[role="dialog"]').first();
+
+    // Stay on File tab (default)
+    await dialog.locator('[data-testid="upload-tab-file"]').click({ timeout: 3000 }).catch(() => {});
+    await page.waitForTimeout(400);
+
+    // Fill name
+    await dialog.getByPlaceholder(/Handbook 2026/i).first().fill(docName);
+
+    // Pick "Policy" type
+    const typeTrigger = dialog.locator('[role="combobox"]').first();
+    await typeTrigger.click({ timeout: 3000 });
+    await page.waitForTimeout(400);
+    await page.locator('[role="option"]:has-text("Policy")').first().click({ timeout: 3000 });
+
+    // setInputFiles — the actual file upload
+    const fileInput = dialog.locator('[data-testid="file-input"]');
+    await fileInput.setInputFiles(testFilePath);
+    await page.waitForTimeout(1500);
+
+    // Confirm file selected (file name shown in UI)
+    const fileShown = await dialog.locator(`text=pwtest-policy-${TS}.txt`).first().isVisible({ timeout: 3000 }).catch(() => false);
+    notes.push(`file_visible_in_ui=${fileShown}`);
+    screenshot = await shot(page, 'd5_file_selected');
+
+    // Click Upload Document (button label changes to "Uploading…" during processing)
+    const submit = dialog.locator('button:has-text("Upload Document")').last();
+    await submit.click({ timeout: 5000 });
+
+    // Wait for storage upload + extract + DB write + sync trigger (give Gemini ~25s headroom)
+    await page.waitForTimeout(25_000);
+    await shot(page, 'd5_after_upload');
+
+    // STRICT DB check
+    const rows = await (await page.request.get(
+      `${SUPA}/rest/v1/hr_documents?document_name=eq.${encodeURIComponent(docName)}&select=*&order=created_at.desc&limit=1`,
+      { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } },
+    )).json();
+    const row = Array.isArray(rows) ? rows[0] : null;
+    notes.push(`db_row_found=${!!row}`);
+    if (row) {
+      notes.push(`file_url_present=${!!row.file_url} file_size=${row.file_size} sync_status=${row.sync_status}`);
+    }
+
+    // Wait a touch longer for Gemini sync to complete if not yet
+    if (row && row.sync_status !== 'synced') {
+      await page.waitForTimeout(15_000);
+      const rows2 = await (await page.request.get(
+        `${SUPA}/rest/v1/hr_documents?id=eq.${row.id}&select=*`,
+        { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } },
+      )).json();
+      Object.assign(row, rows2[0] || {});
+      notes.push(`sync_after_wait=${row.sync_status}`);
+    }
+
+    const diffs = [
+      { field: 'db_row_exists', input: true, db: !!row, match: !!row },
+      { field: 'file_url_in_storage', input: 'truthy', db: row?.file_url, match: !!row?.file_url },
+      { field: 'file_size_gt_0', input: '>0', db: row?.file_size, match: (row?.file_size || 0) > 0 },
+      { field: 'document_content_has_annual_leave', input: 'contains "Annual Leave"', db: row?.document_content?.includes('Annual Leave') ?? false, match: !!row?.document_content?.includes('Annual Leave') },
+      { field: 'document_content_has_30_days', input: 'contains "30 days"', db: row?.document_content?.includes('30 days') ?? false, match: !!row?.document_content?.includes('30 days') },
+      { field: 'sync_status_synced', input: 'synced', db: row?.sync_status, match: row?.sync_status === 'synced' },
+      { field: 'extracted_rules_present', input: '>0 rules', db: Array.isArray(row?.extracted_rules?.policy_rules) ? row.extracted_rules.policy_rules.length : 0, match: Array.isArray(row?.extracted_rules?.policy_rules) && row.extracted_rules.policy_rules.length > 0 },
+    ];
+
+    // Also verify file lands in Storage by HEAD-ing the public URL
+    if (row?.file_url) {
+      const headResp = await page.request.get(row.file_url).catch(() => null);
+      const headOk = !!(headResp && headResp.ok());
+      diffs.push({ field: 'storage_file_fetchable', input: true, db: headOk, match: headOk });
+      notes.push(`storage_HEAD_status=${headResp?.status()}`);
+    }
+
+    screenshot = await shot(page, 'd5_done');
+    const allMatch = diffs.every(d => d.match);
+    results.push({ id: 'D5', name: 'Real file upload (PWTEST)', verdict: allMatch ? 'PASS' : 'FAIL', diffs, notes, screenshot });
+
+    // CLEANUP: delete file from Storage + the DB row + scrub agent kb entries
+    if (row) {
+      if (row.file_url) {
+        const m = String(row.file_url).match(/hr-documents\/(.+)$/);
+        if (m && m[1]) {
+          await page.request.post(`${SUPA}/storage/v1/object/hr-documents/${m[1]}`, {
+            method: 'DELETE', headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` },
+          } as any).catch(() => {});
+        }
+      }
+      const agents = await (await page.request.get(
+        `${SUPA}/rest/v1/ai_agents?tenant_id=eq.ac308ab6-f381-4eef-88ec-4d5c7a860ff9&select=id,knowledge_base,system_prompt`,
+        { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } },
+      )).json();
+      if (Array.isArray(agents)) {
+        for (const a of agents) {
+          const kb = a.knowledge_base || {};
+          if (Array.isArray(kb.policies)) {
+            kb.policies = kb.policies.filter((p: any) => !(p && typeof p === 'object' && p.document_id === row.id));
+            await page.request.patch(`${SUPA}/rest/v1/ai_agents?id=eq.${a.id}`, {
+              headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}`, Prefer: 'return=minimal' },
+              data: { knowledge_base: kb },
+            }).catch(() => {});
+          }
+        }
+      }
+      await page.request.delete(`${SUPA}/rest/v1/hr_documents?id=eq.${row.id}`,
+        { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } }).catch(() => {});
+    }
+    try { fs.unlinkSync(testFilePath); } catch {}
+
+    expect(allMatch, `Real file upload: ${JSON.stringify(diffs)}`).toBe(true);
+  } catch (e: any) {
+    if (!screenshot) screenshot = await shot(page, 'd5_error');
+    if (!results.find(r => r.id === 'D5')) {
+      results.push({ id: 'D5', name: 'Real file upload (PWTEST)', verdict: 'FAIL', diffs: [], notes, screenshot, error: String(e?.message).slice(0, 400) });
+    }
+    throw e;
+  }
+});
+
+// ─────────────────────────────────────────────────────────
 // D4 Policy document → AI agent sync (NEW 420 HR Policy Sync v1.0)
 // ─────────────────────────────────────────────────────────
 test('D4 Policy upload — sync extracts rules + updates tenant AI agents', async ({ page }) => {
