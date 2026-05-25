@@ -17,3 +17,4 @@ if ('serviceWorker' in navigator) {
 }
 
 createRoot(document.getElementById("root")!).render(<App />);
+// Lovable rebuild trigger 1779714938
