@@ -450,6 +450,73 @@ test('D5 Real file upload — file lands in Storage + content extracted + agents
 });
 
 // ─────────────────────────────────────────────────────────
+// D6 Sourcing v2 — 5 chained workflows complete without Bug #96 timeout
+// ─────────────────────────────────────────────────────────
+test('D6 Sourcing v2 — all 4 phases complete + run row marked completed', async ({ page }) => {
+  test.setTimeout(360_000);
+  const notes: string[] = [];
+  let screenshot: string | undefined;
+  try {
+    // Find a zate job to source against (any job — Phase 1 fetches its source_url)
+    const jobs = await (await page.request.get(
+      `${SUPA}/rest/v1/hr_job_requisitions?tenant_id=eq.ac308ab6-f381-4eef-88ec-4d5c7a860ff9&select=id,job_title,source_url&limit=1`,
+      { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } },
+    )).json();
+    const jobId = jobs?.[0]?.id;
+    notes.push(`job=${jobId}`);
+    if (!jobId) throw new Error('No zate job available to source against');
+
+    // Ensure source_url is set (vitosolutions has scrapable jobs)
+    await page.request.patch(`${SUPA}/rest/v1/hr_job_requisitions?id=eq.${jobId}`, {
+      headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}`, Prefer: 'return=minimal' },
+      data: { source_url: 'https://www.careers-page.com/vitosolutions' },
+    });
+
+    // Trigger v2
+    const trigResp = await page.request.post('https://webhooks.zatesystems.com/webhook/hr/job/trigger-sourcing-v2', {
+      data: { tenant_id: 'ac308ab6-f381-4eef-88ec-4d5c7a860ff9', job_requisition_id: jobId, trigger_type: 'manual' },
+    });
+    const trigBody = await trigResp.json();
+    const runId = trigBody?.data?.sourcing_run_id;
+    notes.push(`run=${runId} trigger_status=${trigResp.status()}`);
+    if (!runId) throw new Error('Trigger v2 did not return sourcing_run_id');
+
+    // Poll up to 4 minutes for status=completed/failed
+    const start = Date.now();
+    let final: any = null;
+    while (Date.now() - start < 240_000) {
+      await page.waitForTimeout(15_000);
+      const rows = await (await page.request.get(
+        `${SUPA}/rest/v1/hr_sourcing_runs?id=eq.${runId}&select=*`,
+        { headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` } },
+      )).json();
+      final = rows?.[0];
+      notes.push(`t+${Math.round((Date.now() - start) / 1000)}s p1=${final?.phase1_status} p2=${final?.phase2_status} p3=${final?.phase3_status} p4=${final?.phase4_status} status=${final?.status}`);
+      if (final?.status === 'completed' || final?.status === 'failed') break;
+    }
+
+    const diffs = [
+      { field: 'run_reached_terminal_state', input: 'completed|failed', db: final?.status, match: ['completed', 'failed'].includes(final?.status) },
+      { field: 'phase1_completed', input: 'completed', db: final?.phase1_status, match: final?.phase1_status === 'completed' },
+      { field: 'phase2_completed', input: 'completed', db: final?.phase2_status, match: final?.phase2_status === 'completed' },
+      { field: 'phase3_completed', input: 'completed', db: final?.phase3_status, match: final?.phase3_status === 'completed' },
+      { field: 'phase4_completed', input: 'completed', db: final?.phase4_status, match: final?.phase4_status === 'completed' },
+      { field: 'no_bug96_timeout', input: 'no error_log mentioning timeout', db: final?.error_log || null, match: !((final?.error_log || '').toLowerCase().includes('timed out')) },
+    ];
+
+    screenshot = await shot(await page.context().newPage(), 'd6_v2_run');
+    const allMatch = diffs.every(d => d.match);
+    results.push({ id: 'D6', name: 'Sourcing v2 chained completion', verdict: allMatch ? 'PASS' : 'FAIL', diffs, notes, screenshot });
+    expect(allMatch, `Sourcing v2: ${JSON.stringify(diffs)}`).toBe(true);
+  } catch (e: any) {
+    if (!results.find(r => r.id === 'D6')) {
+      results.push({ id: 'D6', name: 'Sourcing v2 chained completion', verdict: 'FAIL', diffs: [], notes, error: String(e?.message).slice(0, 400) });
+    }
+    throw e;
+  }
+});
+
+// ─────────────────────────────────────────────────────────
 // D4 Policy document → AI agent sync (NEW 420 HR Policy Sync v1.0)
 // ─────────────────────────────────────────────────────────
 test('D4 Policy upload — sync extracts rules + updates tenant AI agents', async ({ page }) => {

@@ -517,7 +517,11 @@ export function useTriggerSourcing() {
   return useMutation({
     mutationFn: async (jobRequisitionId: string) => {
       if (!tenantUuid) throw new Error('No tenant');
-      return callWebhook('/hr/job/trigger-sourcing', {
+      // Sourcing v2 (5 chained workflows: TS + Phase 1-4, each < 60s to
+      // avoid Bug #96 task-runner timeout). Returns immediately; phases
+      // run async and update hr_sourcing_runs.phaseN_status as they
+      // progress.
+      return callWebhook('/hr/job/trigger-sourcing-v2', {
         job_requisition_id: jobRequisitionId,
         trigger_type: 'manual',
       }, tenantUuid);
@@ -525,12 +529,8 @@ export function useTriggerSourcing() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['hr_job_requisitions'] });
       queryClient.invalidateQueries({ queryKey: ['hr_sourcing_runs'] });
-      // The n8n /hr/job/trigger-sourcing workflow currently only creates a
-      // tracking row in hr_sourcing_runs — no Phase 1-4 scraping is wired up
-      // yet. Be honest about what just happened so users don't sit waiting
-      // for candidates that aren't coming. See HR-V3 diagnosis 2026-05-24.
       toast.success(
-        'Sourcing request logged. Note: automated candidate discovery isn\'t live yet — please add candidates manually or via "Add Candidate".'
+        'Sourcing v2 started — Phase 1-4 will run in chained workflows. Watch the Sourcing tab for progress.'
       );
     },
     onError: (e: any) =>

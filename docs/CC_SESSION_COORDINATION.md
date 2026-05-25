@@ -254,3 +254,40 @@ Paste this into other CC sessions so they sync with this file:
 - `storage.buckets` row `hr-documents` (private, 10 MB, mime allow-list)
 - 4 RLS policies on `storage.objects` for `bucket_id='hr-documents'`
 - `hr_documents` columns: `document_content TEXT`, `extracted_rules JSONB`, `sync_status TEXT`, `synced_at TIMESTAMPTZ`, `sync_error TEXT`, `uploaded_by UUID`
+
+## HR V3 — ACTIVE 2026-05-25-PM (sourcing v2 build)
+
+Resumed from `parked/hr-v3-20260525-212103` to fix 3 issues from previous session.
+
+**Shipped this resume**:
+- **Auto-sync on file upload** — Documents.tsx condition bug (checking the
+  empty text-tab state instead of extractedContent); now awaits the sync
+  webhook and surfaces real toast (success rules+agents OR error).
+- **Acknowledgments** — new `hr_document_acknowledgments` table + RLS + unique
+  partial index; Review modal + working Acknowledge button on Documents.tsx
+  (per-user, gated by RLS).
+- **Sourcing v2** — 5 NEW workflows replacing the monolithic 44-node HR Part 2
+  sourcing chain that hit Bug #96 task-runner timeout. Each phase < 60s.
+
+**n8n workflows added (HR V3-owned)**:
+- `jX8xqW5EZGar3GWn` — 420 HR Sourcing v2 — TS Trigger (POST /hr/job/trigger-sourcing-v2)
+- `l1RMxMScCbvXOqmm` — 420 HR Sourcing v2 — Phase 1 Career Scraping (POST /hr/sourcing/phase1)
+- `XjSilVmjJeRIwNMF` — 420 HR Sourcing v2 — Phase 2 Google Search (POST /hr/sourcing/phase2)
+- `PWb5cPBpK4FTgwwW` — 420 HR Sourcing v2 — Phase 3 Enrichment (POST /hr/sourcing/phase3)
+- `0Z1A7e5Cp8LraOnL` — 420 HR Sourcing v2 — Phase 4 Save & Enroll (POST /hr/sourcing/phase4)
+
+Frontend `useRecruitment.useTriggerSourcing()` now calls v2. The v1 path
+(`/hr/job/trigger-sourcing` in HR Part 2's TS.1/TS.2/TS.3) is DEPRECATED but
+not deleted — left active for any external integrations still pointing at it.
+
+**Schema additions (live)**:
+- `hr_document_acknowledgments` table + RLS + idx_hr_doc_ack_unique_user partial unique
+- `hr_sourcing_runs` columns: `phase{1,2,3}_data JSONB` + `phase{1,2,3,4}_started_at/completed_at TIMESTAMPTZ`
+
+**End-to-end verified**: triggered v2 against zate ML/MLOps Engineer job →
+all 4 phases reached `status='completed'` → no Bug #96 timeout in the chain.
+Phase 2 returned 0 candidates (Google CSE search-quality issue, separate);
+the chain architecture is proven.
+
+**Cleanup performed**: 4 stuck v1 runs → 'failed' (error_log: "v1 abandoned
+— migrated to sourcing v2"); 5 jobs reset `ai_sourcing_status=idle`.

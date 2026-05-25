@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTenant } from '@/contexts/TenantContext';
 import { AskAIButton } from '@/components/hr/AskAIButton';
 import { useHRDocuments } from '@/hooks/useHR';
@@ -37,7 +37,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Textarea } from '@/components/ui/textarea';
 import { format } from 'date-fns';
-import { callWebhook, WEBHOOKS } from '@/lib/api/webhooks';
+import { callWebhookOrThrow, WEBHOOKS } from '@/lib/api/webhooks';
 import { toast } from 'sonner';
 
 // document_types that auto-sync to AI agents (via 420 HR Policy Sync v1.0)
@@ -97,7 +97,57 @@ export default function DocumentsPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [newDoc, setNewDoc] = useState({ name: '', category: '', content: '' });
+  const [reviewDoc, setReviewDoc] = useState<any | null>(null);
+  const [ackingId, setAckingId] = useState<string | null>(null);
   const { data: documents, isLoading, uploadDocument } = useHRDocuments(selectedCategory !== 'all' ? selectedCategory : undefined);
+
+  // Load this user's acknowledgments for the current tenant so we can mark docs as ack'd.
+  const { data: acks } = useQuery({
+    queryKey: ['hr-document-acks', tenantConfig?.id],
+    queryFn: async () => {
+      if (!tenantConfig?.id) return [] as Array<{ document_id: string }>;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.id) return [];
+      const { data, error } = await (supabase as any)
+        .from('hr_document_acknowledgments')
+        .select('document_id')
+        .eq('tenant_id', tenantConfig.id)
+        .eq('user_id', user.id);
+      if (error) return [];
+      return (data || []) as Array<{ document_id: string }>;
+    },
+    enabled: !!tenantConfig?.id,
+  });
+  const ackSet = new Set((acks || []).map((a) => a.document_id));
+
+  const handleAcknowledge = async (docId: string) => {
+    if (!tenantConfig?.id) return;
+    setAckingId(docId);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await (supabase as any)
+        .from('hr_document_acknowledgments')
+        .insert({
+          document_id: docId,
+          tenant_id: tenantConfig.id,
+          user_id: user?.id || null,
+          signature: user?.email || 'unknown',
+        });
+      if (error) throw error;
+      toast.success('Document acknowledged');
+      queryClient.invalidateQueries({ queryKey: ['hr-document-acks', tenantConfig.id] });
+    } catch (e: any) {
+      const msg = e?.message || 'unknown';
+      if (msg.includes('duplicate') || msg.includes('unique')) {
+        toast.info('You already acknowledged this document');
+        queryClient.invalidateQueries({ queryKey: ['hr-document-acks', tenantConfig.id] });
+      } else {
+        toast.error(`Acknowledge failed: ${msg}`);
+      }
+    } finally {
+      setAckingId(null);
+    }
+  };
 
   const displayDocuments = (documents || []).map((doc: any) => ({
     ...doc,
@@ -105,7 +155,7 @@ export default function DocumentsPage() {
     file_type: doc.file_type ?? doc.document_type ?? doc.mime_type ?? '',
     uploaded_by: doc.uploaded_by ?? doc.verified_by ?? '—',
     uploaded_at: doc.uploaded_at ?? doc.created_at ?? '',
-    acknowledged: doc.acknowledged ?? !!doc.is_verified,
+    acknowledged: doc.acknowledged ?? ackSet.has(doc.id) ?? !!doc.is_verified,
   }));
   const filteredDocuments = displayDocuments.filter(doc =>
     (selectedCategory === 'all' || doc.category === selectedCategory) &&
@@ -329,13 +379,27 @@ export default function DocumentsPage() {
                     file_type: fileType,
                     status: 'active',
                   } as any);
-                  // Fire-and-forget sync for syncable types
-                  if (isSyncable && created?.id && tenantConfig?.id && (newDoc.content || '').length >= 20) {
-                    callWebhook(WEBHOOKS.HR_DOCUMENT_SYNC, {
-                      document_id: created.id,
-                      tenant_id: tenantConfig.id,
-                    }, tenantConfig.id).catch(() => { /* non-blocking */ });
+                  // Trigger AI agent sync — use EXTRACTED content length (not the
+                  // text-tab field, which is empty when uploading a file).
+                  if (isSyncable && created?.id && tenantConfig?.id && (extractedContent || '').length >= 20) {
                     toast.info('AI agents are being trained on this document…');
+                    try {
+                      const r: any = await callWebhookOrThrow(WEBHOOKS.HR_DOCUMENT_SYNC, {
+                        document_id: created.id,
+                        tenant_id: tenantConfig.id,
+                      }, tenantConfig.id);
+                      const body: any = r?.data || r;
+                      const rules = body?.rules_extracted ?? 0;
+                      const agents = body?.agents_updated ?? 0;
+                      if (body?.success) {
+                        toast.success(`Policy synced — ${rules} rules trained ${agents} agent${agents === 1 ? '' : 's'}`);
+                      } else {
+                        toast.warning(`Document saved, but sync said: ${body?.error || 'unknown'}`);
+                      }
+                    } catch (e: any) {
+                      console.error('[hr-doc] policy sync failed:', e);
+                      toast.warning(`Document saved, but AI agents not updated yet (${e?.message || 'sync failed'}). You can retry from the row menu.`);
+                    }
                   }
                 } catch (e: any) {
                   toast.error(`Upload failed: ${e?.message || 'unknown error'}`);
@@ -529,13 +593,18 @@ export default function DocumentsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" onClick={() => setReviewDoc(doc)}>
                         <Eye className="h-4 w-4 mr-1" />
                         Review
                       </Button>
-                      <Button size="sm">
+                      <Button
+                        size="sm"
+                        onClick={() => handleAcknowledge(doc.id)}
+                        disabled={ackingId === doc.id}
+                        data-testid={`ack-btn-${doc.id}`}
+                      >
                         <CheckCircle2 className="h-4 w-4 mr-1" />
-                        Acknowledge
+                        {ackingId === doc.id ? 'Acknowledging…' : 'Acknowledge'}
                       </Button>
                     </div>
                   </div>
@@ -544,6 +613,36 @@ export default function DocumentsPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Review modal */}
+      <Dialog open={!!reviewDoc} onOpenChange={(open) => { if (!open) setReviewDoc(null); }}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>{reviewDoc?.name || reviewDoc?.document_name || 'Document'}</DialogTitle>
+            <DialogDescription>
+              {(reviewDoc?.document_type || reviewDoc?.category || '').toString().replace(/_/g, ' ')}
+              {reviewDoc?.file_url && (
+                <> · <a className="underline text-primary" href={reviewDoc.file_url} target="_blank" rel="noreferrer">Open original file</a></>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="overflow-auto flex-1 border rounded p-4 bg-muted/30 text-sm whitespace-pre-wrap font-mono">
+            {reviewDoc?.document_content || '(No extracted text content stored. Open the original file link above.)'}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReviewDoc(null)}>Close</Button>
+            {reviewDoc && !ackSet.has(reviewDoc.id) && (
+              <Button onClick={async () => {
+                await handleAcknowledge(reviewDoc.id);
+                setReviewDoc(null);
+              }} disabled={ackingId === reviewDoc.id}>
+                <CheckCircle2 className="h-4 w-4 mr-1" />
+                {ackingId === reviewDoc.id ? 'Acknowledging…' : 'Acknowledge'}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

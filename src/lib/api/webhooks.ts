@@ -80,7 +80,8 @@ export const WEBHOOKS = {
   HR_BATCH_IMPORT: "/hr-batch-import",
 
   // HR - Recruitment Webhooks
-  HR_TRIGGER_SOURCING: "/hr/job/trigger-sourcing",
+  HR_TRIGGER_SOURCING: "/hr/job/trigger-sourcing-v2",
+  HR_TRIGGER_SOURCING_V1: "/hr/job/trigger-sourcing",
   HR_TRIGGER_AI_INTERVIEW: "/hr/ai-interview/trigger",
   HR_APPROVE_OUTREACH: "/hr/approve-outreach",
   HR_RECRUITMENT_OUTREACH: "/hr-recruitment-outreach",
