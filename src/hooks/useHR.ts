@@ -676,13 +676,45 @@ export function useTraining() {
   const enroll = useMutation({
     mutationFn: async (data: { program_id: string; employee_id?: string }) => {
       if (!tenantUuid) throw new Error('No tenant');
+      // hr_training_records schema: NO program_id FK — uses denormalized
+      // training_name + training_type. Look up the program to copy fields,
+      // and resolve the current user's employee row (admin enrolling self).
+      const [{ data: program }, { data: { user } }] = await Promise.all([
+        supabase.from('hr_training_programs').select('name,type').eq('id', data.program_id).maybeSingle(),
+        supabase.auth.getUser(),
+      ]);
+      let employeeId = data.employee_id;
+      if (!employeeId) {
+        // Try to resolve via auth user → hr_employees.user_id
+        const { data: empByUser } = await supabase
+          .from('hr_employees')
+          .select('id')
+          .eq('tenant_id', tenantUuid)
+          .eq('user_id', user?.id || '00000000-0000-0000-0000-000000000000')
+          .maybeSingle();
+        employeeId = empByUser?.id;
+      }
+      if (!employeeId) {
+        // Fall back to the first active employee — admin enrolling on behalf
+        const { data: anyEmp } = await supabase
+          .from('hr_employees')
+          .select('id')
+          .eq('tenant_id', tenantUuid)
+          .eq('employment_status', 'active')
+          .limit(1)
+          .maybeSingle();
+        employeeId = anyEmp?.id;
+      }
+      if (!employeeId) throw new Error('No employee record found to enroll');
       const { data: result, error } = await supabase
-        .from("hr_training_records")
+        .from('hr_training_records')
         .insert({
           tenant_id: tenantUuid,
-          program_id: data.program_id,
-          employee_id: data.employee_id || "current",
-          status: "enrolled",
+          employee_id: employeeId,
+          training_name: program?.name || 'Training',
+          training_type: program?.type || 'online',
+          start_date: new Date().toISOString().slice(0, 10),
+          status: 'enrolled',
           progress: 0,
         })
         .select()
@@ -694,7 +726,7 @@ export function useTraining() {
       queryClient.invalidateQueries({ queryKey: ["training-enrollments", tenantUuid] });
       toast.success("Enrolled successfully");
     },
-    onError: () => toast.error("Failed to enroll"),
+    onError: (e: any) => toast.error(`Failed to enroll: ${e?.message || 'unknown'}`),
   });
 
   const createProgram = useMutation({

@@ -43,7 +43,25 @@ export default function TrainingPage() {
     });
   };
 
-  const displayPrograms = programs.data || [];
+  // Some programs (AI-generated) store the full structured content in
+  // description as a JSON blob. Detect and unwrap so the card renders the
+  // human-readable lesson summary instead of `{"ai_generated":true,...}`.
+  const displayPrograms = (programs.data || []).map((p: any) => {
+    const desc = p.description || '';
+    if (typeof desc === 'string' && desc.trim().startsWith('{') && desc.includes('content_script')) {
+      try {
+        const meta = JSON.parse(desc);
+        const summary = (meta.content_script || '').slice(0, 200).trim();
+        return {
+          ...p,
+          title: p.name || p.title,
+          description_display: summary || meta.summary || '',
+          ai_meta: meta,
+        };
+      } catch { /* fall through */ }
+    }
+    return { ...p, title: p.name || p.title, description_display: desc };
+  });
   const displayEnrollments = enrollments.data || [];
   const categories = ['all', 'Leadership', 'Technical', 'Management', 'Soft Skills'];
 
@@ -57,7 +75,9 @@ export default function TrainingPage() {
   };
 
   const filteredPrograms = displayPrograms.filter(p => {
-    const matchesSearch = p.title?.toLowerCase().includes(searchQuery.toLowerCase()) || p.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    const programName = (p as any).name || p.title || '';
+    const programDesc = (p as any).description_display || p.description || '';
+    const matchesSearch = programName.toLowerCase().includes(searchQuery.toLowerCase()) || programDesc.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = categoryFilter === 'all' || p.category === categoryFilter;
     return matchesSearch && matchesCategory;
   });
@@ -198,10 +218,10 @@ export default function TrainingPage() {
                   </div>
                   <CardContent className="p-4 space-y-3">
                     <div className="flex items-start justify-between gap-2">
-                      <h3 className="font-semibold line-clamp-1">{program.title}</h3>
+                      <h3 className="font-semibold line-clamp-1">{(program as any).title || (program as any).name || 'Untitled'}</h3>
                       {getFormatBadge(program.format)}
                     </div>
-                    <p className="text-sm text-muted-foreground line-clamp-2">{program.description}</p>
+                    <p className="text-sm text-muted-foreground line-clamp-2">{(program as any).description_display || program.description || ''}</p>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{program.enrolled_count} enrolled</span>
                       {program.provider && <span className="truncate">{program.provider}</span>}

@@ -84,12 +84,26 @@ export default function AIAssistantPage() {
         channel: 'web'
       });
 
-      let responseContent = "I'm sorry, I couldn't process your request. Please try again.";
-
-      if (result?.success && result?.data) {
-        // Use the real AI response from the webhook
-        const data = result.data as Record<string, unknown>;
-        responseContent = (data.response as string) || (data.message as string) || (data.response_message as string) || JSON.stringify(data);
+      // The OMEGA bridge can answer in three shapes depending on the caller layer:
+      //   { success, response, agent, tools_executed }     ← unwrapped (current useHRAI)
+      //   { success, data: { success, response, ... } }    ← wrapped by callWebhook
+      //   { response: "..." }                              ← bare
+      // Read whichever is present, in that order, then fall back diagnostically.
+      let responseContent: string | undefined;
+      const raw = result as Record<string, unknown> | undefined;
+      const inner = (raw?.data as Record<string, unknown> | undefined) || raw;
+      if (inner) {
+        responseContent =
+          (inner.response as string) ||
+          (inner.message as string) ||
+          (inner.response_message as string) ||
+          (inner.answer as string);
+      }
+      if (!responseContent) {
+        // Surface a diagnostic instead of a generic apology so future bugs are
+        // visible. Truncate to keep the chat bubble readable.
+        const dbg = JSON.stringify(raw ?? {}).slice(0, 200);
+        responseContent = `I received an unexpected response from the AI service. (debug: ${dbg})`;
       }
 
       const assistantMessage: Message = {
