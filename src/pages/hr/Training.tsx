@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTenant } from '@/contexts/TenantContext';
 import { AskAIButton } from '@/components/hr/AskAIButton';
 import { useTraining } from '@/hooks/useHR';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,19 +17,63 @@ import { AnimatedNumber } from '@/components/hr/AnimatedNumber';
 import { CircularProgress } from '@/components/hr/CircularProgress';
 import {
   GraduationCap, BookOpen, Clock, Users, Award, Play,
-  CheckCircle2, Search, Calendar, TrendingUp, Sparkles, Trophy, Plus
+  CheckCircle2, Search, Calendar, TrendingUp, Sparkles, Trophy, Plus,
+  MoreVertical, RotateCcw, X
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 export default function TrainingPage() {
-  const { t } = useTenant();
+  const { tenantConfig } = useTenant();
+  const queryClient = useQueryClient();
   const { programs, enrollments, enroll, createProgram } = useTraining();
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newProgram, setNewProgram] = useState({ name: '', description: '', duration_hours: '', max_participants: '' });
+  // Course player state — opened by Continue button on an enrolled course
+  const [playerRecord, setPlayerRecord] = useState<any | null>(null);
+  const [playerOpen, setPlayerOpen] = useState(false);
+  const [quizOpen, setQuizOpen] = useState(false);
+  const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({});
+  const [quizSubmitting, setQuizSubmitting] = useState(false);
+  const [quizScore, setQuizScore] = useState<number | null>(null);
+
+  const invalidateEnrollments = () => queryClient.invalidateQueries({ queryKey: ['training-enrollments', tenantConfig?.id] });
+
+  const openPlayer = (record: any) => {
+    setPlayerRecord(record);
+    setPlayerOpen(true);
+    setQuizOpen(false);
+    setQuizScore(null);
+    setQuizAnswers({});
+  };
+
+  const handleUnenroll = async (recordId: string) => {
+    if (!window.confirm('Unenroll from this course? Your progress will be lost.')) return;
+    const { error } = await supabase.from('hr_training_records').delete().eq('id', recordId);
+    if (error) { toast.error(`Failed to unenroll: ${error.message}`); return; }
+    toast.success('Unenrolled');
+    invalidateEnrollments();
+  };
+  const handleRestart = async (recordId: string) => {
+    const { error } = await supabase.from('hr_training_records').update({
+      status: 'enrolled', progress: 0, completion_date: null, start_date: new Date().toISOString().slice(0, 10),
+    }).eq('id', recordId);
+    if (error) { toast.error(`Failed to restart: ${error.message}`); return; }
+    toast.success('Course restarted');
+    invalidateEnrollments();
+  };
+  const handleMarkComplete = async (recordId: string) => {
+    const { error } = await supabase.from('hr_training_records').update({
+      status: 'completed', progress: 100, completion_date: new Date().toISOString().slice(0, 10),
+    }).eq('id', recordId);
+    if (error) { toast.error(`Failed: ${error.message}`); return; }
+    toast.success('Marked complete');
+    invalidateEnrollments();
+  };
 
   const handleCreateProgram = () => {
     if (!newProgram.name.trim()) return;
@@ -62,7 +109,30 @@ export default function TrainingPage() {
     }
     return { ...p, title: p.name || p.title, description_display: desc };
   });
-  const displayEnrollments = enrollments.data || [];
+  // hr_training_records does not have program_id, so join to hr_training_programs
+  // by training_name (the denormalized link). Pull the AI content blob from
+  // program.provider (where the generator workflow stores it) so the Continue
+  // player has slides/questions/avatar_video_url.
+  const enrolledRaw = enrollments.data || [];
+  const programByName = useMemo(() => {
+    const m = new Map<string, any>();
+    for (const p of (programs.data || []) as any[]) {
+      if (!p?.name) continue;
+      let meta: any = {};
+      try { meta = JSON.parse(p.provider || '{}'); } catch {}
+      m.set(String(p.name).toLowerCase(), { ...p, ai: meta });
+    }
+    return m;
+  }, [programs.data]);
+  const displayEnrollments = (enrolledRaw as any[]).map((r) => {
+    const prog = r.training_name ? programByName.get(String(r.training_name).toLowerCase()) : null;
+    return {
+      ...r,
+      title: r.training_name || r.program_title || prog?.name || 'Untitled course',
+      enrolled_at: r.start_date || r.enrolled_at || null,
+      program: prog || null,
+    };
+  });
   const categories = ['all', 'Leadership', 'Technical', 'Management', 'Soft Skills'];
 
   const getFormatBadge = (fmt: string) => {
@@ -258,25 +328,52 @@ export default function TrainingPage() {
               {displayEnrollments.length > 0 ? (
                 <div className="space-y-4">
                   {displayEnrollments.map((enrollment) => (
-                    <div key={enrollment.id} className="p-4 border rounded-xl hover:shadow-md transition-all flex items-center gap-4">
+                    <div key={enrollment.id} className="p-4 border rounded-xl hover:shadow-md transition-all flex items-center gap-4" data-testid={`enrollment-row-${enrollment.id}`}>
                       <CircularProgress value={enrollment.progress || 0} size={56} strokeWidth={4}>
-                        <span className="text-xs font-bold">{enrollment.progress}%</span>
+                        <span className="text-xs font-bold">{enrollment.progress || 0}%</span>
                       </CircularProgress>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h4 className="font-semibold">{enrollment.program_title}</h4>
+                          <h4 className="font-semibold">{enrollment.title}</h4>
                           {enrollment.status === 'completed' && enrollment.certificate_url && (
                             <Badge className="bg-chart-4/10 text-chart-4 border-chart-4/20" variant="outline">
                               <Trophy className="h-3 w-3 mr-1" />Certified
                             </Badge>
                           )}
+                          {enrollment.program?.ai?.ai_generated && (
+                            <Badge variant="outline" className="text-xs"><Sparkles className="h-3 w-3 mr-1" />AI</Badge>
+                          )}
                         </div>
-                        <p className="text-sm text-muted-foreground">Enrolled: {enrollment.enrolled_at}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {enrollment.program?.type ? `${enrollment.program.type} · ` : ''}
+                          {enrollment.program?.duration_hours ? `${enrollment.program.duration_hours}h · ` : ''}
+                          Enrolled: {enrollment.enrolled_at || '—'}
+                        </p>
                       </div>
                       <Badge variant="outline" className={enrollment.status === 'completed' ? 'bg-chart-2/10 text-chart-2' : 'bg-chart-3/10 text-chart-3'}>
-                        {enrollment.status === 'completed' ? <><CheckCircle2 className="h-3 w-3 mr-1" />Completed</> : <><Play className="h-3 w-3 mr-1" />In Progress</>}
+                        {enrollment.status === 'completed' ? <><CheckCircle2 className="h-3 w-3 mr-1" />Completed</> : <><Play className="h-3 w-3 mr-1" />{enrollment.status === 'enrolled' ? 'Not started' : 'In Progress'}</>}
                       </Badge>
-                      {enrollment.status !== 'completed' && <Button variant="outline" size="sm">Continue</Button>}
+                      <Button variant="outline" size="sm" onClick={() => openPlayer(enrollment)} data-testid={`enrollment-continue-${enrollment.id}`}>
+                        {enrollment.status === 'completed' ? 'Review' : 'Continue'}
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`enrollment-menu-${enrollment.id}`}>
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleRestart(enrollment.id)}>
+                            <RotateCcw className="h-4 w-4 mr-2" />Restart course
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleMarkComplete(enrollment.id)}>
+                            <CheckCircle2 className="h-4 w-4 mr-2" />Mark complete
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleUnenroll(enrollment.id)} className="text-destructive">
+                            <X className="h-4 w-4 mr-2" />Unenroll
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   ))}
                 </div>
@@ -304,6 +401,128 @@ export default function TrainingPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Course Player Dialog — opens on Continue/Review */}
+      <Dialog open={playerOpen} onOpenChange={(o) => { setPlayerOpen(o); if (!o) { setQuizOpen(false); setQuizScore(null); } }}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{playerRecord?.title || 'Course'}</DialogTitle>
+            <DialogDescription>
+              {playerRecord?.program?.type || 'online'}
+              {playerRecord?.program?.duration_hours ? ` · ${playerRecord.program.duration_hours}h` : ''}
+              {playerRecord?.program?.ai?.category ? ` · ${playerRecord.program.ai.category}` : ''}
+            </DialogDescription>
+          </DialogHeader>
+          {!quizOpen ? (
+            <div className="space-y-4">
+              {playerRecord?.program?.ai?.avatar_video_url && (
+                <video controls src={playerRecord.program.ai.avatar_video_url} className="w-full rounded" data-testid="course-avatar-video" />
+              )}
+              {Array.isArray(playerRecord?.program?.ai?.learning_objectives) && playerRecord.program.ai.learning_objectives.length > 0 && (
+                <div className="rounded border p-3 bg-muted/40">
+                  <h4 className="font-semibold mb-2 text-sm">Learning objectives</h4>
+                  <ul className="list-disc pl-5 space-y-1 text-sm">
+                    {playerRecord.program.ai.learning_objectives.map((o: string, i: number) => <li key={i}>{o}</li>)}
+                  </ul>
+                </div>
+              )}
+              {Array.isArray(playerRecord?.program?.ai?.slides) && playerRecord.program.ai.slides.length > 0 ? (
+                <div className="space-y-3">
+                  {playerRecord.program.ai.slides.map((slide: any, i: number) => (
+                    <div key={i} className="border rounded p-4">
+                      <h3 className="font-semibold mb-2">{i + 1}. {slide.title}</h3>
+                      <p className="text-sm whitespace-pre-wrap">{slide.content}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : playerRecord?.program?.ai?.content_script ? (
+                <div className="border rounded p-4 bg-muted/20 text-sm whitespace-pre-wrap">
+                  {playerRecord.program.ai.content_script}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground italic">No AI-generated content available for this course yet.</p>
+              )}
+            </div>
+          ) : quizScore === null ? (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Passing score: {playerRecord?.program?.ai?.passing_score ?? 70}%. Pick the best answer for each.
+              </p>
+              {(playerRecord?.program?.ai?.questions || []).map((q: any, qi: number) => (
+                <div key={qi} className="border rounded p-3">
+                  <p className="font-medium mb-2">{qi + 1}. {q.question}</p>
+                  <div className="space-y-1.5">
+                    {(q.options || []).map((opt: string, oi: number) => (
+                      <label key={oi} className="flex items-center gap-2 cursor-pointer text-sm">
+                        <input
+                          type="radio"
+                          name={`q${qi}`}
+                          value={oi}
+                          checked={quizAnswers[qi] === oi}
+                          onChange={() => setQuizAnswers({ ...quizAnswers, [qi]: oi })}
+                          data-testid={`quiz-q${qi}-opt${oi}`}
+                        />
+                        {opt}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-3 text-center py-6">
+              <div className="text-5xl font-bold">{quizScore}%</div>
+              <p className="text-sm text-muted-foreground">
+                {quizScore >= (playerRecord?.program?.ai?.passing_score ?? 70)
+                  ? 'Congratulations — you passed!'
+                  : `You need ${playerRecord?.program?.ai?.passing_score ?? 70}% to pass. Try again.`}
+              </p>
+            </div>
+          )}
+          <DialogFooter className="gap-2 flex-wrap">
+            {!quizOpen && (playerRecord?.program?.ai?.questions || []).length > 0 && (
+              <Button onClick={() => { setQuizOpen(true); setQuizScore(null); setQuizAnswers({}); }} data-testid="course-take-quiz">
+                Take Assessment ({playerRecord.program.ai.questions.length} questions)
+              </Button>
+            )}
+            {quizOpen && quizScore === null && (
+              <Button
+                disabled={quizSubmitting || Object.keys(quizAnswers).length < (playerRecord?.program?.ai?.questions?.length || 0)}
+                onClick={async () => {
+                  if (!playerRecord) return;
+                  setQuizSubmitting(true);
+                  const qs = playerRecord.program?.ai?.questions || [];
+                  let correct = 0;
+                  qs.forEach((q: any, i: number) => { if (quizAnswers[i] === q.correct_answer) correct++; });
+                  const pct = qs.length > 0 ? Math.round((correct / qs.length) * 100) : 0;
+                  setQuizScore(pct);
+                  const pass = pct >= (playerRecord.program?.ai?.passing_score ?? 70);
+                  const { error } = await supabase.from('hr_training_records').update({
+                    status: pass ? 'completed' : 'enrolled',
+                    progress: pct,
+                    score: pct,
+                    completion_date: pass ? new Date().toISOString().slice(0, 10) : null,
+                  }).eq('id', playerRecord.id);
+                  if (!error) {
+                    toast.success(pass ? `Passed with ${pct}%` : `Score: ${pct}%`);
+                    invalidateEnrollments();
+                  }
+                  setQuizSubmitting(false);
+                }}
+                data-testid="course-submit-quiz"
+              >
+                {quizSubmitting ? 'Submitting…' : 'Submit answers'}
+              </Button>
+            )}
+            {quizScore !== null && (
+              <Button variant="outline" onClick={() => { setQuizOpen(false); setQuizScore(null); setQuizAnswers({}); }}>
+                Back to course
+              </Button>
+            )}
+            <Button variant="ghost" onClick={() => setPlayerOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
