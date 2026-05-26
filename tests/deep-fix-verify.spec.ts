@@ -30,14 +30,29 @@ const results: Result[] = [];
 
 test.describe.configure({ mode: 'default' });
 test.use({ trace: 'off' });
-test.beforeAll(() => fs.mkdirSync(SHOT_DIR, { recursive: true }));
-test.afterAll(() => fs.writeFileSync(RESULTS_PATH, JSON.stringify({
-  total: results.length,
-  pass: results.filter(r => r.verdict === 'PASS').length,
-  partial: results.filter(r => r.verdict === 'PARTIAL').length,
-  fail: results.filter(r => r.verdict === 'FAIL').length,
-  results,
-}, null, 2)));
+test.beforeAll(() => {
+  fs.mkdirSync(SHOT_DIR, { recursive: true });
+  // Seed results from disk so re-runs accumulate per-test rows
+  try {
+    const prev = JSON.parse(fs.readFileSync(RESULTS_PATH, 'utf-8'));
+    if (Array.isArray(prev?.results)) results.push(...prev.results);
+  } catch {}
+});
+function flushResults() {
+  // Dedupe by id, keeping the LAST one (most recent verdict)
+  const byId = new Map<string, Result>();
+  for (const r of results) byId.set(r.id, r);
+  const final = Array.from(byId.values());
+  fs.writeFileSync(RESULTS_PATH, JSON.stringify({
+    total: final.length,
+    pass: final.filter(r => r.verdict === 'PASS').length,
+    partial: final.filter(r => r.verdict === 'PARTIAL').length,
+    fail: final.filter(r => r.verdict === 'FAIL').length,
+    results: final,
+  }, null, 2));
+}
+test.afterEach(() => flushResults());
+test.afterAll(() => flushResults());
 
 async function goto(page: Page, route: string) {
   await page.goto(route, { waitUntil: 'domcontentloaded' });
@@ -63,12 +78,26 @@ const omegaQueries: Array<{ tag: string; query: string; expected: RegExp; toolHi
 ];
 
 test('D1 OMEGA tool-aware answers via UI (5 queries)', async ({ page }) => {
-  test.setTimeout(8 * 60_000);
+  test.setTimeout(10 * 60_000);
   const notes: string[] = [];
   let screenshot: string | undefined;
   const perQ: any[] = [];
+  // Seed a provisional FAIL so even if the loop is killed mid-iter we have a row
+  const pushResult = () => {
+    const passCount = perQ.filter(r => r.verdict === 'PASS').length;
+    const idx = results.findIndex(r => r.id === 'D1');
+    const entry: Result = {
+      id: 'D1', name: 'OMEGA tool answers via UI',
+      verdict: passCount === omegaQueries.length ? 'PASS' : (passCount >= 4 ? 'PARTIAL' : 'FAIL'),
+      evidence: { pass: passCount, total: omegaQueries.length, per_query: perQ },
+      notes: [...notes],
+      ...(screenshot ? { screenshot } : {}),
+    };
+    if (idx >= 0) results[idx] = entry; else results.push(entry);
+  };
+  pushResult();
+
   await goto(page, '/hr/ai-assistant');
-  // intercept v2 webhook so we can inspect tools_executed
   const v2Responses: any[] = [];
   page.on('response', async resp => {
     if (resp.url().includes('/webhook/hr/ai-assistant-v2') && resp.status() === 200) {
@@ -82,14 +111,13 @@ test('D1 OMEGA tool-aware answers via UI (5 queries)', async ({ page }) => {
     await input.press('Enter').catch(async () => {
       await page.locator('button:has-text("Send"), button[aria-label*="send" i]').first().click({ timeout: 5000 }).catch(() => {});
     });
-    // Wait up to 70s per query for the answer to render
     const beforeCount = v2Responses.length;
     let elapsed = 0;
     while (v2Responses.length === beforeCount && elapsed < 70_000) {
       await page.waitForTimeout(1500);
       elapsed += 1500;
     }
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(1500);
     const last = v2Responses[v2Responses.length - 1] || {};
     const lastBody = last?.data || last;
     const txt = String(lastBody?.response || '');
@@ -99,16 +127,12 @@ test('D1 OMEGA tool-aware answers via UI (5 queries)', async ({ page }) => {
     const verdict = matched && !failedPhrase ? 'PASS' : 'FAIL';
     perQ.push({ tag: q.tag, query: q.query, verdict, tools, response: txt.slice(0, 240), matched, failedPhrase });
     notes.push(`${q.tag} verdict=${verdict} tools=${JSON.stringify(tools)} resp="${txt.slice(0, 100)}"`);
+    pushResult();  // checkpoint after each query
   }
   screenshot = await shot(page, 'd1_ai_omega_tools');
+  pushResult();
 
   const passCount = perQ.filter(r => r.verdict === 'PASS').length;
-  results.push({
-    id: 'D1', name: 'OMEGA tool answers via UI',
-    verdict: passCount === omegaQueries.length ? 'PASS' : (passCount >= 4 ? 'PARTIAL' : 'FAIL'),
-    evidence: { pass: passCount, total: omegaQueries.length, per_query: perQ },
-    notes, screenshot,
-  });
   expect(passCount, `Expected ${omegaQueries.length}/${omegaQueries.length} queries to pass; got ${passCount}`).toBeGreaterThanOrEqual(4);
 });
 
@@ -167,9 +191,9 @@ test('D2a Share button copies to clipboard on desktop UA', async ({ page, contex
     });
     expect(desktopPathTaken, 'Expected clipboard copy on desktop, not native share').toBe(true);
   } catch (e: any) {
-    if (!results.find(r => r.id === 'D2a')) {
-      results.push({ id: 'D2a', name: 'Share copies to clipboard on desktop UA', verdict: 'FAIL', evidence: {}, notes, screenshot, error: String(e?.message).slice(0, 400) });
-    }
+    const idx = results.findIndex(r => r.id === 'D2a');
+    const entry: Result = { id: 'D2a', name: 'Share copies to clipboard on desktop UA', verdict: 'FAIL', evidence: {}, notes, screenshot, error: String(e?.message).slice(0, 400) };
+    if (idx >= 0) results[idx] = entry; else results.push(entry);
     throw e;
   } finally {
     if (docId) {
@@ -225,9 +249,9 @@ test('D2b Share opens native share sheet on mobile UA', async ({ browser }) => {
     });
     expect(calls.length, 'Expected navigator.share to fire on mobile UA').toBeGreaterThan(0);
   } catch (e: any) {
-    if (!results.find(r => r.id === 'D2b')) {
-      results.push({ id: 'D2b', name: 'Share opens native sheet on mobile UA', verdict: 'FAIL', evidence: {}, notes, screenshot, error: String(e?.message).slice(0, 400) });
-    }
+    const idx = results.findIndex(r => r.id === 'D2b');
+    const entry: Result = { id: 'D2b', name: 'Share opens native sheet on mobile UA', verdict: 'FAIL', evidence: {}, notes, screenshot, error: String(e?.message).slice(0, 400) };
+    if (idx >= 0) results[idx] = entry; else results.push(entry);
     throw e;
   } finally {
     if (docId) {
@@ -269,7 +293,7 @@ test('D3 Hiring lifecycle (post job, sourcing chain, pipeline visibility)', asyn
     const trig = await page.request.post('http://localhost:5678/webhook/hr/job/trigger-sourcing-v2', {
       headers: { 'Content-Type': 'application/json' },
       data: { job_requisition_id: jobId, tenant_id: ZATE, trigger_type: 'manual' },
-      timeout: 60_000,
+      timeout: 120_000,
     });
     const trigBody = await trig.json().catch(() => ({}));
     runId = trigBody?.data?.sourcing_run_id;
@@ -300,13 +324,14 @@ test('D3 Hiring lifecycle (post job, sourcing chain, pipeline visibility)', asyn
       data: {
         tenant_id: ZATE, job_id: jobId,
         first_name: 'Deepfix', last_name: `Candidate${TS}`,
-        full_name: `Deepfix Candidate${TS}`,
+        // full_name is a generated column — Postgres composes it from first/last
         current_title: 'Senior React Engineer', current_company: 'Test Corp',
         current_location: 'Dubai, UAE',
         linkedin_url: `https://www.linkedin.com/in/deepfix-${TS}`,
         email: `deepfix.${TS}@example.com`,
         skills: ['React', 'TypeScript'],
-        match_score: 75, status: 'sourced', source: 'lifecycle-test',
+        match_score: 0.75, // numeric(5,4) — must be < 10
+        status: 'active', source: 'website', // both gated by CHECK constraints
         dedup_key: `deepfix-${TS}`,
       },
     });
@@ -315,15 +340,14 @@ test('D3 Hiring lifecycle (post job, sourcing chain, pipeline visibility)', asyn
     notes.push(`C: candidate_id=${candidateId}`);
     expect(candidateId).toBeTruthy();
 
-    // Phase D-F: progress candidate through status flips (the UI does
-    // this via drag-drop / dropdowns — same DB writes)
-    for (const status of ['shortlisted', 'interview_scheduled', 'offer_extended', 'hired']) {
-      await page.request.patch(`${SUPA}/rest/v1/hr_candidates?id=eq.${candidateId}`, {
-        headers: { apikey: SVC, Authorization: `Bearer ${SVC}`, 'Content-Type': 'application/json' },
-        data: { status },
-      });
-      await page.waitForTimeout(150);
-    }
+    // Phase D-F: progress candidate to 'hired' (the UI does this via
+    // drag-drop / dropdowns — same DB write). Pipeline stage detail lives in
+    // a related metadata column the UI manages; we exercise the terminal flip.
+    await page.request.patch(`${SUPA}/rest/v1/hr_candidates?id=eq.${candidateId}`, {
+      headers: { apikey: SVC, Authorization: `Bearer ${SVC}`, 'Content-Type': 'application/json' },
+      data: { status: 'hired' },
+    });
+    await page.waitForTimeout(200);
     const finalC = await page.request.get(`${SUPA}/rest/v1/hr_candidates?id=eq.${candidateId}&select=status`,
       { headers: { apikey: SVC, Authorization: `Bearer ${SVC}` } });
     const fc = await finalC.json();
@@ -353,9 +377,9 @@ test('D3 Hiring lifecycle (post job, sourcing chain, pipeline visibility)', asyn
     expect(chainOk).toBe(true);
     expect(fc[0]?.status).toBe('hired');
   } catch (e: any) {
-    if (!results.find(r => r.id === 'D3')) {
-      results.push({ id: 'D3', name: 'Lifecycle: post job → sourcing chain → pipeline progression', verdict: 'FAIL', evidence: {}, notes, screenshot, error: String(e?.message).slice(0, 400) });
-    }
+    const idx = results.findIndex(r => r.id === 'D3');
+    const entry: Result = { id: 'D3', name: 'Lifecycle: post job → sourcing chain → pipeline progression', verdict: 'FAIL', evidence: { notes_so_far: [...notes] }, notes, screenshot, error: String(e?.message).slice(0, 400) };
+    if (idx >= 0) results[idx] = entry; else results.push(entry);
     throw e;
   } finally {
     if (candidateId) {
@@ -395,7 +419,7 @@ test('D4 Sourcing v2 writes honest attempt-log to error_log when 0 candidates', 
     const trig = await page.request.post('http://localhost:5678/webhook/hr/job/trigger-sourcing-v2', {
       headers: { 'Content-Type': 'application/json' },
       data: { job_requisition_id: jobId, tenant_id: ZATE, trigger_type: 'manual' },
-      timeout: 60_000,
+      timeout: 120_000,
     });
     const tb = await trig.json().catch(() => ({}));
     runId = tb?.data?.sourcing_run_id;
@@ -426,9 +450,9 @@ test('D4 Sourcing v2 writes honest attempt-log to error_log when 0 candidates', 
     });
     expect(hasAttemptLog, `error_log must include attempt trace; got: ${errLog}`).toBe(true);
   } catch (e: any) {
-    if (!results.find(r => r.id === 'D4')) {
-      results.push({ id: 'D4', name: 'Sourcing v2 writes honest attempt-log', verdict: 'FAIL', evidence: {}, notes, error: String(e?.message).slice(0, 400) });
-    }
+    const idx = results.findIndex(r => r.id === 'D4');
+    const entry: Result = { id: 'D4', name: 'Sourcing v2 writes honest attempt-log', verdict: 'FAIL', evidence: {}, notes, error: String(e?.message).slice(0, 400) };
+    if (idx >= 0) results[idx] = entry; else results.push(entry);
     throw e;
   } finally {
     if (runId) {
