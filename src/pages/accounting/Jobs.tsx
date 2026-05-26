@@ -70,19 +70,8 @@ import {
 } from "@/hooks/useAccountingJobs";
 import { useAccountingClientsList } from "@/hooks/useAccountingClientsList";
 import { useAccountingTeam } from "@/hooks/useAccountingTeam";
-import { useAuth } from "@/contexts/AuthContext";
-import {
-  FILING_CATEGORIES,
-  CATEGORY_BY_CODE,
-  type FilingCategory,
-} from "@/lib/uk-filing-categories";
 
 type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
-
-const CATEGORY_UNTAGGED_VALUE = "__untagged__";
-const OWNER_ALL = "all";
-const OWNER_ME = "me";
-const OWNER_UNASSIGNED = "unassigned";
 
 const STATUS_OPTIONS: AccountingJobStatus[] = [
   "backlog",
@@ -130,7 +119,6 @@ interface JobFormState {
   priority: AccountingJobPriority;
   owner_user_id: string;
   deadline: string;
-  category: string;  // FilingCategory code or CATEGORY_UNTAGGED_VALUE
 }
 
 const EMPTY_FORM: JobFormState = {
@@ -141,7 +129,6 @@ const EMPTY_FORM: JobFormState = {
   priority: "medium",
   owner_user_id: "",
   deadline: "",
-  category: CATEGORY_UNTAGGED_VALUE,
 };
 
 function formatDateUK(value: string | null): string {
@@ -203,7 +190,6 @@ function StatCard({
 
 export default function AccountingJobs() {
   const { toast } = useToast();
-  const { user } = useAuth();
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<AccountingJobStatus | "all">(
@@ -212,31 +198,15 @@ export default function AccountingJobs() {
   const [priorityFilter, setPriorityFilter] = useState<
     AccountingJobPriority | "all"
   >("all");
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [ownerFilter, setOwnerFilter] = useState<string>(OWNER_ALL);
 
-  // Resolve current user's public.users.id (used for "My Pending" filter)
-  const { data: team = [] } = useAccountingTeam();
-  const currentUserPublicId = useMemo(() => {
-    if (!user?.email) return null;
-    return team.find((m) => m.email?.toLowerCase() === user.email?.toLowerCase())?.id ?? null;
-  }, [team, user?.email]);
-
-  const filters = useMemo(() => {
-    const f: Record<string, unknown> = {};
-    if (statusFilter !== "all") f.status = statusFilter;
-    if (priorityFilter !== "all") f.priority = priorityFilter;
-    if (search.trim()) f.searchTerm = search.trim();
-    if (categoryFilter !== "all") f.category = categoryFilter;
-    if (ownerFilter === OWNER_ME && currentUserPublicId) {
-      f.ownerUserId = currentUserPublicId;
-    } else if (ownerFilter === OWNER_UNASSIGNED) {
-      f.ownerUserId = "unassigned";
-    } else if (ownerFilter !== OWNER_ALL && ownerFilter !== OWNER_ME) {
-      f.ownerUserId = ownerFilter;
-    }
-    return f;
-  }, [statusFilter, priorityFilter, search, categoryFilter, ownerFilter, currentUserPublicId]);
+  const filters = useMemo(
+    () => ({
+      ...(statusFilter !== "all" && { status: statusFilter }),
+      ...(priorityFilter !== "all" && { priority: priorityFilter }),
+      ...(search.trim() && { searchTerm: search.trim() }),
+    }),
+    [statusFilter, priorityFilter, search],
+  );
 
   const {
     jobs,
@@ -248,6 +218,7 @@ export default function AccountingJobs() {
     deleteJob,
   } = useAccountingJobs(filters);
   const { data: clients = [] } = useAccountingClientsList();
+  const { data: team = [] } = useAccountingTeam();
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingJob, setEditingJob] = useState<AccountingJob | null>(null);
@@ -265,7 +236,6 @@ export default function AccountingJobs() {
       priority: editingJob.priority,
       owner_user_id: editingJob.owner_user_id ?? "",
       deadline: toDeadlineInputValue(editingJob.deadline),
-      category: editingJob.category ?? CATEGORY_UNTAGGED_VALUE,
     });
   }, [editingJob]);
 
@@ -332,7 +302,6 @@ export default function AccountingJobs() {
       priority: form.priority,
       owner_user_id: form.owner_user_id || null,
       deadline: toDeadlineDbValue(form.deadline),
-      category: form.category === CATEGORY_UNTAGGED_VALUE ? null : form.category,
     };
     try {
       if (editingJob) {
@@ -475,36 +444,6 @@ export default function AccountingJobs() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-44" data-testid="category-filter">
-            <SelectValue placeholder="Category" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All categories</SelectItem>
-            {FILING_CATEGORIES.map((c) => (
-              <SelectItem key={c.code} value={c.code}>
-                {c.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={ownerFilter} onValueChange={setOwnerFilter}>
-          <SelectTrigger className="w-44" data-testid="owner-filter">
-            <SelectValue placeholder="Owner" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={OWNER_ALL}>All owners</SelectItem>
-            {currentUserPublicId && (
-              <SelectItem value={OWNER_ME}>My pending only</SelectItem>
-            )}
-            <SelectItem value={OWNER_UNASSIGNED}>Unassigned</SelectItem>
-            {team.map((m) => (
-              <SelectItem key={m.id} value={m.id}>
-                {m.full_name ?? m.email ?? m.id}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
       {/* Table */}
@@ -515,7 +454,6 @@ export default function AccountingJobs() {
               <TableRow>
                 <TableHead>Title</TableHead>
                 <TableHead>Client</TableHead>
-                <TableHead>Category</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Priority</TableHead>
                 <TableHead>Deadline</TableHead>
@@ -537,7 +475,7 @@ export default function AccountingJobs() {
               ) : error ? (
                 <TableRow>
                   <TableCell
-                    colSpan={8}
+                    colSpan={7}
                     className="py-8 text-center text-sm text-destructive"
                   >
                     Couldn&apos;t load jobs: {(error as Error).message}.{" "}
@@ -554,7 +492,7 @@ export default function AccountingJobs() {
               ) : jobs.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={8}
+                    colSpan={7}
                     className="py-12 text-center text-sm text-muted-foreground"
                     data-testid="jobs-empty"
                   >
@@ -596,22 +534,6 @@ export default function AccountingJobs() {
                           <span className="text-xs italic text-muted-foreground">
                             internal
                           </span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {job.category && CATEGORY_BY_CODE[job.category as FilingCategory] ? (
-                          <Badge
-                            variant="outline"
-                            className="font-medium"
-                            style={{
-                              borderColor: CATEGORY_BY_CODE[job.category as FilingCategory].color,
-                              color: CATEGORY_BY_CODE[job.category as FilingCategory].color,
-                            }}
-                          >
-                            {CATEGORY_BY_CODE[job.category as FilingCategory].short}
-                          </Badge>
-                        ) : (
-                          <span className="text-xs italic text-muted-foreground">untagged</span>
                         )}
                       </TableCell>
                       <TableCell>
@@ -868,28 +790,6 @@ export default function AccountingJobs() {
                   }
                 />
               </div>
-            </div>
-
-            <div className="grid gap-2">
-              <Label>UK filing category</Label>
-              <Select
-                value={form.category}
-                onValueChange={(v) => setForm({ ...form, category: v })}
-              >
-                <SelectTrigger data-testid="job-form-category">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={CATEGORY_UNTAGGED_VALUE}>
-                    Untagged
-                  </SelectItem>
-                  {FILING_CATEGORIES.map((c) => (
-                    <SelectItem key={c.code} value={c.code}>
-                      {c.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
           </form>
           <DialogFooter className="gap-2">

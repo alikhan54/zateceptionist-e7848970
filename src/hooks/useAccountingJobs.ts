@@ -23,12 +23,6 @@ export interface AccountingJob {
   deadline: string | null;
   completed_at: string | null;
   checklist: AccountingJobChecklistItem[] | null;
-  /**
-   * UK filing category — see `lib/uk-filing-categories.ts`.
-   * NULL = untagged (default; existing demo jobs render as "Untagged").
-   * Requires migration `36-uk-filing-categories-migration.sql` to be applied.
-   */
-  category: string | null;
   created_by: string | null;
   updated_by: string | null;
   created_at: string;
@@ -40,14 +34,6 @@ export interface UseAccountingJobsFilters {
   status?: AccountingJobStatus;
   priority?: AccountingJobPriority;
   searchTerm?: string;
-  /**
-   * Owner filter:
-   *  - undefined = all owners
-   *  - 'unassigned' = owner_user_id IS NULL
-   *  - <uuid> = owner_user_id = <uuid>  (use 'me' semantic at component level — translate to current user's id before passing)
-   */
-  ownerUserId?: string | "unassigned";
-  category?: string;
 }
 
 export function useAccountingJobs(filters: UseAccountingJobsFilters = {}) {
@@ -66,12 +52,6 @@ export function useAccountingJobs(filters: UseAccountingJobsFilters = {}) {
       if (filters.status) q = q.eq("status", filters.status);
       if (filters.priority) q = q.eq("priority", filters.priority);
       if (filters.searchTerm) q = q.ilike("title", `%${filters.searchTerm}%`);
-      if (filters.ownerUserId === "unassigned") {
-        q = q.is("owner_user_id", null);
-      } else if (filters.ownerUserId) {
-        q = q.eq("owner_user_id", filters.ownerUserId);
-      }
-      if (filters.category) q = q.eq("category", filters.category);
 
       // Open jobs first (alphabetically 'backlog' < 'blocked' < 'done' — ordering by deadline takes precedence)
       // Deadline asc with nulls last so dated work bubbles up; done jobs sink via secondary sort
@@ -113,7 +93,7 @@ export function useAccountingJobs(filters: UseAccountingJobsFilters = {}) {
       const { data: sessionData } = await supabase.auth.getSession();
       const userId = sessionData.session?.user?.id ?? null;
 
-      const payload: Record<string, unknown> = {
+      const payload = {
         tenant_id: tenantId,
         title: job.title,
         description: job.description ?? null,
@@ -126,12 +106,6 @@ export function useAccountingJobs(filters: UseAccountingJobsFilters = {}) {
         created_by: userId,
         updated_by: userId,
       };
-      // Only include category if explicitly set (tolerates pre-migration state where the
-      // `category` column does not yet exist; once 36-uk-filing-categories-migration.sql is
-      // applied, NULL is the DB default for new rows so omitting is identical to sending null).
-      if (job.category !== undefined && job.category !== null) {
-        payload.category = job.category;
-      }
 
       const { data, error: insErr } = await supabase
         .from("accounting_jobs")
@@ -152,16 +126,10 @@ export function useAccountingJobs(filters: UseAccountingJobsFilters = {}) {
       const { data: sessionData } = await supabase.auth.getSession();
       const userId = sessionData.session?.user?.id ?? null;
 
-      const finalPatch: Record<string, unknown> = {
+      const finalPatch: Partial<AccountingJob> & { updated_by: string | null } = {
         ...patch,
         updated_by: userId,
       };
-
-      // Strip `category` from PATCH if it's null/undefined — same migration-tolerance
-      // pattern as createJob. Explicit non-null values (e.g. 'vat') pass through.
-      if (patch.category === undefined || patch.category === null) {
-        delete finalPatch.category;
-      }
 
       // Auto-stamp completed_at when transitioning to done; clear when reopened
       if (patch.status === "done") {

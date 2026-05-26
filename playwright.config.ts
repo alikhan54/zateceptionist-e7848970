@@ -176,11 +176,6 @@ export default defineConfig({
       use: { browserName: 'chromium' }, // no setup dep — fresh login as Smart Ledger user; D7-B Finance verification
     },
     {
-      name: 'smart-ledger-invoices',
-      testMatch: /smart-ledger-invoices\.spec\.ts/,
-      use: { browserName: 'chromium' }, // no setup dep — fresh login as Smart Ledger user; D7-C Invoices CRUD verification
-    },
-    {
       name: 'smart-ledger-comprehensive-e2e',
       testMatch: /smart-ledger-comprehensive-e2e\.spec\.ts/,
       use: { browserName: 'chromium' }, // no setup dep — full E2E matrix (auth + dashboard + clients + jobs + placeholders + nav + mobile + cross-tenant + session security)

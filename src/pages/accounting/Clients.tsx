@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -12,18 +11,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { useTenant } from "@/contexts/TenantContext";
 import { supabase } from "@/lib/supabase";
-import { useTriggerCompaniesHouseSync } from "@/hooks/useTriggerCompaniesHouseSync";
-import { MoreVertical, RefreshCw, Search, Users, Sparkles } from "lucide-react";
+import { Search, Users, Sparkles } from "lucide-react";
 
 interface AccountingClient {
   id: string;
@@ -53,7 +44,6 @@ function formatPeriodEnd(value: string | null): string {
 export default function AccountingClients() {
   const { tenantId } = useTenant();
   const { toast } = useToast();
-  const chSync = useTriggerCompaniesHouseSync();
 
   const [clients, setClients] = useState<AccountingClient[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -149,7 +139,6 @@ export default function AccountingClients() {
                 <TableHead>Status</TableHead>
                 <TableHead>Period End</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead className="w-12 text-right" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -165,13 +154,13 @@ export default function AccountingClients() {
                 ))
               ) : error ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-sm text-destructive py-8">
+                  <TableCell colSpan={6} className="text-center text-sm text-destructive py-8">
                     Couldn't load clients: {error}
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-12">
+                  <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-12">
                     {clients.length === 0 ? (
                       <div className="flex flex-col items-center gap-2">
                         <Users className="h-8 w-8 text-muted-foreground/50" />
@@ -203,46 +192,6 @@ export default function AccountingClients() {
                       <TableCell>{formatPeriodEnd(c.accounting_period_end)}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {c.contact_email || "—"}
-                      </TableCell>
-                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              aria-label="Row actions"
-                              data-testid={`client-row-menu-${c.id}`}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              disabled={!c.company_no || chSync.isPending}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (!c.company_no) return;
-                                chSync.mutateAsync([c.company_no]).catch(() => {
-                                  /* toast handled inside hook */
-                                });
-                              }}
-                              data-testid={`client-row-ch-sync-${c.id}`}
-                            >
-                              <RefreshCw className="mr-2 h-4 w-4" />
-                              Sync from Companies House
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRowClick();
-                              }}
-                            >
-                              View details (coming soon)
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   );
