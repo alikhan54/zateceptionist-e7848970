@@ -1,0 +1,233 @@
+{
+  "total": 6,
+  "pass": 6,
+  "partial": 0,
+  "fail": 0,
+  "results": [
+    {
+      "id": "E1",
+      "name": "hr_auto_mode_config accessible + has rules",
+      "verdict": "PASS",
+      "evidence": {
+        "found": 1,
+        "enabled": true,
+        "rule_count": 7
+      },
+      "notes": [
+        "tenant=933967dd-1f90-4676-96c1-42a01b6d9835 enabled=true"
+      ]
+    },
+    {
+      "id": "E2",
+      "name": "Cosmique candidates enriched with real signals",
+      "verdict": "PASS",
+      "evidence": {
+        "total": 5,
+        "completed": 5,
+        "hits_quality_bar": 4,
+        "sample": [
+          {
+            "first_name": "Hawa",
+            "last_name": "El hadef el okki",
+            "current_title": "Gp aesthetic graduated from american academy of aesthetic \n",
+            "experience_years": 23,
+            "skills": [
+              "Esthétique",
+              "Cosmétique au botox",
+              "Filler",
+              "Mésothérapie",
+              "Prp",
+              "Conferece attendance",
+              "General medicine",
+              "Infectious disease",
+              "surgery",
+              "pediatric ",
+              "gynecology ",
+              "Médecine générale",
+              "Médecine hospitalière",
+              "Radiothérapie",
+              "Radiothérapie guidée par l’image",
+              "Oncologie",
+              "Oncologie gynécologique",
+              "Immuno-oncologie",
+              "Recherche clinique en oncologie",
+              "Anglais"
+            ],
+            "source": "linkedin_apify",
+            "enrichment_status": "completed",
+            "match_score": 9.99
+          },
+          {
+            "first_name": "Dr. Khalid",
+            "last_name": "Hamoudi",
+            "current_title": "GP Dermatologist | Aesthetic Medicine, Cosmetic Dermatology. GP Aesthetic",
+            "experience_years": 10,
+            "skills": [
+              "Leadership",
+              "Treatment",
+              "Teamwork",
+              "Aesthetics",
+              "Cosmetic Dermatology",
+              "Healthcare Management",
+              "Medical Terminology",
+              "Hospitals",
+              "Cosmetic Medicine",
+              "Fillers",
+              "Botox Cosmetic",
+              "Dermatology",
+              "Communication",
+              "Medicine",
+              "Patient Care",
+              "Healthcare",
+              "Medical Records",
+              "Insurance",
+              "Clinics",
+              "Patient Registration"
+            ],
+            "source": "linkedin_apify",
+            "enrichment_status": "completed",
+            "match_score": 9.99
+          },
+          {
+            "first_name": "Dr. Anna",
+            "last_name": "Semenova",
+            "current_title": "DHA- Licensed GP I Aesthetic Doctor",
+            "experience_years": 6,
+            "skills": [
+              "Aesthetic Medicine",
+              "General Practitioner",
+              "Cosmetic Injectables",
+              "Dermatology",
+              "Family Medicine",
+              "Advanced Life Support (ALS)",
+              "Clinic Management",
+              "Healthcare Leadership"
+            ],
+            "source": "linkedin_apify",
+            "enrichment_status": "completed",
+            "match_score": 8.5
+          },
+          {
+            "first_name": "Neda",
+            "last_name": "Khan",
+            "current_title": "GP Aesthetician",
+            "experience_years": 7,
+            "skills": [
+              "Surgery Scheduling",
+              "Cyrus",
+              "Injections",
+              "Apache Mesos",
+              "Patient Relations",
+              "Moles",
+              "Embraces Change",
+              "Rooming Patients",
+              "Sclerotherapy",
+              "Business Requirements",
+              "Addiction Medicine",
+              "Body Contouring",
+              "Medical Management",
+              "Professional Development",
+              "Lip Augmentation",
+              "Spa Treatments",
+              "Cupping",
+              "English Interpreting",
+              "Heat Treatment",
+              "Data Flow"
+            ],
+            "source": "linkedin_apify",
+            "enrichment_status": "completed",
+            "match_score": 8.5
+          },
+          {
+            "first_name": "Muhammad Aamir",
+            "last_name": "Suhail",
+            "current_title": "GP Aesthetics. \nDermatologist. \nDHA Registered.\nCertified Aesthetic physician at Royal academy of Facial Aesthetics.",
+            "experience_years": null,
+            "skills": [
+              "Cosmetic Dermatology",
+              "Laser Ablation",
+              "Laser Hair Removal",
+              "Microneedling",
+              "PRGF",
+              "Dermal threads",
+              "Dermal Fillers",
+              "Aesthetics",
+              "Dermatology"
+            ],
+            "source": "linkedin_apify",
+            "enrichment_status": "completed",
+            "match_score": 7
+          }
+        ]
+      },
+      "notes": [
+        "Hawa El hadef el okki | Gp aesthetic graduated from american aca | 23yr | 20 skills | score=9.99",
+        "Dr. Khalid Hamoudi | GP Dermatologist | Aesthetic Medicine, C | 10yr | 20 skills | score=9.99",
+        "Dr. Anna Semenova | DHA- Licensed GP I Aesthetic Doctor | 6yr | 8 skills | score=8.5",
+        "Neda Khan | GP Aesthetician | 7yr | 20 skills | score=8.5",
+        "Muhammad Aamir Suhail | GP Aesthetics. \nDermatologist. \nDHA Regi | nullyr | 9 skills | score=7"
+      ]
+    },
+    {
+      "id": "E3",
+      "name": "Application ai_match_score reflects enriched matches",
+      "verdict": "PASS",
+      "evidence": {
+        "app_count": 5,
+        "above_70": 5,
+        "scores": [
+          100,
+          100,
+          85,
+          85,
+          70
+        ]
+      },
+      "notes": [
+        "scores=100,100,85,85,70"
+      ]
+    },
+    {
+      "id": "E4",
+      "name": "AI Interview Q-Gen produces ≥5 questions",
+      "verdict": "PASS",
+      "evidence": {
+        "interview_id": "dd5e1acd-50d1-4182-ad93-950f717ab6ed",
+        "agent": "claude-premium",
+        "question_count": 5,
+        "sample_q": "Can you walk me through your experience with Botox and dermal fillers? What patient populations have you primarily worked with, and how has your technique evolved over your 10 years in aesthetic medicine?"
+      },
+      "notes": [
+        "agent=claude-premium questions=5"
+      ]
+    },
+    {
+      "id": "E5",
+      "name": "Start-call handles missing phone gracefully",
+      "verdict": "PASS",
+      "evidence": {
+        "response": {
+          "success": false,
+          "error": "candidate has no phone"
+        },
+        "http": 200
+      },
+      "notes": [
+        "success=false error=candidate has no phone"
+      ]
+    },
+    {
+      "id": "E6",
+      "name": "AutoMode page no longer shows \"not provisioned\"",
+      "verdict": "PASS",
+      "evidence": {
+        "has_title": true,
+        "says_not_provisioned": false
+      },
+      "notes": [
+        "text contains AI Auto-Pipeline=true; says not provisioned=false"
+      ],
+      "screenshot": "screenshots\\enrichment\\e6_automode_page.png"
+    }
+  ]
+}
