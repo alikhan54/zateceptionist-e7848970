@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useTenant } from "@/contexts/TenantContext";
 import { AskAIButton } from "@/components/hr/AskAIButton";
 import { SourceBadge } from "@/components/hr/SourceBadge";
+import AIInterviewsTab from "@/components/hr/AIInterviewsTab";
 import { useAutoMode } from "@/hooks/useAutoMode";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Bot } from "lucide-react";
@@ -1583,150 +1584,7 @@ export default function RecruitmentPage() {
 
         {/* ===== AI INTERVIEWS TAB ===== */}
         <TabsContent value="ai-interviews">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Brain className="h-5 w-5 text-primary" />
-                    AI Interviews
-                  </CardTitle>
-                  <CardDescription>Automated screening interviews conducted by AI</CardDescription>
-                </div>
-                <Button
-                  onClick={() => setIsStartAIInterviewOpen(true)}
-                  disabled={eligibleForAIInterview.length === 0}
-                >
-                  <Bot className="h-4 w-4 mr-2" />
-                  Start AI Interview
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {aiInterviewsLoading ? (
-                <TableLoading rows={4} />
-              ) : aiInterviews.length === 0 ? (
-                <div className="text-center py-16">
-                  <Bot className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-1">No AI interviews yet</h3>
-                  <p className="text-muted-foreground">
-                    Move candidates to the AI Interview stage to start automated screening
-                  </p>
-                </div>
-              ) : (
-                <div className="grid gap-4 md:grid-cols-2">
-                  {aiInterviews.map((interview) => (
-                    <Card key={interview.id} className="border">
-                      <CardContent className="p-4 space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Bot className="h-5 w-5 text-primary" />
-                            <span className="font-medium text-sm capitalize">{interview.interview_type} Interview</span>
-                          </div>
-                          <Badge
-                            className={cn(
-                              interview.status === "completed" && "bg-chart-2/10 text-chart-2",
-                              interview.status === "in_progress" && "bg-chart-4/10 text-chart-4",
-                              interview.status === "scheduled" && "bg-primary/10 text-primary",
-                              interview.status === "failed" && "bg-destructive/10 text-destructive",
-                              interview.status === "cancelled" && "bg-muted text-muted-foreground",
-                            )}
-                          >
-                            {interview.status}
-                          </Badge>
-                        </div>
-
-                        {interview.status === "completed" && (
-                          <>
-                            {/* Scores */}
-                            <div className="grid grid-cols-2 gap-3">
-                              {[
-                                { label: "Overall", score: interview.ai_overall_score },
-                                { label: "Technical", score: interview.ai_technical_score },
-                                { label: "Communication", score: interview.ai_communication_score },
-                                { label: "Cultural Fit", score: interview.ai_cultural_score },
-                              ].map((item) => (
-                                <div key={item.label} className="space-y-1">
-                                  <div className="flex items-center justify-between text-xs">
-                                    <span className="text-muted-foreground">{item.label}</span>
-                                    <span
-                                      className={cn("font-medium", item.score != null ? getScoreColor(item.score) : "")}
-                                    >
-                                      {item.score != null ? `${item.score}%` : "—"}
-                                    </span>
-                                  </div>
-                                  <Progress value={item.score || 0} className="h-1.5" />
-                                </div>
-                              ))}
-                            </div>
-
-                            {/* Recommendation */}
-                            {interview.ai_recommendation && (
-                              <Badge className={getRecommendationColor(interview.ai_recommendation)}>
-                                {interview.ai_recommendation}
-                              </Badge>
-                            )}
-
-                            {/* Strengths */}
-                            {interview.ai_strengths && interview.ai_strengths.length > 0 && (
-                              <div>
-                                <p className="text-xs font-medium mb-1 flex items-center gap-1">
-                                  <CheckCircle2 className="h-3 w-3 text-chart-2" />
-                                  Strengths
-                                </p>
-                                <div className="flex flex-wrap gap-1">
-                                  {interview.ai_strengths.map((s, i) => (
-                                    <Badge key={i} variant="secondary" className="text-xs">
-                                      {s}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Concerns */}
-                            {interview.ai_concerns && interview.ai_concerns.length > 0 && (
-                              <div>
-                                <p className="text-xs font-medium mb-1 flex items-center gap-1">
-                                  <XCircle className="h-3 w-3 text-destructive" />
-                                  Concerns
-                                </p>
-                                <div className="flex flex-wrap gap-1">
-                                  {interview.ai_concerns.map((c, i) => (
-                                    <Badge key={i} variant="outline" className="text-xs">
-                                      {c}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Summary */}
-                            {interview.ai_summary && (
-                              <p className="text-xs text-muted-foreground line-clamp-3">{interview.ai_summary}</p>
-                            )}
-
-                            {interview.call_duration_seconds && (
-                              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                Duration: {Math.round(interview.call_duration_seconds / 60)} min
-                              </p>
-                            )}
-                          </>
-                        )}
-
-                        {interview.completed_at && (
-                          <p className="text-xs text-muted-foreground">
-                            Completed {format(new Date(interview.completed_at), "MMM d, yyyy")}
-                          </p>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <AIInterviewsTab />
         </TabsContent>
 
         {/* ===== SOURCING TAB ===== */}
