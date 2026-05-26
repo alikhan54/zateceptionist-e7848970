@@ -95,6 +95,7 @@ const DepartmentsPage = lazy(() => import("./pages/hr/Departments"));
 const PerformancePage = lazy(() => import("./pages/hr/Performance"));
 const TrainingPage = lazy(() => import("./pages/hr/Training"));
 const RecruitmentPage = lazy(() => import("./pages/hr/Recruitment"));
+const AutoModePage = lazy(() => import("./pages/hr/AutoMode"));
 const HRDocumentsPage = lazy(() => import("./pages/hr/Documents"));
 const EmployeeProfilePage = lazy(() => import("./pages/hr/EmployeeProfile"));
 const HRReportsPage = lazy(() => import("./pages/hr/Reports"));
@@ -1002,6 +1003,22 @@ const App = () => (
                     element={
                       <LazyPage>
                         <HRRecruitmentDash />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/hr/recruitment/auto-mode"
+                    element={
+                      <LazyPage>
+                        <AutoModePage />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/hr/recruitment/auto-mode/audit"
+                    element={
+                      <LazyPage>
+                        <AutoModePage />
                       </LazyPage>
                     }
                   />

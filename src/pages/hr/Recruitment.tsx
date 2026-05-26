@@ -1,7 +1,13 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTenant } from "@/contexts/TenantContext";
 import { AskAIButton } from "@/components/hr/AskAIButton";
+import { SourceBadge } from "@/components/hr/SourceBadge";
+import { useAutoMode } from "@/hooks/useAutoMode";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Bot } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -201,7 +207,9 @@ function TableLoading({ rows = 5 }: { rows?: number }) {
 }
 
 export default function RecruitmentPage() {
+  const navigate = useNavigate();
   const { tenantId, tenantConfig } = useTenant();
+  const autoMode = useAutoMode();
   const [activeTab, setActiveTab] = useState("jobs");
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddJobOpen, setIsAddJobOpen] = useState(false);
@@ -638,6 +646,32 @@ export default function RecruitmentPage() {
 
   return (
     <div className="space-y-6">
+      {/* Auto-Mode Banner */}
+      {autoMode.config?.enabled && (
+        <Alert className="border-l-4 border-l-primary" data-testid="automode-banner">
+          <Bot className="h-4 w-4" />
+          <AlertTitle>AI Auto-Pipeline ACTIVE</AlertTitle>
+          <AlertDescription className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <span>
+              AI is evaluating candidates every {autoMode.config.run_frequency_minutes} minutes based on your rules.
+              {autoMode.config.last_run_at && (
+                <span className="text-xs ml-2">
+                  · Last run {formatDistanceToNow(new Date(autoMode.config.last_run_at), { addSuffix: true })}
+                </span>
+              )}
+            </span>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => navigate('/hr/recruitment/auto-mode')} data-testid="automode-banner-edit">
+                Edit Rules
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => autoMode.runNow.mutate()} disabled={autoMode.runNow.isPending} data-testid="automode-banner-run">
+                {autoMode.runNow.isPending ? 'Running…' : 'Run Now'}
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -648,6 +682,11 @@ export default function RecruitmentPage() {
           <p className="text-muted-foreground mt-1">AI-powered hiring pipeline</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => navigate('/hr/recruitment/auto-mode')} data-testid="automode-link">
+            <Bot className="h-4 w-4 mr-2" />
+            Auto-Mode
+            {autoMode.config?.enabled && <Badge variant="secondary" className="ml-2 bg-primary/20 text-primary">ON</Badge>}
+          </Button>
           <AskAIButton
             message="Analyze the current recruitment pipeline: open roles, candidate quality, time-to-hire bottlenecks, and which jobs need the most attention"
             label="AI Hiring Insights"
@@ -1211,7 +1250,7 @@ export default function RecruitmentPage() {
                               {candidate.enrichment_status}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-sm">{candidate.source}</TableCell>
+                          <TableCell><SourceBadge source={candidate.source} /></TableCell>
                           <TableCell>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
