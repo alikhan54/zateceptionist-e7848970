@@ -320,6 +320,15 @@ export default defineConfig({
       },
     },
     {
+      name: 'premium-tier-verify',
+      testMatch: /premium-tier-verify\.spec\.ts/,
+      dependencies: ['zate-setup'],
+      use: {
+        browserName: 'chromium',
+        storageState: path.join(__dirname, 'tests', '.auth-state-zate.json'),
+      },
+    },
+    {
       name: 'settings-acsfx-setup',
       testMatch: /settings-acsfx-auth\.setup\.ts/,
       use: { browserName: 'chromium' },

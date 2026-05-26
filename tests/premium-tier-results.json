@@ -1,0 +1,46 @@
+{
+  "total": 2,
+  "pass": 2,
+  "partial": 0,
+  "fail": 0,
+  "results": [
+    {
+      "id": "P4",
+      "name": "AI Auto-Review via Claude",
+      "verdict": "PASS",
+      "evidence": {
+        "agent": "claude-premium",
+        "overall_rating": 4.8,
+        "strengths": "Ahmed demonstrates exceptional commitment to his role as CEO with perfect attendance and zero late arrivals during the quarter. His completion of 2 training programs shows a commendable dedication to continuous learning and development despite the demands of executive leadership. His minimal leave u",
+        "ai_summary": "Ahmed Al Mansoori has demonstrated outstanding commitment and reliability as CEO during this quarter, achieving perfect attendance with no tardiness and proactively engaging in professional development through completion of two training programs. His 77-month tenure reflects significant institutiona"
+      },
+      "notes": [
+        "agent=claude-premium employee=Ahmed Al Mansoori period=2026-02-26 to 2026-05-26",
+        "signals={\"attendance_rate\":100,\"late_count\":0,\"annual_leaves\":1,\"sick_leaves\":0,\"trainings_completed\":2}",
+        "overall_rating=4.8",
+        "strengths_len=410 ai_summary_len=579"
+      ]
+    },
+    {
+      "id": "P5",
+      "name": "Training Generator produces structured content",
+      "verdict": "PASS",
+      "evidence": {
+        "agent": "claude-premium",
+        "content_length": 1366,
+        "slides_count": 4,
+        "questions_count": 5,
+        "learning_objectives": [
+          "Understand the critical importance of hand hygiene in preventing infection transmission in aesthetic healthcare settings",
+          "Identify the correct times to perform hand hygiene before and after client contact at Cosmique Aesthetics",
+          "Demonstrate proper handwashing and hand sanitizer technique with appropriate duration and coverage"
+        ]
+      },
+      "notes": [
+        "agent=claude-premium program=Hand Hygiene 1779763913983",
+        "content_len=1366 slides=4 questions=5",
+        "objectives=[\"Understand the critical importance of hand hygiene in preventing infection transmission in aesthetic healthcare settings\",\"Identify the correct times to perform hand hygiene before and after client "
+      ]
+    }
+  ]
+}
