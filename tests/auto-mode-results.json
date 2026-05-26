@@ -1,0 +1,68 @@
+{
+  "total": 4,
+  "pass": 3,
+  "partial": 1,
+  "fail": 0,
+  "results": [
+    {
+      "id": "AM1",
+      "name": "Auto-mode schema accessible via REST",
+      "verdict": "PASS",
+      "evidence": {
+        "config_found": true,
+        "has_rules_keys": 7,
+        "audit_table_exists": true
+      },
+      "notes": [
+        "cosmique enabled=true rules_count=7"
+      ]
+    },
+    {
+      "id": "AM2",
+      "name": "Auto-Pipeline webhook returns decisions",
+      "verdict": "PASS",
+      "evidence": {
+        "http_success": true,
+        "tenants_processed": 1,
+        "decisions_returned": 4,
+        "new_audit_rows": 4
+      },
+      "notes": [
+        "returned=4; new audit rows=4"
+      ]
+    },
+    {
+      "id": "AM3",
+      "name": "Source enum accepts new channels",
+      "verdict": "PASS",
+      "evidence": {
+        "per_source_http": {
+          "linkedin_apify": 201,
+          "linkedin_google": 201,
+          "past_applicant": 201,
+          "github": 201,
+          "referral": 201
+        },
+        "inserted_count": 5
+      },
+      "notes": [
+        "probes=linkedin_apify,linkedin_google,past_applicant,github,referral"
+      ]
+    },
+    {
+      "id": "AM4",
+      "name": "AutoMode page renders (UI)",
+      "verdict": "PARTIAL",
+      "evidence": {
+        "has_title": false,
+        "has_master_switch": false,
+        "has_404": true
+      },
+      "notes": [
+        "has_title=false has_master_switch=false has_404=true",
+        "Bundle likely not yet deployed — AutoMode chunk missing. Will pass once Lovable serves the new bundle."
+      ],
+      "screenshot": "screenshots\\auto-mode\\am4_automode_page.png"
+    }
+  ]
+}
