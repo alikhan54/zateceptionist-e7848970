@@ -169,9 +169,10 @@ export default function DocumentsPage() {
     }
   };
 
-  // Build the payload, then try Web Share API (mobile / supported desktop),
-  // fall back to clipboard. Web Share lets the user pick the destination
-  // (mail, WhatsApp, Slack, etc.) instead of leaking a raw Supabase URL.
+  // Desktop = copy URL to clipboard (most users want this); mobile = native
+  // share sheet (so they can fire it to WhatsApp/Mail/etc. with one tap).
+  // Web Share is also available on some desktop browsers, but user feedback
+  // is "just give me the link" so we keep desktop deterministic.
   const handleShare = async (doc: any) => {
     const title = doc.document_name || doc.name || 'Document';
     let shareUrl: string | undefined;
@@ -189,11 +190,10 @@ export default function DocumentsPage() {
             return;
           }
           shareUrl = data.signedUrl;
-          shareText = `${title} — secure link (24h)`;
         } else {
           shareUrl = doc.file_url;
-          shareText = title;
         }
+        shareText = `${title} (24h link)`;
       } else if (doc.document_content) {
         const summary = doc.document_content.slice(0, 500);
         shareText = `${title}\n\n${summary}${doc.document_content.length > 500 ? '…' : ''}`;
@@ -202,33 +202,36 @@ export default function DocumentsPage() {
         return;
       }
 
+      const isMobileUA = typeof navigator !== 'undefined'
+        && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+      const nav: any = navigator;
       const payload: ShareData = {
         title,
         text: shareText,
         ...(shareUrl ? { url: shareUrl } : {}),
       };
-
-      // Prefer the native share sheet when available + payload is allowed.
-      const nav: any = navigator;
-      const canShare = typeof nav.share === 'function'
+      const canShare = typeof nav?.share === 'function'
         && (typeof nav.canShare !== 'function' || nav.canShare(payload));
 
-      if (canShare) {
+      // Mobile: open the OS share sheet so user can pick WhatsApp / Mail / etc.
+      if (isMobileUA && canShare) {
         try {
           await nav.share(payload);
           toast.success('Shared');
           return;
         } catch (err: any) {
-          // AbortError = user cancelled the sheet; treat as silent no-op.
-          if (err?.name === 'AbortError') return;
-          // Any other share error falls through to clipboard.
+          if (err?.name === 'AbortError') return; // user cancelled
+          // fall through to clipboard
         }
       }
 
+      // Desktop (or mobile fallback): copy the URL/text to clipboard.
       const clipboardText = shareUrl || shareText || title;
       if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(clipboardText);
-        toast.success(shareUrl ? 'Share link copied (expires in 24h)' : 'Copied to clipboard');
+        toast.success(shareUrl
+          ? 'Share link copied to clipboard (expires in 24 hours)'
+          : 'Document content copied to clipboard');
       } else {
         toast.info(clipboardText);
       }
