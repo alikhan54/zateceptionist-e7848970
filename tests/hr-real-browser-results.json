@@ -1,0 +1,50 @@
+{
+  "total": 1,
+  "pass": 1,
+  "partial": 0,
+  "fail": 0,
+  "results": [
+    {
+      "id": "B4",
+      "name": "Recruitment shows real candidates after sourcing",
+      "verdict": "PASS",
+      "evidence": {
+        "run_final": {
+          "status": "completed",
+          "total_candidates_found": 5,
+          "error_log": "phase4 errors: [{\"candidate\":\"ca03392c-446a-4ddd-804a-6d1f80a7d1db\",\"app_err\":\"Request failed with status code 400\"},{\"candidate\":\"d0924605-1ff5-4791-be32-7463a8ad0e2d\",\"app_err\":\"Request failed with status code 400\"},{\"candidate\":\"bc5ba1c4-ab1d-4d6d-9b7f-e9470f921c6a\",\"app_err\":\"Request failed with status code 400\"},{\"candidate\":\"9b931ce0-8e8f-4643-8d05-d4563a0b5b90\",\"app_err\":\"Request failed with status code 400\"},{\"candidate\":\"1d5de835-e83f-4ecc-a3b8-c59cdc0a1c6a\",\"app_err\":\"Request failed with status code 400\"}]"
+        },
+        "db_candidate_count": 5,
+        "ui_visible": false,
+        "sample": [
+          {
+            "first_name": "Ameer",
+            "last_name": "Hamza‏",
+            "current_title": "‏Sr. Software Engineer @ Dubai Economy ...",
+            "match_score": 9
+          },
+          {
+            "first_name": "Rao",
+            "last_name": "Hunain Humail‏",
+            "current_title": "‏🇦🇪 Dubai based",
+            "match_score": 9
+          },
+          {
+            "first_name": "Waqar",
+            "last_name": "Hussain‏",
+            "current_title": "‏Senior Software Engineer – Reactnative",
+            "match_score": 9
+          }
+        ]
+      },
+      "notes": [
+        "job_id=5b7c7a0a-6904-488d-8508-8da78a90140b",
+        "run_id=3ce78664-7830-496d-aacf-7f1dd525eaa6 path=direct-search",
+        "run_final={\"status\":\"completed\",\"total_candidates_found\":5,\"error_log\":\"phase4 errors: [{\\\"candidate\\\":\\\"ca03392c-446a-4ddd-804a-6d1f80a7d1db\\\",\\\"app_err\\\":\\\"Request failed with status code 400\\\"},{\\\"candidate\\\":\\\"d0924605-1ff5-4791-be32-7463a8ad0e2d\\\",\\\"app_err\\\":\\\"Request failed with status code 400\\\"},{\\\"c",
+        "db_candidates=5 sample=[{\"first_name\":\"Ameer\",\"last_name\":\"Hamza‏\",\"current_title\":\"‏Sr. Software Engineer @ Dubai Economy ...\",\"match_score\":9},{\"first_name\":\"Rao\",\"last_name\":\"Hunain Humail‏\",\"current_title\":\"‏🇦🇪 Dubai based\",\"match_score\":9},{\"first_name\":\"Waqar\",\"last_name\":\"Hussain‏\",\"current_title\":\"‏Senior Softwa",
+        "any_candidate_visible_in_ui=false"
+      ],
+      "screenshot": "screenshots\\hr-real-browser\\b4_recruitment.png"
+    }
+  ]
+}

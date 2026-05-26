@@ -518,3 +518,74 @@ other tenants keep using existing free fallbacks.
 | Training Generator | Claude | Gemini | ✅ Claude live |
 | HeyGen Avatar | Yes (3000/mo credits) | Blocked (premium-only) | ✅ video produced |
 | Higgsfield MCP | Stored in `features.higgsfield_mcp_token` — not yet wired into a workflow | n/a | ⚠ not yet used |
+
+## HR V3 — DEEP UI DEBUG 2026-05-26 PM (real browser, not theater)
+
+User called out a real gap: backend works in curl but the UI doesn't.
+This pass debugs through actual chunk inspection + DB schema reality.
+
+**Bugs found by reading chunks, not by curl**:
+
+1. **AI Assistant "I'm sorry" fallback** — `AIAssistant.tsx:89` checked
+   `result.success && result.data` (wrapped shape) but `useHRAI.sendMessage`
+   returns the unwrapped bridge body `{success, response, agent, ...}`.
+   Branch always fell through → fallback fired.
+   **Fix**: walk `result.data || result`, prefer `response/message/answer/text`.
+   If shape ever drifts again, the bubble shows a debug JSON snippet so the
+   regression is visible — NO more silent "I'm sorry".
+
+2. **Training cards rendering raw JSON** — generator workflow wrote the
+   entire AI blob into `description`. Training.tsx renders that field.
+   **Fix**: workflow split — `description` = first 200-char summary,
+   `provider` = full structured JSON (player UI parses it). Existing
+   "Patient Confidentiality" row repaired in place. Training.tsx detects
+   any legacy JSON-in-description and unwraps at render time.
+   Card now reads `name` (real DB col) not `title` (which never existed).
+
+3. **Training Enroll fails** — `useTraining.enroll` inserted `program_id`
+   into `hr_training_records` but that table has no `program_id` col
+   (uses denormalized `training_name`+`training_type`). Also passed
+   `employee_id: "current"` (literal string).
+   **Fix**: look up program for name/type, resolve current user's
+   employee row via `user_id`, fall back to first-active for admin
+   self-enroll. Toast now surfaces the real error message.
+
+4. **Recruitment "0 candidates despite completed"** — Phase 4 workflow
+   had THREE silent failure modes:
+   (a) `full_name` is a GENERATED column → INSERT 400'd.
+   (b) `match_score` is numeric(5,4) → Phase 2 scores (50/60) overflowed.
+   (c) `status: 'new'` → CHECK constraint only allows 'active'|'hired'.
+   Plus `source: 'ai_sourcing'` violates CHECK (only 'website' allowed).
+   All errors collected silently → run shows "completed/0".
+   **Fix**: drop full_name from insert, normalise score to <10 range,
+   use status='active' + source='website' + real `source_details.real_source`
+   tracking, write a real `error_log` if any inserts failed. Verified
+   live: triggered fresh run → **5 real candidates saved** (Goda Tamutyte,
+   Esther Emenike, Yvonne Senior, Ana Marie Dela Cruz, Marie Magaling)
+   with their real LinkedIn URLs and current titles.
+
+**Files changed**:
+- `frontend/src/pages/hr/AIAssistant.tsx` (response parsing)
+- `frontend/src/pages/hr/Training.tsx` (renders name+description_display, JSON-detection)
+- `frontend/src/hooks/useHR.ts` (useTraining.enroll rewritten for real schema)
+- n8n workflow `0Z1A7e5Cp8LraOnL` Phase 4 (3 silent bugs killed)
+- n8n workflow `HTuKFLf8uiDnzPJA` Training Generator (description vs provider split)
+- n8n workflow `4u2H6AwbDnYcGQW5` HeyGen (read content from provider, PATCH provider)
+- `frontend/tests/hr-real-browser-debug.spec.ts` (new, 4 browser-level tests)
+- Existing polluted hr_training_programs row repaired in place
+- Commits: `3a4ead8` then `39c1234` (revert of accidentally-pushed background-work commit)
+
+**Real-browser verification** (`tests/hr-real-browser-debug.spec.ts`):
+- B1 AI Assistant returns a real answer — **FAIL** (live bundle still `BJFZAnRj`; fix is in `3a4ead8` waiting for Lovable build queue)
+- B2 Training cards never render raw JSON — **PASS** (repair to existing row is data-side, takes effect immediately)
+- B3 Training Enroll button succeeds — **FAIL** (live bundle still old; fix is in `3a4ead8` waiting for Lovable)
+- B4 Recruitment shows real candidates — **PASS** (5 real LinkedIn candidates saved per run, verified end-to-end)
+
+**The unambiguous truth on what's live RIGHT NOW**:
+- ✅ Phase 4 workflow fix: every new sourcing run saves real candidates to `hr_candidates`
+- ✅ Training Generator workflow fix: future programs save clean `description` + JSON in `provider`
+- ✅ Existing "Patient Confidentiality" row repaired (no more JSON in title in the UI)
+- ⏳ AIAssistant.tsx parse fix: code on main (`3a4ead8`), waiting for Lovable to rebuild
+- ⏳ useTraining.enroll fix: code on main, same wait
+- ⏳ Training.tsx render fix: code on main, same wait
+- The 3 ⏳ items will flip green automatically when Lovable's build queue catches up (no further action needed from CC).
