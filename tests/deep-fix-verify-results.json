@@ -1,0 +1,152 @@
+{
+  "total": 5,
+  "pass": 3,
+  "partial": 0,
+  "fail": 2,
+  "results": [
+    {
+      "id": "D1",
+      "name": "OMEGA tool answers via UI",
+      "verdict": "FAIL",
+      "evidence": {
+        "pass": 0,
+        "total": 5,
+        "per_query": [
+          {
+            "tag": "D1a",
+            "query": "How many employees do we have?",
+            "verdict": "FAIL",
+            "tools": [],
+            "response": "I hit a problem reaching the AI service: Request failed with status code 429. Please try again in a moment.",
+            "matched": false,
+            "failedPhrase": true
+          },
+          {
+            "tag": "D1b",
+            "query": "Check document expiry status and list overdue renewals",
+            "verdict": "FAIL",
+            "tools": [],
+            "response": "I hit a problem reaching the AI service: Request failed with status code 429. Please try again in a moment.",
+            "matched": false,
+            "failedPhrase": true
+          },
+          {
+            "tag": "D1c",
+            "query": "What is the annual leave policy?",
+            "verdict": "FAIL",
+            "tools": [],
+            "response": "I hit a problem reaching the AI service: Request failed with status code 429. Please try again in a moment.",
+            "matched": false,
+            "failedPhrase": true
+          },
+          {
+            "tag": "D1d",
+            "query": "What's our emiratisation percentage?",
+            "verdict": "FAIL",
+            "tools": [],
+            "response": "I hit a problem reaching the AI service: Request failed with status code 429. Please try again in a moment.",
+            "matched": false,
+            "failedPhrase": true
+          },
+          {
+            "tag": "D1e",
+            "query": "Who joined recently?",
+            "verdict": "FAIL",
+            "tools": [],
+            "response": "I hit a problem reaching the AI service: Request failed with status code 429. Please try again in a moment.",
+            "matched": false,
+            "failedPhrase": true
+          }
+        ]
+      },
+      "notes": [
+        "D1a verdict=FAIL tools=[] resp=\"I hit a problem reaching the AI service: Request failed with status code 429. Please try again in a \"",
+        "D1b verdict=FAIL tools=[] resp=\"I hit a problem reaching the AI service: Request failed with status code 429. Please try again in a \"",
+        "D1c verdict=FAIL tools=[] resp=\"I hit a problem reaching the AI service: Request failed with status code 429. Please try again in a \"",
+        "D1d verdict=FAIL tools=[] resp=\"I hit a problem reaching the AI service: Request failed with status code 429. Please try again in a \"",
+        "D1e verdict=FAIL tools=[] resp=\"I hit a problem reaching the AI service: Request failed with status code 429. Please try again in a \""
+      ],
+      "screenshot": "screenshots\\deep-fix\\d1_ai_omega_tools.png"
+    },
+    {
+      "id": "D2a",
+      "name": "Share copies to clipboard on desktop UA",
+      "verdict": "FAIL",
+      "evidence": {},
+      "notes": [
+        "navigator.share called=1 (expect 0 on desktop)",
+        "clipboard text length=0 preview=\"\"",
+        "toast saw \"copied to clipboard\"=false  toasts=[\"Shared\"]"
+      ],
+      "screenshot": "screenshots\\deep-fix\\d2a_desktop_share.png",
+      "error": "Expected clipboard copy on desktop, not native share\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32mtrue\u001b[39m\nReceived: \u001b[31mfalse\u001b[39m"
+    },
+    {
+      "id": "D2b",
+      "name": "Share opens native sheet on mobile UA",
+      "verdict": "PASS",
+      "evidence": {
+        "share_calls": 1,
+        "payload": {
+          "title": "DEEPFIX-SHARE-MOB 1779759454254",
+          "text": "DEEPFIX-SHARE-MOB 1779759454254\n\nMobile share test content body."
+        }
+      },
+      "notes": [
+        "navigator.share called=1 payload={\"title\":\"DEEPFIX-SHARE-MOB 1779759454254\",\"text\":\"DEEPFIX-SHARE-MOB 1779759454254\\n\\nMobile share test content body.\"}"
+      ],
+      "screenshot": "screenshots\\deep-fix\\d2b_mobile_share.png"
+    },
+    {
+      "id": "D3",
+      "name": "Lifecycle: post job → sourcing chain → pipeline progression",
+      "verdict": "PASS",
+      "evidence": {
+        "job_id": "37426063-44c8-44d9-a2c0-d67dd94e6944",
+        "run_id": "d078f7bb-58f7-4edc-94f6-39b6db82dde1",
+        "chain": {
+          "status": "completed",
+          "phase1_status": "skipped",
+          "phase2_status": "completed",
+          "phase3_status": "completed",
+          "phase4_status": "completed",
+          "phase2_candidates_found": 0,
+          "error_log": "phase2: 0 candidates. tried: google_cse: 0 results err=Request failed with status code 429 | apify: 0 results err=apify run status=FAILED"
+        },
+        "real_candidates_from_sourcing": false,
+        "seeded_candidate_id": "209aec15-8ebf-4641-aeb4-1a9c10d5de69",
+        "final_status": "hired",
+        "visible_on_recruitment_page": true
+      },
+      "notes": [
+        "A: job_id=37426063-44c8-44d9-a2c0-d67dd94e6944",
+        "B: trigger run_id=d078f7bb-58f7-4edc-94f6-39b6db82dde1 path=direct-search",
+        "B: final={\"status\":\"completed\",\"phase1_status\":\"skipped\",\"phase2_status\":\"completed\",\"phase3_status\":\"completed\",\"phase4_status\":\"completed\",\"phase2_candidates_found\":0,\"error_log\":\"phase2: 0 candidates. tried: google_cse: 0 results err=Request failed with status code 429 | apify: 0 results err=apify run status=FAILED\"}",
+        "B: chain completed=true  real_candidates=false",
+        "C: candidate_id=209aec15-8ebf-4641-aeb4-1a9c10d5de69",
+        "D-F: final candidate.status=hired",
+        "G: candidate visible on /hr/recruitment? true"
+      ],
+      "screenshot": "screenshots\\deep-fix\\d3_recruitment_after.png"
+    },
+    {
+      "id": "D4",
+      "name": "Sourcing v2 writes honest attempt-log",
+      "verdict": "PASS",
+      "evidence": {
+        "run_id": "e1d282f4-24ae-4026-a6a4-145f66b33094",
+        "final": {
+          "status": "completed",
+          "phase2_candidates_found": 0,
+          "error_log": "phase2: 0 candidates. tried: google_cse: 0 results err=Request failed with status code 429 | apify: 0 results err=apify run status=FAILED"
+        },
+        "error_log": "phase2: 0 candidates. tried: google_cse: 0 results err=Request failed with status code 429 | apify: 0 results err=apify run status=FAILED"
+      },
+      "notes": [
+        "run_id=e1d282f4-24ae-4026-a6a4-145f66b33094",
+        "final={\"status\":\"completed\",\"phase2_candidates_found\":0,\"error_log\":\"phase2: 0 candidates. tried: google_cse: 0 results err=Request failed with status code 429 | apify: 0 results err=apify run status=FAILED\"}",
+        "zero_candidates=true  attempt_log_present=true  error_log=\"phase2: 0 candidates. tried: google_cse: 0 results err=Request failed with status code 429 | apify: 0 results err=apify run status=FAILED\""
+      ]
+    }
+  ]
+}

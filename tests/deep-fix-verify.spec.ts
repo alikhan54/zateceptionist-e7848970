@@ -105,7 +105,10 @@ test('D1 OMEGA tool-aware answers via UI (5 queries)', async ({ page }) => {
     }
   });
 
-  for (const q of omegaQueries) {
+  for (let i = 0; i < omegaQueries.length; i++) {
+    const q = omegaQueries[i];
+    // Sleep between queries so Gemini's per-key-per-minute quota recovers
+    if (i > 0) await page.waitForTimeout(10_000);
     const input = page.locator('input[placeholder*="ask" i], input[placeholder*="anything" i], textarea').first();
     await input.fill(q.query);
     await input.press('Enter').catch(async () => {
