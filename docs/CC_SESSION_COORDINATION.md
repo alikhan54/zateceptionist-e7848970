@@ -1,6 +1,42 @@
 # CC Multi-Session Coordination
 
-**Last updated:** 2026-05-26 (Session A Cosmique PARKED — see Session A block)
+**Last updated:** 2026-05-26 (HR V3 Decade-Ahead PARKED + Session A Cosmique PARKED)
+
+---
+
+## 🏁 HR V3 — PARKED 2026-05-26 (Decade-Ahead milestone)
+
+**Branch:** `parked/hr-v3-decade-ahead-complete`
+**Tag:** `hr-v3-decade-ahead-v1.0`
+**Last commit on main:** `3712b61` test(hr): enrichment + AI interviews — 6/6 PASS
+**Session-state file:** `frontend/docs/.session-state-hr-v3-decade-ahead.md`
+
+**Status: SAFE TO PARK. Other sessions free to work without conflicts.**
+
+Owns (do not modify without coordination — see state file for full list):
+- All `hr_*` tables (auto_mode_config, auto_decisions, ai_interviews, candidates, job_applications, job_requisitions, sourcing_runs, training_programs, training_records, document_acknowledgments, performance_*).
+- 17 active n8n workflows: Auto-Pipeline `GoLKFQ3raVFyDg40`, AI Screening `VDDy59DDJsihAUAX`, Q-Gen `MatQ3J4HYAgKiJ6A`, VAPI Call `bcaK7Lxd0HgtVfqW`, VAPI Receiver `0VEBSpO63nEiR1xh`, Auto-Review `A0M2juuizluBwASl`, Training Generator `HTuKFLf8uiDnzPJA`, Training Avatar `4u2H6AwbDnYcGQW5`, OMEGA Bridge v3 `bLXL1ujHv9wD7RX1`, Sourcing v2 chain (`jX8xqW5EZGar3GWn`, `l1RMxMScCbvXOqmm`, `XjSilVmjJeRIwNMF`, `PWb5cPBpK4FTgwwW`, `0Z1A7e5Cp8LraOnL`), plus active TS duplicate `YsOhnEct1zWljE3L`.
+- `frontend/src/pages/hr/*.tsx`, `frontend/src/components/hr/*.tsx`, `frontend/src/hooks/useHR.ts`, `useAutoMode.ts`, `useAIInterviews.ts`.
+
+What shipped this milestone:
+- Premium API tier routing live for Zate + Cosmique (Claude Sonnet 4.5 / Haiku 4.5 + paid Apify + HeyGen).
+- Multi-source sourcing (17 source enum; paid LinkedIn via Apify akash9078; harvestapi enrichment for emails + skills + experience).
+- 5 Cosmique candidates real-enriched: Hawa El hadef (23yr / 20 skills / 9.99/10), Dr. Khalid Hamoudi (10yr / 20 skills / 9.99/10), Dr. Anna Semenova (6yr / 8 skills / 8.5/10), Neda Khan (7yr / 20 skills / 8.5/10), Muhammad Aamir Suhail (9 skills / 7.0/10).
+- AI Auto-Mode: cron every 15 min, 7 configurable stage transitions, audit trail with Undo, RLS via `get_user_tenant_uuid()`.
+- AI Interview system end-to-end (Q-Gen → VAPI call → transcript scoring → flow back into application).
+- AI auto-generated performance reviews (Claude analyses attendance/leave/training/policy → ratings + strengths + areas + summary).
+- Training programs with HeyGen avatar videos + quiz scoring + 3-dot actions (Restart / Mark complete / Unenroll).
+- HR AI Assistant via OMEGA bridge with 8 DB tools, Claude premium routing, Gemini fallback.
+
+Open items left for future HR V3 resume (see `.session-state-hr-v3-decade-ahead.md` § Known Open Items):
+1. Phone enrichment (LinkedIn doesn't expose phones).
+2. Auto-pipeline → Q-Gen wiring (1-line addition for Stage 3).
+3. Hawa El hadef stuck in 'rejected' (auto-rejected pre-enrichment; needs manual un-reject).
+4-9. AI Hiring Insights showcase, AI Training Plan showcase, Indeed/GitHub adapters, per-job source picker UI, Source analytics dashboard, Higgsfield MCP wiring.
+
+---
+
+
 
 > **⚠️ EMERGENCY NOTICE 2026-05-24**: Session HR-V3 took control to diagnose a production-wide "Failed to fetch" outage. Root cause: n8n's TypeORM pool was stuck on Supabase pooler timeouts ("Database is not ready" 503 for all webhooks across all tenants). Frontend code was confirmed INTACT — no parallel-session corruption. Fix: `docker restart n8n` (32s downtime, RestartCount 0→1). Recovery verified — employee + ai-agent webhooks back to HTTP 200. User had reported the symptom as "Failed to fetch" on AI Agent Hire and "Employee creation not working" on Add Provider. Both are now working. **Coordination policy reaffirmed: only ONE session pushes to main at a time.** When 9 sessions race-push, no actual file corruption happened this time, but the perception of corruption obscured the real n8n outage for hours.
 
