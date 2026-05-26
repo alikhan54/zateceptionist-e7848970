@@ -338,6 +338,15 @@ export default defineConfig({
       },
     },
     {
+      name: 'final-fixes-verify',
+      testMatch: /final-fixes-verify\.spec\.ts/,
+      dependencies: ['zate-setup'],
+      use: {
+        browserName: 'chromium',
+        storageState: path.join(__dirname, 'tests', '.auth-state-zate.json'),
+      },
+    },
+    {
       name: 'settings-acsfx-setup',
       testMatch: /settings-acsfx-auth\.setup\.ts/,
       use: { browserName: 'chromium' },
