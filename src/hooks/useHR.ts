@@ -534,11 +534,55 @@ export function usePerformance() {
   });
 
   const createReview = useMutation({
-    mutationFn: async (review: { employee_id: string; employee_name?: string; review_type?: string; review_period_start?: string; review_period_end?: string }) => {
+    mutationFn: async (review: { employee_id: string; employee_name?: string; review_type?: string; review_period_start?: string; review_period_end?: string; comments?: string }) => {
       if (!tenantUuid) throw new Error('No tenant');
+      // hr_performance_reviews actual columns: employee_id, reviewer_id, review_type,
+      // status, overall_rating, rating_scale, strengths, areas_for_improvement,
+      // achievements, comments, ai_generated_review, cycle_id, acknowledged_at,
+      // submitted_at, tenant_id. Period dates aren't on this table — they live on
+      // hr_performance_cycles (joined via cycle_id). Drop unknown columns rather
+      // than 400 the insert.
+      const { data: { user } } = await supabase.auth.getUser();
+      // review_type CHECK constraint: only 'self' or 'manager' (rater type).
+      // cycle_id is NOT NULL — look up most-recent active cycle, create one if absent.
+      const { data: cycles } = await supabase
+        .from('hr_performance_cycles')
+        .select('id')
+        .eq('tenant_id', tenantUuid)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      let cycleId = cycles?.[0]?.id;
+      if (!cycleId) {
+        const today = new Date();
+        const start = new Date(today); start.setMonth(start.getMonth() - 3);
+        const { data: newCycle, error: ccErr } = await supabase
+          .from('hr_performance_cycles')
+          .insert({
+            tenant_id: tenantUuid,
+            name: `${review.review_type || 'quarterly'} cycle ${start.toISOString().slice(0,10)} to ${today.toISOString().slice(0,10)}`,
+            type: review.review_type || 'quarterly',
+            start_date: start.toISOString().slice(0,10),
+            end_date: today.toISOString().slice(0,10),
+            status: 'active',
+          })
+          .select()
+          .single();
+        if (ccErr) throw ccErr;
+        cycleId = newCycle.id;
+      }
+      const payload: any = {
+        tenant_id: tenantUuid,
+        employee_id: review.employee_id,
+        cycle_id: cycleId,
+        review_type: 'manager',
+        status: 'draft',
+        reviewer_id: user?.id,
+        rating_scale: 5,
+      };
+      if (review.comments) payload.comments = review.comments;
       const { data: result, error } = await supabase
         .from("hr_performance_reviews")
-        .insert({ ...review, tenant_id: tenantUuid, status: 'draft' })
+        .insert(payload)
         .select()
         .single();
       if (error) throw error;
@@ -548,7 +592,24 @@ export function usePerformance() {
       queryClient.invalidateQueries({ queryKey: ["performance", tenantUuid] });
       toast.success("Review created");
     },
-    onError: () => toast.error("Failed to create review"),
+    onError: (e: any) => toast.error(`Failed to create review: ${e?.message || 'unknown'}`),
+  });
+
+  // AI-generated review — fires the n8n auto-review workflow + refreshes list.
+  const aiGenerateReview = useMutation({
+    mutationFn: async (input: { employee_id: string; review_type?: string }) => {
+      if (!tenantUuid) throw new Error('No tenant');
+      return callWebhookOrThrow(WEBHOOKS.HR_REVIEW_GENERATE, {
+        tenant_id: tenantUuid,
+        employee_id: input.employee_id,
+        review_type: input.review_type || 'quarterly',
+      }, tenantUuid);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['performance', tenantUuid] });
+      toast.success('AI review generated');
+    },
+    onError: (e: any) => toast.error(`AI review failed: ${e?.message || 'unknown'}`),
   });
 
   const createGoal = useMutation({
@@ -569,7 +630,7 @@ export function usePerformance() {
     onError: () => toast.error("Failed to create goal"),
   });
 
-  return { ...query, createReview, createGoal };
+  return { ...query, createReview, createGoal, aiGenerateReview };
 }
 
 // ═══════════════════════════════════════════════════════════

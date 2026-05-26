@@ -22,7 +22,7 @@ import { differenceInDays, parseISO } from 'date-fns';
 
 export default function PerformancePage() {
   const { t } = useTenant();
-  const { data, isLoading, createReview, createGoal } = usePerformance();
+  const { data, isLoading, createReview, createGoal, aiGenerateReview } = usePerformance();
   const { data: employees } = useEmployees();
   const employeeList = employees || [];
 
@@ -278,13 +278,25 @@ export default function PerformancePage() {
               </div>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setIsReviewOpen(false)}>Cancel</Button>
-            <Button disabled={!newReview.employee_id} onClick={() => {
+            <Button
+              variant="secondary"
+              disabled={!newReview.employee_id || aiGenerateReview.isPending}
+              onClick={async () => {
+                await aiGenerateReview.mutateAsync({ employee_id: newReview.employee_id, review_type: newReview.review_type });
+                setIsReviewOpen(false);
+                setNewReview({ employee_id: '', employee_name: '', review_type: 'quarterly', review_period_start: '', review_period_end: '' });
+              }}
+              data-testid="ai-generate-review-btn"
+            >
+              {aiGenerateReview.isPending ? 'AI Generating…' : 'AI Generate'}
+            </Button>
+            <Button disabled={!newReview.employee_id || createReview.isPending} onClick={() => {
               createReview.mutate(newReview);
               setIsReviewOpen(false);
               setNewReview({ employee_id: '', employee_name: '', review_type: 'quarterly', review_period_start: '', review_period_end: '' });
-            }}>Create Review</Button>
+            }}>{createReview.isPending ? 'Creating…' : 'Create Review'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
