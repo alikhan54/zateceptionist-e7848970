@@ -16,7 +16,7 @@ import {
   Film, Play, Plus, Download, Sparkles, Loader2, Wand2, Trash2, ArrowLeft,
   Share2, X, Settings2, Globe, Mic, Music as MusicIcon, Brain, FlaskConical,
   ChevronDown, ChevronUp, Eye, Heart, CheckCircle, Zap, BarChart3, Send,
-  Instagram, Youtube, Facebook, Linkedin, Smartphone, ArrowUp, Layers,
+  Instagram, Youtube, Facebook, Linkedin, Smartphone, ArrowUp, Layers, Code,
 } from "lucide-react";
 
 // ============================================================
@@ -1885,6 +1885,24 @@ function VideoCard({
     ? { text: "📱 Ad/Reel", color: "bg-pink-100 text-pink-700" }
     : (sourceLabels[p.source_type] || { text: "🎬 Video", color: "bg-slate-100 text-slate-600" });
 
+  // Warrior Phase 6: format variants (after auto-fanout) — additive UI only
+  const variants = (p.format_variants && typeof p.format_variants === "object") ? p.format_variants : {};
+  const variantKeys = Object.keys(variants).filter((k) => variants[k]);
+  const has1to1 = !!variants["1:1"];
+  const has16to9 = !!variants["16:9"];
+  const copyEmbed = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!url) return;
+    const embed =
+      '<figure style="margin:0;">' +
+      `<div style="position:relative;width:100%;padding-bottom:56.25%;background:#0a0a0a;border-radius:14px;overflow:hidden;">` +
+      `<video src="${variants["16:9"] || url}" controls playsinline preload="metadata" ` +
+      `style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"></video></div></figure>`;
+    try {
+      navigator.clipboard.writeText(embed);
+    } catch { /* clipboard blocked — silent */ }
+  };
+
   return (
     <div
       className="vs-video-card group rounded-2xl bg-white overflow-hidden cursor-pointer transition-all"
@@ -1957,6 +1975,20 @@ function VideoCard({
         <div className="mt-2">
           <ProviderChips scenes={resolveScenes(p)} />
         </div>
+        {/* Warrior Phase 6: format-variant chips — shown when auto-fanout has run */}
+        {variantKeys.length > 0 && (
+          <div className="mt-2 flex gap-1 flex-wrap">
+            {variantKeys.map((k) => (
+              <span
+                key={k}
+                title={`Variant available: ${k}`}
+                className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200"
+              >
+                {k}
+              </span>
+            ))}
+          </div>
+        )}
         <div className="flex items-center gap-2 mt-2 text-[11px] text-slate-500">
           <span className={`inline-block w-1.5 h-1.5 rounded-full ${tier === "premium" ? "bg-violet-500" : "bg-slate-300"}`} />
           <span className="capitalize">{tier}</span>
@@ -1986,6 +2018,15 @@ function VideoCard({
               >
                 <Download className="h-3.5 w-3.5" />
               </a>
+              {(has16to9 || has1to1) && (
+                <button
+                  onClick={copyEmbed}
+                  className="flex items-center justify-center px-3 py-2 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors"
+                  title="Copy embed code for your website"
+                >
+                  <Code className="h-3.5 w-3.5" />
+                </button>
+              )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild onClick={(e: any) => e.stopPropagation()}>
                   <button
