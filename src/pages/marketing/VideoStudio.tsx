@@ -66,9 +66,9 @@ const LANGUAGES = [
 ];
 
 const CLOUD_MODELS = [
-  { id: "fal-ai/kling-video/v2/master", label: "Kling v2 Master", provider: "fal" },
-  { id: "fal-ai/minimax-video", label: "Minimax", provider: "fal" },
-  { id: "fal-ai/veo2", label: "Veo 2", provider: "fal" },
+  { id: "fal-ai/kling-video/v2/master", label: "Cloud HD — Cinematic", provider: "fal" },
+  { id: "fal-ai/minimax-video", label: "Cloud HD — Balanced", provider: "fal" },
+  { id: "fal-ai/veo2", label: "Cloud HD — Premium", provider: "fal" },
 ];
 
 const MUSIC_MOODS = [
@@ -84,7 +84,7 @@ const QUALITY_LEVELS = [
   { id: "auto", label: "Auto", hint: "Smart pick" },
   { id: "standard", label: "Standard", hint: "Free, fast" },
   { id: "premium", label: "Premium", hint: "Local AI motion" },
-  { id: "cloud", label: "Cloud HD", hint: "Kling v2, paid" },
+  { id: "cloud", label: "Cloud HD", hint: "Cloud render, paid" },
 ];
 
 const STYLE_OPTIONS = [
@@ -244,9 +244,9 @@ const METHOD_TO_PROVIDER: Record<string, string> = {
 
 const AVATAR_PROVIDERS = [
   { value: "auto",     label: "Auto",        desc: "Smart routing (recommended)" },
-  { value: "musetalk", label: "MuseTalk",    desc: "Self-hosted · Free" },
-  { value: "heygen",   label: "HeyGen",      desc: "Premium · Paid" },
-  { value: "did",      label: "D-ID",        desc: "Premium · Paid" },
+  { value: "musetalk", label: "Standard",    desc: "Self-hosted · Free" },
+  { value: "heygen",   label: "Premium",     desc: "Cloud avatar · Paid" },
+  { value: "did",      label: "Premium+",    desc: "Cloud avatar · Paid" },
 ];
 
 // Resolve scenes from a video_projects row. Tolerant of (string | array | null).
