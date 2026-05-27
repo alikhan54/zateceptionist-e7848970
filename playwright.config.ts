@@ -166,6 +166,11 @@ export default defineConfig({
       use: { browserName: 'chromium' }, // no setup dep — fresh login as Smart Ledger user
     },
     {
+      name: 'video-premium',
+      testMatch: /video-premium-verification\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — fresh login as zate user (env-driven)
+    },
+    {
       name: 'smart-ledger-jobs',
       testMatch: /smart-ledger-jobs\.spec\.ts/,
       use: { browserName: 'chromium' }, // no setup dep — fresh login as Smart Ledger user; D7-A CRUD verification

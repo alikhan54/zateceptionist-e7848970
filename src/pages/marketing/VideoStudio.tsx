@@ -688,7 +688,7 @@ export default function VideoStudio() {
     const basePayload = {
       trigger_type: triggerType,
       content: aiPrompt,
-      tenant_id: tenantConfig?.tenant_id || tid,
+      tenant_id: tenantConfig?.id || tid,
       priority: (qualityTier === "premium" ? "high" : "standard") as "high" | "standard",
       quality_tier: qualityTier,
       cloud_provider: isCloud ? "fal" : "",
@@ -697,6 +697,10 @@ export default function VideoStudio() {
       language: language !== "en" ? language : undefined,
       video_style: resolvedStyle,
       music_mood: resolvedMusic,
+      // Premium routing hints (2026-05-27) — backend smart_route reads these
+      // to gate which provider tier to use. Forward-compatible; existing
+      // orchestrator workflows ignore unknown fields.
+      ai_engine: resolvedStyle,
       ...(videoType === "avatar" ? { avatar_provider: "heygen" } : {}),
     };
 
@@ -795,7 +799,7 @@ export default function VideoStudio() {
     setIsGeneratingAvatar(true);
     setAvatarJobProgress(5);
     setAvatarJobStatus("queued");
-    const tenantUuid = tenantConfig?.tenant_id || tid;
+    const tenantUuid = tenantConfig?.id || tid;
     try {
       // Async pattern (Layer 3, 2026-05-19): submit to /generate-avatar-async,
       // receive 202 + job_id, poll /job-status until terminal. Avoids the
@@ -813,6 +817,9 @@ export default function VideoStudio() {
             language: language !== "en" ? language : undefined,
             tenant_id: tenantUuid,
             aspect_ratio: "9:16",
+            // Premium routing hints (2026-05-27) — forward to workflow router
+            quality_tier: quality === "cloud" ? "premium" : quality,
+            ai_engine: style,
             ...(customAvatarUrl ? { avatar_image_url: customAvatarUrl } : {}),
           }),
         }
