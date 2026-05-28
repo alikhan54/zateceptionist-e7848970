@@ -11,41 +11,16 @@ import {
   Users,
   Briefcase,
   FileText,
-  Sparkles,
-  DollarSign,
-  Bell,
   ArrowRight,
-  CalendarClock,
 } from "lucide-react";
+import { JobsCalendar } from "@/components/accounting/JobsCalendar";
+import { WorkloadPanel } from "@/components/accounting/WorkloadPanel";
 
 interface DashboardCounts {
   clients: number | null;
   jobs: number | null;
   invoices: number | null;
 }
-
-const COMING_FEATURES: { icon: typeof Briefcase; title: string; description: string }[] = [
-  {
-    icon: Briefcase,
-    title: "Jobs Pipeline",
-    description: "Track all client work with deadlines, statuses, and team assignments.",
-  },
-  {
-    icon: DollarSign,
-    title: "Financial Overview",
-    description: "Cash position, MRR, top clients, revenue trends — at a glance.",
-  },
-  {
-    icon: FileText,
-    title: "Invoice Management",
-    description: "Create, send, and track invoices with auto-matching to bank transactions.",
-  },
-  {
-    icon: Bell,
-    title: "Smart Reminders",
-    description: "UK-aware reminders (9-6 Mon-Fri, bank holiday safe) via Email/WhatsApp/SMS.",
-  },
-];
 
 export default function AccountingDashboard() {
   const { authUser } = useAuth();
@@ -109,12 +84,12 @@ export default function AccountingDashboard() {
   const companyName = tenantConfig?.company_name || "your accounting practice";
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-6" data-testid="accounting-dashboard">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Welcome, {greetingName}</h1>
         <p className="text-muted-foreground">
-          {companyName} — Phase 1 backend live. Full UI launching May 25, 2026.
+          {companyName}
         </p>
       </div>
 
@@ -135,8 +110,8 @@ export default function AccountingDashboard() {
           icon={Briefcase}
           description="across the practice pipeline"
           isLoading={isLoading}
-          actionLabel="Coming May 25"
-          actionDisabled
+          actionLabel="View all"
+          onAction={() => navigate("/accounting/jobs")}
         />
         <StatCard
           label="Invoices"
@@ -144,8 +119,8 @@ export default function AccountingDashboard() {
           icon={FileText}
           description="issued or in flight (GBP)"
           isLoading={isLoading}
-          actionLabel="Coming May 25"
-          actionDisabled
+          actionLabel="View all"
+          onAction={() => navigate("/accounting/invoices")}
         />
       </div>
 
@@ -157,40 +132,17 @@ export default function AccountingDashboard() {
         </Card>
       )}
 
-      {/* "Coming May 25" notice */}
-      <Card className="border-primary/30 bg-card/60">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-xl">
-            <Sparkles className="h-5 w-5 text-primary" />
-            Other features launching May 25, 2026
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Today's demo shows the AI brain + database + multi-tenant security. The visual workspace pages below are next.
-          </p>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-2">
-            {COMING_FEATURES.map(({ icon: Icon, title, description }) => (
-              <div
-                key={title}
-                className="flex items-start gap-3 rounded-lg border border-border/60 bg-background/60 p-4"
-              >
-                <div className="rounded-md bg-primary/10 p-2">
-                  <Icon className="h-5 w-5 text-primary" />
-                </div>
-                <div className="space-y-1">
-                  <p className="font-medium">{title}</p>
-                  <p className="text-sm text-muted-foreground">{description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-6 flex items-center gap-2 text-sm text-muted-foreground">
-            <CalendarClock className="h-4 w-4" />
-            Target go-live: <span className="font-medium text-foreground">Monday, 25 May 2026</span>
-          </div>
-        </CardContent>
-      </Card>
+      {/* MoneyPex parity F5 + F6: Calendar + Workload distribution */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <JobsCalendar
+            onJobClick={(job) => navigate(`/accounting/jobs?id=${job.id}`)}
+          />
+        </div>
+        <div>
+          <WorkloadPanel />
+        </div>
+      </div>
     </div>
   );
 }
