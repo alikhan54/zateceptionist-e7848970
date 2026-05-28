@@ -24,13 +24,13 @@
 | Sub-phase | Status | Last update | Artifact |
 |---|---|---|---|
 | PF (pre-flight) | ✅ COMPLETE | 2026-05-29 | `BSH_PHASE1_PREFLIGHT.md` |
-| 1A (Bahmni deploy) | ⏳ IN PROGRESS | — | `BSH_PHASE1A_DEPLOYMENT.md` (pending) |
-| 1B (seed data) | ⏸ NOT STARTED | — | `BSH_PHASE1B_SEED_DATA.md` (pending) |
-| 1C (bahmni_tools) | ⏸ NOT STARTED | — | `BSH_PHASE1C_AGENT_TOOLS.md` (pending) |
-| 1D (n8n bridges) | ⏸ NOT STARTED | — | `BSH_PHASE1D_WORKFLOWS.md` (pending) |
-| 1E (auth bridge plan) | ⏸ NOT STARTED | — | `BSH_PHASE1E_AUTH_BRIDGE_PLAN.md` (pending) |
-| 1F (graph.py wire + smoke) | ⏸ NOT STARTED | — | `BSH_PHASE1F_GRAPH_WIRING.md` + `BSH_PHASE1F_SMOKE.md` (pending) |
-| 1G (handoff) | ⏸ NOT STARTED | — | `BSH_PHASE1_COMPLETE.md` (pending) |
+| 1A (Bahmni deploy) | 🔴 DEFERRED | 2026-05-29 | `BSH_PHASE1A_DEPLOYMENT.md` (unblock instructions) |
+| 1B (seed data) | 🔴 DEFERRED | 2026-05-29 | depends on 1A |
+| 1C (bahmni_tools) | ✅ COMPLETE | 2026-05-29 | `BSH_PHASE1C_AGENT_TOOLS.md` |
+| 1D (n8n bridges) | ✅ COMPLETE | 2026-05-29 | `BSH_PHASE1D_WORKFLOWS.md` |
+| 1E (auth bridge plan) | ✅ COMPLETE | 2026-05-29 | `BSH_PHASE1E_AUTH_BRIDGE_PLAN.md` |
+| 1F (definitions.py wire + smoke) | ✅ COMPLETE | 2026-05-29 | `BSH_PHASE1F_GRAPH_WIRING.md` + `BSH_PHASE1F_DEFINITIONS_PATCH.diff` |
+| 1G (handoff) | ✅ COMPLETE | 2026-05-29 | `BSH_PHASE1_COMPLETE.md` |
 
 ---
 
