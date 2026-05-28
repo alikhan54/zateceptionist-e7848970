@@ -1,0 +1,7 @@
+[
+  {"identifier": "BSH-DR-001", "person": {"names": [{"givenName": "Md. Saiful", "familyName": "Rahman"}], "gender": "M"}, "attributes": {"specialty": "Cardiology", "language": "bn,en"}},
+  {"identifier": "BSH-DR-002", "person": {"names": [{"givenName": "Farzana", "familyName": "Begum"}], "gender": "F"}, "attributes": {"specialty": "Internal Medicine", "language": "bn,en"}},
+  {"identifier": "BSH-DR-003", "person": {"names": [{"givenName": "Nazmul", "familyName": "Hasan"}], "gender": "M"}, "attributes": {"specialty": "Pediatrics", "language": "bn,en"}},
+  {"identifier": "BSH-DR-004", "person": {"names": [{"givenName": "Tahmina", "familyName": "Akhter"}], "gender": "F"}, "attributes": {"specialty": "General Surgery", "language": "bn,en"}},
+  {"identifier": "BSH-DR-005", "person": {"names": [{"givenName": "Rezaul", "familyName": "Karim"}], "gender": "M"}, "attributes": {"specialty": "Pathology", "language": "bn,en"}}
+]
