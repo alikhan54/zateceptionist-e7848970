@@ -1,0 +1,15 @@
+{
+  "PATIENT_REGISTRATION": "রোগী নিবন্ধন",
+  "OPD_APPOINTMENT": "OPD অ্যাপয়েন্টমেন্ট",
+  "LAB_ORDERS": "ল্যাব অর্ডার",
+  "RADIOLOGY": "রেডিওলজি",
+  "PRESCRIPTION": "প্রেসক্রিপশন",
+  "BED_MANAGEMENT": "শয্যা ব্যবস্থাপনা",
+  "BLOOD_BANK": "ব্লাড ব্যাংক",
+  "BSH_HN": "BSH হাসপাতাল নম্বর",
+  "CORPORATE_CLIENT": "কর্পোরেট ক্লায়েন্ট",
+  "SAVE": "সংরক্ষণ",
+  "CANCEL": "বাতিল",
+  "CONFIRM": "নিশ্চিত করুন",
+  "CRITICAL_VALUE_ALERT": "ক্রিটিক্যাল ভ্যালু সতর্কতা"
+}

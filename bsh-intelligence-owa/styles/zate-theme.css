@@ -1,0 +1,13 @@
+/* BSH Intelligence — whitelabel theme.
+   --primary / --accent come from tenant_config.features (loaded at runtime). */
+:root {
+  --bsh-primary: #0066B2;
+  --bsh-accent: #FF6B35;
+  --bsh-bg: #0A0A0A;
+  --bsh-card-bg: #FAFAFA;
+  --bsh-text: #1A1A1A;
+}
+body { background: var(--bsh-bg); color: var(--bsh-card-bg); font-family: Inter, sans-serif; margin: 0; }
+header { background: var(--bsh-primary); padding: 1rem 2rem; }
+main { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: 1rem; }
+section { background: var(--bsh-card-bg); color: var(--bsh-text); padding: 1rem; border-radius: 8px; }
