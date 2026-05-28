@@ -196,6 +196,11 @@ export default defineConfig({
       use: { browserName: 'chromium' }, // no setup dep — fresh login; MoneyPex parity F5 (calendar) + F6 (workload)
     },
     {
+      name: 'smart-ledger-chat-widget',
+      testMatch: /smart-ledger-chat-widget\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — fresh login; D7-E ACCOUNTANT chat widget
+    },
+    {
       name: 'smart-ledger-comprehensive-e2e',
       testMatch: /smart-ledger-comprehensive-e2e\.spec\.ts/,
       use: { browserName: 'chromium' }, // no setup dep — full E2E matrix (auth + dashboard + clients + jobs + placeholders + nav + mobile + cross-tenant + session security)

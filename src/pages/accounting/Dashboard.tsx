@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { JobsCalendar } from "@/components/accounting/JobsCalendar";
 import { WorkloadPanel } from "@/components/accounting/WorkloadPanel";
+import { AccountantChatWidget } from "@/components/accounting/AccountantChatWidget";
 
 interface DashboardCounts {
   clients: number | null;
@@ -143,6 +144,9 @@ export default function AccountingDashboard() {
           <WorkloadPanel />
         </div>
       </div>
+
+      {/* D7-E AI Accountant chat widget */}
+      <AccountantChatWidget />
     </div>
   );
 }
