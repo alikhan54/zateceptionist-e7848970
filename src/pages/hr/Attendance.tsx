@@ -16,6 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AnimatedNumber } from '@/components/hr/AnimatedNumber';
 import { LiveClock } from '@/components/hr/LiveClock';
+import { WhoIsWorkingNow } from '@/components/hr/WhoIsWorkingNow';
 import { 
   Clock, MapPin, Users, UserCheck, UserX, AlertTriangle,
   CalendarDays, Download, Timer, TrendingUp
@@ -201,6 +202,9 @@ export default function AttendancePage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Real-time who is working now (Issue 4) */}
+      <WhoIsWorkingNow />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

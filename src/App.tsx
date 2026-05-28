@@ -107,6 +107,9 @@ const AIAgentHirePage = lazy(() => import("./pages/hr/AIAgentHire"));
 const AIAgentProfilePage = lazy(() => import("./pages/hr/AIAgentProfile"));
 const AIAgentAnalyticsPage = lazy(() => import("./pages/hr/AIAgentAnalytics"));
 
+// Staff self-service area (Issue 3)
+const MyHRPage = lazy(() => import("./pages/my/MyHR"));
+
 // Operations Module
 const Inventory = lazy(() => import("./pages/operations/Inventory"));
 const Orders = lazy(() => import("./pages/operations/Orders"));
@@ -1095,6 +1098,10 @@ const App = () => (
                       </LazyPage>
                     }
                   />
+
+                  {/* Staff self-service (Issue 3) */}
+                  <Route path="/my" element={<Navigate to="/my/profile" replace />} />
+                  <Route path="/my/:tab" element={<LazyPage><MyHRPage /></LazyPage>} />
 
                   {/* Operations Module */}
                   <Route path="/operations" element={<Navigate to="/operations/inventory" replace />} />
