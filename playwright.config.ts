@@ -201,6 +201,11 @@ export default defineConfig({
       use: { browserName: 'chromium' }, // no setup dep — fresh login; D7-E ACCOUNTANT chat widget
     },
     {
+      name: 'smart-ledger-add-client',
+      testMatch: /smart-ledger-add-client\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — fresh login; D7-F Add/Edit Client CRUD
+    },
+    {
       name: 'smart-ledger-comprehensive-e2e',
       testMatch: /smart-ledger-comprehensive-e2e\.spec\.ts/,
       use: { browserName: 'chromium' }, // no setup dep — full E2E matrix (auth + dashboard + clients + jobs + placeholders + nav + mobile + cross-tenant + session security)

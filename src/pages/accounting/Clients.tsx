@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useMemo, useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,10 +20,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import { useTenant } from "@/contexts/TenantContext";
-import { supabase } from "@/lib/supabase";
 import { useTriggerCompaniesHouseSync } from "@/hooks/useTriggerCompaniesHouseSync";
-import { MoreVertical, RefreshCw, Search, Users, Sparkles } from "lucide-react";
+import { MoreVertical, RefreshCw, Search, Users, Plus, Pencil } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { AddClientForm } from "@/components/accounting/AddClientForm";
+import { useAccountingClients, type AccountingClientFull } from "@/hooks/useAccountingClients";
 
 interface AccountingClient {
   id: string;
@@ -51,51 +58,33 @@ function formatPeriodEnd(value: string | null): string {
 }
 
 export default function AccountingClients() {
-  const { tenantId } = useTenant();
   const { toast } = useToast();
   const chSync = useTriggerCompaniesHouseSync();
+  const {
+    clients: fullClients,
+    isLoading: clientsLoading,
+    error: clientsError,
+  } = useAccountingClients();
 
-  const [clients, setClients] = useState<AccountingClient[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [addOpen, setAddOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<AccountingClientFull | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    if (!tenantId) {
-      setIsLoading(false);
-      return;
-    }
-
-    (async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const { data, error: qErr } = await supabase
-          .from("accounting_clients")
-          .select("id, name, company_no, vat_number, status, accounting_period_end, contact_email")
-          .eq("tenant_id", tenantId)
-          .order("name");
-        if (qErr) throw qErr;
-        if (!cancelled) {
-          setClients((data ?? []) as AccountingClient[]);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          const msg = err instanceof Error ? err.message : "Failed to load clients";
-          console.error("[AccountingClients] load failed:", err);
-          setError(msg);
-          toast({ title: "Couldn't load clients", description: msg, variant: "destructive" });
-        }
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [tenantId, toast]);
+  const clients: AccountingClient[] = useMemo(
+    () =>
+      (fullClients ?? []).map((c) => ({
+        id: c.id,
+        name: c.name,
+        company_no: c.company_no,
+        vat_number: c.vat_number,
+        status: c.status,
+        accounting_period_end: c.accounting_period_end,
+        contact_email: c.contact_email,
+      })),
+    [fullClients],
+  );
+  const isLoading = clientsLoading;
+  const error = clientsError ? (clientsError as Error).message : null;
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -110,13 +99,18 @@ export default function AccountingClients() {
 
   const handleRowClick = () => {
     toast({
-      title: "Coming May 25, 2026",
-      description: "Full client detail view (jobs, invoices, payments, communication history) launches with Phase 1 UI.",
+      title: "Per-client detail view",
+      description: "Jobs / invoices / payments / communication for a single client — coming in Phase 2.",
     });
   };
 
+  const handleEditClient = (id: string) => {
+    const target = (fullClients ?? []).find((c) => c.id === id);
+    if (target) setEditTarget(target);
+  };
+
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-6" data-testid="clients-page">
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
@@ -125,15 +119,21 @@ export default function AccountingClients() {
             {isLoading ? "Loading…" : `${clients.length} ${clients.length === 1 ? "client" : "clients"} on your roster`}
           </p>
         </div>
-        <div className="relative w-full md:w-80">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search by name, CRN, or VAT…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-            disabled={isLoading || !!error}
-          />
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-3 w-full md:w-auto">
+          <div className="relative w-full md:w-72">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search by name, CRN, or VAT…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+              disabled={isLoading || !!error}
+            />
+          </div>
+          <Button onClick={() => setAddOpen(true)} data-testid="clients-add-button">
+            <Plus className="h-4 w-4 mr-1" />
+            Add client
+          </Button>
         </div>
       </div>
 
@@ -219,6 +219,16 @@ export default function AccountingClients() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditClient(c.id);
+                              }}
+                              data-testid={`client-row-edit-${c.id}`}
+                            >
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Edit client
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
                               disabled={!c.company_no || chSync.isPending}
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -239,7 +249,7 @@ export default function AccountingClients() {
                                 handleRowClick();
                               }}
                             >
-                              View details (coming soon)
+                              View details (Phase 2)
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -253,19 +263,39 @@ export default function AccountingClients() {
         </CardContent>
       </Card>
 
-      {/* Footer note */}
-      <Card className="border-primary/30 bg-card/60">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Sparkles className="h-4 w-4 text-primary" />
-            Full client management — launching May 25, 2026
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          Add new clients, edit details, manage contact preferences, link jobs and invoices, and view per-client 360°
-          history — all coming with the Phase 1 UI on Monday, 25 May 2026.
-        </CardContent>
-      </Card>
+      {/* Add client dialog */}
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent className="max-w-2xl" data-testid="add-client-dialog">
+          <DialogHeader>
+            <DialogTitle>Add a client</DialogTitle>
+            <DialogDescription>
+              Add a UK client to your roster. CRN prefix auto-detects the jurisdiction. Encrypted CH auth + UTR are
+              filled later via the Companies House sync action.
+            </DialogDescription>
+          </DialogHeader>
+          <AddClientForm
+            mode="create"
+            onSuccess={() => setAddOpen(false)}
+            onCancel={() => setAddOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit client dialog */}
+      <Dialog open={!!editTarget} onOpenChange={(o) => !o && setEditTarget(null)}>
+        <DialogContent className="max-w-2xl" data-testid="edit-client-dialog">
+          <DialogHeader>
+            <DialogTitle>Edit client</DialogTitle>
+            <DialogDescription>{editTarget?.name}</DialogDescription>
+          </DialogHeader>
+          <AddClientForm
+            mode="edit"
+            initial={editTarget}
+            onSuccess={() => setEditTarget(null)}
+            onCancel={() => setEditTarget(null)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
