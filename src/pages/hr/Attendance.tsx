@@ -17,9 +17,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { AnimatedNumber } from '@/components/hr/AnimatedNumber';
 import { LiveClock } from '@/components/hr/LiveClock';
 import { WhoIsWorkingNow } from '@/components/hr/WhoIsWorkingNow';
-import { 
+import { AttendanceRulesCard } from '@/components/hr/AttendanceRulesCard';
+import {
   Clock, MapPin, Users, UserCheck, UserX, AlertTriangle,
-  CalendarDays, Download, Timer, TrendingUp
+  CalendarDays, Download, Timer, TrendingUp, Settings as SettingsIcon
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -231,6 +232,7 @@ export default function AttendancePage() {
           <TabsTrigger value="list" className="gap-2"><Users className="h-4 w-4" />Attendance List</TabsTrigger>
           <TabsTrigger value="calendar" className="gap-2"><CalendarDays className="h-4 w-4" />Calendar View</TabsTrigger>
           <TabsTrigger value="analytics" className="gap-2"><TrendingUp className="h-4 w-4" />Analytics</TabsTrigger>
+          <TabsTrigger value="rules" className="gap-2" data-testid="attendance-rules-tab"><SettingsIcon className="h-4 w-4" />Rules</TabsTrigger>
         </TabsList>
 
         <TabsContent value="list" className="space-y-4">
@@ -348,6 +350,10 @@ export default function AttendancePage() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="rules">
+          <AttendanceRulesCard />
         </TabsContent>
       </Tabs>
     </div>

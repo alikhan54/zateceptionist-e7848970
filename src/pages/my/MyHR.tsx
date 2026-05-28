@@ -1,15 +1,19 @@
 import { useState, useEffect, lazy, Suspense } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   User as UserIcon,
   Clock,
@@ -21,8 +25,12 @@ import {
   Mail,
   Phone,
   Building,
+  Pencil,
+  Save,
+  X as XIcon,
 } from "lucide-react";
 import { format } from "date-fns";
+import { toast } from "sonner";
 
 // Lazy-load the punch-in widget so this page stays light when other tabs are
 // being used.
@@ -60,28 +68,27 @@ export default function MyHR() {
     }
   }, [tabParam]);
 
-  // Look up this user's employee record. Some installs link via auth_user_id,
-  // others via users.id → company_email match — try both.
-  const { data: employee, isLoading: empLoading } = useQuery({
+  // Look up this user's employee record. hr_employees.user_id links to
+  // auth.users. We fall back to email columns for legacy rows that pre-date
+  // the user_id link.
+  const { data: employee, isLoading: empLoading, refetch: refetchEmployee } = useQuery({
     queryKey: ["my-employee", user?.id, tenantUuid],
     queryFn: async () => {
       if (!user?.id || !tenantUuid) return null;
-      // Try auth_user_id first
-      const { data: byAuthId } = await supabase
+      const { data: byUserId } = await supabase
         .from("hr_employees")
         .select("*")
         .eq("tenant_id", tenantUuid)
-        .eq("auth_user_id", user.id)
+        .eq("user_id", user.id)
         .maybeSingle();
-      if (byAuthId) return byAuthId;
-      // Fall back to company_email match
-      const email = authUser?.email || user.email;
+      if (byUserId) return byUserId;
+      const email = (authUser?.email || user.email || "").toLowerCase();
       if (email) {
         const { data: byEmail } = await supabase
           .from("hr_employees")
           .select("*")
           .eq("tenant_id", tenantUuid)
-          .eq("company_email", email)
+          .or(`company_email.eq.${email},work_email.eq.${email},email.eq.${email}`)
           .maybeSingle();
         if (byEmail) return byEmail;
       }
@@ -184,7 +191,7 @@ export default function MyHR() {
         </TabsList>
 
         <TabsContent value="profile">
-          <ProfileTab employee={employee} />
+          <ProfileTab employee={employee} tenantUuid={tenantUuid} onSaved={() => refetchEmployee()} />
         </TabsContent>
 
         <TabsContent value="attendance">
@@ -222,35 +229,181 @@ export default function MyHR() {
   );
 }
 
-function ProfileTab({ employee }: { employee: any }) {
-  const rows = [
-    { icon: Mail, label: "Email", value: employee.company_email || employee.personal_email || "—" },
-    { icon: Phone, label: "Phone", value: employee.phone || employee.personal_phone || "—" },
-    { icon: Building, label: "Department", value: employee.department || "—" },
-    { icon: UserIcon, label: "Position", value: employee.position || "—" },
-    { icon: Calendar, label: "Joining Date", value: employee.joining_date ? format(new Date(employee.joining_date), "PPP") : "—" },
-    { icon: Calendar, label: "Date of Birth", value: employee.date_of_birth ? format(new Date(employee.date_of_birth), "PPP") : "—" },
-  ];
+/**
+ * Editable Profile tab.
+ *
+ * Edit allowlist (staff can change these for themselves):
+ *   phone, personal_email, address, city, country,
+ *   emergency_contact_*, linkedin_url, bio, marital_status, profile_picture_url
+ *
+ * Read-only here (HR-managed):
+ *   first_name, last_name, company_email, position, department, salary,
+ *   date_of_joining, employment_status, visa_*, manager_id
+ */
+function ProfileTab({ employee, tenantUuid, onSaved }: { employee: any; tenantUuid?: string; onSaved?: () => void }) {
+  const queryClient = useQueryClient();
+  const [editMode, setEditMode] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const initial = () => ({
+    phone: employee?.phone || "",
+    personal_email: employee?.personal_email || "",
+    address: employee?.address || employee?.address_line1 || "",
+    city: employee?.city || "",
+    country: employee?.country || "",
+    emergency_contact_name: employee?.emergency_contact_name || "",
+    emergency_contact_phone: employee?.emergency_contact_phone || "",
+    emergency_contact_relationship: employee?.emergency_contact_relationship || "",
+    linkedin_url: employee?.linkedin_url || "",
+    bio: employee?.bio || "",
+    marital_status: employee?.marital_status || "",
+    profile_picture_url: employee?.profile_picture_url || "",
+  });
+  const [form, setForm] = useState(initial);
+
+  useEffect(() => { setForm(initial()); }, [employee?.id]);
+
+  const handleSave = async () => {
+    if (!employee?.id || !tenantUuid) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("hr_employees")
+        .update(form as any)
+        .eq("id", employee.id)
+        .eq("tenant_id", tenantUuid);
+      if (error) throw error;
+      toast.success("Profile updated");
+      setEditMode(false);
+      queryClient.invalidateQueries({ queryKey: ["my-employee"] });
+      onSaved?.();
+    } catch (e: any) {
+      toast.error(`Save failed: ${e?.message || "unknown"}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const ro = (label: string, value: any, Icon: any = UserIcon) => (
+    <div className="flex items-start gap-3 p-3 rounded border bg-muted/20">
+      <Icon className="h-4 w-4 text-muted-foreground mt-0.5" />
+      <div className="min-w-0 flex-1">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="font-medium truncate">{value || "—"}</p>
+      </div>
+    </div>
+  );
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>My Information</CardTitle>
-        <CardDescription>To update sensitive fields like salary, contact your HR admin.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {rows.map((r) => (
-            <div key={r.label} className="flex items-start gap-3 p-3 rounded border bg-muted/20">
-              <r.icon className="h-5 w-5 text-muted-foreground mt-0.5" />
-              <div>
-                <p className="text-xs text-muted-foreground">{r.label}</p>
-                <p className="font-medium">{r.value}</p>
-              </div>
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <CardTitle>My Profile</CardTitle>
+            <CardDescription>
+              You can update contact info and emergency contacts. For role / salary / official
+              details, contact HR.
+            </CardDescription>
+          </div>
+          {!editMode ? (
+            <Button onClick={() => setEditMode(true)} data-testid="profile-edit-btn">
+              <Pencil className="h-4 w-4 mr-2" /> Edit
+            </Button>
+          ) : (
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setEditMode(false)} disabled={saving}>
+                <XIcon className="h-4 w-4 mr-2" /> Cancel
+              </Button>
+              <Button onClick={handleSave} disabled={saving} data-testid="profile-save-btn">
+                <Save className="h-4 w-4 mr-2" /> {saving ? "Saving…" : "Save"}
+              </Button>
             </div>
-          ))}
+          )}
         </div>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <section>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">
+            Official Information (contact HR to update)
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {ro("Full Name", `${employee.first_name || ""} ${employee.last_name || ""}`.trim() || employee.full_name, UserIcon)}
+            {ro("Position", employee.position || employee.job_title, Building)}
+            {ro("Department", employee.department, Building)}
+            {ro("Company Email", employee.company_email || employee.work_email || employee.email, Mail)}
+            {ro("Date of Joining", employee.date_of_joining ? format(new Date(employee.date_of_joining), "PPP") : "", Calendar)}
+            {ro("Employment Status", employee.employment_status, UserIcon)}
+          </div>
+        </section>
+
+        <section>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Contact Information</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Field label="Phone" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} editing={editMode} icon={Phone} />
+            <Field label="Personal Email" type="email" value={form.personal_email} onChange={(v) => setForm({ ...form, personal_email: v })} editing={editMode} icon={Mail} />
+            <Field label="Address" value={form.address} onChange={(v) => setForm({ ...form, address: v })} editing={editMode} multiline />
+            <Field label="City" value={form.city} onChange={(v) => setForm({ ...form, city: v })} editing={editMode} />
+            <Field label="Country" value={form.country} onChange={(v) => setForm({ ...form, country: v })} editing={editMode} />
+            <Field label="LinkedIn URL" type="url" value={form.linkedin_url} onChange={(v) => setForm({ ...form, linkedin_url: v })} editing={editMode} />
+          </div>
+        </section>
+
+        <section>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Emergency Contact</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <Field label="Name" value={form.emergency_contact_name} onChange={(v) => setForm({ ...form, emergency_contact_name: v })} editing={editMode} />
+            <Field label="Phone" value={form.emergency_contact_phone} onChange={(v) => setForm({ ...form, emergency_contact_phone: v })} editing={editMode} />
+            <Field label="Relationship" value={form.emergency_contact_relationship} onChange={(v) => setForm({ ...form, emergency_contact_relationship: v })} editing={editMode} />
+          </div>
+        </section>
+
+        <section>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Personal</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="md:col-span-2">
+              <Field label="Bio" value={form.bio} onChange={(v) => setForm({ ...form, bio: v })} editing={editMode} multiline />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Marital Status</Label>
+              {editMode ? (
+                <Select value={form.marital_status || ""} onValueChange={(v) => setForm({ ...form, marital_status: v })}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="—" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="single">Single</SelectItem>
+                    <SelectItem value="married">Married</SelectItem>
+                    <SelectItem value="divorced">Divorced</SelectItem>
+                    <SelectItem value="widowed">Widowed</SelectItem>
+                    <SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="font-medium mt-1">{form.marital_status || "—"}</p>
+              )}
+            </div>
+            <Field label="Profile Picture URL" type="url" value={form.profile_picture_url} onChange={(v) => setForm({ ...form, profile_picture_url: v })} editing={editMode} />
+          </div>
+        </section>
       </CardContent>
     </Card>
+  );
+}
+
+function Field({ label, value, onChange, editing, multiline, type = "text", icon: Icon }: { label: string; value: string; onChange: (v: string) => void; editing: boolean; multiline?: boolean; type?: string; icon?: any; }) {
+  return (
+    <div>
+      <Label className="text-xs text-muted-foreground flex items-center gap-1">
+        {Icon ? <Icon className="h-3 w-3" /> : null}
+        {label}
+      </Label>
+      {editing ? (
+        multiline ? (
+          <Textarea value={value} onChange={(e) => onChange(e.target.value)} className="mt-1" rows={2} />
+        ) : (
+          <Input type={type} value={value} onChange={(e) => onChange(e.target.value)} className="mt-1" />
+        )
+      ) : (
+        <p className="font-medium mt-1 break-words">{value || "—"}</p>
+      )}
+    </div>
   );
 }
 
