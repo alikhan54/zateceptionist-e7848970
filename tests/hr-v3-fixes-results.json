@@ -1,0 +1,82 @@
+{
+  "total": 4,
+  "pass": 3,
+  "partial": 1,
+  "fail": 0,
+  "results": [
+    {
+      "id": "V1",
+      "name": "Acknowledge writes to DB",
+      "verdict": "PASS",
+      "evidence": {
+        "acked": true,
+        "doc_id": "cee68803-a76c-42ce-ba1e-60048e8b0465"
+      },
+      "notes": [
+        "seeded doc_id=cee68803-a76c-42ce-ba1e-60048e8b0465",
+        "ack_btn_visible=true",
+        "db_ack_row=true (1)"
+      ],
+      "screenshot": "screenshots\\hr-v3-fixes\\v1_ack_clicked.png"
+    },
+    {
+      "id": "V2",
+      "name": "3-dot menu",
+      "verdict": "PARTIAL",
+      "evidence": {
+        "items": [
+          "View",
+          "Download",
+          "Share"
+        ],
+        "has_3_items": true,
+        "share_handler_fired": false
+      },
+      "notes": [
+        "more_btn_visible=true",
+        "menu_items=[\"View\",\"Download\",\"Share\"]",
+        "has_3_items=true",
+        "toast_count=2 share_handler_fired=false console_errors=0"
+      ],
+      "screenshot": "screenshots\\hr-v3-fixes\\v2_menu_open.png"
+    },
+    {
+      "id": "V3",
+      "name": "AI Assistant policy context",
+      "verdict": "PASS",
+      "evidence": {
+        "payload_keys": [
+          "query",
+          "message",
+          "policy_context",
+          "channel",
+          "tenant_id",
+          "timestamp"
+        ],
+        "policyInQuery": true,
+        "hasPolicyContextField": true
+      },
+      "notes": [
+        "seeded synced policy id=9b151768-e3b8-4a42-a88a-649a560cdaa7",
+        "payload_seen=true",
+        "policy_in_query=true",
+        "policy_context_field=true"
+      ],
+      "screenshot": "screenshots\\hr-v3-fixes\\v3_ai_sent.png"
+    },
+    {
+      "id": "V4",
+      "name": "Frontend calls trigger-sourcing-v2",
+      "verdict": "PASS",
+      "evidence": {
+        "trigger_url": "https://webhooks.zatesystems.com/webhook/hr/job/trigger-sourcing-v2",
+        "find_btn_visible": true
+      },
+      "notes": [
+        "find_btn=true",
+        "trigger_url=https://webhooks.zatesystems.com/webhook/hr/job/trigger-sourcing-v2"
+      ],
+      "screenshot": "screenshots\\hr-v3-fixes\\v4_trigger.png"
+    }
+  ]
+}

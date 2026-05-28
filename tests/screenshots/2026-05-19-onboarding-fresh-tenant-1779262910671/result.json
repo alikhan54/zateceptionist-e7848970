@@ -1,0 +1,147 @@
+{
+  "testEmail": "test-onboard-1779262910671@420-test.local",
+  "testStartedAt": "2026-05-20T07:41:50.673Z",
+  "authUserId": "e1f8e59c-8807-466e-bb4c-f6b00ab093c3",
+  "steps": [
+    {
+      "index": 0,
+      "label": "Discovery",
+      "urlBefore": "https://ai.zatesystems.com/onboarding",
+      "urlAfter": "https://ai.zatesystems.com/onboarding",
+      "inputs": [
+        {
+          "name": "",
+          "placeholder": "https://yourcompany.com",
+          "type": "input"
+        },
+        {
+          "name": "",
+          "placeholder": "Your Company Name",
+          "type": "input"
+        },
+        {
+          "name": "",
+          "placeholder": "What does your business do?",
+          "type": "textarea"
+        },
+        {
+          "name": "",
+          "placeholder": "Add a service or product",
+          "type": "input"
+        },
+        {
+          "name": "",
+          "placeholder": "+1 (555) 000-0000",
+          "type": "input"
+        },
+        {
+          "name": "",
+          "placeholder": "contact@company.com",
+          "type": "input"
+        }
+      ],
+      "buttons": [
+        "Website",
+        "Social",
+        "Documents",
+        "🏢 Other",
+        "Back",
+        "Skip",
+        "Continue"
+      ],
+      "visibleTextSample": "Setup Your Business\n\nTell us about your business\n\nStep 1 of 5\n1\nBusiness Discovery\n2\nAI & Channels\n3\nKnowledge Base\n4\nChoose Plan\n5\nYou're Ready!\nTell us about your business\n\nWe'll use this to train your AI assistant across all departments\n\nWebsite\nSocial\nDocuments\nYour Website URL\n\nOur AI will deep-crawl your site: homepage, about, services, pricing, team, and more\n\nBusiness Details\n\nEnter your business information\n\nCompany Name *\nIndustry\n🏢 Other\nDescription\nServices / Products\nPhone\nEmail\nBack\nSkip\nContinue",
+      "screenshotBefore": "step-0-Discovery-before.png",
+      "screenshotAfter": "step-0-Discovery-after.png",
+      "advanced": true,
+      "error": "clicked \"Continue\" -> Step 1 of 5 -> Step 2 of 5"
+    },
+    {
+      "index": 1,
+      "label": "Channels",
+      "urlBefore": "https://ai.zatesystems.com/onboarding",
+      "urlAfter": "https://ai.zatesystems.com/onboarding",
+      "inputs": [
+        {
+          "name": "",
+          "placeholder": "e.g., Luna, Max, Zate",
+          "type": "input"
+        },
+        {
+          "name": "",
+          "placeholder": "Hello! I'm your AI assistant...",
+          "type": "textarea"
+        },
+        {
+          "name": "",
+          "placeholder": "",
+          "type": "time"
+        },
+        {
+          "name": "",
+          "placeholder": "",
+          "type": "time"
+        }
+      ],
+      "buttons": [
+        "AI Receptionist",
+        "👔ProfessionalFormal and business-like",
+        "😊FriendlyWarm and approachable",
+        "🤙CasualRelaxed and conversational",
+        "🎩FormalPolished and authoritative",
+        "Eastern Time (ET)",
+        "Back",
+        "Next: Connect Channels"
+      ],
+      "visibleTextSample": "Setup Your Business\n\nConfigure AI and connect platforms\n\nStep 2 of 5\nBusiness Discovery\n2\nAI & Channels\n3\nKnowledge Base\n4\nChoose Plan\n5\nYou're Ready!\nConfigure Your AI Assistant\n\nPersonalize how your AI interacts with customers\n\nAI Assistant Name\nSuggestions:\nZate\nLuna\nMax\nAI Role\nAI Receptionist\nPersonality\n👔\n\nProfessional\n\nFormal and business-like\n\n😊\n\nFriendly\n\nWarm and approachable\n\n🤙\n\nCasual\n\nRelaxed and conversational\n\n🎩\n\nFormal\n\nPolished and authoritative\n\nFirst Message / Greeting\nWorking Hours Start\nWorking Hours End\nTimezone\nEastern Time (ET)\n\nZate (AI Receptionist)\n\n\"Hello! I'm y",
+      "screenshotBefore": "step-1-Channels-before.png",
+      "screenshotAfter": "step-1-Channels-after.png",
+      "advanced": true,
+      "error": "clicked \"Skip\" -> Step 2 of 5 -> Step 3 of 5"
+    },
+    {
+      "index": 2,
+      "label": "KnowledgeBase",
+      "urlBefore": "https://ai.zatesystems.com/onboarding",
+      "urlAfter": "https://ai.zatesystems.com/onboarding",
+      "inputs": [
+        {
+          "name": "",
+          "placeholder": "Add any additional information about your business that you want the AI to know. For example: special policies, frequently asked questions, pricing details, common customer objections...",
+          "type": "textarea"
+        }
+      ],
+      "buttons": [
+        "Back",
+        "Skip",
+        "Continue"
+      ],
+      "visibleTextSample": "Setup Your Business\n\nTrain your AI with documents\n\nStep 3 of 5\nBusiness Discovery\nAI & Channels\n3\nKnowledge Base\n4\nChoose Plan\n5\nYou're Ready!\nTrain Your AI Knowledge Base\n\nUpload documents and add knowledge to make your AI smarter about your business\n\nUpload Documents\n\nDrop files here or click to browse\n\nPDF, DOCX, TXT, CSV — up to 10MB each\n\nAdditional Knowledge (Optional)\n\nThis text will be added to your AI's knowledge base alongside any uploaded documents.\n\nBack\nSkip\nContinue",
+      "screenshotBefore": "step-2-KnowledgeBase-before.png",
+      "screenshotAfter": "step-2-KnowledgeBase-after.png",
+      "advanced": true,
+      "error": "clicked \"Continue\" -> Step 3 of 5 -> Step 4 of 5"
+    },
+    {
+      "index": 3,
+      "label": "Payment",
+      "urlBefore": "https://ai.zatesystems.com/onboarding",
+      "urlAfter": "https://ai.zatesystems.com/onboarding",
+      "inputs": [],
+      "buttons": [
+        "Back",
+        "Continue Free Instead",
+        "Subscribe with Paddle"
+      ],
+      "visibleTextSample": "Setup Your Business\n\nSelect your subscription\n\nStep 4 of 5\nBusiness Discovery\nAI & Channels\nKnowledge Base\n4\nChoose Plan\n5\nYou're Ready!\nChoose Your Plan\n\nStart with a free trial. Upgrade anytime.\n\nMonthly\nYearly Save 17%\nFree Trial\n$0\n\n2 days\n\n50 messages total\n10 leads\n1 channel only\nBasic AI (limited)\nNo voice AI\nEmail support only\nStarter\n$99\n/mo\n\nmonthly billing\n\n1,000 messages/month\n100 leads/month\n3 channels\n3 team members\n30 voice minutes\nEmail support\nMost Popular\nProfessional\n$499\n/mo\n\nmonthly billing\n\n5,000 messages/month\n500 leads/month\nAll channels\n10 team members\n150 voice minute",
+      "screenshotBefore": "step-3-Payment-before.png",
+      "screenshotAfter": "step-3-Payment-after.png",
+      "advanced": false,
+      "error": "clicked \"Continue Free Instead\" but step indicator unchanged (Step 4 of 5)"
+    }
+  ],
+  "consoleErrors": [
+    "Webhook error [/onboarding/train-agents]: SyntaxError: Failed to execute 'json' on 'Response': Unexpected end of JSON input\n    at fj (https://ai.zatesystems.com/assets/index-DDbb-T9D.js:835:13276)\n    at async r (https://ai.zatesystems.com/assets/CompanySetup-DuxmF4F1.js:7:38348)",
+    "Webhook error [/onboarding/complete]: SyntaxError: Failed to execute 'json' on 'Response': Unexpected end of JSON input\n    at fj (https://ai.zatesystems.com/assets/index-DDbb-T9D.js:835:13276)\n    at async r (https://ai.zatesystems.com/assets/CompanySetup-DuxmF4F1.js:7:38388)"
+  ],
+  "networkFailures": []
+}

@@ -1,0 +1,246 @@
+{
+  "timestamp": "2026-05-23T00:18:13.535Z",
+  "tenant": "zateceptionist",
+  "pages_tested": 8,
+  "by_verdict": {
+    "WORKING": 7,
+    "PARTIAL": 1
+  },
+  "results": [
+    {
+      "id": "3A",
+      "name": "Create employee",
+      "route": "/hr/employees",
+      "verdict": "WORKING",
+      "evidence": {
+        "add_button_visible": true,
+        "dialog_opened": true,
+        "submit_button_visible": true,
+        "webhook_fired": true,
+        "webhook_status": 200,
+        "webhook_body_preview": "{\"success\":true,\"employee\":{\"id\":\"9720e0e2-6493-43d3-83be-e5f71367dc4c\",\"employee_id\":\"EMP-2026-DL78X1\",\"first_name\":\"Playwright\",\"last_name\":\"Test1779495194162\",\"company_email\":\"playwright.test@zates",
+        "test_name_in_list": true,
+        "test_email_in_list": false
+      },
+      "notes": [],
+      "screenshot": "screenshots\\2026-05-22-hr-round3\\3A_after_create.png",
+      "net_errors": [],
+      "console_errors": [],
+      "webhook_calls": [
+        {
+          "url": "https://webhooks.zatesystems.com/webhook/hr/employee-onboarding-v2",
+          "status": 200,
+          "ok": true
+        }
+      ]
+    },
+    {
+      "id": "3B",
+      "name": "Submit leave",
+      "route": "/hr/leave",
+      "verdict": "WORKING",
+      "evidence": {
+        "request_button_visible": true,
+        "dialog_opened": true,
+        "day_button_count": 35,
+        "clicked_indices": [
+          21,
+          23
+        ],
+        "submit_visible": true,
+        "webhook_fired": true,
+        "webhook_status": 200,
+        "webhook_body_preview": "{\"success\":true,\"leave_request\":{\"id\":\"498ed489-2213-4b7b-8a1b-a716d15f74eb\",\"employee_id\":\"9720e0e2-6493-43d3-83be-e5f71367dc4c\",\"leave_type\":\"Leave\",\"start_date\":\"2026-06-16\",\"end_date\":\"2026-06-18\"",
+        "reason_in_list": true
+      },
+      "notes": [],
+      "screenshot": "screenshots\\2026-05-22-hr-round3\\3B_after_submit.png",
+      "net_errors": [],
+      "console_errors": [],
+      "webhook_calls": [
+        {
+          "url": "https://webhooks.zatesystems.com/webhook/hr/leave/request-v2",
+          "status": 200,
+          "ok": true
+        }
+      ]
+    },
+    {
+      "id": "3C",
+      "name": "Post a job",
+      "route": "/hr/recruitment",
+      "verdict": "PARTIAL",
+      "evidence": {
+        "post_button_visible": true,
+        "dialog_opened": true,
+        "submit_visible": true,
+        "job_in_list": false
+      },
+      "notes": [
+        "Job not visible in Jobs tab list (DB shows it persisted — UI may filter/cache)"
+      ],
+      "screenshot": "screenshots\\2026-05-22-hr-round3\\3C_after_post.png",
+      "net_errors": [],
+      "console_errors": [],
+      "webhook_calls": []
+    },
+    {
+      "id": "3D",
+      "name": "Hire AI agent",
+      "route": "/hr/ai-agents/hire",
+      "verdict": "WORKING",
+      "evidence": {
+        "textarea_visible": true,
+        "hire_button_visible": true,
+        "url_changed": true,
+        "final_url": "https://ai.zatesystems.com/hr/ai-agents/1be189bd-39c7-434b-93f0-be9f28a5f457"
+      },
+      "notes": [],
+      "screenshot": "screenshots\\2026-05-22-hr-round3\\3D_agent_profile.png",
+      "net_errors": [],
+      "console_errors": [],
+      "webhook_calls": [
+        {
+          "url": "https://webhooks.zatesystems.com/webhook/hr/ai-agent/create",
+          "status": 200,
+          "ok": true
+        }
+      ]
+    },
+    {
+      "id": "3E",
+      "name": "AI assistant chat",
+      "route": "/hr/ai-assistant",
+      "verdict": "WORKING",
+      "evidence": {
+        "chat_input_visible": true,
+        "response_chars_after_question": 391,
+        "response_received": true
+      },
+      "notes": [],
+      "screenshot": "screenshots\\2026-05-22-hr-round3\\3E_after_send.png",
+      "net_errors": [],
+      "console_errors": [],
+      "webhook_calls": []
+    },
+    {
+      "id": "3F",
+      "name": "Employee profile tabs",
+      "route": "/hr/employees/:id",
+      "verdict": "WORKING",
+      "evidence": {
+        "clicked_name": "Ahmed",
+        "url": "https://ai.zatesystems.com/hr/employees/23b3d10f-316f-41b2-a64c-7f8e58eb51ee",
+        "on_profile_page": true,
+        "tabs": {
+          "Overview": {
+            "present": true,
+            "contentLen": 1339,
+            "hasData": true
+          },
+          "Personal": {
+            "present": true,
+            "contentLen": 1440,
+            "hasData": true
+          },
+          "Employment": {
+            "present": true,
+            "contentLen": 1304,
+            "hasData": true
+          },
+          "Leave": {
+            "present": true,
+            "contentLen": 1298,
+            "hasData": true
+          },
+          "Performance": {
+            "present": true,
+            "contentLen": 1447,
+            "hasData": true
+          },
+          "Documents": {
+            "present": true,
+            "contentLen": 1203,
+            "hasData": true
+          },
+          "Assets": {
+            "present": true,
+            "contentLen": 1104,
+            "hasData": false
+          }
+        },
+        "tabs_present": 7,
+        "tabs_with_data": 6
+      },
+      "notes": [],
+      "screenshot": "screenshots\\2026-05-22-hr-round3\\3F_profile_final.png",
+      "net_errors": [],
+      "console_errors": [],
+      "webhook_calls": []
+    },
+    {
+      "id": "3G",
+      "name": "Gratuity calculator",
+      "route": "/hr/compliance",
+      "verdict": "WORKING",
+      "evidence": {
+        "tab_visible": true,
+        "salary_input_visible": true,
+        "years_input_visible": true,
+        "amount_candidates": [
+          "AED 52,500",
+          "AED 15,000",
+          "AED 500",
+          "AED 52,500"
+        ],
+        "has_total_label": true
+      },
+      "notes": [],
+      "screenshot": "screenshots\\2026-05-22-hr-round3\\3G_gratuity_result.png",
+      "net_errors": [],
+      "console_errors": [],
+      "webhook_calls": []
+    },
+    {
+      "id": "3H",
+      "name": "Sidebar HR groups",
+      "route": "/hr/dashboard",
+      "verdict": "WORKING",
+      "evidence": {
+        "groups": {
+          "People": {
+            "group_visible": true,
+            "group_button_present": true,
+            "child_visible": true,
+            "child_navigated": true
+          },
+          "Talent": {
+            "group_visible": true,
+            "group_button_present": true,
+            "child_visible": true,
+            "child_navigated": true
+          },
+          "Operations": {
+            "group_visible": true,
+            "group_button_present": true,
+            "child_visible": true,
+            "child_navigated": true
+          },
+          "AI Workforce": {
+            "group_visible": true,
+            "group_button_present": true,
+            "child_visible": true,
+            "child_navigated": true
+          }
+        },
+        "groups_found": 4,
+        "children_navigated": 4
+      },
+      "notes": [],
+      "screenshot": "screenshots\\2026-05-22-hr-round3\\3H_sidebar_after.png",
+      "net_errors": [],
+      "console_errors": [],
+      "webhook_calls": []
+    }
+  ]
+}

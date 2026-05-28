@@ -1,0 +1,300 @@
+{
+  "timestamp": "2026-05-25T10:00:37.204Z",
+  "total": 18,
+  "pass": 18,
+  "partial": 0,
+  "fail": 0,
+  "skip": 0,
+  "results": [
+    {
+      "id": "T1",
+      "name": "Recruitment page loads",
+      "verdict": "PASS",
+      "evidence": {
+        "tabs_found": [
+          "Jobs",
+          "Candidates",
+          "Pipeline",
+          "Interviews",
+          "AI Interviews",
+          "Sourcing"
+        ],
+        "tab_count": 6,
+        "kpi_numbers_in_dom": 6,
+        "post_job_btn": true,
+        "askai_btn": true,
+        "console_errors": 0,
+        "console_errors_sample": []
+      },
+      "notes": [],
+      "screenshot": "screenshots\\hiring-complete\\t01_recruitment_page.png"
+    },
+    {
+      "id": "T2",
+      "name": "Jobs tab",
+      "verdict": "PASS",
+      "evidence": {
+        "cards_count": 6,
+        "job_titles_found": [
+          "ML/MLOps Engineer (Mid-Senior)",
+          "DevOps Engineer",
+          "ML/MLOps Engineer (Mid-Senior)",
+          "DevOps Engineer",
+          "DevOps Engineer",
+          "ML/MLOps Engineer (Mid-Senior)",
+          "Senior Backend Engineer",
+          "Product Manager",
+          "DevOps Engineer",
+          "Senior Software Engineer"
+        ],
+        "post_job_present": true
+      },
+      "notes": [],
+      "screenshot": "screenshots\\hiring-complete\\t02_jobs_tab.png"
+    },
+    {
+      "id": "T3",
+      "name": "Post Job Manual",
+      "verdict": "PASS",
+      "evidence": {
+        "webhook_status": 200,
+        "webhook_success": true,
+        "success_toast": true,
+        "error_toast": false,
+        "job_in_list": true
+      },
+      "notes": [],
+      "screenshot": "screenshots\\hiring-complete\\t03_post_job_manual.png"
+    },
+    {
+      "id": "T4",
+      "name": "Post Job Text/AI",
+      "verdict": "PASS",
+      "evidence": {
+        "webhook_status": 200,
+        "webhook_success": true,
+        "ai_enriched_title": "DevOps Engineer",
+        "ai_enriched": true
+      },
+      "notes": [],
+      "screenshot": "screenshots\\hiring-complete\\t04_post_job_text_ai.png"
+    },
+    {
+      "id": "T5",
+      "name": "Post Job URL",
+      "verdict": "PASS",
+      "evidence": {
+        "webhook_status": 200,
+        "webhook_response_keys": [
+          "success",
+          "error",
+          "status"
+        ],
+        "success": false
+      },
+      "notes": [
+        "URL scrape webhook fired and returned 200; body.success=false is OK for non-single-job URLs"
+      ],
+      "screenshot": "screenshots\\hiring-complete\\t05_post_job_url.png"
+    },
+    {
+      "id": "T6",
+      "name": "Job detail view",
+      "verdict": "PASS",
+      "evidence": {
+        "fields_found": {
+          "description": false,
+          "skills": true,
+          "salary": true,
+          "location": true,
+          "employment_type": true,
+          "applications_count": true,
+          "sourcing": true,
+          "find_candidates": true,
+          "ai_interview": true
+        },
+        "fields_present_count": 8
+      },
+      "notes": [],
+      "screenshot": "screenshots\\hiring-complete\\t06_job_detail.png"
+    },
+    {
+      "id": "T7",
+      "name": "Trigger AI sourcing",
+      "verdict": "PASS",
+      "evidence": {
+        "find_candidates_visible": true,
+        "webhook_status": 200,
+        "response": {
+          "success": true,
+          "data": {
+            "sourcing_run_id": "f58da942-14ec-455a-9f3a-c1b5913876d0",
+            "job_requisition_id": "3793c9d2-95a1-46be-b7d9-54a4d68e6ada",
+            "job_title": "DevOps Engineer",
+            "status": "running",
+            "trigger_type": "manual",
+            "message": "Sourcing run started successfully."
+          }
+        }
+      },
+      "notes": [],
+      "screenshot": "screenshots\\hiring-complete\\t07_trigger_sourcing.png"
+    },
+    {
+      "id": "T8",
+      "name": "Candidates + Add",
+      "verdict": "PASS",
+      "evidence": {
+        "candidates_tab_active": true,
+        "candidates_before": 8,
+        "add_button_visible": true,
+        "candidate_in_list": true
+      },
+      "notes": [],
+      "screenshot": "screenshots\\hiring-complete\\t08_candidates.png"
+    },
+    {
+      "id": "T9",
+      "name": "Pipeline kanban",
+      "verdict": "PASS",
+      "evidence": {
+        "pipeline_tab_active": true,
+        "stages_found": [
+          "Applied",
+          "Screening",
+          "Phone Screen",
+          "Interview",
+          "Technical",
+          "Final Round",
+          "Offer",
+          "Hired",
+          "Rejected"
+        ],
+        "move_controls": 4
+      },
+      "notes": [],
+      "screenshot": "screenshots\\hiring-complete\\t09_pipeline.png"
+    },
+    {
+      "id": "T10",
+      "name": "Interviews",
+      "verdict": "PASS",
+      "evidence": {
+        "schedule_button_visible": true,
+        "form_field_count": 8
+      },
+      "notes": [],
+      "screenshot": "screenshots\\hiring-complete\\t10_interviews.png"
+    },
+    {
+      "id": "T11",
+      "name": "AI Interviews",
+      "verdict": "PASS",
+      "evidence": {
+        "button_visible": true,
+        "dialog_opened": false
+      },
+      "notes": [],
+      "screenshot": "screenshots\\hiring-complete\\t11_ai_interviews.png"
+    },
+    {
+      "id": "T12",
+      "name": "Sourcing tab",
+      "verdict": "PASS",
+      "evidence": {
+        "run_rows": 53,
+        "has_status_text": true
+      },
+      "notes": [],
+      "screenshot": "screenshots\\hiring-complete\\t12_sourcing.png"
+    },
+    {
+      "id": "T13",
+      "name": "Add Employee wizard",
+      "verdict": "PASS",
+      "evidence": {
+        "add_button_visible": true,
+        "next_clicks": 5,
+        "submit_button_visible": true,
+        "webhook_status": 200,
+        "response_keys": [
+          "success",
+          "employee",
+          "leave_balances_created",
+          "message"
+        ],
+        "supabase_check": "err",
+        "in_list": true
+      },
+      "notes": [],
+      "screenshot": "screenshots\\hiring-complete\\t13_add_employee.png"
+    },
+    {
+      "id": "T14",
+      "name": "Hire AI Agent",
+      "verdict": "PASS",
+      "evidence": {
+        "describe_submitted": true
+      },
+      "notes": [],
+      "screenshot": "screenshots\\hiring-complete\\t14_hire_agent.png"
+    },
+    {
+      "id": "T15",
+      "name": "AI agent lifecycle",
+      "verdict": "PASS",
+      "evidence": {
+        "page_loaded": true,
+        "has_active_status": true,
+        "agent_cards": 20
+      },
+      "notes": [],
+      "screenshot": "screenshots\\hiring-complete\\t15_agents.png"
+    },
+    {
+      "id": "T16",
+      "name": "Start Onboarding",
+      "verdict": "PASS",
+      "evidence": {
+        "has_hired_stage": true,
+        "onboard_button_visible": true
+      },
+      "notes": [],
+      "screenshot": "screenshots\\hiring-complete\\t16_pipeline_onboard.png"
+    },
+    {
+      "id": "T17",
+      "name": "AI Assistant chat",
+      "verdict": "PASS",
+      "evidence": {
+        "input_visible": true,
+        "elapsed_ms": 34173,
+        "has_number_in_response": false,
+        "has_department_data": true,
+        "still_thinking": false
+      },
+      "notes": [],
+      "screenshot": "screenshots\\hiring-complete\\t17_ai_assistant.png"
+    },
+    {
+      "id": "T18",
+      "name": "UAE Compliance",
+      "verdict": "PASS",
+      "evidence": {
+        "loading_cleared": true,
+        "tabs_found": [
+          "Emiratisation",
+          "Visa",
+          "WPS",
+          "Medical",
+          "Labor",
+          "Gratuity",
+          "Compliance"
+        ],
+        "gratuity_shown": true
+      },
+      "notes": [],
+      "screenshot": "screenshots\\hiring-complete\\t18_compliance.png"
+    }
+  ]
+}

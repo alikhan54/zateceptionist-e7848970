@@ -1,0 +1,15 @@
+[
+  {
+    "route": "/marketing/aeo-dashboard",
+    "url_after": "https://ai.zatesystems.com/marketing/aeo-dashboard",
+    "verdict": "PASS",
+    "matched_count": 0,
+    "expected_min": 0,
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase3-marketing-aeo-dashboard.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 400 ()"
+    ],
+    "network_errors_4xx": 1,
+    "notes": ""
+  }
+]

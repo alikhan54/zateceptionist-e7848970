@@ -1,0 +1,123 @@
+[
+  {
+    "route": "/clinic/treatments",
+    "error": "page.goto: Timeout 45000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https://ai.zatesystems.com/clinic/treatments\", waiting until \"domcontentloaded\"\u001b[22m\n",
+    "build_needed": "unknown_route_error"
+  },
+  {
+    "route": "/clinic/patients",
+    "error": "page.goto: Timeout 45000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https://ai.zatesystems.com/clinic/patients\", waiting until \"domcontentloaded\"\u001b[22m\n",
+    "build_needed": "unknown_route_error"
+  },
+  {
+    "route": "/clinic/products",
+    "error": "page.goto: Timeout 45000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https://ai.zatesystems.com/clinic/products\", waiting until \"domcontentloaded\"\u001b[22m\n",
+    "build_needed": "unknown_route_error"
+  },
+  {
+    "route": "/clinic/consultations",
+    "error": "page.goto: Timeout 45000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https://ai.zatesystems.com/clinic/consultations\", waiting until \"domcontentloaded\"\u001b[22m\n",
+    "build_needed": "unknown_route_error"
+  },
+  {
+    "route": "/clinic/health-reports",
+    "error": null,
+    "add_buttons_visible": 0,
+    "buttons": [],
+    "dialog_opens": false,
+    "build_needed": true
+  },
+  {
+    "route": "/appointments",
+    "error": null,
+    "add_buttons_visible": 0,
+    "buttons": [],
+    "dialog_opens": false,
+    "build_needed": true
+  },
+  {
+    "route": "/marketing/campaigns",
+    "error": null,
+    "add_buttons_visible": 1,
+    "buttons": [
+      {
+        "text": "Create & Publish",
+        "testid": null,
+        "role": null
+      }
+    ],
+    "dialog_opens": false,
+    "click_err": "locator.click: Timeout 5000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('button, a[role=\"butto",
+    "build_needed": false
+  },
+  {
+    "route": "/marketing/competitors",
+    "error": "page.goto: Timeout 45000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https://ai.zatesystems.com/marketing/competitors\", waiting until \"domcontentloaded\"\u001b[22m\n",
+    "build_needed": "unknown_route_error"
+  },
+  {
+    "route": "/marketing/blogs",
+    "error": "page.goto: Timeout 45000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https://ai.zatesystems.com/marketing/blogs\", waiting until \"domcontentloaded\"\u001b[22m\n",
+    "build_needed": "unknown_route_error"
+  },
+  {
+    "route": "/marketing/seo",
+    "error": "page.goto: Timeout 45000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https://ai.zatesystems.com/marketing/seo\", waiting until \"domcontentloaded\"\u001b[22m\n",
+    "build_needed": "unknown_route_error"
+  },
+  {
+    "route": "/sales/sequences",
+    "error": null,
+    "add_buttons_visible": 0,
+    "buttons": [],
+    "dialog_opens": false,
+    "build_needed": true
+  },
+  {
+    "route": "/sales/pipeline",
+    "error": null,
+    "add_buttons_visible": 0,
+    "buttons": [],
+    "dialog_opens": false,
+    "build_needed": true
+  },
+  {
+    "route": "/sales/proposals",
+    "error": null,
+    "add_buttons_visible": 0,
+    "buttons": [],
+    "dialog_opens": false,
+    "build_needed": true
+  },
+  {
+    "route": "/hr/employees",
+    "error": null,
+    "add_buttons_visible": 0,
+    "buttons": [],
+    "dialog_opens": false,
+    "build_needed": true
+  },
+  {
+    "route": "/hr/departments",
+    "error": null,
+    "add_buttons_visible": 1,
+    "buttons": [
+      {
+        "text": "Add Department",
+        "testid": null,
+        "role": null
+      }
+    ],
+    "dialog_opens": false,
+    "click_err": "locator.click: Timeout 5000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('button, a[role=\"butto",
+    "build_needed": false
+  },
+  {
+    "route": "/hr/recruitment",
+    "error": null,
+    "add_buttons_visible": 0,
+    "buttons": [],
+    "dialog_opens": false,
+    "build_needed": true
+  }
+]

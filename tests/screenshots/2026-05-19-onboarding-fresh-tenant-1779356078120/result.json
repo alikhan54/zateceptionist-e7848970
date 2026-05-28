@@ -1,0 +1,390 @@
+{
+  "testEmail": "test-onboard-1779356078120@420-test.local",
+  "testStartedAt": "2026-05-21T09:34:38.120Z",
+  "authUserId": "0e96177d-6550-4013-995b-2744df4ebed3",
+  "steps": [
+    {
+      "index": 0,
+      "label": "Discovery",
+      "urlBefore": "https://ai.zatesystems.com/onboarding",
+      "urlAfter": "https://ai.zatesystems.com/onboarding",
+      "inputs": [
+        {
+          "name": "",
+          "placeholder": "https://yourcompany.com",
+          "type": "input"
+        },
+        {
+          "name": "",
+          "placeholder": "Your Company Name",
+          "type": "input"
+        },
+        {
+          "name": "",
+          "placeholder": "What does your business do?",
+          "type": "textarea"
+        },
+        {
+          "name": "",
+          "placeholder": "Add a service or product",
+          "type": "input"
+        },
+        {
+          "name": "",
+          "placeholder": "+1 (555) 000-0000",
+          "type": "input"
+        },
+        {
+          "name": "",
+          "placeholder": "contact@company.com",
+          "type": "input"
+        }
+      ],
+      "buttons": [
+        "Website",
+        "Social",
+        "Documents",
+        "🏢 Other",
+        "Back",
+        "Skip",
+        "Continue"
+      ],
+      "visibleTextSample": "Setup Your Business\n\nTell us about your business\n\nStep 1 of 5\n1\nBusiness Discovery\n2\nAI & Channels\n3\nKnowledge Base\n4\nChoose Plan\n5\nYou're Ready!\nTell us about your business\n\nWe'll use this to train your AI assistant across all departments\n\nWebsite\nSocial\nDocuments\nYour Website URL\n\nOur AI will deep-crawl your site: homepage, about, services, pricing, team, and more\n\nBusiness Details\n\nEnter your business information\n\nCompany Name *\nIndustry\n🏢 Other\nDescription\nServices / Products\nPhone\nEmail\nBack\nSkip\nContinue",
+      "screenshotBefore": "step-0-Discovery-before.png",
+      "screenshotAfter": "step-0-Discovery-after.png",
+      "advanced": true,
+      "error": "clicked \"Continue\" -> Step 1 of 5 -> Step 2 of 5"
+    },
+    {
+      "index": 1,
+      "label": "Channels",
+      "urlBefore": "https://ai.zatesystems.com/onboarding",
+      "urlAfter": "https://ai.zatesystems.com/onboarding",
+      "inputs": [
+        {
+          "name": "",
+          "placeholder": "e.g., Luna, Max, Zate",
+          "type": "input"
+        },
+        {
+          "name": "",
+          "placeholder": "Hello! I'm your AI assistant...",
+          "type": "textarea"
+        },
+        {
+          "name": "",
+          "placeholder": "",
+          "type": "time"
+        },
+        {
+          "name": "",
+          "placeholder": "",
+          "type": "time"
+        }
+      ],
+      "buttons": [
+        "AI Receptionist",
+        "👔ProfessionalFormal and business-like",
+        "😊FriendlyWarm and approachable",
+        "🤙CasualRelaxed and conversational",
+        "🎩FormalPolished and authoritative",
+        "Eastern Time (ET)",
+        "Back",
+        "Next: Connect Channels"
+      ],
+      "visibleTextSample": "Setup Your Business\n\nConfigure AI and connect platforms\n\nStep 2 of 5\nBusiness Discovery\n2\nAI & Channels\n3\nKnowledge Base\n4\nChoose Plan\n5\nYou're Ready!\nConfigure Your AI Assistant\n\nPersonalize how your AI interacts with customers\n\nAI Assistant Name\nSuggestions:\nZate\nLuna\nMax\nAI Role\nAI Receptionist\nPersonality\n👔\n\nProfessional\n\nFormal and business-like\n\n😊\n\nFriendly\n\nWarm and approachable\n\n🤙\n\nCasual\n\nRelaxed and conversational\n\n🎩\n\nFormal\n\nPolished and authoritative\n\nFirst Message / Greeting\nWorking Hours Start\nWorking Hours End\nTimezone\nEastern Time (ET)\n\nZate (AI Receptionist)\n\n\"Hello! I'm y",
+      "screenshotBefore": "step-1-Channels-before.png",
+      "screenshotAfter": "step-1-Channels-after.png",
+      "advanced": true,
+      "error": "clicked \"Skip\" -> Step 2 of 5 -> Step 3 of 5"
+    },
+    {
+      "index": 2,
+      "label": "KnowledgeBase",
+      "urlBefore": "https://ai.zatesystems.com/onboarding",
+      "urlAfter": "https://ai.zatesystems.com/onboarding",
+      "inputs": [
+        {
+          "name": "",
+          "placeholder": "Add any additional information about your business that you want the AI to know. For example: special policies, frequently asked questions, pricing details, common customer objections...",
+          "type": "textarea"
+        }
+      ],
+      "buttons": [
+        "Back",
+        "Skip",
+        "Continue"
+      ],
+      "visibleTextSample": "Setup Your Business\n\nTrain your AI with documents\n\nStep 3 of 5\nBusiness Discovery\nAI & Channels\n3\nKnowledge Base\n4\nChoose Plan\n5\nYou're Ready!\nTrain Your AI Knowledge Base\n\nUpload documents and add knowledge to make your AI smarter about your business\n\nUpload Documents\n\nDrop files here or click to browse\n\nPDF, DOCX, TXT, CSV — up to 10MB each\n\nAdditional Knowledge (Optional)\n\nThis text will be added to your AI's knowledge base alongside any uploaded documents.\n\nBack\nSkip\nContinue",
+      "screenshotBefore": "step-2-KnowledgeBase-before.png",
+      "screenshotAfter": "step-2-KnowledgeBase-after.png",
+      "advanced": true,
+      "error": "clicked \"Continue\" -> Step 3 of 5 -> Step 4 of 5"
+    },
+    {
+      "index": 3,
+      "label": "Payment",
+      "urlBefore": "https://ai.zatesystems.com/onboarding",
+      "urlAfter": "https://ai.zatesystems.com/onboarding",
+      "inputs": [],
+      "buttons": [
+        "Back",
+        "Continue Free Instead",
+        "Subscribe with Paddle"
+      ],
+      "visibleTextSample": "Setup Your Business\n\nSelect your subscription\n\nStep 4 of 5\nBusiness Discovery\nAI & Channels\nKnowledge Base\n4\nChoose Plan\n5\nYou're Ready!\nChoose Your Plan\n\nStart with a free trial. Upgrade anytime.\n\nMonthly\nYearly Save 17%\nFree Trial\n$0\n\n2 days\n\n50 messages total\n10 leads\n1 channel only\nBasic AI (limited)\nNo voice AI\nEmail support only\nStarter\n$99\n/mo\n\nmonthly billing\n\n1,000 messages/month\n100 leads/month\n3 channels\n3 team members\n30 voice minutes\nEmail support\nMost Popular\nProfessional\n$499\n/mo\n\nmonthly billing\n\n5,000 messages/month\n500 leads/month\nAll channels\n10 team members\n150 voice minute",
+      "screenshotBefore": "step-3-Payment-before.png",
+      "screenshotAfter": "step-3-Payment-after.png",
+      "advanced": true,
+      "error": "clicked \"Continue Free Instead\" -> reached Ready step (indicator hidden)"
+    },
+    {
+      "index": 4,
+      "label": "Ready",
+      "urlBefore": "https://ai.zatesystems.com/onboarding",
+      "urlAfter": "https://ai.zatesystems.com/onboarding",
+      "inputs": [],
+      "buttons": [
+        "Skip to Dashboard"
+      ],
+      "visibleTextSample": "Setup Your Business\n\nStart using the platform\n\nBusiness Discovery\nAI & Channels\nKnowledge Base\nChoose Plan\n5\nYou're Ready!\nTraining Your AI Team\n\nSetting up 5 specialized AI agents for your business...\n\nTraining Progress\n0/5 modules\n\nSales AI\n\nProducts, pricing, objections\n\nTraining\n\nMarketing AI\n\nBrand voice, content themes\n\nTraining\n\nCommunication AI\n\nFAQs, booking, hours\n\nTraining\n\nVoice AI\n\nPhone scripts, call handling\n\nTraining\n\nHR AI\n\nCompany culture, roles\n\nTraining\n\nTraining is taking longer than expected. You can continue to your dashboard — AI training will finish in the background.\n",
+      "screenshotBefore": "step-4-Ready-before.png",
+      "screenshotAfter": "step-4-Ready-after.png",
+      "advanced": false
+    }
+  ],
+  "consoleErrors": [],
+  "networkFailures": [],
+  "onboardingWebhookResponses": [],
+  "dbSnapshotPostFlow": {
+    "users": [
+      {
+        "id": "24dd164c-4dad-45b3-b33d-9bba86fe2726",
+        "tenant_id": "test-onboard-1779356078120-0e96177d",
+        "auth_id": "0e96177d-6550-4013-995b-2744df4ebed3",
+        "email": "test-onboard-1779356078120@420-test.local",
+        "full_name": "test-onboard-1779356078120",
+        "avatar_url": null,
+        "phone": null,
+        "role": "admin",
+        "is_active": true,
+        "preferences": {},
+        "created_at": "2026-05-21T09:34:38.712609+00:00",
+        "updated_at": "2026-05-21T09:34:38.712609+00:00"
+      }
+    ],
+    "tenant_config": [
+      {
+        "id": "9265e28e-c534-4a2e-adb4-c852edae02b7",
+        "tenant_id": "test-onboard-1779356078120-0e96177d",
+        "company_name": "test-onboard-1779356078120's Business",
+        "industry": "general",
+        "onboarding_completed": false,
+        "ai_agent_mode": "standard",
+        "created_at": "2026-05-21T09:34:38.712609+00:00"
+      }
+    ],
+    "onboarding_module_status": [
+      {
+        "id": "4ee27317-efdd-4f22-be6a-89db1bf86c24",
+        "tenant_id": "test-onboard-1779356078120-0e96177d",
+        "tenant_uuid": "9265e28e-c534-4a2e-adb4-c852edae02b7",
+        "module_name": "comms",
+        "status": "success",
+        "attempt_count": 2,
+        "max_attempts": 3,
+        "last_attempt_at": "2026-05-21T09:36:08.166735+00:00",
+        "next_retry_at": null,
+        "error_message": null,
+        "error_details": null,
+        "items_created": {
+          "email_warmup": "no_smtp_configured"
+        },
+        "duration_ms": 865,
+        "created_at": "2026-05-21T09:36:07.306426+00:00",
+        "updated_at": "2026-05-21T09:36:08.166735+00:00"
+      },
+      {
+        "id": "aac6bece-d2d5-4f8d-8f0e-5ed5fec75c7e",
+        "tenant_id": "test-onboard-1779356078120-0e96177d",
+        "tenant_uuid": "9265e28e-c534-4a2e-adb4-c852edae02b7",
+        "module_name": "sales",
+        "status": "success",
+        "attempt_count": 2,
+        "max_attempts": 3,
+        "last_attempt_at": "2026-05-21T09:36:09.284941+00:00",
+        "next_retry_at": null,
+        "error_message": null,
+        "error_details": null,
+        "items_created": {
+          "tenant_icp_config": 1,
+          "sequence_templates": 3,
+          "reply_routing_rules": 8
+        },
+        "duration_ms": 2130,
+        "created_at": "2026-05-21T09:36:07.141809+00:00",
+        "updated_at": "2026-05-21T09:36:09.284941+00:00"
+      },
+      {
+        "id": "fd8da148-31d6-49cd-808f-60a8cf439b0e",
+        "tenant_id": "test-onboard-1779356078120-0e96177d",
+        "tenant_uuid": "9265e28e-c534-4a2e-adb4-c852edae02b7",
+        "module_name": "agents",
+        "status": "running",
+        "attempt_count": 1,
+        "max_attempts": 3,
+        "last_attempt_at": "2026-05-21T09:36:07.370921+00:00",
+        "next_retry_at": null,
+        "error_message": null,
+        "error_details": null,
+        "items_created": {},
+        "duration_ms": null,
+        "created_at": "2026-05-21T09:36:07.370921+00:00",
+        "updated_at": "2026-05-21T09:36:07.370921+00:00"
+      },
+      {
+        "id": "e9fd3470-3483-4176-9d84-c368f0517759",
+        "tenant_id": "test-onboard-1779356078120-0e96177d",
+        "tenant_uuid": "9265e28e-c534-4a2e-adb4-c852edae02b7",
+        "module_name": "hr",
+        "status": "success",
+        "attempt_count": 2,
+        "max_attempts": 3,
+        "last_attempt_at": "2026-05-21T09:36:07.887569+00:00",
+        "next_retry_at": null,
+        "error_message": null,
+        "error_details": null,
+        "items_created": {
+          "hr_setup": "placeholder_ready"
+        },
+        "duration_ms": 331,
+        "created_at": "2026-05-21T09:36:07.579658+00:00",
+        "updated_at": "2026-05-21T09:36:07.887569+00:00"
+      },
+      {
+        "id": "4642dc0c-7c89-485d-aa8a-7ef237607426",
+        "tenant_id": "test-onboard-1779356078120-0e96177d",
+        "tenant_uuid": "9265e28e-c534-4a2e-adb4-c852edae02b7",
+        "module_name": "ops",
+        "status": "success",
+        "attempt_count": 2,
+        "max_attempts": 3,
+        "last_attempt_at": "2026-05-21T09:36:08.095023+00:00",
+        "next_retry_at": null,
+        "error_message": null,
+        "error_details": null,
+        "items_created": {
+          "ops_setup": "placeholder_ready"
+        },
+        "duration_ms": 284,
+        "created_at": "2026-05-21T09:36:07.795025+00:00",
+        "updated_at": "2026-05-21T09:36:08.095023+00:00"
+      },
+      {
+        "id": "d11d80fc-60a0-4527-ab68-72bbd250b820",
+        "tenant_id": "test-onboard-1779356078120-0e96177d",
+        "tenant_uuid": "9265e28e-c534-4a2e-adb4-c852edae02b7",
+        "module_name": "marketing",
+        "status": "success",
+        "attempt_count": 2,
+        "max_attempts": 3,
+        "last_attempt_at": "2026-05-21T09:36:08.583217+00:00",
+        "next_retry_at": null,
+        "error_message": null,
+        "error_details": null,
+        "items_created": {
+          "brand_voice": 1,
+          "marketing_campaigns": 4,
+          "competitor_intelligence": 0
+        },
+        "duration_ms": 1899,
+        "created_at": "2026-05-21T09:36:06.985373+00:00",
+        "updated_at": "2026-05-21T09:36:08.583217+00:00"
+      },
+      {
+        "id": "6ed2a733-330f-4a03-b5df-fc986e4dca6b",
+        "tenant_id": "test-onboard-1779356078120-0e96177d",
+        "tenant_uuid": "9265e28e-c534-4a2e-adb4-c852edae02b7",
+        "module_name": "voice",
+        "status": "success",
+        "attempt_count": 2,
+        "max_attempts": 3,
+        "last_attempt_at": "2026-05-21T09:36:07.596467+00:00",
+        "next_retry_at": null,
+        "error_message": null,
+        "error_details": null,
+        "items_created": {
+          "voice_setup": "placeholder_ready"
+        },
+        "duration_ms": 296,
+        "created_at": "2026-05-21T09:36:07.300536+00:00",
+        "updated_at": "2026-05-21T09:36:07.596467+00:00"
+      }
+    ],
+    "agent_contexts": [
+      {
+        "agent_name": "OMEGA",
+        "is_active": true,
+        "confidence_score": 0.8
+      },
+      {
+        "agent_name": "NOVA",
+        "is_active": true,
+        "confidence_score": 0.8
+      },
+      {
+        "agent_name": "BEACON",
+        "is_active": true,
+        "confidence_score": 0.8
+      },
+      {
+        "agent_name": "PRISM",
+        "is_active": true,
+        "confidence_score": 0.8
+      },
+      {
+        "agent_name": "ARIA",
+        "is_active": true,
+        "confidence_score": 0.8
+      }
+    ],
+    "reply_routing_rules": {
+      "code": "42703",
+      "details": null,
+      "hint": null,
+      "message": "column reply_routing_rules.channel does not exist"
+    },
+    "brand_voice_profiles": {
+      "code": "22P02",
+      "details": null,
+      "hint": null,
+      "message": "invalid input syntax for type uuid: \"test-onboard-1779356078120-0e96177d\""
+    },
+    "sequence_templates": [
+      {
+        "id": "41c7632f-5e8e-446a-847c-132e8cf61d36",
+        "name": "Meeting Booked"
+      },
+      {
+        "id": "4b9bfb6a-3544-4827-9576-cf6a715deec7",
+        "name": "Warm Follow-Up"
+      },
+      {
+        "id": "d00e8bae-138c-45f8-8d77-9a06c9a20bbd",
+        "name": "Info Pack"
+      }
+    ],
+    "sequences": {
+      "code": "42703",
+      "details": null,
+      "hint": null,
+      "message": "column sequences.is_active does not exist"
+    },
+    "sales_leads_count": [
+      {
+        "count": 0
+      }
+    ]
+  },
+  "tenantSlugCreated": "test-onboard-1779356078120-0e96177d"
+}

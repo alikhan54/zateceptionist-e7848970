@@ -1,0 +1,18 @@
+[
+  {
+    "route": "/clinic/patients",
+    "url_after": "https://ai.zatesystems.com/clinic/patients",
+    "rendered": 0,
+    "expected": 3,
+    "verdict": "BUG",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase1-clinic-patients.png",
+    "notes": "landed on https://ai.zatesystems.com/clinic/patients",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 406 ()",
+      "Failed to load resource: the server responded with a status of 406 ()",
+      "Failed to load resource: the server responded with a status of 400 ()",
+      "Failed to load resource: the server responded with a status of 400 ()"
+    ],
+    "bodyExcerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nMARKETING AI\nHR AI\nCLINIC\nClinic Dashboard\nPatients\nTreatments\nProducts\nConsultation Notes\nHealth Reports\nDoctor Reviews\nOPERATIONS\nCOMMUNICATIONS\nAI COMMAND\nOMEGA\nANALYTICS & AI\nSETTINGS\n\nPress g + key for shortcuts\n\nLogout\nToggle Sidebar\nSearch...\n⌘\nK\nAI: Assisted\n5\nAD\nPatients\n\nManage patient profiles and history\n\nAdd Patient\n0\n\nTotal Patients\n\n0\n\nVIP Patients\n\n0\n\nNew This Month\n\nAED 0\n\nTotal Revenue\n\nNo patients found. Add your first patient to get started."
+  }
+]

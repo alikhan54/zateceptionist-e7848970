@@ -1,0 +1,107 @@
+{
+  "timestamp": "2026-05-25T15:40:02.911Z",
+  "total": 3,
+  "pass": 2,
+  "fail": 1,
+  "results": [
+    {
+      "id": "D1",
+      "name": "Employee data integrity",
+      "verdict": "PASS",
+      "diffs": [
+        {
+          "field": "first_name",
+          "input": "PWVERIFY",
+          "db": "PWVERIFY",
+          "match": true
+        },
+        {
+          "field": "last_name",
+          "input": "Integrity1779723500664",
+          "db": "Integrity1779723500664",
+          "match": true
+        },
+        {
+          "field": "company_email",
+          "input": "pwverify-1779723500664@datatest.example",
+          "db": "pwverify-1779723500664@datatest.example",
+          "match": true
+        },
+        {
+          "field": "phone",
+          "input": "+971507777777",
+          "db": "+971507777777",
+          "match": true
+        },
+        {
+          "field": "position",
+          "input": "Senior Test Engineer",
+          "db": "Senior Test Engineer",
+          "match": true
+        },
+        {
+          "field": "department_name",
+          "input": "Technology",
+          "db": "Technology",
+          "match": true
+        },
+        {
+          "field": "employment_type",
+          "input": "Full-time",
+          "db": "Full-time",
+          "match": true
+        },
+        {
+          "field": "date_of_joining",
+          "input": "2026-09-01",
+          "db": "2026-09-01",
+          "match": true
+        },
+        {
+          "field": "salary",
+          "input": 27500,
+          "db": 27500,
+          "match": true
+        }
+      ],
+      "notes": [
+        "direct webhook: {\"success\":true,\"employee\":{\"id\":\"688985c3-9251-415b-b5fe-4d312761f4cf\",\"employee_id\":\"EMP-2026-F94PIZ\",\"first_name\":\"PWVERIFY\",\"last_name\":\"Integrity1779723500664\",\"email\":\"pwverify-1779723500664@dat"
+      ],
+      "screenshot": "screenshots\\data-integrity\\d1_employee.png"
+    },
+    {
+      "id": "D2",
+      "name": "Job posting persistence",
+      "verdict": "PASS",
+      "diffs": [
+        {
+          "field": "persisted_in_db",
+          "input": true,
+          "db": true,
+          "match": true
+        },
+        {
+          "field": "visible_in_ui",
+          "input": true,
+          "db": true,
+          "match": true
+        }
+      ],
+      "notes": [
+        "webhook_status=200",
+        "webhook_body={\"success\":true,\"data\":{\"id\":\"f954b86e-64d3-48c5-af79-f912cf545d72\",\"requisition_number\":\"REQ-MPLDGBTR\",\"job_title\":\"PWVERIFY Job 1779723500664\",\"status\":\"open\",\"ai_enriched\":false}}",
+        "DB rows for title: 1"
+      ],
+      "screenshot": "screenshots\\data-integrity\\d2_job.png"
+    },
+    {
+      "id": "D5",
+      "name": "Real file upload (PWTEST)",
+      "verdict": "FAIL",
+      "diffs": [],
+      "notes": [],
+      "screenshot": "screenshots\\data-integrity\\d5_error.png",
+      "error": "locator.fill: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[role=\"dialog\"]').first().getByPlaceholder(/Handbook 2026/i).first()\u001b[22m\n"
+    }
+  ]
+}

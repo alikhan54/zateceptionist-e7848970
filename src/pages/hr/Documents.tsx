@@ -14,8 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { 
-  FileText, 
+import {
+  FileText,
   Upload,
   Download,
   Search,
@@ -27,7 +27,8 @@ import {
   Clock,
   MoreHorizontal,
   Plus,
-  CheckCircle2
+  CheckCircle2,
+  Pencil
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -99,6 +100,15 @@ export default function DocumentsPage() {
   const [newDoc, setNewDoc] = useState({ name: '', category: '', content: '' });
   const [reviewDoc, setReviewDoc] = useState<any | null>(null);
   const [ackingId, setAckingId] = useState<string | null>(null);
+  // Issue 2: edit existing policy documents
+  const [editingDoc, setEditingDoc] = useState<any | null>(null);
+  const [editForm, setEditForm] = useState({
+    document_name: '',
+    document_content: '',
+    effective_date: '',
+    trigger_resync: true,
+  });
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
   const { data: documents, isLoading, uploadDocument } = useHRDocuments(selectedCategory !== 'all' ? selectedCategory : undefined);
 
   // Load this user's acknowledgments for the current tenant so we can mark docs as ack'd.
@@ -237,6 +247,86 @@ export default function DocumentsPage() {
       }
     } catch (e: any) {
       toast.error(`Share error: ${e?.message || 'unknown'}`);
+    }
+  };
+
+  const openEditDialog = (doc: any) => {
+    setEditingDoc(doc);
+    setEditForm({
+      document_name: doc.document_name || doc.name || '',
+      document_content: doc.document_content || '',
+      effective_date: doc.effective_date || '',
+      trigger_resync: SYNCABLE_TYPES.includes(doc.document_type || doc.category || ''),
+    });
+  };
+
+  // Save edit creates a new version of the document and (optionally) re-syncs
+  // it to AI agents. We mark the previous row as is_current_version=false and
+  // insert a new row pointing back via parent_document_id.
+  const savePolicyEdit = async () => {
+    if (!editingDoc || !tenantConfig?.id) return;
+    if (editForm.document_content.length < 20) {
+      toast.error('Document content too short (≥ 20 chars)');
+      return;
+    }
+    setIsSavingEdit(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const prevVersion = editingDoc.version_number || 1;
+      const parentId = editingDoc.parent_document_id || editingDoc.id;
+
+      // Mark current version as not current
+      await (supabase as any)
+        .from('hr_documents')
+        .update({ is_current_version: false })
+        .eq('id', editingDoc.id);
+
+      // Insert new version row
+      const { data: newDoc, error } = await (supabase as any)
+        .from('hr_documents')
+        .insert({
+          tenant_id: tenantConfig.id,
+          document_name: editForm.document_name,
+          title: editForm.document_name,
+          document_type: editingDoc.document_type,
+          category: editingDoc.category,
+          document_content: editForm.document_content,
+          version_number: prevVersion + 1,
+          parent_document_id: parentId,
+          is_current_version: true,
+          effective_date: editForm.effective_date || null,
+          edited_via: 'inline_edit',
+          uploaded_by: user?.id || null,
+          status: 'active',
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Optionally re-sync to AI agents
+      if (editForm.trigger_resync && newDoc?.id) {
+        try {
+          await callWebhookOrThrow(
+            WEBHOOKS.HR_DOCUMENT_SYNC,
+            { document_id: newDoc.id, tenant_id: tenantConfig.id },
+            tenantConfig.id
+          );
+          toast.success(`Saved v${prevVersion + 1} and re-synced to AI agents`);
+        } catch (e: any) {
+          toast.warning(`Saved v${prevVersion + 1}, but sync failed: ${e?.message || 'unknown'}`);
+        }
+      } else {
+        toast.success(`Saved as v${prevVersion + 1}`);
+      }
+
+      setEditingDoc(null);
+      queryClient.invalidateQueries({ queryKey: ['hr-documents'] });
+      queryClient.invalidateQueries({ queryKey: ['hr-documents', selectedCategory !== 'all' ? selectedCategory : undefined] });
+    } catch (e: any) {
+      toast.error(`Save failed: ${e?.message || 'unknown'}`);
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
@@ -656,6 +746,12 @@ export default function DocumentsPage() {
                             <Eye className="h-4 w-4 mr-2" />
                             View
                           </DropdownMenuItem>
+                          {SYNCABLE_TYPES.includes(doc.document_type || doc.category || '') && (
+                            <DropdownMenuItem onClick={() => openEditDialog(doc)} data-testid={`doc-edit-${doc.id}`}>
+                              <Pencil className="h-4 w-4 mr-2" />
+                              Edit Content
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem onClick={() => handleDownload(doc)} data-testid={`doc-download-${doc.id}`}>
                             <Download className="h-4 w-4 mr-2" />
                             Download
@@ -733,6 +829,69 @@ export default function DocumentsPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Edit Policy modal (Issue 2) */}
+      <Dialog open={!!editingDoc} onOpenChange={(open) => { if (!open) setEditingDoc(null); }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Edit: {editingDoc?.document_name || editingDoc?.name}</DialogTitle>
+            <DialogDescription>
+              Saving creates version <span className="font-mono">v{(editingDoc?.version_number || 1) + 1}</span>.
+              Previous versions are retained.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 overflow-y-auto flex-1 pr-1">
+            <div className="space-y-2">
+              <Label>Document Name</Label>
+              <Input
+                value={editForm.document_name}
+                onChange={(e) => setEditForm({ ...editForm, document_name: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Effective Date (optional)</Label>
+              <Input
+                type="date"
+                value={editForm.effective_date}
+                onChange={(e) => setEditForm({ ...editForm, effective_date: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Content</Label>
+              <Textarea
+                value={editForm.document_content}
+                onChange={(e) => setEditForm({ ...editForm, document_content: e.target.value })}
+                rows={18}
+                className="font-mono text-sm"
+                placeholder="Paste or type the full policy / handbook text…"
+              />
+              <p className="text-xs text-muted-foreground">
+                ≥ 20 characters required. {editForm.document_content.length} chars.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 p-3 bg-primary/5 rounded-lg border border-primary/20">
+              <input
+                id="trigger-resync"
+                type="checkbox"
+                checked={editForm.trigger_resync}
+                onChange={(e) => setEditForm({ ...editForm, trigger_resync: e.target.checked })}
+                className="h-4 w-4"
+              />
+              <Label htmlFor="trigger-resync" className="cursor-pointer text-sm">
+                Re-sync to AI agents after save (recommended)
+              </Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingDoc(null)} disabled={isSavingEdit}>
+              Cancel
+            </Button>
+            <Button onClick={savePolicyEdit} disabled={isSavingEdit || editForm.document_content.length < 20}>
+              {isSavingEdit ? 'Saving…' : `Save v${(editingDoc?.version_number || 1) + 1}`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Review modal */}
       <Dialog open={!!reviewDoc} onOpenChange={(open) => { if (!open) setReviewDoc(null); }}>

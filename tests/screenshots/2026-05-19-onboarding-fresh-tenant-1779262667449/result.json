@@ -1,0 +1,21 @@
+{
+  "testEmail": "test-onboard-1779262667449@420-test.local",
+  "testStartedAt": "2026-05-20T07:37:47.450Z",
+  "authUserId": "81c7b5bb-5825-4fa5-8868-10738d12c210",
+  "steps": [
+    {
+      "index": 0,
+      "label": "Discovery",
+      "urlBefore": "https://ai.zatesystems.com/onboarding",
+      "urlAfter": "https://ai.zatesystems.com/onboarding",
+      "inputs": [],
+      "buttons": [],
+      "visibleTextSample": "Welcome back!\n\nLoading...",
+      "screenshotBefore": "step-0-Discovery-before.png",
+      "screenshotAfter": "step-0-Discovery-after.png",
+      "advanced": false
+    }
+  ],
+  "consoleErrors": [],
+  "networkFailures": []
+}

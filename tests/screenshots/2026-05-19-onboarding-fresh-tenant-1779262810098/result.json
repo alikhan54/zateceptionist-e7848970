@@ -1,0 +1,102 @@
+{
+  "testEmail": "test-onboard-1779262810098@420-test.local",
+  "testStartedAt": "2026-05-20T07:40:10.099Z",
+  "authUserId": "cde90c6a-372d-43f8-8b09-dea64ee7db77",
+  "steps": [
+    {
+      "index": 0,
+      "label": "Discovery",
+      "urlBefore": "https://ai.zatesystems.com/onboarding",
+      "urlAfter": "https://ai.zatesystems.com/onboarding",
+      "inputs": [
+        {
+          "name": "",
+          "placeholder": "https://yourcompany.com",
+          "type": "input"
+        },
+        {
+          "name": "",
+          "placeholder": "Your Company Name",
+          "type": "input"
+        },
+        {
+          "name": "",
+          "placeholder": "What does your business do?",
+          "type": "textarea"
+        },
+        {
+          "name": "",
+          "placeholder": "Add a service or product",
+          "type": "input"
+        },
+        {
+          "name": "",
+          "placeholder": "+1 (555) 000-0000",
+          "type": "input"
+        },
+        {
+          "name": "",
+          "placeholder": "contact@company.com",
+          "type": "input"
+        }
+      ],
+      "buttons": [
+        "Website",
+        "Social",
+        "Documents",
+        "🏢 Other",
+        "Back",
+        "Skip",
+        "Continue"
+      ],
+      "visibleTextSample": "Setup Your Business\n\nTell us about your business\n\nStep 1 of 5\n1\nBusiness Discovery\n2\nAI & Channels\n3\nKnowledge Base\n4\nChoose Plan\n5\nYou're Ready!\nTell us about your business\n\nWe'll use this to train your AI assistant across all departments\n\nWebsite\nSocial\nDocuments\nYour Website URL\n\nOur AI will deep-crawl your site: homepage, about, services, pricing, team, and more\n\nBusiness Details\n\nEnter your business information\n\nCompany Name *\nIndustry\n🏢 Other\nDescription\nServices / Products\nPhone\nEmail\nBack\nSkip\nContinue",
+      "screenshotBefore": "step-0-Discovery-before.png",
+      "screenshotAfter": "step-0-Discovery-after.png",
+      "advanced": true
+    },
+    {
+      "index": 1,
+      "label": "Channels",
+      "urlBefore": "https://ai.zatesystems.com/onboarding",
+      "urlAfter": "https://ai.zatesystems.com/onboarding",
+      "inputs": [
+        {
+          "name": "",
+          "placeholder": "e.g., Luna, Max, Zate",
+          "type": "input"
+        },
+        {
+          "name": "",
+          "placeholder": "Hello! I'm your AI assistant...",
+          "type": "textarea"
+        },
+        {
+          "name": "",
+          "placeholder": "",
+          "type": "time"
+        },
+        {
+          "name": "",
+          "placeholder": "",
+          "type": "time"
+        }
+      ],
+      "buttons": [
+        "AI Receptionist",
+        "👔ProfessionalFormal and business-like",
+        "😊FriendlyWarm and approachable",
+        "🤙CasualRelaxed and conversational",
+        "🎩FormalPolished and authoritative",
+        "Eastern Time (ET)",
+        "Back",
+        "Next: Connect Channels"
+      ],
+      "visibleTextSample": "Setup Your Business\n\nConfigure AI and connect platforms\n\nStep 2 of 5\nBusiness Discovery\n2\nAI & Channels\n3\nKnowledge Base\n4\nChoose Plan\n5\nYou're Ready!\nConfigure Your AI Assistant\n\nPersonalize how your AI interacts with customers\n\nAI Assistant Name\nSuggestions:\nZate\nLuna\nMax\nAI Role\nAI Receptionist\nPersonality\n👔\n\nProfessional\n\nFormal and business-like\n\n😊\n\nFriendly\n\nWarm and approachable\n\n🤙\n\nCasual\n\nRelaxed and conversational\n\n🎩\n\nFormal\n\nPolished and authoritative\n\nFirst Message / Greeting\nWorking Hours Start\nWorking Hours End\nTimezone\nEastern Time (ET)\n\nZate (AI Receptionist)\n\n\"Hello! I'm y",
+      "screenshotBefore": "step-1-Channels-before.png",
+      "screenshotAfter": "step-1-Channels-after.png",
+      "advanced": false
+    }
+  ],
+  "consoleErrors": [],
+  "networkFailures": []
+}

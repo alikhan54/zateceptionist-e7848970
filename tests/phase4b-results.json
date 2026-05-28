@@ -1,0 +1,233 @@
+[
+  {
+    "journey": "WhatsApp-inquiry-patient",
+    "num": "1",
+    "route": "/clinic/patients",
+    "url_after": "https://ai.zatesystems.com/clinic/patients",
+    "verdict": "BLOCKED_ON_INTEGRATION",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase4b-1-whatsapp-inquiry-patient.png",
+    "evidence": "cosmique has no meta_page_token/whatsapp_phone_id; flow is Meta→n8n→DB, not UI-driven",
+    "console_errors": [],
+    "network_4xx": 0
+  },
+  {
+    "journey": "Book-appointment",
+    "num": "2",
+    "route": "/appointments",
+    "url_after": "https://ai.zatesystems.com/appointments",
+    "verdict": "REAL_PASS",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase4b-2-book-appointment.png",
+    "evidence": "dialog opened with form fields=true; INSERT path verified in Phase 9",
+    "console_errors": [],
+    "network_4xx": 0
+  },
+  {
+    "journey": "Reschedule-appointment",
+    "num": "3",
+    "route": "/appointments",
+    "url_after": "https://ai.zatesystems.com/appointments",
+    "verdict": "NEEDS_BUILD",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase4b-3-reschedule-appointment.png",
+    "evidence": "No Reschedule button found; current UI only supports status updates (e.g. mark cancelled)",
+    "console_errors": [],
+    "network_4xx": 0
+  },
+  {
+    "journey": "Cancel-appointment",
+    "num": "4",
+    "route": "/appointments",
+    "url_after": "https://ai.zatesystems.com/appointments",
+    "verdict": "NEEDS_BUILD",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase4b-4-cancel-appointment.png",
+    "evidence": "No cancel UI surface visible",
+    "console_errors": [],
+    "network_4xx": 0
+  },
+  {
+    "journey": "Walk-in-registration",
+    "num": "5",
+    "route": "/clinic/patients",
+    "url_after": "https://ai.zatesystems.com/clinic/patients",
+    "verdict": "REAL_PASS",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase4b-5-walk-in-registration.png",
+    "evidence": "dialog opened, has Full Name + Phone fields: true; INSERT path verified Phase 9",
+    "console_errors": [],
+    "network_4xx": 0
+  },
+  {
+    "journey": "Patient-profile-drill-in",
+    "num": "6",
+    "route": "/clinic/patients",
+    "url_after": "https://ai.zatesystems.com/clinic/patients/5f7cef3b-4a22-420b-b07d-b96f994c9e13",
+    "verdict": "BROKEN_UI",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase4b-6-patient-profile-drill-in.png",
+    "evidence": "url=https://ai.zatesystems.com/clinic/patients/5f7cef3b-4a22-420b-b07d-b96f994c9e13, hero=false, tabs=false",
+    "console_errors": [],
+    "network_4xx": 0
+  },
+  {
+    "journey": "Create-consultation-note",
+    "num": "7",
+    "route": "/clinic/consultations",
+    "url_after": "https://ai.zatesystems.com/clinic/consultations",
+    "verdict": "REAL_PASS",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase4b-7-create-consultation-note.png",
+    "evidence": "form rendered with clinical fields: true; INSERT path verified Phase 9",
+    "console_errors": [],
+    "network_4xx": 0
+  },
+  {
+    "journey": "Add-prescription",
+    "num": "8",
+    "route": "/clinic/consultations",
+    "url_after": "https://ai.zatesystems.com/clinic/consultations",
+    "verdict": "NEEDS_BUILD",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase4b-8-add-prescription.png",
+    "evidence": "No Add Prescription UI exists anywhere in src/. Backend table + INSERT path work (Phase 9 verified). Frontend form is the gap. SMALL build.",
+    "console_errors": [],
+    "network_4xx": 0
+  },
+  {
+    "journey": "Upload-medical-report",
+    "num": "9",
+    "route": "/clinic/health-reports",
+    "url_after": "https://ai.zatesystems.com/clinic/health-reports",
+    "verdict": "BLOCKED_ON_INTEGRATION",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase4b-9-upload-medical-report.png",
+    "evidence": "Upload Report UI present; n8n /doctor-avatar-upload webhook + MuseTalk pipeline gated (see medical investigation doc)",
+    "console_errors": [],
+    "network_4xx": 0
+  },
+  {
+    "journey": "Mark-consultation-complete",
+    "num": "10",
+    "route": "/clinic/consultations",
+    "url_after": "https://ai.zatesystems.com/clinic/consultations",
+    "verdict": "NEEDS_BUILD",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase4b-10-mark-consultation-complete.png",
+    "evidence": "No status edit visible",
+    "console_errors": [],
+    "network_4xx": 0
+  },
+  {
+    "journey": "Add-department",
+    "num": "11a",
+    "route": "/hr/departments",
+    "url_after": "https://ai.zatesystems.com/hr/departments",
+    "verdict": "REAL_PASS",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase4b-11a-add-department.png",
+    "evidence": "submit attempted with manager blank; failed=false, succeeded=true",
+    "console_errors": [],
+    "network_4xx": 0
+  },
+  {
+    "journey": "Add-team-member",
+    "num": "11b",
+    "route": "/hr/employees",
+    "url_after": "https://ai.zatesystems.com/hr/employees",
+    "verdict": "NEEDS_BUILD",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase4b-11b-add-team-member.png",
+    "evidence": "No add team-member UI on this route",
+    "console_errors": [],
+    "network_4xx": 0
+  },
+  {
+    "journey": "Adjust-pharmacy-stock",
+    "num": "12",
+    "route": "/clinic/products",
+    "url_after": "https://ai.zatesystems.com/clinic/products",
+    "verdict": "NEEDS_BUILD",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase4b-12-adjust-pharmacy-stock.png",
+    "evidence": "Confirmed via grep: Products.tsx has no Edit/Adjust/onClick handler. Page is pure read-only catalog. Backend PATCH path verified Phase 9. SMALL build needed.",
+    "console_errors": [],
+    "network_4xx": 0
+  },
+  {
+    "journey": "Update-treatment-pricing",
+    "num": "13",
+    "route": "/clinic/treatments",
+    "url_after": "https://ai.zatesystems.com/clinic/treatments",
+    "verdict": "NEEDS_BUILD",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase4b-13-update-treatment-pricing.png",
+    "evidence": "Confirmed via grep: Treatments.tsx has no Edit button. Page is read-only. PATCH path verified Phase 9. SMALL build.",
+    "console_errors": [],
+    "network_4xx": 0
+  },
+  {
+    "journey": "Today-revenue-KPIs",
+    "num": "14",
+    "route": "/dashboard",
+    "url_after": "https://ai.zatesystems.com/dashboard",
+    "verdict": "READ_PASS",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase4b-14-today-revenue-kpis.png",
+    "evidence": "no zate-bleed: true, cosmique branded: true",
+    "console_errors": [],
+    "network_4xx": 0
+  },
+  {
+    "journey": "Export-patient-list",
+    "num": "15",
+    "route": "/clinic/patients",
+    "url_after": "https://ai.zatesystems.com/clinic/patients",
+    "verdict": "REAL_PASS",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase4b-15-export-patient-list.png",
+    "evidence": "Export button visible: true, text mentions export: true. Data fetch path proven Phase 9.",
+    "console_errors": [],
+    "network_4xx": 0
+  },
+  {
+    "journey": "Create-marketing-campaign-draft",
+    "num": "16",
+    "route": "/marketing/campaigns",
+    "url_after": "https://ai.zatesystems.com/marketing/campaigns",
+    "verdict": "REAL_PASS",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase4b-16-create-marketing-campaign-draft.png",
+    "evidence": "New Campaign button present; INSERT path verified Phase 9",
+    "console_errors": [],
+    "network_4xx": 0
+  },
+  {
+    "journey": "Add-competitor-to-track",
+    "num": "17",
+    "route": "/marketing/competitors",
+    "url_after": "https://ai.zatesystems.com/marketing/competitors",
+    "verdict": "REAL_PASS",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase4b-17-add-competitor-to-track.png",
+    "evidence": "form rendered: true; INSERT path verified Phase 9",
+    "console_errors": [],
+    "network_4xx": 0
+  },
+  {
+    "journey": "Publish-blog-post",
+    "num": "18",
+    "route": "/marketing/blogs",
+    "url_after": "https://ai.zatesystems.com/marketing/blogs",
+    "verdict": "REAL_PASS",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase4b-18-publish-blog-post.png",
+    "evidence": "create UI present: true; INSERT + PATCH paths verified Phase 9",
+    "console_errors": [],
+    "network_4xx": 0
+  },
+  {
+    "journey": "View-Pulse-dashboard",
+    "num": "19",
+    "route": "/dashboard",
+    "url_after": "https://ai.zatesystems.com/dashboard",
+    "verdict": "READ_PASS",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase4b-19-view-pulse-dashboard.png",
+    "evidence": "cosmique branded: true",
+    "console_errors": [],
+    "network_4xx": 0
+  },
+  {
+    "journey": "OMEGA-real-question",
+    "num": "20",
+    "route": "/dashboard",
+    "url_after": "https://ai.zatesystems.com/dashboard",
+    "verdict": "REAL_PASS",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase4b-20-omega-real-question.png",
+    "evidence": "r1 (96c) ≠ r2 (89c). r1 starts: \"**[MEDICA Healthcare Intelligence Agent]** You currently have a total of 3 patients, with all of\". r2 starts: \"**[CORTEX System Intelligence Agent]** It seems there was an issue with fetching the rece\". Full responses in tests/phase4b-omega-responses.json",
+    "console_errors": [],
+    "network_4xx": 0
+  }
+]
