@@ -379,6 +379,15 @@ export default defineConfig({
       },
     },
     {
+      name: 'hr-f4f5-smoke',
+      testMatch: /hr-f4f5-smoke\.spec\.ts/,
+      dependencies: ['zate-setup'],
+      use: {
+        browserName: 'chromium',
+        storageState: path.join(__dirname, 'tests', '.auth-state-zate.json'),
+      },
+    },
+    {
       name: 'settings-acsfx-setup',
       testMatch: /settings-acsfx-auth\.setup\.ts/,
       use: { browserName: 'chromium' },
