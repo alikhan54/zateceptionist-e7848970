@@ -388,6 +388,15 @@ export default defineConfig({
       },
     },
     {
+      name: 'hr-rls-live-verify',
+      testMatch: /hr-rls-live-verify\.spec\.ts/,
+      dependencies: ['zate-setup'],
+      use: {
+        browserName: 'chromium',
+        storageState: path.join(__dirname, 'tests', '.auth-state-zate.json'),
+      },
+    },
+    {
       name: 'settings-acsfx-setup',
       testMatch: /settings-acsfx-auth\.setup\.ts/,
       use: { browserName: 'chromium' },
