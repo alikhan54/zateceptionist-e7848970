@@ -759,8 +759,8 @@ export function NavigationSidebar() {
     ? ({ "--sidebar-accent": tenantConfig.primary_color } as React.CSSProperties)
     : {};
 
-  // Smart Ledger minimal-sidebar gate (Phase J fix, 2026-05-19).
-  // Accounting-tenant users (non-master-admin) see only MAIN + Accounting section.
+  // Smart Ledger minimal-sidebar gate (Phase J fix 2026-05-19; MAIN hidden 2026-05-30).
+  // Accounting-tenant users (non-master-admin) see ONLY the Accounting section (generic MAIN hidden).
   // Master admins (Zate Systems internal) bypass — see full sidebar for debugging.
   // All 35 non-accounting tenants: gate evaluates false → existing render path unchanged.
   const renderAccountingMinimal =
@@ -968,15 +968,14 @@ export function NavigationSidebar() {
       )}
 
       <SidebarContent className="px-2 py-2 space-y-1">
-        {/* Smart Ledger minimal sidebar (Phase J fix, 2026-05-19; mobile re-order 2026-05-19).
-            Accounting-tenant non-master-admin users see only Accounting + Main + Logout.
-            Accounting section is rendered FIRST so its items stay above-the-fold on mobile
-            (iPhone 12 height = 844px; bottom-nav strip eats the lowest 64px).
-            Master admins + all other 35 tenants fall through to the existing render below. */}
+        {/* Smart Ledger minimal sidebar (Phase J fix 2026-05-19; MAIN hidden 2026-05-30).
+            Accounting-tenant non-master-admin users see ONLY the Accounting section + Logout.
+            The generic MAIN section (Inbox/Appointments/Customers/Tasks + a duplicate Dashboard)
+            is intentionally hidden for them — irrelevant to a UK accounting practice (Adeel, 2026-05-30).
+            Master admins + all other 35 tenants fall through to the existing render below (MAIN intact). */}
         {renderAccountingMinimal && (
           <>
             <CollapsibleSection section={accountingSection} sectionKey="accounting" />
-            <CollapsibleSection section={mainSection} sectionKey="main" />
           </>
         )}
 
