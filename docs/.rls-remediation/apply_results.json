@@ -1,0 +1,1296 @@
+{
+  "ok": [
+    {
+      "table": "api_key_pool",
+      "bucket": "BUCKET7_secrets_lock",
+      "verdict": "COMMITTED",
+      "created_fix": false,
+      "iso_used": null,
+      "dropped": [
+        "akp_all"
+      ],
+      "msg": "api_key_pool [COMMITTED] (secret-lock)"
+    },
+    {
+      "table": "tenant_oauth_grants",
+      "bucket": "BUCKET7_secrets_lock",
+      "verdict": "COMMITTED",
+      "created_fix": false,
+      "iso_used": null,
+      "dropped": [
+        "rls_service_all"
+      ],
+      "msg": "tenant_oauth_grants [COMMITTED] (secret-lock)"
+    },
+    {
+      "table": "accounting_clients",
+      "bucket": "BUCKET1_drop_leak_only",
+      "verdict": "COMMITTED",
+      "created_fix": false,
+      "iso_used": null,
+      "dropped": [
+        "rls_service_all"
+      ],
+      "msg": "accounting_clients [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "accounting_invoices",
+      "bucket": "BUCKET1_drop_leak_only",
+      "verdict": "COMMITTED",
+      "created_fix": false,
+      "iso_used": null,
+      "dropped": [
+        "rls_service_all"
+      ],
+      "msg": "accounting_invoices [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "accounting_jobs",
+      "bucket": "BUCKET1_drop_leak_only",
+      "verdict": "COMMITTED",
+      "created_fix": false,
+      "iso_used": null,
+      "dropped": [
+        "rls_service_all"
+      ],
+      "msg": "accounting_jobs [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "accounting_payments",
+      "bucket": "BUCKET1_drop_leak_only",
+      "verdict": "COMMITTED",
+      "created_fix": false,
+      "iso_used": null,
+      "dropped": [
+        "rls_service_all"
+      ],
+      "msg": "accounting_payments [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "accounting_reminders",
+      "bucket": "BUCKET1_drop_leak_only",
+      "verdict": "COMMITTED",
+      "created_fix": false,
+      "iso_used": null,
+      "dropped": [
+        "rls_service_all"
+      ],
+      "msg": "accounting_reminders [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "accounting_transactions",
+      "bucket": "BUCKET1_drop_leak_only",
+      "verdict": "COMMITTED",
+      "created_fix": false,
+      "iso_used": null,
+      "dropped": [
+        "rls_service_all"
+      ],
+      "msg": "accounting_transactions [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "accounting_truelayer_connections",
+      "bucket": "BUCKET1_drop_leak_only",
+      "verdict": "COMMITTED",
+      "created_fix": false,
+      "iso_used": null,
+      "dropped": [
+        "rls_service_all"
+      ],
+      "msg": "accounting_truelayer_connections [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "activities",
+      "bucket": "BUCKET1_drop_leak_only",
+      "verdict": "COMMITTED",
+      "created_fix": false,
+      "iso_used": null,
+      "dropped": [
+        "activities_allow_all"
+      ],
+      "msg": "activities [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "ad_accounts",
+      "bucket": "BUCKET1_drop_leak_only",
+      "verdict": "COMMITTED",
+      "created_fix": false,
+      "iso_used": null,
+      "dropped": [
+        "Authenticated access"
+      ],
+      "msg": "ad_accounts [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "ad_campaigns",
+      "bucket": "BUCKET1_drop_leak_only",
+      "verdict": "COMMITTED",
+      "created_fix": false,
+      "iso_used": null,
+      "dropped": [
+        "Authenticated access"
+      ],
+      "msg": "ad_campaigns [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "ad_creatives",
+      "bucket": "BUCKET1_drop_leak_only",
+      "verdict": "COMMITTED",
+      "created_fix": false,
+      "iso_used": null,
+      "dropped": [
+        "Authenticated access"
+      ],
+      "msg": "ad_creatives [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "ad_performance_log",
+      "bucket": "BUCKET1_drop_leak_only",
+      "verdict": "COMMITTED",
+      "created_fix": false,
+      "iso_used": null,
+      "dropped": [
+        "Authenticated access"
+      ],
+      "msg": "ad_performance_log [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "audit_logs",
+      "bucket": "BUCKET1_drop_leak_only",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "Anyone can insert audit logs"
+      ],
+      "msg": "audit_logs [COMMITTED] (zateceptionist:own=2,sees=2; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "conversations",
+      "bucket": "BUCKET1_drop_leak_only",
+      "verdict": "COMMITTED",
+      "created_fix": false,
+      "iso_used": null,
+      "dropped": [
+        "allow_all_conversations_insert",
+        "allow_all_conversations_read",
+        "allow_all_conversations_update"
+      ],
+      "msg": "conversations [COMMITTED] (zateceptionist:own=19,sees=19; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "hr_ai_interviews",
+      "bucket": "BUCKET1_drop_leak_only",
+      "verdict": "COMMITTED",
+      "created_fix": false,
+      "iso_used": null,
+      "dropped": [
+        "hr_ai_interviews_access",
+        "rls_service_all"
+      ],
+      "msg": "hr_ai_interviews [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "hr_auto_decisions",
+      "bucket": "BUCKET1_drop_leak_only",
+      "verdict": "COMMITTED",
+      "created_fix": false,
+      "iso_used": null,
+      "dropped": [
+        "rls_service_all"
+      ],
+      "msg": "hr_auto_decisions [COMMITTED] (zateceptionist:own=6,sees=6; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "hr_auto_mode_config",
+      "bucket": "BUCKET1_drop_leak_only",
+      "verdict": "COMMITTED",
+      "created_fix": false,
+      "iso_used": null,
+      "dropped": [
+        "rls_service_all"
+      ],
+      "msg": "hr_auto_mode_config [COMMITTED] (zateceptionist:own=1,sees=1; aamerah-c802fcee:own=1,sees=1)"
+    },
+    {
+      "table": "hr_goals",
+      "bucket": "BUCKET1_drop_leak_only",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = (get_user_tenant_uuid())::text))",
+      "dropped": [
+        "Authenticated access"
+      ],
+      "msg": "hr_goals [COMMITTED] (zateceptionist:own=10,sees=10; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "messages",
+      "bucket": "BUCKET1_drop_leak_only",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = (get_user_tenant_uuid())::text))",
+      "dropped": [
+        "allow_all_messages_insert",
+        "allow_all_messages_read",
+        "allow_all_messages_update"
+      ],
+      "msg": "messages [COMMITTED] (zateceptionist:own=316,sees=316; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "sales_ab_assignments",
+      "bucket": "BUCKET1_drop_leak_only",
+      "verdict": "COMMITTED",
+      "created_fix": false,
+      "iso_used": null,
+      "dropped": [
+        "tenant_isolation"
+      ],
+      "msg": "sales_ab_assignments [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "sales_ab_tests",
+      "bucket": "BUCKET1_drop_leak_only",
+      "verdict": "COMMITTED",
+      "created_fix": false,
+      "iso_used": null,
+      "dropped": [
+        "tenant_isolation"
+      ],
+      "msg": "sales_ab_tests [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "sales_consent_records",
+      "bucket": "BUCKET1_drop_leak_only",
+      "verdict": "COMMITTED",
+      "created_fix": false,
+      "iso_used": null,
+      "dropped": [
+        "Tenant isolation for sales_consent_records"
+      ],
+      "msg": "sales_consent_records [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "sales_conversations",
+      "bucket": "BUCKET1_drop_leak_only",
+      "verdict": "COMMITTED",
+      "created_fix": false,
+      "iso_used": null,
+      "dropped": [
+        "Tenant isolation for sales_conversations",
+        "sales_conversations_policy"
+      ],
+      "msg": "sales_conversations [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "sales_do_not_contact",
+      "bucket": "BUCKET1_drop_leak_only",
+      "verdict": "COMMITTED",
+      "created_fix": false,
+      "iso_used": null,
+      "dropped": [
+        "sales_dnc_policy"
+      ],
+      "msg": "sales_do_not_contact [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "sales_marketing_bridge",
+      "bucket": "BUCKET1_drop_leak_only",
+      "verdict": "COMMITTED",
+      "created_fix": false,
+      "iso_used": null,
+      "dropped": [
+        "allow_all_bridge"
+      ],
+      "msg": "sales_marketing_bridge [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "tenant_integrations",
+      "bucket": "BUCKET1_drop_leak_only",
+      "verdict": "COMMITTED",
+      "created_fix": false,
+      "iso_used": null,
+      "dropped": [
+        "tenant_integrations_insert"
+      ],
+      "msg": "tenant_integrations [COMMITTED] (zateceptionist:own=2,sees=2; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "aeo_brand_presence",
+      "bucket": "BUCKET2_add_uuid_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_uuid()))",
+      "dropped": [
+        "auth_all_aeo_bp"
+      ],
+      "msg": "aeo_brand_presence [COMMITTED] (zateceptionist:own=8,sees=8; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "aeo_content_scores",
+      "bucket": "BUCKET2_add_uuid_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_uuid()))",
+      "dropped": [
+        "auth_all_aeo_cs"
+      ],
+      "msg": "aeo_content_scores [COMMITTED] (zateceptionist:own=18,sees=18; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "aeo_entity_graph",
+      "bucket": "BUCKET2_add_uuid_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_uuid()))",
+      "dropped": [
+        "auth_all_aeo_eg"
+      ],
+      "msg": "aeo_entity_graph [COMMITTED] (zateceptionist:own=106,sees=106; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "aeo_schema_registry",
+      "bucket": "BUCKET2_add_uuid_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_uuid()))",
+      "dropped": [
+        "auth_all_aeo_sr"
+      ],
+      "msg": "aeo_schema_registry [COMMITTED] (zateceptionist:own=15,sees=15; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "ai_agent_metrics",
+      "bucket": "BUCKET2_add_uuid_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_uuid()))",
+      "dropped": [
+        "ai_agent_metrics_read"
+      ],
+      "msg": "ai_agent_metrics [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "ai_agents",
+      "bucket": "BUCKET2_add_uuid_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_uuid()))",
+      "dropped": [
+        "ai_agents_anon_read"
+      ],
+      "msg": "ai_agents [COMMITTED] (zateceptionist:own=2,sees=2; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "ai_decisions",
+      "bucket": "BUCKET2_add_uuid_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_uuid()))",
+      "dropped": [
+        "Allow authenticated"
+      ],
+      "msg": "ai_decisions [COMMITTED] (zateceptionist:own=83,sees=83; aamerah-c802fcee:own=15,sees=15)"
+    },
+    {
+      "table": "conversation_resolution_log",
+      "bucket": "BUCKET2_add_uuid_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_uuid()))",
+      "dropped": [
+        "allow_all_conversation_resolution_log"
+      ],
+      "msg": "conversation_resolution_log [COMMITTED] (zateceptionist:own=1,sees=1; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "hr_attendance",
+      "bucket": "BUCKET2_add_uuid_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = (get_user_tenant_uuid())::text))",
+      "dropped": [
+        "Authenticated access"
+      ],
+      "msg": "hr_attendance [COMMITTED] (zateceptionist:own=60,sees=60; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "hr_attendance_rules",
+      "bucket": "BUCKET2_add_uuid_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_uuid()))",
+      "dropped": [
+        "tenant_attendance_rules_all"
+      ],
+      "msg": "hr_attendance_rules [COMMITTED] (zateceptionist:own=1,sees=1; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "hr_departments",
+      "bucket": "BUCKET2_add_uuid_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = (get_user_tenant_uuid())::text))",
+      "dropped": [
+        "Authenticated access"
+      ],
+      "msg": "hr_departments [COMMITTED] (zateceptionist:own=6,sees=6; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "hr_document_acknowledgments",
+      "bucket": "BUCKET2_add_uuid_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = (get_user_tenant_uuid())::text))",
+      "dropped": [
+        "hr_doc_ack_all"
+      ],
+      "msg": "hr_document_acknowledgments [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "hr_documents",
+      "bucket": "BUCKET2_add_uuid_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = (get_user_tenant_uuid())::text))",
+      "dropped": [
+        "Authenticated access"
+      ],
+      "msg": "hr_documents [COMMITTED] (zateceptionist:own=9,sees=9; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "hr_leave_requests",
+      "bucket": "BUCKET2_add_uuid_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = (get_user_tenant_uuid())::text))",
+      "dropped": [
+        "Authenticated access"
+      ],
+      "msg": "hr_leave_requests [COMMITTED] (zateceptionist:own=9,sees=9; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "hr_performance_cycles",
+      "bucket": "BUCKET2_add_uuid_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = (get_user_tenant_uuid())::text))",
+      "dropped": [
+        "Allow authenticated"
+      ],
+      "msg": "hr_performance_cycles [COMMITTED] (zateceptionist:own=1,sees=1; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "hr_performance_reviews",
+      "bucket": "BUCKET2_add_uuid_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = (get_user_tenant_uuid())::text))",
+      "dropped": [
+        "Authenticated access"
+      ],
+      "msg": "hr_performance_reviews [COMMITTED] (zateceptionist:own=9,sees=9; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "hr_training_programs",
+      "bucket": "BUCKET2_add_uuid_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = (get_user_tenant_uuid())::text))",
+      "dropped": [
+        "Authenticated access"
+      ],
+      "msg": "hr_training_programs [COMMITTED] (zateceptionist:own=5,sees=5; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "hr_training_records",
+      "bucket": "BUCKET2_add_uuid_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = (get_user_tenant_uuid())::text))",
+      "dropped": [
+        "Authenticated access"
+      ],
+      "msg": "hr_training_records [COMMITTED] (zateceptionist:own=10,sees=10; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "landing_pages",
+      "bucket": "BUCKET2_add_uuid_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_uuid()))",
+      "dropped": [
+        "auth_all_landing_pages"
+      ],
+      "msg": "landing_pages [COMMITTED] (zateceptionist:own=8,sees=8; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "marketing_calendar",
+      "bucket": "BUCKET2_add_uuid_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_uuid()))",
+      "dropped": [
+        "auth_all_marketing_calendar"
+      ],
+      "msg": "marketing_calendar [COMMITTED] (zateceptionist:own=1,sees=1; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "marketing_predictions",
+      "bucket": "BUCKET2_add_uuid_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_uuid()))",
+      "dropped": [
+        "mkt_predictions_access"
+      ],
+      "msg": "marketing_predictions [COMMITTED] (zateceptionist:own=7,sees=7; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "marketing_sequence_steps",
+      "bucket": "BUCKET2_add_uuid_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_uuid()))",
+      "dropped": [
+        "Allow authenticated"
+      ],
+      "msg": "marketing_sequence_steps [COMMITTED] (zateceptionist:own=22,sees=22; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "message_sentiment",
+      "bucket": "BUCKET2_add_uuid_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_uuid()))",
+      "dropped": [
+        "allow_all_message_sentiment"
+      ],
+      "msg": "message_sentiment [COMMITTED] (zateceptionist:own=86,sees=86; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "sla_breaches",
+      "bucket": "BUCKET2_add_uuid_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_uuid()))",
+      "dropped": [
+        "allow_all_sla_breaches"
+      ],
+      "msg": "sla_breaches [COMMITTED] (zateceptionist:own=252996,sees=252996; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "sla_policies",
+      "bucket": "BUCKET2_add_uuid_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_uuid()))",
+      "dropped": [
+        "allow_all_sla_policies"
+      ],
+      "msg": "sla_policies [COMMITTED] (zateceptionist:own=4,sees=4; aamerah-c802fcee:own=4,sees=4)"
+    },
+    {
+      "table": "video_performance_signals",
+      "bucket": "BUCKET2_add_uuid_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = (get_user_tenant_uuid())::text))",
+      "dropped": [
+        "allow_read_vps",
+        "allow_write_vps"
+      ],
+      "msg": "video_performance_signals [COMMITTED] (zateceptionist:own=107,sees=107; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "video_projects",
+      "bucket": "BUCKET2_add_uuid_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = (get_user_tenant_uuid())::text))",
+      "dropped": [
+        "auth_all_video_projects"
+      ],
+      "msg": "video_projects [COMMITTED] (zateceptionist:own=101,sees=101; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "video_render_queue",
+      "bucket": "BUCKET2_add_uuid_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = (get_user_tenant_uuid())::text))",
+      "dropped": [
+        "auth_all_video_render_queue"
+      ],
+      "msg": "video_render_queue [COMMITTED] (zateceptionist:own=52,sees=52; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "voice_inbox_sync",
+      "bucket": "BUCKET2_add_uuid_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_uuid()))",
+      "dropped": [
+        "allow_all_voice_inbox_sync"
+      ],
+      "msg": "voice_inbox_sync [COMMITTED] (zateceptionist:own=1,sees=1; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "clinic_consultations",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "clinic_consultations_tenant_isolation"
+      ],
+      "msg": "clinic_consultations [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "tender_payments",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all"
+      ],
+      "msg": "tender_payments [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "agent_contexts",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "ac_allow_all"
+      ],
+      "msg": "agent_contexts [COMMITTED] (zateceptionist:own=6,sees=6; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "agent_memory",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "agent_memory_service"
+      ],
+      "msg": "agent_memory [COMMITTED] (zateceptionist:own=15,sees=15; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "analytics_hourly",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "Allow authenticated"
+      ],
+      "msg": "analytics_hourly [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "buying_committees",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "bc_all"
+      ],
+      "msg": "buying_committees [COMMITTED] (zateceptionist:own=471,sees=471; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "campaign_executions",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all_campaign_executions"
+      ],
+      "msg": "campaign_executions [COMMITTED] (zateceptionist:own=20,sees=20; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "collections_compliance_log",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "collections_compliance_log_tenant_access"
+      ],
+      "msg": "collections_compliance_log [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "collections_kpis",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "collections_kpis_tenant_access"
+      ],
+      "msg": "collections_kpis [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "consent_log",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "cl_all"
+      ],
+      "msg": "consent_log [COMMITTED] (zateceptionist:own=17,sees=17; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "do_not_contact",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "Allow authenticated"
+      ],
+      "msg": "do_not_contact [COMMITTED] (zateceptionist:own=129,sees=129; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "email_verification",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "ev_read",
+        "ev_write"
+      ],
+      "msg": "email_verification [COMMITTED] (zateceptionist:own=112,sees=112; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "estimation_drawing_pages",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all_edp"
+      ],
+      "msg": "estimation_drawing_pages [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "estimation_room_details",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_read_rd",
+        "allow_write_rd"
+      ],
+      "msg": "estimation_room_details [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "estimation_room_polygons",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all_erp"
+      ],
+      "msg": "estimation_room_polygons [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "estimation_spec_data",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_read_sd",
+        "allow_write_sd"
+      ],
+      "msg": "estimation_spec_data [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "estimation_supplier_pricing",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_read_estimation_supplier_pricing",
+        "allow_write_estimation_supplier_pricing"
+      ],
+      "msg": "estimation_supplier_pricing [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "estimation_transition_rules",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_read_tr",
+        "allow_write_tr"
+      ],
+      "msg": "estimation_transition_rules [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "estimation_waste_matrix",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_read_wm",
+        "allow_write_wm"
+      ],
+      "msg": "estimation_waste_matrix [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "field_job_cards",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all"
+      ],
+      "msg": "field_job_cards [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "instrument_registry",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all"
+      ],
+      "msg": "instrument_registry [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "lead_signals",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "ls_read",
+        "ls_write"
+      ],
+      "msg": "lead_signals [COMMITTED] (zateceptionist:own=193,sees=193; aamerah-c802fcee:own=218,sees=218)"
+    },
+    {
+      "table": "maintenance_contracts",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all"
+      ],
+      "msg": "maintenance_contracts [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "multichannel_outreach",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "mco_all"
+      ],
+      "msg": "multichannel_outreach [COMMITTED] (zateceptionist:own=767,sees=767; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "omega_alerts",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all_omega_alerts"
+      ],
+      "msg": "omega_alerts [COMMITTED] (zateceptionist:own=736,sees=736; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "omega_campaigns",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all_omega_campaigns"
+      ],
+      "msg": "omega_campaigns [COMMITTED] (zateceptionist:own=3,sees=3; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "onboarding_audit_log",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "oal_allow_all"
+      ],
+      "msg": "onboarding_audit_log [COMMITTED] (zateceptionist:own=30,sees=30; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "onboarding_module_status",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "oms_allow_read",
+        "oms_allow_write"
+      ],
+      "msg": "onboarding_module_status [COMMITTED] (zateceptionist:own=8,sees=8; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "ops_budget_actuals",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all"
+      ],
+      "msg": "ops_budget_actuals [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "ops_budgets",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all"
+      ],
+      "msg": "ops_budgets [COMMITTED] (zateceptionist:own=2,sees=2; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "ops_compliance_log",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all"
+      ],
+      "msg": "ops_compliance_log [COMMITTED] (zateceptionist:own=1,sees=1; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "ops_compliance_rules",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all_ops_compliance_rules"
+      ],
+      "msg": "ops_compliance_rules [COMMITTED] (zateceptionist:own=10,sees=10; aamerah-c802fcee:own=10,sees=10)"
+    },
+    {
+      "table": "ops_cost_savings",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all"
+      ],
+      "msg": "ops_cost_savings [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "ops_demand_forecasts",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all"
+      ],
+      "msg": "ops_demand_forecasts [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "ops_industry_configs",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all"
+      ],
+      "msg": "ops_industry_configs [COMMITTED] (zateceptionist:own=5,sees=5; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "ops_inventory_items",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all"
+      ],
+      "msg": "ops_inventory_items [COMMITTED] (zateceptionist:own=2,sees=2; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "ops_inventory_movements",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all"
+      ],
+      "msg": "ops_inventory_movements [COMMITTED] (zateceptionist:own=6,sees=6; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "ops_production_plans",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all"
+      ],
+      "msg": "ops_production_plans [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "ops_production_tasks",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all"
+      ],
+      "msg": "ops_production_tasks [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "ops_purchase_orders",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all"
+      ],
+      "msg": "ops_purchase_orders [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "ops_qc_checkpoints",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all"
+      ],
+      "msg": "ops_qc_checkpoints [COMMITTED] (zateceptionist:own=3,sees=3; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "ops_qc_results",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all"
+      ],
+      "msg": "ops_qc_results [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "ops_quality_alerts",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all_ops_quality_alerts"
+      ],
+      "msg": "ops_quality_alerts [COMMITTED] (zateceptionist:own=9,sees=9; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "ops_quality_checks",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all_ops_quality_checks"
+      ],
+      "msg": "ops_quality_checks [COMMITTED] (zateceptionist:own=475,sees=475; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "ops_shipment_events",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all"
+      ],
+      "msg": "ops_shipment_events [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "ops_shipments",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all"
+      ],
+      "msg": "ops_shipments [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "ops_simulations",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all"
+      ],
+      "msg": "ops_simulations [COMMITTED] (zateceptionist:own=1,sees=1; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "ops_slas",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all"
+      ],
+      "msg": "ops_slas [COMMITTED] (zateceptionist:own=5,sees=5; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "ops_vendor_performance",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all"
+      ],
+      "msg": "ops_vendor_performance [COMMITTED] (zateceptionist:own=1,sees=1; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "ops_vendors",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all"
+      ],
+      "msg": "ops_vendors [COMMITTED] (zateceptionist:own=1,sees=1; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "security_deposits",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all"
+      ],
+      "msg": "security_deposits [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "sequence_ab_tests",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "sat_all"
+      ],
+      "msg": "sequence_ab_tests [COMMITTED] (zateceptionist:own=18,sees=18; aamerah-c802fcee:own=9,sees=9)"
+    },
+    {
+      "table": "service_visits",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all"
+      ],
+      "msg": "service_visits [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "tenant_audit_log",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "tenant_audit_log_authenticated_read"
+      ],
+      "msg": "tenant_audit_log [COMMITTED] (zateceptionist:own=80,sees=80; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "tender_documents",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all"
+      ],
+      "msg": "tender_documents [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "tender_stages",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all"
+      ],
+      "msg": "tender_stages [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "tenders",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "allow_all"
+      ],
+      "msg": "tenders [COMMITTED] (zateceptionist:own=0,sees=0; aamerah-c802fcee:own=0,sees=0)"
+    },
+    {
+      "table": "user_roles",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "Allow authenticated"
+      ],
+      "msg": "user_roles [COMMITTED] (zateceptionist:own=2,sees=2; aamerah-c802fcee:own=1,sees=1)"
+    },
+    {
+      "table": "users",
+      "bucket": "BUCKET3_add_slug_iso",
+      "verdict": "COMMITTED",
+      "created_fix": true,
+      "iso_used": "((auth.role() = 'service_role'::text) OR (tenant_id = get_user_tenant_id()))",
+      "dropped": [
+        "Allow authenticated"
+      ],
+      "msg": "users [COMMITTED] (zateceptionist:own=2,sees=2; aamerah-c802fcee:own=1,sees=1)"
+    }
+  ],
+  "fail": []
+}
