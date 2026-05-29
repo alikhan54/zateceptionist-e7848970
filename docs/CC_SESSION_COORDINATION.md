@@ -625,3 +625,12 @@ This pass debugs through actual chunk inspection + DB schema reality.
 - ⏳ useTraining.enroll fix: code on main, same wait
 - ⏳ Training.tsx render fix: code on main, same wait
 - The 3 ⏳ items will flip green automatically when Lovable's build queue catches up (no further action needed from CC).
+
+## HR V5 — PARKED 2026-05-30
+
+- **Status:** PARKED. **22 commits local** on `feature/hr-v3-improvements-safe-DO-NOT-PUSH`, **never pushed**. Working tree clean. **Safe for Session C to ship to `main`.** (This coordination-doc commit is identical-base to `origin/main`, so the branch merges without a conflict on this file.)
+- **What's on the branch (22 commits ahead of `origin/main`):** HR hidden features F1–F5 (leave types, recruitment funnel, public holidays, notifications, shifts) + a platform-wide RLS audit (`docs/.platform-audit/`) + a 3-phase RLS leak remediation (`docs/.rls-remediation/`). These frontend commits are UI + **docs/artifacts** only.
+- **RLS remediation is already LIVE in the prod DB** (applied out-of-band as the bypassrls pooler role — NOT via these commits): **244 of 341** cross-tenant-leaky tables isolated/locked (Phase 1: 117 populated, Phase 2: 127 empty), **97 flagged** with a triage plan (Phase 3). Workflows unaffected (`service_role` bypasses RLS). **Reversible** via `frontend/docs/.rls-remediation/MASTER_RESTORE_v3.sql` (full restore of all policies) or the per-phase `ROLLBACK_*.sql` (surgical). Full writeup: `frontend/docs/.rls-remediation/REMEDIATION_SUMMARY.md`.
+- **Pending follow-up (documented, NOT blocking ship):** apply `docs/.rls-remediation/PHI_RECOMMENDED.sql` for the 2 empty PHI tables (`patient_visits`/`patient_vitals`, ambiguous FK) BEFORE the clinic feature goes live; optional hardening of the 26 global + 9 scopable tables per `docs/.rls-remediation/NOCOL_TRIAGE.md`.
+- **Frontend surface owned:** `src/pages/hr/*`, `src/components/hr/*`, `tests/hr-*`, `docs/.rls-remediation/*`, `docs/.platform-audit/*`. No sacred files touched.
+- **Park hygiene:** throwaway DB-probe scripts (`docs/.tmp_audit/*.py`, carried DB connection details) deleted this park; never committed. The untracked `docs/BSH_PHASE2_GAP_AUDIT.md` belongs to the BSH-HMS session and was left in place.
