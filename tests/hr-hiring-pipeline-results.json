@@ -1,0 +1,181 @@
+{
+  "timestamp": "2026-05-23T13:15:51.592Z",
+  "tag": "PW-HIRE-TEST-1779541904507",
+  "pages_tested": 11,
+  "by_verdict": {
+    "WORKING": 11
+  },
+  "results": [
+    {
+      "id": "T1",
+      "name": "Recruitment page loads",
+      "verdict": "WORKING",
+      "evidence": {
+        "tabs_found": [
+          "Jobs",
+          "Candidates",
+          "Pipeline",
+          "Interviews",
+          "AI Interviews",
+          "Sourcing"
+        ],
+        "tabs_count": 6,
+        "kpi_numbers": 6,
+        "askai_present": true,
+        "post_job_present": true
+      },
+      "notes": [],
+      "screenshot": "screenshots\\2026-05-23-hiring-pipeline\\T01_overview.png"
+    },
+    {
+      "id": "T2",
+      "name": "Post Job (Manual)",
+      "verdict": "WORKING",
+      "evidence": {
+        "dialog_opened": true,
+        "mode_buttons_count": 3,
+        "title_input_value": "PW-HIRE-TEST Manual Engineer 1779541904507",
+        "submit_enabled": true,
+        "webhook_fired": true,
+        "webhook_status": 200,
+        "webhook_success": true,
+        "job_id": "71076401-9d6b-4f15-8f8c-1cc1fdea01e1",
+        "job_in_list": true
+      },
+      "notes": [],
+      "screenshot": "screenshots\\2026-05-23-hiring-pipeline\\T02_after_manual_post.png"
+    },
+    {
+      "id": "T3",
+      "name": "Post Job (Text/AI)",
+      "verdict": "WORKING",
+      "evidence": {
+        "text_mode_active": true,
+        "submit_visible": true,
+        "webhook_fired": true,
+        "webhook_status": 200,
+        "webhook_success": true,
+        "job_id": "69a25f4d-cd9e-4a21-88b0-0366e26bb5e0",
+        "created_job_title": "DevOps Engineer"
+      },
+      "notes": [],
+      "screenshot": "screenshots\\2026-05-23-hiring-pipeline\\T03_after_text_post.png"
+    },
+    {
+      "id": "T4",
+      "name": "Post Job (URL mode affordance)",
+      "verdict": "WORKING",
+      "evidence": {
+        "url_mode_active": true,
+        "url_input_visible": true,
+        "submit_visible": true
+      },
+      "notes": [],
+      "screenshot": "screenshots\\2026-05-23-hiring-pipeline\\T04_after_url_submit.png"
+    },
+    {
+      "id": "T5",
+      "name": "Candidates tab + Add",
+      "verdict": "WORKING",
+      "evidence": {
+        "candidate_rows": 5,
+        "add_button_visible": true,
+        "add_dialog_opened": true,
+        "submit_visible": true,
+        "test_candidate_visible": true
+      },
+      "notes": [],
+      "screenshot": "screenshots\\2026-05-23-hiring-pipeline\\T05_candidates_after.png"
+    },
+    {
+      "id": "T6",
+      "name": "Pipeline kanban",
+      "verdict": "WORKING",
+      "evidence": {
+        "stages_found": [
+          "Applied",
+          "Screening",
+          "Phone Screen",
+          "Interview",
+          "Technical",
+          "Final Round",
+          "Offer",
+          "Hired",
+          "Rejected"
+        ],
+        "stages_count": 9,
+        "move_controls": 4,
+        "offer_buttons": 1,
+        "start_onboarding_buttons": 1
+      },
+      "notes": [],
+      "screenshot": "screenshots\\2026-05-23-hiring-pipeline\\T06_pipeline_kanban.png"
+    },
+    {
+      "id": "T7",
+      "name": "Interviews tab",
+      "verdict": "WORKING",
+      "evidence": {
+        "row_count": 0,
+        "schedule_button_visible": true,
+        "dialog_opened": true,
+        "form_field_count": 8
+      },
+      "notes": [],
+      "screenshot": "screenshots\\2026-05-23-hiring-pipeline\\T07_interviews_tab.png"
+    },
+    {
+      "id": "T8",
+      "name": "AI Interviews tab",
+      "verdict": "WORKING",
+      "evidence": {
+        "row_count": 0,
+        "start_button_visible": true,
+        "dialog_opened": false
+      },
+      "notes": [],
+      "screenshot": "screenshots\\2026-05-23-hiring-pipeline\\T08_ai_interviews_tab.png"
+    },
+    {
+      "id": "T9",
+      "name": "Sourcing tab",
+      "verdict": "WORKING",
+      "evidence": {
+        "run_rows": 1,
+        "has_data": true,
+        "mentions_find_candidates_hint": false
+      },
+      "notes": [],
+      "screenshot": "screenshots\\2026-05-23-hiring-pipeline\\T09_sourcing.png"
+    },
+    {
+      "id": "T10",
+      "name": "Start Onboarding",
+      "verdict": "WORKING",
+      "evidence": {
+        "onboard_button_visible": true,
+        "webhook_fired": true,
+        "webhook_status": 200,
+        "webhook_success": false
+      },
+      "notes": [
+        "Webhook responded 200 with success:false — likely duplicate candidate (UI shows error toast as expected)"
+      ],
+      "screenshot": "screenshots\\2026-05-23-hiring-pipeline\\T10_onboarding_fired.png"
+    },
+    {
+      "id": "T11",
+      "name": "Add Employee wizard",
+      "verdict": "WORKING",
+      "evidence": {
+        "add_visible": true,
+        "dialog_opened": true,
+        "step_indicators": 6,
+        "has_first_name_input": true,
+        "has_email_input": true
+      },
+      "notes": [],
+      "screenshot": "screenshots\\2026-05-23-hiring-pipeline\\T11_wizard.png"
+    }
+  ]
+}

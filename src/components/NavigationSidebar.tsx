@@ -364,6 +364,24 @@ export function NavigationSidebar() {
     ],
   };
 
+  // Staff self-service HR (Issue 3) — visible to staff role only.
+  // Even when can_access_hr is false (admin HR portal), staff still see their
+  // own profile/attendance/payslips here.
+  const myHRSection: NavSection = {
+    label: "My HR",
+    staffOnly: true,
+    collapsible: true,
+    items: [
+      { title: "My Profile", url: "/my/profile", icon: UserPlus },
+      { title: "My Attendance", url: "/my/attendance", icon: Clock },
+      { title: "My Leaves", url: "/my/leaves", icon: CalendarDays },
+      { title: "My Payslips", url: "/my/payslips", icon: DollarSign },
+      { title: "My Training", url: "/my/training", icon: GraduationCap },
+      { title: "My Documents", url: "/my/documents", icon: FileText },
+      { title: "My Reviews", url: "/my/reviews", icon: Award },
+    ],
+  };
+
   const salesSection: NavSection = {
     label: "Sales AI",
     collapsible: true,
@@ -479,6 +497,7 @@ export function NavigationSidebar() {
         { title: "Documents", url: "/hr/documents", icon: FileText },
         { title: "Compliance", url: "/hr/compliance", icon: Shield },
         { title: "Reports", url: "/hr/reports", icon: BarChart3 },
+        { title: "Notifications", url: "/hr/notifications", icon: Bell },
       ]},
       { title: "AI Workforce", url: "/hr/ai-agents", icon: Bot, children: [
         { title: "AI Assistant", url: "/hr/ai-assistant", icon: Sparkles },
@@ -983,6 +1002,9 @@ export function NavigationSidebar() {
         <>
         {/* Staff Section - Only for staff */}
         {authUser?.role === "staff" && <StaticSection section={staffSection} />}
+
+        {/* My HR Section - Staff self-service (Issue 3) */}
+        {authUser?.role === "staff" && <CollapsibleSection section={myHRSection} sectionKey="my-hr" />}
 
         {/* Main Section - For non-staff or if not showing staff section */}
         {authUser?.role !== "staff" && <CollapsibleSection section={mainSection} sectionKey="main" />}

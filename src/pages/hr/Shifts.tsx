@@ -4,10 +4,13 @@ import { useTenant } from '@/contexts/TenantContext';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { useShifts, type Shift } from '@/hooks/useHR';
 import { AskAIButton } from '@/components/hr/AskAIButton';
+import { ShiftDefinitionsTab } from '@/components/hr/ShiftDefinitionsTab';
+import { ShiftAssignmentsTab } from '@/components/hr/ShiftAssignmentsTab';
 export type { Shift };
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -134,6 +137,14 @@ export default function ShiftsPage() {
         </div>
       </div>
 
+      <Tabs defaultValue="schedule" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="schedule">Schedule</TabsTrigger>
+          <TabsTrigger value="shift-types">Shift Types</TabsTrigger>
+          <TabsTrigger value="assignments">Assignments</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="schedule" className="space-y-6">
       {/* Today's Stats */}
       <div className="grid gap-4 md:grid-cols-4">
         {[
@@ -274,6 +285,16 @@ export default function ShiftsPage() {
           </div>
         ))}
       </div>
+        </TabsContent>
+
+        <TabsContent value="shift-types">
+          <ShiftDefinitionsTab />
+        </TabsContent>
+
+        <TabsContent value="assignments">
+          <ShiftAssignmentsTab />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

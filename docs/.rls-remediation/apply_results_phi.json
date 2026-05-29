@@ -1,0 +1,18 @@
+{
+  "flagged": [
+    {
+      "table": "patient_visits",
+      "rows": 0,
+      "reason": "ambiguous FK chain (no declared FK; customer_id -> clinic_patients OR customers)",
+      "recommended": "dual-parent EXISTS via customer_id (see PHI_RECOMMENDED.sql)",
+      "exposure": "none (empty)"
+    },
+    {
+      "table": "patient_vitals",
+      "rows": 0,
+      "reason": "ambiguous FK chain (no declared FK; customer_id -> clinic_patients OR customers; also has visit_id)",
+      "recommended": "dual-parent EXISTS via customer_id (see PHI_RECOMMENDED.sql)",
+      "exposure": "none (empty)"
+    }
+  ]
+}

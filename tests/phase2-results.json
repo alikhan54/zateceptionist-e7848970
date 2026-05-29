@@ -1,0 +1,719 @@
+[
+  {
+    "route": "/dashboard",
+    "url_after": "https://ai.zatesystems.com/dashboard",
+    "render_status": "PARTIAL",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-dashboard.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 406 ()"
+    ],
+    "network_errors": [
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      }
+    ],
+    "data_indicator_count": 0,
+    "empty_state_visible": false,
+    "body_excerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nMARKETING AI\nHR AI\nCLINIC\nOPERATIONS\nCOMMUNICATIONS\nAI COMMAND\nOMEGA\nANALYTICS & AI\nSETTINGS\n\nPress g + key for shortcuts\n\nLogout\nToggle Sidebar\nSearch...\n⌘\nK\nAI: Assisted\n5\nAD\nC\nCOSMIQUE AESTHETICS\nTENANT · COSMIQUE\nSEQ 14\nHOT 27\nLEADS 171\n⌘K · SEARCH\nA\nOMEGA\nCORE INTELLIGENCE · ALWAYS THINKING\nLISTENING\nOMEGA\n⌘1\nInbox\n⌘2\nClients\n⌘3\nAll apps\n⌘K"
+  },
+  {
+    "route": "/pulse",
+    "url_after": "https://ai.zatesystems.com/pulse",
+    "render_status": "ERROR",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-pulse.png",
+    "console_errors": [
+      "404 Error: User attempted to access non-existent route: /pulse"
+    ],
+    "network_errors": [],
+    "data_indicator_count": 0,
+    "empty_state_visible": false,
+    "body_excerpt": "404\nPage not found\n\nSorry, we couldn't find the page you're looking for. It might have been moved or doesn't exist.\n\nGo Back\nGo to Dashboard\n\nAttempted path: /pulse"
+  },
+  {
+    "route": "/clinic/dashboard",
+    "url_after": "https://ai.zatesystems.com/clinic/dashboard",
+    "render_status": "PARTIAL",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-clinic-dashboard.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 406 ()"
+    ],
+    "network_errors": [
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      }
+    ],
+    "data_indicator_count": 0,
+    "empty_state_visible": false,
+    "body_excerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nMARKETING AI\nHR AI\nCLINIC\nClinic Dashboard\nPatients\nTreatments\nProducts\nConsultation Notes\nHealth Reports\nDoctor Reviews\nOPERATIONS\nCOMMUNICATIONS\nAI COMMAND\nOMEGA\nANALYTICS & AI\nSETTINGS\n\nPress g + key for shortcuts\n\nLogout\nToggle Sidebar\nSearch...\n⌘\nK\nAI: Assisted\n5\nAD\nClinic Dashboard\n\nHealthcare & Aesthetics Management\n\nTotal Patients\n3\n\n1 VIP, 1 Gold\n\nTreatments\n14\n\nActive services\n\nNew This Month\n0\n\nNew patients\n\nTotal Revenue\nAED 71,500\n\nFr"
+  },
+  {
+    "route": "/clinic/treatments",
+    "url_after": "https://ai.zatesystems.com/clinic/treatments",
+    "render_status": "PARTIAL",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-clinic-treatments.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 406 ()"
+    ],
+    "network_errors": [
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      }
+    ],
+    "data_indicator_count": 0,
+    "empty_state_visible": false,
+    "body_excerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nMARKETING AI\nHR AI\nCLINIC\nClinic Dashboard\nPatients\nTreatments\nProducts\nConsultation Notes\nHealth Reports\nDoctor Reviews\nOPERATIONS\nCOMMUNICATIONS\nAI COMMAND\nOMEGA\nANALYTICS & AI\nSETTINGS\n\nPress g + key for shortcuts\n\nLogout\nToggle Sidebar\nSearch...\n⌘\nK\nAI: Assisted\n5\nAD\nTreatments\n\nTreatment catalog and service management\n\nAll (14)\nAesthetics (6)\nconsultation (1)\nlaser (1)\nSkincare (6)\nBotox\naesthetics\n\nBotulinum toxin for wrinkle reduction Premi"
+  },
+  {
+    "route": "/clinic/patients",
+    "url_after": "https://ai.zatesystems.com/clinic/patients",
+    "render_status": "PARTIAL",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-clinic-patients.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 406 ()"
+    ],
+    "network_errors": [
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      }
+    ],
+    "data_indicator_count": 0,
+    "empty_state_visible": false,
+    "body_excerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nMARKETING AI\nHR AI\nCLINIC\nClinic Dashboard\nPatients\nTreatments\nProducts\nConsultation Notes\nHealth Reports\nDoctor Reviews\nOPERATIONS\nCOMMUNICATIONS\nAI COMMAND\nOMEGA\nANALYTICS & AI\nSETTINGS\n\nPress g + key for shortcuts\n\nLogout\nToggle Sidebar\nSearch...\n⌘\nK\nAI: Assisted\n5\nAD\nPatients\n\nManage patient profiles and history\n\nAdd Patient\n3\n\nTotal Patients\n\n1\n\nVIP Patients\n\n0\n\nNew This Month\n\nAED 71,500\n\nTotal Revenue\n\nFatima Al Maktoum\n+971501234567\nfatima"
+  },
+  {
+    "route": "/clinic/products",
+    "url_after": "https://ai.zatesystems.com/clinic/products",
+    "render_status": "PARTIAL",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-clinic-products.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 406 ()"
+    ],
+    "network_errors": [
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      }
+    ],
+    "data_indicator_count": 0,
+    "empty_state_visible": false,
+    "body_excerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nMARKETING AI\nHR AI\nCLINIC\nClinic Dashboard\nPatients\nTreatments\nProducts\nConsultation Notes\nHealth Reports\nDoctor Reviews\nOPERATIONS\nCOMMUNICATIONS\nAI COMMAND\nOMEGA\nANALYTICS & AI\nSETTINGS\n\nPress g + key for shortcuts\n\nLogout\nToggle Sidebar\nSearch...\n⌘\nK\nAI: Assisted\n5\nAD\nProducts\n\nProduct inventory and skincare catalog\n\n3\n\nTotal Products\n\nAED 24,150\n\nInventory Value\n\n0\n\nLow Stock Items\n\nRetinol Night Cream\n\nObagi\n\nskincare\nAED 380\nStock: 15\nMin: 5"
+  },
+  {
+    "route": "/clinic/consultations",
+    "url_after": "https://ai.zatesystems.com/clinic/consultations",
+    "render_status": "PARTIAL",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-clinic-consultations.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 406 ()",
+      "Error: A <Select.Item /> must have a value prop that is not an empty string. This is because the Select value can be set to an empty string to clear the selection and show the placeholder.\n    at https://ai.zatesystems.com/assets/select-DDvDyCws.js:1:12525\n    at Wm (https://ai.zatesystems.com/asset",
+      "ErrorBoundary caught an error: Error: A <Select.Item /> must have a value prop that is not an empty string. This is because the Select value can be set to an empty string to clear the selection and show the placeholder.\n    at https://ai.zatesystems.com/assets/select-DDvDyCws.js:1:12525\n    at Wm (h",
+      "Failed to load resource: the server responded with a status of 400 ()"
+    ],
+    "network_errors": [
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      },
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/clinic_consultations?select=*&tenant_id=eq.cosmique&order=consultation_date.desc",
+        "status": 400,
+        "method": "GET"
+      }
+    ],
+    "data_indicator_count": 0,
+    "empty_state_visible": false,
+    "body_excerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nMARKETING AI\nHR AI\nCLINIC\nClinic Dashboard\nPatients\nTreatments\nProducts\nConsultation Notes\nHealth Reports\nDoctor Reviews\nOPERATIONS\nCOMMUNICATIONS\nAI COMMAND\nOMEGA\nANALYTICS & AI\nSETTINGS\n\nPress g + key for shortcuts\n\nLogout\nToggle Sidebar\nSearch...\n⌘\nK\nAI: Assisted\n5\nAD\nSomething went wrong\n\nWe encountered an unexpected error. Please try again or return to the dashboard.\n\nGo to Dashboard\nTry Again"
+  },
+  {
+    "route": "/clinic/health-reports",
+    "url_after": "https://ai.zatesystems.com/clinic/health-reports",
+    "render_status": "PARTIAL",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-clinic-health-reports.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 406 ()"
+    ],
+    "network_errors": [
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      }
+    ],
+    "data_indicator_count": 0,
+    "empty_state_visible": false,
+    "body_excerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nMARKETING AI\nHR AI\nCLINIC\nClinic Dashboard\nPatients\nTreatments\nProducts\nConsultation Notes\nHealth Reports\nDoctor Reviews\nOPERATIONS\nCOMMUNICATIONS\nAI COMMAND\nOMEGA\nANALYTICS & AI\nSETTINGS\n\nPress g + key for shortcuts\n\nLogout\nToggle Sidebar\nSearch...\n⌘\nK\nAI: Assisted\n5\nAD\nHealth Reports\n\nMedical report analysis & health intelligence\n\nUpload Report\nTotal Reports\n0\n\n0 this month\n\nAnalyzed\n0\n\n0 pending\n\nAvg Health Score\n—\n\nOut of 100\n\nAnalyses\n0\n\nCros"
+  },
+  {
+    "route": "/clinic/review-queue",
+    "url_after": "https://ai.zatesystems.com/clinic/review-queue",
+    "render_status": "PARTIAL",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-clinic-review-queue.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 406 ()"
+    ],
+    "network_errors": [
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      }
+    ],
+    "data_indicator_count": 0,
+    "empty_state_visible": false,
+    "body_excerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nMARKETING AI\nHR AI\nCLINIC\nClinic Dashboard\nPatients\nTreatments\nProducts\nConsultation Notes\nHealth Reports\nDoctor Reviews\nOPERATIONS\nCOMMUNICATIONS\nAI COMMAND\nOMEGA\nANALYTICS & AI\nSETTINGS\n\nPress g + key for shortcuts\n\nLogout\nToggle Sidebar\nSearch...\n⌘\nK\nAI: Assisted\n5\nAD\nDoctor Review Queue\n\nReview and approve medical analyses and video scripts\n\nPending\n0\n\nAwaiting review\n\nApproved\n0\n\nCompleted reviews\n\nRejected\n0\nUrgent\n0\n\nNeed immediate attentio"
+  },
+  {
+    "route": "/appointments",
+    "url_after": "https://ai.zatesystems.com/appointments",
+    "render_status": "FULL",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-appointments.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 406 ()"
+    ],
+    "network_errors": [
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      }
+    ],
+    "data_indicator_count": 7,
+    "empty_state_visible": false,
+    "body_excerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nMARKETING AI\nHR AI\nCLINIC\nOPERATIONS\nCOMMUNICATIONS\nAI COMMAND\nOMEGA\nANALYTICS & AI\nSETTINGS\n\nPress g + key for shortcuts\n\nLogout\nToggle Sidebar\nSearch...\n⌘\nK\nAI: Assisted\n5\nAD\nVisits\n\nManage your visits\n\nCalendar\nList\nNew Visit\n\n0\n\nToday's visits\n\n0\n\nThis month\n\n0%\n\nCompletion rate\n\n0%\n\nNo-show rate\n\nMay 2026\nSu\nMo\nTu\nWe\nTh\nFr\nSa\n26\n27\n28\n29\n30\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30\n31\n1\n2\n3\n4\n5\n6\nMonday,"
+  },
+  {
+    "route": "/customers",
+    "url_after": "https://ai.zatesystems.com/customers",
+    "render_status": "EMPTY",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-customers.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 406 ()"
+    ],
+    "network_errors": [
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      }
+    ],
+    "data_indicator_count": 0,
+    "empty_state_visible": true,
+    "body_excerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nMARKETING AI\nHR AI\nCLINIC\nOPERATIONS\nCOMMUNICATIONS\nAI COMMAND\nOMEGA\nANALYTICS & AI\nSETTINGS\n\nPress g + key for shortcuts\n\nLogout\nToggle Sidebar\nSearch...\n⌘\nK\nAI: Assisted\n5\nAD\nPatients\n\nManage your patients\n\nAdd Patient\nAll Temps\nAll Stages\nAll Handlers\nAll Sources\n\nNo patients yet\n\nAdd your first patient to get started"
+  },
+  {
+    "route": "/inbox",
+    "url_after": "https://ai.zatesystems.com/inbox",
+    "render_status": "PARTIAL",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-inbox.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 406 ()",
+      "Failed to load resource: the server responded with a status of 400 ()",
+      "Failed to load resource: the server responded with a status of 400 ()",
+      "Conversations query error: {code: PGRST200, details: Searched for a foreign key relationship between 'c…n the schema 'public', but no matches were found., hint: Perhaps you meant 'conversation_tags' instead of 'conversations'., message: Could not find a relationship between 'conversations' and 'cust"
+    ],
+    "network_errors": [
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      },
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/conversation_tags?select=id%2Cname%2Ccolor&tenant_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&is_active=eq.true",
+        "status": 400,
+        "method": "GET"
+      },
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/conversations?select=*%2Ccustomer%3Acustomers%28*%29&tenant_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&order=last_message_at.desc.nullslast",
+        "status": 400,
+        "method": "GET"
+      }
+    ],
+    "data_indicator_count": 0,
+    "empty_state_visible": false,
+    "body_excerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nMARKETING AI\nHR AI\nCLINIC\nOPERATIONS\nCOMMUNICATIONS\nAI COMMAND\nOMEGA\nANALYTICS & AI\nSETTINGS\n\nPress g + key for shortcuts\n\nLogout\nToggle Sidebar\nSearch...\n⌘\nK\nAI: Assisted\n5\nAD\nCosmique Aesthetics\n\n0 conversations\n\nAll\nMore\nAll\nUnread\nStarred\nAi\nHuman\n\nNo conversations found\n\nSelect a conversation\n\nChoose a conversation from the sidebar"
+  },
+  {
+    "route": "/leads",
+    "url_after": "https://ai.zatesystems.com/sales/dashboard",
+    "render_status": "PARTIAL",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-leads.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 406 ()"
+    ],
+    "network_errors": [
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      }
+    ],
+    "data_indicator_count": 0,
+    "empty_state_visible": false,
+    "body_excerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nSales Dashboard\nPipeline\nLead Pipeline\nDeal Tracker\nProposals\nDoc Activity\nOutreach\nSequences\nAuto Lead Gen\nTemplates\nReply Rules\nEmail Warmup\nIntelligence\nSales Analytics\nAI Scoring\nForecasting\nLTV:CAC\nCompany Intel\nDeliverability\nEngagement\nTrigger Events\nWebsite Intent\nSend Time\nReferrals\nMARKETING AI\nHR AI\nCLINIC\nOPERATIONS\nCOMMUNICATIONS\nAI COMMAND\nOMEGA\nANALYTICS & AI\nSETTINGS\n\nPress g + key for shortcuts\n\nLogout\nToggle Sidebar\nSearch...\n⌘\nK"
+  },
+  {
+    "route": "/sales/dashboard",
+    "url_after": "https://ai.zatesystems.com/sales/dashboard",
+    "render_status": "PARTIAL",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-sales-dashboard.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 406 ()"
+    ],
+    "network_errors": [
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      }
+    ],
+    "data_indicator_count": 0,
+    "empty_state_visible": false,
+    "body_excerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nSales Dashboard\nPipeline\nLead Pipeline\nDeal Tracker\nProposals\nDoc Activity\nOutreach\nSequences\nAuto Lead Gen\nTemplates\nReply Rules\nEmail Warmup\nIntelligence\nSales Analytics\nAI Scoring\nForecasting\nLTV:CAC\nCompany Intel\nDeliverability\nEngagement\nTrigger Events\nWebsite Intent\nSend Time\nReferrals\nMARKETING AI\nHR AI\nCLINIC\nOPERATIONS\nCOMMUNICATIONS\nAI COMMAND\nOMEGA\nANALYTICS & AI\nSETTINGS\n\nPress g + key for shortcuts\n\nLogout\nToggle Sidebar\nSearch...\n⌘\nK"
+  },
+  {
+    "route": "/sales/pipeline",
+    "url_after": "https://ai.zatesystems.com/sales/pipeline",
+    "render_status": "PARTIAL",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-sales-pipeline.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 406 ()"
+    ],
+    "network_errors": [
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      }
+    ],
+    "data_indicator_count": 0,
+    "empty_state_visible": false,
+    "body_excerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nSales Dashboard\nPipeline\nLead Pipeline\nDeal Tracker\nProposals\nDoc Activity\nOutreach\nSequences\nAuto Lead Gen\nTemplates\nReply Rules\nEmail Warmup\nIntelligence\nSales Analytics\nAI Scoring\nForecasting\nLTV:CAC\nCompany Intel\nDeliverability\nEngagement\nTrigger Events\nWebsite Intent\nSend Time\nReferrals\nMARKETING AI\nHR AI\nCLINIC\nOPERATIONS\nCOMMUNICATIONS\nAI COMMAND\nOMEGA\nANALYTICS & AI\nSETTINGS\n\nPress g + key for shortcuts\n\nLogout\nToggle Sidebar\nSearch...\n⌘\nK"
+  },
+  {
+    "route": "/sales/sequences",
+    "url_after": "https://ai.zatesystems.com/sales/sequences",
+    "render_status": "PARTIAL",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-sales-sequences.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 406 ()"
+    ],
+    "network_errors": [
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      }
+    ],
+    "data_indicator_count": 0,
+    "empty_state_visible": false,
+    "body_excerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nSales Dashboard\nPipeline\nLead Pipeline\nDeal Tracker\nProposals\nDoc Activity\nOutreach\nSequences\nAuto Lead Gen\nTemplates\nReply Rules\nEmail Warmup\nIntelligence\nSales Analytics\nAI Scoring\nForecasting\nLTV:CAC\nCompany Intel\nDeliverability\nEngagement\nTrigger Events\nWebsite Intent\nSend Time\nReferrals\nMARKETING AI\nHR AI\nCLINIC\nOPERATIONS\nCOMMUNICATIONS\nAI COMMAND\nOMEGA\nANALYTICS & AI\nSETTINGS\n\nPress g + key for shortcuts\n\nLogout\nToggle Sidebar\nSearch...\n⌘\nK"
+  },
+  {
+    "route": "/sales/deals",
+    "url_after": "https://ai.zatesystems.com/sales/deals",
+    "render_status": "PARTIAL",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-sales-deals.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 406 ()"
+    ],
+    "network_errors": [
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      }
+    ],
+    "data_indicator_count": 0,
+    "empty_state_visible": false,
+    "body_excerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nSales Dashboard\nPipeline\nLead Pipeline\nDeal Tracker\nProposals\nDoc Activity\nOutreach\nSequences\nAuto Lead Gen\nTemplates\nReply Rules\nEmail Warmup\nIntelligence\nSales Analytics\nAI Scoring\nForecasting\nLTV:CAC\nCompany Intel\nDeliverability\nEngagement\nTrigger Events\nWebsite Intent\nSend Time\nReferrals\nMARKETING AI\nHR AI\nCLINIC\nOPERATIONS\nCOMMUNICATIONS\nAI COMMAND\nOMEGA\nANALYTICS & AI\nSETTINGS\n\nPress g + key for shortcuts\n\nLogout\nToggle Sidebar\nSearch...\n⌘\nK"
+  },
+  {
+    "route": "/sales/auto-leadgen",
+    "url_after": "https://ai.zatesystems.com/sales/auto-leadgen",
+    "render_status": "PARTIAL",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-sales-auto-leadgen.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 406 ()"
+    ],
+    "network_errors": [
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      }
+    ],
+    "data_indicator_count": 0,
+    "empty_state_visible": false,
+    "body_excerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nSales Dashboard\nPipeline\nLead Pipeline\nDeal Tracker\nProposals\nDoc Activity\nOutreach\nSequences\nAuto Lead Gen\nTemplates\nReply Rules\nEmail Warmup\nIntelligence\nSales Analytics\nAI Scoring\nForecasting\nLTV:CAC\nCompany Intel\nDeliverability\nEngagement\nTrigger Events\nWebsite Intent\nSend Time\nReferrals\nMARKETING AI\nHR AI\nCLINIC\nOPERATIONS\nCOMMUNICATIONS\nAI COMMAND\nOMEGA\nANALYTICS & AI\nSETTINGS\n\nPress g + key for shortcuts\n\nLogout\nToggle Sidebar\nSearch...\n⌘\nK"
+  },
+  {
+    "route": "/sales/proposals",
+    "url_after": "https://ai.zatesystems.com/sales/proposals",
+    "render_status": "EMPTY",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-sales-proposals.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 406 ()"
+    ],
+    "network_errors": [
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      }
+    ],
+    "data_indicator_count": 0,
+    "empty_state_visible": true,
+    "body_excerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nSales Dashboard\nPipeline\nLead Pipeline\nDeal Tracker\nProposals\nDoc Activity\nOutreach\nSequences\nAuto Lead Gen\nTemplates\nReply Rules\nEmail Warmup\nIntelligence\nSales Analytics\nAI Scoring\nForecasting\nLTV:CAC\nCompany Intel\nDeliverability\nEngagement\nTrigger Events\nWebsite Intent\nSend Time\nReferrals\nMARKETING AI\nHR AI\nCLINIC\nOPERATIONS\nCOMMUNICATIONS\nAI COMMAND\nOMEGA\nANALYTICS & AI\nSETTINGS\n\nPress g + key for shortcuts\n\nLogout\nToggle Sidebar\nSearch...\n⌘\nK"
+  },
+  {
+    "route": "/sales/analytics",
+    "url_after": "https://ai.zatesystems.com/sales/analytics",
+    "render_status": "EMPTY",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-sales-analytics.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 406 ()"
+    ],
+    "network_errors": [
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      }
+    ],
+    "data_indicator_count": 0,
+    "empty_state_visible": true,
+    "body_excerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nSales Dashboard\nPipeline\nLead Pipeline\nDeal Tracker\nProposals\nDoc Activity\nOutreach\nSequences\nAuto Lead Gen\nTemplates\nReply Rules\nEmail Warmup\nIntelligence\nSales Analytics\nAI Scoring\nForecasting\nLTV:CAC\nCompany Intel\nDeliverability\nEngagement\nTrigger Events\nWebsite Intent\nSend Time\nReferrals\nMARKETING AI\nHR AI\nCLINIC\nOPERATIONS\nCOMMUNICATIONS\nAI COMMAND\nOMEGA\nANALYTICS & AI\nSETTINGS\n\nPress g + key for shortcuts\n\nLogout\nToggle Sidebar\nSearch...\n⌘\nK"
+  },
+  {
+    "route": "/marketing",
+    "url_after": "https://ai.zatesystems.com/marketing",
+    "render_status": "PARTIAL",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-marketing.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 406 ()"
+    ],
+    "network_errors": [
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      }
+    ],
+    "data_indicator_count": 0,
+    "empty_state_visible": false,
+    "body_excerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nMARKETING AI\nMarketing Hub\nCreate & Publish\nContent Studio\nBlog Manager\nEmail AI\nVideo Studio\nSocial Commander\nSocial Listening\nPages & Capture\nLanding Pages\nPage Builder\nCampaigns\nAds Manager\nA/B Testing\nSequences\nContent Calendar\nIntelligence\nMarketing Analytics\nCompetitor Intel\nSEO Dashboard\nAEO Dashboard\nStrategy\nBrand Voice\nPlaybooks\nInfluencer Hub\nDream Clients\nAutomation\nVoice Marketing\nAutonomous Mode\nEngagement Responder\nHR AI\nCLINIC\nOPER"
+  },
+  {
+    "route": "/marketing/campaigns",
+    "url_after": "https://ai.zatesystems.com/marketing/campaigns",
+    "render_status": "FULL",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-marketing-campaigns.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 406 ()"
+    ],
+    "network_errors": [
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      }
+    ],
+    "data_indicator_count": 3,
+    "empty_state_visible": false,
+    "body_excerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nMARKETING AI\nMarketing Hub\nCreate & Publish\nContent Studio\nBlog Manager\nEmail AI\nVideo Studio\nSocial Commander\nSocial Listening\nPages & Capture\nLanding Pages\nPage Builder\nCampaigns\nAds Manager\nA/B Testing\nSequences\nContent Calendar\nIntelligence\nMarketing Analytics\nCompetitor Intel\nSEO Dashboard\nAEO Dashboard\nStrategy\nBrand Voice\nPlaybooks\nInfluencer Hub\nDream Clients\nAutomation\nVoice Marketing\nAutonomous Mode\nEngagement Responder\nHR AI\nCLINIC\nOPER"
+  },
+  {
+    "route": "/marketing/competitors",
+    "url_after": "https://ai.zatesystems.com/marketing/competitors",
+    "render_status": "PARTIAL",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-marketing-competitors.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 406 ()",
+      "Failed to load resource: the server responded with a status of 400 ()"
+    ],
+    "network_errors": [
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      },
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/system_events?select=*&or=%28event_type.eq.competitor_high_threat%2Cevent_type.eq.competitor_auto_discovered%2Cevent_type.eq.competitor_scrape%29&tenant_id=eq.cosmique&order=created_at.desc&limit=20",
+        "status": 400,
+        "method": "GET"
+      }
+    ],
+    "data_indicator_count": 0,
+    "empty_state_visible": false,
+    "body_excerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nMARKETING AI\nMarketing Hub\nCreate & Publish\nContent Studio\nBlog Manager\nEmail AI\nVideo Studio\nSocial Commander\nSocial Listening\nPages & Capture\nLanding Pages\nPage Builder\nCampaigns\nAds Manager\nA/B Testing\nSequences\nContent Calendar\nIntelligence\nMarketing Analytics\nCompetitor Intel\nSEO Dashboard\nAEO Dashboard\nStrategy\nBrand Voice\nPlaybooks\nInfluencer Hub\nDream Clients\nAutomation\nVoice Marketing\nAutonomous Mode\nEngagement Responder\nHR AI\nCLINIC\nOPER"
+  },
+  {
+    "route": "/marketing/blogs",
+    "url_after": "https://ai.zatesystems.com/marketing/blogs",
+    "render_status": "PARTIAL",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-marketing-blogs.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 406 ()"
+    ],
+    "network_errors": [
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      }
+    ],
+    "data_indicator_count": 0,
+    "empty_state_visible": false,
+    "body_excerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nMARKETING AI\nMarketing Hub\nCreate & Publish\nContent Studio\nBlog Manager\nEmail AI\nVideo Studio\nSocial Commander\nSocial Listening\nPages & Capture\nLanding Pages\nPage Builder\nCampaigns\nAds Manager\nA/B Testing\nSequences\nContent Calendar\nIntelligence\nMarketing Analytics\nCompetitor Intel\nSEO Dashboard\nAEO Dashboard\nStrategy\nBrand Voice\nPlaybooks\nInfluencer Hub\nDream Clients\nAutomation\nVoice Marketing\nAutonomous Mode\nEngagement Responder\nHR AI\nCLINIC\nOPER"
+  },
+  {
+    "route": "/marketing/seo",
+    "url_after": "https://ai.zatesystems.com/marketing/seo",
+    "render_status": "EMPTY",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-marketing-seo.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 406 ()"
+    ],
+    "network_errors": [
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      }
+    ],
+    "data_indicator_count": 0,
+    "empty_state_visible": true,
+    "body_excerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nMARKETING AI\nMarketing Hub\nCreate & Publish\nContent Studio\nBlog Manager\nEmail AI\nVideo Studio\nSocial Commander\nSocial Listening\nPages & Capture\nLanding Pages\nPage Builder\nCampaigns\nAds Manager\nA/B Testing\nSequences\nContent Calendar\nIntelligence\nMarketing Analytics\nCompetitor Intel\nSEO Dashboard\nAEO Dashboard\nStrategy\nBrand Voice\nPlaybooks\nInfluencer Hub\nDream Clients\nAutomation\nVoice Marketing\nAutonomous Mode\nEngagement Responder\nHR AI\nCLINIC\nOPER"
+  },
+  {
+    "route": "/marketing/aeo-dashboard",
+    "url_after": "https://ai.zatesystems.com/marketing/aeo-dashboard",
+    "render_status": "EMPTY",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-marketing-aeo-dashboard.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 406 ()",
+      "Failed to load resource: the server responded with a status of 400 ()"
+    ],
+    "network_errors": [
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      },
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/aeo_schema_registry?select=*&tenant_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&order=created_at.desc",
+        "status": 400,
+        "method": "GET"
+      }
+    ],
+    "data_indicator_count": 0,
+    "empty_state_visible": true,
+    "body_excerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nMARKETING AI\nMarketing Hub\nCreate & Publish\nContent Studio\nBlog Manager\nEmail AI\nVideo Studio\nSocial Commander\nSocial Listening\nPages & Capture\nLanding Pages\nPage Builder\nCampaigns\nAds Manager\nA/B Testing\nSequences\nContent Calendar\nIntelligence\nMarketing Analytics\nCompetitor Intel\nSEO Dashboard\nAEO Dashboard\nStrategy\nBrand Voice\nPlaybooks\nInfluencer Hub\nDream Clients\nAutomation\nVoice Marketing\nAutonomous Mode\nEngagement Responder\nHR AI\nCLINIC\nOPER"
+  },
+  {
+    "route": "/marketing/calendar",
+    "url_after": "https://ai.zatesystems.com/marketing/calendar",
+    "render_status": "PARTIAL",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-marketing-calendar.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 406 ()"
+    ],
+    "network_errors": [
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      }
+    ],
+    "data_indicator_count": 0,
+    "empty_state_visible": false,
+    "body_excerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nMARKETING AI\nMarketing Hub\nCreate & Publish\nContent Studio\nBlog Manager\nEmail AI\nVideo Studio\nSocial Commander\nSocial Listening\nPages & Capture\nLanding Pages\nPage Builder\nCampaigns\nAds Manager\nA/B Testing\nSequences\nContent Calendar\nIntelligence\nMarketing Analytics\nCompetitor Intel\nSEO Dashboard\nAEO Dashboard\nStrategy\nBrand Voice\nPlaybooks\nInfluencer Hub\nDream Clients\nAutomation\nVoice Marketing\nAutonomous Mode\nEngagement Responder\nHR AI\nCLINIC\nOPER"
+  },
+  {
+    "route": "/marketing/sequences",
+    "url_after": "https://ai.zatesystems.com/marketing/sequences",
+    "render_status": "PARTIAL",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-marketing-sequences.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 406 ()"
+    ],
+    "network_errors": [
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      }
+    ],
+    "data_indicator_count": 0,
+    "empty_state_visible": false,
+    "body_excerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nMARKETING AI\nMarketing Hub\nCreate & Publish\nContent Studio\nBlog Manager\nEmail AI\nVideo Studio\nSocial Commander\nSocial Listening\nPages & Capture\nLanding Pages\nPage Builder\nCampaigns\nAds Manager\nA/B Testing\nSequences\nContent Calendar\nIntelligence\nMarketing Analytics\nCompetitor Intel\nSEO Dashboard\nAEO Dashboard\nStrategy\nBrand Voice\nPlaybooks\nInfluencer Hub\nDream Clients\nAutomation\nVoice Marketing\nAutonomous Mode\nEngagement Responder\nHR AI\nCLINIC\nOPER"
+  },
+  {
+    "route": "/marketing/social",
+    "url_after": "https://ai.zatesystems.com/marketing/social",
+    "render_status": "EMPTY",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-marketing-social.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 406 ()"
+    ],
+    "network_errors": [
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      }
+    ],
+    "data_indicator_count": 0,
+    "empty_state_visible": true,
+    "body_excerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nMARKETING AI\nMarketing Hub\nCreate & Publish\nContent Studio\nBlog Manager\nEmail AI\nVideo Studio\nSocial Commander\nSocial Listening\nPages & Capture\nLanding Pages\nPage Builder\nCampaigns\nAds Manager\nA/B Testing\nSequences\nContent Calendar\nIntelligence\nMarketing Analytics\nCompetitor Intel\nSEO Dashboard\nAEO Dashboard\nStrategy\nBrand Voice\nPlaybooks\nInfluencer Hub\nDream Clients\nAutomation\nVoice Marketing\nAutonomous Mode\nEngagement Responder\nHR AI\nCLINIC\nOPER"
+  },
+  {
+    "route": "/marketing/analytics",
+    "url_after": "https://ai.zatesystems.com/marketing/analytics",
+    "render_status": "PARTIAL",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-marketing-analytics.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 406 ()"
+    ],
+    "network_errors": [
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      }
+    ],
+    "data_indicator_count": 0,
+    "empty_state_visible": false,
+    "body_excerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nMARKETING AI\nMarketing Hub\nCreate & Publish\nContent Studio\nBlog Manager\nEmail AI\nVideo Studio\nSocial Commander\nSocial Listening\nPages & Capture\nLanding Pages\nPage Builder\nCampaigns\nAds Manager\nA/B Testing\nSequences\nContent Calendar\nIntelligence\nMarketing Analytics\nCompetitor Intel\nSEO Dashboard\nAEO Dashboard\nStrategy\nBrand Voice\nPlaybooks\nInfluencer Hub\nDream Clients\nAutomation\nVoice Marketing\nAutonomous Mode\nEngagement Responder\nHR AI\nCLINIC\nOPER"
+  },
+  {
+    "route": "/communications",
+    "url_after": "https://ai.zatesystems.com/communications/voice-ai",
+    "render_status": "PARTIAL",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-communications.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 406 ()"
+    ],
+    "network_errors": [
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      }
+    ],
+    "data_indicator_count": 0,
+    "empty_state_visible": false,
+    "body_excerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nMARKETING AI\nHR AI\nCLINIC\nOPERATIONS\nCOMMUNICATIONS\nVoice AI\nWhatsApp\nEmail\nSMS\nAI COMMAND\nOMEGA\nANALYTICS & AI\nSETTINGS\n\nPress g + key for shortcuts\n\nLogout\nToggle Sidebar\nSearch...\n⌘\nK\nAI: Assisted\n5\nAD\nVoice AI\n\nAI-powered voice communications hub\n\nSetup Required\nOverview\nAI Config\nPhone Numbers\nCall Log\nCall Center\nIVR Builder\nCredits\nVAPI Not Configured\n\nConfigure VAPI in the AI Config tab to enable voice calls\n\nRefresh\nSetup Required\n\nCalls "
+  },
+  {
+    "route": "/omega",
+    "url_after": "https://ai.zatesystems.com/omega",
+    "render_status": "PARTIAL",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-omega.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 406 ()"
+    ],
+    "network_errors": [
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      }
+    ],
+    "data_indicator_count": 0,
+    "empty_state_visible": false,
+    "body_excerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nMARKETING AI\nHR AI\nCLINIC\nOPERATIONS\nCOMMUNICATIONS\nAI COMMAND\nOMEGA\nANALYTICS & AI\nSETTINGS\n\nPress g + key for shortcuts\n\nLogout\nToggle Sidebar\nSearch...\n⌘\nK\nAI: Assisted\n5\nAD\nOMEGA Command Center\n\nCross-Brain Super-Agent | LangGraph + n8n\n\nChecking...\nChat\nActivity\nAutonomous\nApprovals\nMemory\nSystem\nVoice Off\n\nTalk to OMEGA\n\nSend a message or tap the mic to speak with the super-agent."
+  },
+  {
+    "route": "/settings/integrations",
+    "url_after": "https://ai.zatesystems.com/settings/integrations",
+    "render_status": "PARTIAL",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-settings-integrations.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 406 ()"
+    ],
+    "network_errors": [
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      }
+    ],
+    "data_indicator_count": 0,
+    "empty_state_visible": false,
+    "body_excerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nMARKETING AI\nHR AI\nCLINIC\nOPERATIONS\nCOMMUNICATIONS\nAI COMMAND\nOMEGA\nANALYTICS & AI\nSETTINGS\nBusiness Profile\nCompany Info\nKnowledge Base\nAI Training\nIntegrations\nTeam\nBilling\nNotifications\nOutreach & Safety\n\nPress g + key for shortcuts\n\nLogout\nToggle Sidebar\nSearch...\n⌘\nK\nAI: Assisted\n5\nAD\nMarketing Connections\n\nConfigure tokens and credentials used by Marketing modules. All fields save directly to your tenant configuration.\n\n📘 Meta\n📧 Email\n💬 "
+  },
+  {
+    "route": "/settings/business-profile",
+    "url_after": "https://ai.zatesystems.com/settings/business-profile/company",
+    "render_status": "PARTIAL",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-settings-business-profile.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 406 ()"
+    ],
+    "network_errors": [
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      }
+    ],
+    "data_indicator_count": 0,
+    "empty_state_visible": false,
+    "body_excerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nMARKETING AI\nHR AI\nCLINIC\nOPERATIONS\nCOMMUNICATIONS\nAI COMMAND\nOMEGA\nANALYTICS & AI\nSETTINGS\nBusiness Profile\nCompany Info\nKnowledge Base\nAI Training\nIntegrations\nTeam\nBilling\nNotifications\nOutreach & Safety\n\nPress g + key for shortcuts\n\nLogout\nToggle Sidebar\nSearch...\n⌘\nK\nAI: Assisted\n5\nAD\n\nBusiness Profile\n\nCompany Information\n\nManage your business details and AI assistant configuration\n\nBusiness Details\n\nYour company's basic information\n\nCompan"
+  },
+  {
+    "route": "/settings/team",
+    "url_after": "https://ai.zatesystems.com/settings/team",
+    "render_status": "EMPTY",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-settings-team.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 406 ()",
+      "Failed to load resource: the server responded with a status of 406 ()"
+    ],
+    "network_errors": [
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      },
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      }
+    ],
+    "data_indicator_count": 0,
+    "empty_state_visible": true,
+    "body_excerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nMARKETING AI\nHR AI\nCLINIC\nOPERATIONS\nCOMMUNICATIONS\nAI COMMAND\nOMEGA\nANALYTICS & AI\nSETTINGS\nBusiness Profile\nCompany Info\nKnowledge Base\nAI Training\nIntegrations\nTeam\nBilling\nNotifications\nOutreach & Safety\n\nPress g + key for shortcuts\n\nLogout\nToggle Sidebar\nSearch...\n⌘\nK\nAI: Assisted\n5\nAD\nTeam Management\n\nManage your team members, roles, and invitations\n\nInvite Member\nTotal Members\n0\n\n2 slots remaining\n\nActive Members\n0\n\nCurrently active\n\nPendin"
+  },
+  {
+    "route": "/analytics/autonomous-health",
+    "url_after": "https://ai.zatesystems.com/analytics/autonomous-health",
+    "render_status": "PARTIAL",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase2-analytics-autonomous-health.png",
+    "console_errors": [
+      "Failed to load resource: the server responded with a status of 406 ()"
+    ],
+    "network_errors": [
+      {
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/team_members?select=role_id%2Croles%3Arole_id%28hierarchy_level%29&org_id=eq.933967dd-1f90-4676-96c1-42a01b6d9835&user_id=eq.3f58f4d3-fd98-43ff-b157-43fadf0778e9&status=eq.active",
+        "status": 406,
+        "method": "GET"
+      }
+    ],
+    "data_indicator_count": 0,
+    "empty_state_visible": false,
+    "body_excerpt": "Skip to main content\nCosmique Aesthetics\nhealthcare clinic\na\n\nadmin\n\nAdmin\n\nCosmique Aesthetics\n\nMAIN\nDashboard\nInbox\nVisits\nPatients\nTasks\nSALES AI\nMARKETING AI\nHR AI\nCLINIC\nOPERATIONS\nCOMMUNICATIONS\nAI COMMAND\nOMEGA\nANALYTICS & AI\nAnalytics Hub\nReal-time Dashboard\nCustom Reports\nAI Insights\nPredictions\nIntelligence Hub\nAutonomous Health\nSETTINGS\n\nPress g + key for shortcuts\n\nLogout\nToggle Sidebar\nSearch...\n⌘\nK\nAI: Assisted\n5\nAD\nAutonomous Health\n\nAutomated audit of every module across your tenant. Updated every 8 hours.\n\nNo audit runs yet for this tenant. The first audit will appear automati"
+  }
+]

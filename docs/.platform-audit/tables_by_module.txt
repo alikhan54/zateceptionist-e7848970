@@ -1,0 +1,909 @@
+=== 625 tables across 156 module prefixes ===
+
+--- hr_* (46 tables) ---
+  hr_ai_insights                                 rows=0
+  hr_ai_interviews                               rows=1
+  hr_announcements                               rows=0
+  hr_asset_assignments                           rows=0
+  hr_attendance                                  rows=60
+  hr_attendance_corrections                      rows=0
+  hr_attendance_rules                            rows=1
+  hr_audit_logs                                  rows=0
+  hr_auto_decisions                              rows=670
+  hr_auto_mode_config                            rows=41
+  hr_candidates                                  rows=10
+  hr_compliance_logs                             rows=0
+  hr_conversations                               rows=0
+  hr_departments                                 rows=14
+  hr_document_acknowledgments                    rows=1
+  hr_document_templates                          rows=0
+  hr_documents                                   rows=10
+  hr_employee_documents                          rows=0
+  hr_employee_payroll                            rows=0
+  hr_employee_shifts                             rows=0
+  hr_employees                                   rows=34
+  hr_expense_claims                              rows=0
+  hr_goals                                       rows=10
+  hr_interview_schedules                         rows=0
+  hr_job_applications                            rows=10
+  hr_job_requisitions                            rows=12
+  hr_leave_balances                              rows=104
+  hr_leave_requests                              rows=9
+  hr_leave_types                                 rows=7
+  hr_notifications                               rows=0
+  ... and 16 more
+
+--- other_* (45 tables) ---
+  activities                                     rows=0
+  analytics                                      rows=0
+  appointments                                   rows=18
+  calls                                          rows=0
+  campaigns                                      rows=0
+  companies                                      rows=0
+  competitors                                    rows=21
+  consent                                        rows=0
+  contacts                                       rows=24
+  conversations                                  rows=31
+  conversions                                    rows=0
+  countries                                      rows=65
+  customers                                      rows=40
+  deals                                          rows=8
+  escalations                                    rows=0
+  influencers                                    rows=0
+  leads                                          rows=0
+  messages                                       rows=340
+  migrations                                     rows=148
+  notifications                                  rows=0
+  organizations                                  rows=6
+  packages                                       rows=0
+  permissions                                    rows=54
+  profiles                                       rows=1
+  project                                        rows=1
+  proposals                                      rows=1
+  providers                                      rows=0
+  referrals                                      rows=2
+  reminders                                      rows=0
+  reviews                                        rows=0
+  ... and 15 more
+
+--- ops_* (29 tables) ---
+  ops_agent_memory                               rows=90
+  ops_agent_performance                          rows=0
+  ops_agent_tasks                                rows=583
+  ops_budget_actuals                             rows=34
+  ops_budgets                                    rows=11
+  ops_compliance_log                             rows=34
+  ops_compliance_rules                           rows=200
+  ops_cost_savings                               rows=10
+  ops_demand_forecasts                           rows=1182
+  ops_industry_benchmarks                        rows=9
+  ops_industry_configs                           rows=6
+  ops_inventory_items                            rows=33
+  ops_inventory_movements                        rows=191
+  ops_po_line_items                              rows=23
+  ops_production_plans                           rows=7
+  ops_production_tasks                           rows=49
+  ops_purchase_orders                            rows=41
+  ops_qc_checkpoints                             rows=4
+  ops_qc_results                                 rows=3
+  ops_quality_alerts                             rows=9
+  ops_quality_checks                             rows=8435
+  ops_region_configs                             rows=4
+  ops_shipment_events                            rows=9
+  ops_shipments                                  rows=4
+  ops_simulations                                rows=1
+  ops_slas                                       rows=5
+  ops_templates                                  rows=2
+  ops_vendor_performance                         rows=19
+  ops_vendors                                    rows=11
+
+--- re_* (27 tables) ---
+  re_api_keys                                    rows=0
+  re_automation_log                              rows=47
+  re_clients                                     rows=38
+  re_commissions                                 rows=8
+  re_compliance_alerts                           rows=612
+  re_cross_border_rules                          rows=13
+  re_deal_orchestrations                         rows=0
+  re_deals                                       rows=18
+  re_documents                                   rows=8
+  re_eoi                                         rows=5
+  re_investment_portfolio                        rows=2
+  re_investment_routes                           rows=0
+  re_lead_scores                                 rows=38
+  re_listings                                    rows=49
+  re_market_data                                 rows=40
+  re_market_forecasts                            rows=677
+  re_matches                                     rows=0
+  re_mortgage_banks                              rows=9
+  re_offplan_projects                            rows=60
+  re_portal_credentials                          rows=0
+  re_portal_sync_log                             rows=4
+  re_price_predictions                           rows=5
+  re_region_config                               rows=8
+  re_road_shows                                  rows=4
+  re_training_knowledge                          rows=28
+  re_viewings                                    rows=33
+  re_whatsapp_journeys                           rows=1
+
+--- sales_* (25 tables) ---
+  sales_ab_assignments                           rows=0
+  sales_ab_tests                                 rows=0
+  sales_analytics_by_rep                         rows=0
+  sales_analytics_daily                          rows=0
+  sales_assignment_rules                         rows=0
+  sales_assignments                              rows=0
+  sales_availability                             rows=0
+  sales_calendar_events                          rows=0
+  sales_calls                                    rows=0
+  sales_communication_limits                     rows=0
+  sales_compliance_log                           rows=0
+  sales_consent_records                          rows=0
+  sales_conversations                            rows=0
+  sales_deals                                    rows=0
+  sales_do_not_contact                           rows=0
+  sales_email_verification                       rows=0
+  sales_emails                                   rows=0
+  sales_lead_assignments                         rows=0
+  sales_leads                                    rows=1085
+  sales_marketing_bridge                         rows=0
+  sales_phone_validation                         rows=0
+  sales_referrals                                rows=0
+  sales_sequences                                rows=14
+  sales_team_members                             rows=0
+  sales_territories                              rows=0
+
+--- yt_* (21 tables) ---
+  yt_analytics_snapshots                         rows=5
+  yt_channel_audits                              rows=1
+  yt_channels                                    rows=77
+  yt_client_economics                            rows=5
+  yt_client_reports                              rows=1
+  yt_competitor_alerts                           rows=4
+  yt_competitor_tracking                         rows=3
+  yt_content_calendar                            rows=6
+  yt_discovery_batches                           rows=36
+  yt_generated_assets                            rows=5
+  yt_oauth_connections                           rows=2
+  yt_outreach_campaigns                          rows=1
+  yt_outreach_sequences                          rows=7
+  yt_outreach_touches                            rows=166
+  yt_payment_transactions                        rows=3
+  yt_portal_messages                             rows=3
+  yt_portal_users                                rows=2
+  yt_seo_packages                                rows=3
+  yt_thumbnail_tests                             rows=3
+  yt_trending_topics                             rows=4
+  yt_video_scripts                               rows=1
+
+--- estimation_* (19 tables) ---
+  estimation_activity_log                        rows=68
+  estimation_bidsets                             rows=31
+  estimation_drawing_pages                       rows=18
+  estimation_estimates                           rows=8
+  estimation_learning_data                       rows=0
+  estimation_materials                           rows=53
+  estimation_projects                            rows=10
+  estimation_revisions                           rows=0
+  estimation_rfis                                rows=2
+  estimation_room_details                        rows=4
+  estimation_room_polygons                       rows=35
+  estimation_rooms                               rows=66
+  estimation_spec_data                           rows=1
+  estimation_supplier_pricing                    rows=175
+  estimation_takeoff_items                       rows=409
+  estimation_team_assignments                    rows=3
+  estimation_transition_rules                    rows=25
+  estimation_waste_factors                       rows=30
+  estimation_waste_matrix                        rows=52
+
+--- marketing_* (18 tables) ---
+  marketing_agencies                             rows=0
+  marketing_ai_activity                          rows=15
+  marketing_analytics                            rows=0
+  marketing_api_usage                            rows=0
+  marketing_calendar                             rows=1
+  marketing_campaigns                            rows=23
+  marketing_consent                              rows=0
+  marketing_content                              rows=14416
+  marketing_performance_log                      rows=0
+  marketing_personas                             rows=3
+  marketing_playbooks                            rows=30
+  marketing_predictions                          rows=35
+  marketing_sequence_enrollments                 rows=0
+  marketing_sequence_steps                       rows=22
+  marketing_sequence_templates                   rows=9
+  marketing_sequences                            rows=10
+  marketing_touchpoints                          rows=0
+  marketing_webhooks                             rows=0
+
+--- ai_* (17 tables) ---
+  ai_agent_conversations                         rows=0
+  ai_agent_metrics                               rows=11
+  ai_agent_suggestions                           rows=0
+  ai_agent_tasks                                 rows=0
+  ai_agent_templates                             rows=10
+  ai_agent_traces                                rows=0
+  ai_agents                                      rows=3
+  ai_decisions                                   rows=700
+  ai_feedback                                    rows=0
+  ai_generated_messages                          rows=0
+  ai_insights                                    rows=0
+  ai_learning_store                              rows=0
+  ai_model_configs                               rows=47
+  ai_predictions                                 rows=6
+  ai_task_templates                              rows=0
+  ai_tasks                                       rows=0
+  ai_team_recommendations                        rows=0
+
+--- lead_* (15 tables) ---
+  lead_ai_analysis                               rows=0
+  lead_engagement_events                         rows=3892
+  lead_gen_credit_logs                           rows=0
+  lead_gen_credits                               rows=3
+  lead_gen_history                               rows=228
+  lead_gen_saved_searches                        rows=0
+  lead_gen_search_logs                           rows=0
+  lead_gen_searches                              rows=0
+  lead_generation_jobs                           rows=0
+  lead_interactions                              rows=1037375
+  lead_magnets                                   rows=2
+  lead_notifications                             rows=0
+  lead_score_predictions                         rows=27
+  lead_scoring_models                            rows=22
+  lead_signals                                   rows=4174
+
+--- clinic_* (14 tables) ---
+  clinic_consent_forms                           rows=0
+  clinic_consent_templates                       rows=3
+  clinic_consultations                           rows=1
+  clinic_health_analyses                         rows=0
+  clinic_medical_reports                         rows=0
+  clinic_medical_review_queue                    rows=0
+  clinic_patient_files                           rows=0
+  clinic_patient_notes                           rows=0
+  clinic_patients                                rows=6
+  clinic_post_care_schedule                      rows=0
+  clinic_prescriptions                           rows=0
+  clinic_products                                rows=8
+  clinic_treatments                              rows=20
+  clinic_video_scripts                           rows=0
+
+--- tenant_* (13 tables) ---
+  tenant_audit_log                               rows=80
+  tenant_channels                                rows=0
+  tenant_config                                  rows=42
+  tenant_cta_library                             rows=28
+  tenant_health_probe                            rows=135
+  tenant_icp_config                              rows=25
+  tenant_integrations                            rows=2
+  tenant_oauth_grants                            rows=0
+  tenant_onboarding                              rows=3
+  tenant_phone_numbers                           rows=3
+  tenant_providers                               rows=0
+  tenant_services                                rows=0
+  tenant_templates                               rows=0
+
+--- voice_* (12 tables) ---
+  voice_call_log                                 rows=1
+  voice_credit_transactions                      rows=0
+  voice_credits                                  rows=1
+  voice_inbox_sync                               rows=1
+  voice_invoices                                 rows=0
+  voice_marketing_calls                          rows=0
+  voice_packages                                 rows=4
+  voice_phone_numbers                            rows=2
+  voice_phone_pool                               rows=1
+  voice_prompt_templates                         rows=15
+  voice_provider_config                          rows=13
+  voice_usage                                    rows=14
+
+--- customer_* (11 tables) ---
+  customer_360                                   rows=0
+  customer_health_scores                         rows=0
+  customer_identities                            rows=0
+  customer_lifecycle_enrollment                  rows=0
+  customer_lifecycle_stages                      rows=0
+  customer_loyalty                               rows=0
+  customer_ltv_cac                               rows=82
+  customer_marketing_prefs                       rows=0
+  customer_relationships                         rows=0
+  customer_reviews                               rows=0
+  customer_timeline                              rows=0
+
+--- collections_* (9 tables) ---
+  collections_accounts                           rows=32
+  collections_bucket_config                      rows=8
+  collections_compliance_log                     rows=8
+  collections_compliance_rules                   rows=10
+  collections_contact_log                        rows=46
+  collections_field_visits                       rows=0
+  collections_kpis                               rows=21
+  collections_ptp                                rows=10
+  collections_settlements                        rows=4
+
+--- video_* (9 tables) ---
+  video_analytics                                rows=0
+  video_assets                                   rows=0
+  video_performance_signals                      rows=154
+  video_projects                                 rows=171
+  video_publishing_log                           rows=1
+  video_render_queue                             rows=106
+  video_retargeting_audiences                    rows=4
+  video_templates                                rows=20
+  video_view_tracking                            rows=7
+
+--- accounting_* (8 tables) ---
+  accounting_clients                             rows=445
+  accounting_companies_house_cache               rows=200
+  accounting_invoices                            rows=5
+  accounting_jobs                                rows=5
+  accounting_payments                            rows=0
+  accounting_reminders                           rows=1
+  accounting_transactions                        rows=0
+  accounting_truelayer_connections               rows=0
+
+--- workflow_* (8 tables) ---
+  workflow_dependency                            rows=6968
+  workflow_entity                                rows=43
+  workflow_errors                                rows=18
+  workflow_executions                            rows=0
+  workflow_health_log                            rows=0
+  workflow_history                               rows=49
+  workflow_publish_history                       rows=79
+  workflow_statistics                            rows=147
+
+--- competitor_* (7 tables) ---
+  competitor_ad_intelligence                     rows=22
+  competitor_analysis                            rows=0
+  competitor_content                             rows=7
+  competitor_intelligence                        rows=0
+  competitor_prices                              rows=0
+  competitor_profiles                            rows=3
+  competitor_tracking                            rows=15
+
+--- email_* (7 tables) ---
+  email_sequence_steps                           rows=0
+  email_sequence_subscribers                     rows=0
+  email_sequences                                rows=0
+  email_template_library                         rows=35
+  email_templates                                rows=6
+  email_verification                             rows=314
+  email_warmup_status                            rows=23
+
+--- ad_* (6 tables) ---
+  ad_accounts                                    rows=0
+  ad_campaigns                                   rows=0
+  ad_conversions                                 rows=3
+  ad_creatives                                   rows=0
+  ad_performance_log                             rows=0
+  ad_script_intelligence                         rows=5
+
+--- agent_* (6 tables) ---
+  agent_actions                                  rows=1069
+  agent_contexts                                 rows=34
+  agent_conversations                            rows=391
+  agent_execution_log                            rows=0
+  agent_memory                                   rows=43
+  agent_performance                              rows=0
+
+--- campaign_* (6 tables) ---
+  campaign_executions                            rows=20
+  campaign_logs                                  rows=0
+  campaign_media                                 rows=0
+  campaign_metrics                               rows=0
+  campaign_send_log                              rows=0
+  campaign_templates                             rows=0
+
+--- conversation_* (6 tables) ---
+  conversation_merges                            rows=0
+  conversation_messages                          rows=0
+  conversation_ratings                           rows=0
+  conversation_resolution_log                    rows=13
+  conversation_tag_assignments                   rows=0
+  conversation_tags                              rows=170
+
+--- social_* (6 tables) ---
+  social_accounts                                rows=8
+  social_content_posts                           rows=16
+  social_mentions                                rows=10
+  social_post_queue                              rows=7655
+  social_posts                                   rows=274
+  social_schedule_slots                          rows=36
+
+--- aeo_* (5 tables) ---
+  aeo_brand_presence                             rows=8
+  aeo_content_scores                             rows=26
+  aeo_entity_graph                               rows=154
+  aeo_query_library                              rows=58
+  aeo_schema_registry                            rows=20
+
+--- content_* (5 tables) ---
+  content_attribution                            rows=0
+  content_calendar                               rows=0
+  content_performance                            rows=0
+  content_repurpose_jobs                         rows=2
+  content_versions                               rows=0
+
+--- onboarding_* (5 tables) ---
+  onboarding_audit_log                           rows=138
+  onboarding_checklists                          rows=0
+  onboarding_module_status                       rows=37
+  onboarding_retry_queue                         rows=0
+  onboarding_sessions                            rows=8
+
+--- restaurant_* (5 tables) ---
+  restaurant_inventory                           rows=0
+  restaurant_kitchen_display                     rows=0
+  restaurant_menus                               rows=3
+  restaurant_orders                              rows=0
+  restaurant_reservations                        rows=3
+
+--- team_* (5 tables) ---
+  team_activity_logs                             rows=8
+  team_invitations                               rows=7
+  team_member_notifications                      rows=0
+  team_member_sessions                           rows=0
+  team_members                                   rows=3
+
+--- consent_* (4 tables) ---
+  consent_log                                    rows=31
+  consent_records                                rows=0
+  consent_signatures                             rows=0
+  consent_templates                              rows=0
+
+--- industry_* (4 tables) ---
+  industry_campaign_templates                    rows=0
+  industry_lead_scoring                          rows=0
+  industry_templates                             rows=19
+  industry_vip_criteria                          rows=0
+
+--- omega_* (4 tables) ---
+  omega_alerts                                   rows=23146
+  omega_approval_queue                           rows=0
+  omega_campaigns                                rows=3
+  omega_feedback                                 rows=0
+
+--- sequence_* (4 tables) ---
+  sequence_ab_tests                              rows=217
+  sequence_enrollments                           rows=0
+  sequence_step_history                          rows=0
+  sequence_templates                             rows=75
+
+--- staff_* (4 tables) ---
+  staff_chats                                    rows=0
+  staff_conversations                            rows=0
+  staff_members                                  rows=0
+  staff_schedules                                rows=0
+
+--- task_* (4 tables) ---
+  task_automation_rules                          rows=162
+  task_automation_rules_template                 rows=21
+  task_execution_log                             rows=0
+  task_executions                                rows=0
+
+--- analytics_* (3 tables) ---
+  analytics_daily                                rows=61
+  analytics_events                               rows=0
+  analytics_hourly                               rows=1
+
+--- automation_* (3 tables) ---
+  automation_audit_log                           rows=0
+  automation_rules                               rows=0
+  automation_settings                            rows=0
+
+--- b2c_* (3 tables) ---
+  b2c_discovered_leads                           rows=0
+  b2c_discovery_logs                             rows=0
+  b2c_intent_monitors                            rows=1
+
+--- business_* (3 tables) ---
+  business_insights                              rows=0
+  business_profiles                              rows=13
+  business_settings                              rows=0
+
+--- call_* (3 tables) ---
+  call_logs                                      rows=0
+  call_queue                                     rows=0
+  call_records                                   rows=0
+
+--- channel_* (3 tables) ---
+  channel_config                                 rows=0
+  channel_configurations                         rows=0
+  channel_messages                               rows=0
+
+--- company_* (3 tables) ---
+  company_intelligence                           rows=730
+  company_policies                               rows=0
+  company_research                               rows=632
+
+--- follow_* (3 tables) ---
+  follow_up_tasks                                rows=0
+  follow_up_tracking                             rows=0
+  follow_ups                                     rows=0
+
+--- influencer_* (3 tables) ---
+  influencer_campaign_members                    rows=0
+  influencer_campaigns                           rows=0
+  influencer_outreach_log                        rows=0
+
+--- insights_* (3 tables) ---
+  insights_by_period                             rows=2781
+  insights_metadata                              rows=40
+  insights_raw                                   rows=319
+
+--- inventory_* (3 tables) ---
+  inventory_items                                rows=0
+  inventory_stock                                rows=0
+  inventory_transactions                         rows=0
+
+--- media_* (3 tables) ---
+  media_library                                  rows=0
+  media_mentions                                 rows=0
+  media_sources                                  rows=0
+
+--- message_* (3 tables) ---
+  message_queue                                  rows=2
+  message_sentiment                              rows=127
+  message_templates                              rows=0
+
+--- patient_* (3 tables) ---
+  patient_testimonials                           rows=0
+  patient_visits                                 rows=0
+  patient_vitals                                 rows=0
+
+--- pricing_* (3 tables) ---
+  pricing_analytics                              rows=0
+  pricing_logs                                   rows=0
+  pricing_rules                                  rows=0
+
+--- tender_* (3 tables) ---
+  tender_documents                               rows=4
+  tender_payments                                rows=6
+  tender_stages                                  rows=8
+
+--- treatment_* (3 tables) ---
+  treatment_media                                rows=0
+  treatment_notes                                rows=0
+  treatment_records                              rows=0
+
+--- website_* (3 tables) ---
+  website_cta_clicks                             rows=26
+  website_leads                                  rows=2
+  website_visitors                               rows=575
+
+--- ab_* (2 tables) ---
+  ab_test_events                                 rows=0
+  ab_tests                                       rows=6
+
+--- api_* (2 tables) ---
+  api_key_pool                                   rows=14
+  api_usage_logs                                 rows=0
+
+--- audit_* (2 tables) ---
+  audit_log                                      rows=0
+  audit_logs                                     rows=6
+
+--- autonomous_* (2 tables) ---
+  autonomous_marketing_actions                   rows=32
+  autonomous_workflows                           rows=0
+
+--- billing_* (2 tables) ---
+  billing_events                                 rows=1
+  billing_history                                rows=1
+
+--- blog_* (2 tables) ---
+  blog_accounts                                  rows=0
+  blog_posts                                     rows=28
+
+--- brand_* (2 tables) ---
+  brand_visual_profiles                          rows=23
+  brand_voice_profiles                           rows=5
+
+--- bsh_* (2 tables) ---
+  bsh_clinical_log                               rows=0
+  bsh_multibranch_metrics                        rows=0
+
+--- bulk_* (2 tables) ---
+  bulk_call_campaigns                            rows=1
+  bulk_call_contacts                             rows=1
+
+--- contact_* (2 tables) ---
+  contact_channel_map                            rows=0
+  contact_engagement_patterns                    rows=0
+
+--- execution_* (2 tables) ---
+  execution_data                                 rows=5539
+  execution_entity                               rows=5539
+
+--- integration_* (2 tables) ---
+  integration_logs                               rows=0
+  integration_usage                              rows=0
+
+--- ivr_* (2 tables) ---
+  ivr_flows                                      rows=3
+  ivr_templates                                  rows=10
+
+--- landing_* (2 tables) ---
+  landing_page_submissions                       rows=0
+  landing_pages                                  rows=9
+
+--- manual_* (2 tables) ---
+  manual_email_campaigns                         rows=1
+  manual_email_recipients                        rows=1
+
+--- oauth_* (2 tables) ---
+  oauth_clients                                  rows=1
+  oauth_state_nonces                             rows=0
+
+--- orchestrator_* (2 tables) ---
+  orchestrator_events                            rows=0
+  orchestrator_logs                              rows=83372
+
+--- page_* (2 tables) ---
+  page_analytics                                 rows=0
+  page_templates                                 rows=12
+
+--- reply_* (2 tables) ---
+  reply_events                                   rows=8
+  reply_routing_rules                            rows=200
+
+--- revenue_* (2 tables) ---
+  revenue_attribution                            rows=0
+  revenue_forecasts                              rows=0
+
+--- role_* (2 tables) ---
+  role_permissions                               rows=270
+  role_scope                                     rows=422
+
+--- seo_* (2 tables) ---
+  seo_content_scores                             rows=2
+  seo_keyword_tracking                           rows=10
+
+--- shared_* (2 tables) ---
+  shared_credentials                             rows=50
+  shared_workflow                                rows=43
+
+--- sla_* (2 tables) ---
+  sla_breaches                                   rows=274364
+  sla_policies                                   rows=80
+
+--- subscription_* (2 tables) ---
+  subscription_plans                             rows=4
+  subscription_tiers                             rows=3
+
+--- system_* (2 tables) ---
+  system_events                                  rows=10114
+  system_health                                  rows=0
+
+--- target_* (2 tables) ---
+  target_accounts                                rows=5
+  target_personas                                rows=35
+
+--- trigger_* (2 tables) ---
+  trigger_events                                 rows=99
+  trigger_monitors                               rows=95
+
+--- user_* (2 tables) ---
+  user_api_keys                                  rows=1
+  user_roles                                     rows=48
+
+--- webhook_* (2 tables) ---
+  webhook_entity                                 rows=225
+  webhook_logs                                   rows=0
+
+--- abm_* (1 tables) ---
+  abm_activities                                 rows=4
+
+--- account_* (1 tables) ---
+  account_heat_map                               rows=1405
+
+--- apify_* (1 tables) ---
+  apify_actors                                   rows=0
+
+--- audience_* (1 tables) ---
+  audience_segments                              rows=8
+
+--- auto_* (1 tables) ---
+  auto_lead_gen_settings                         rows=11
+
+--- buying_* (1 tables) ---
+  buying_committees                              rows=953
+
+--- canned_* (1 tables) ---
+  canned_responses                               rows=98
+
+--- client_* (1 tables) ---
+  client_packages                                rows=0
+
+--- comm_* (1 tables) ---
+  comm_analytics_daily                           rows=0
+
+--- conversion_* (1 tables) ---
+  conversion_events                              rows=0
+
+--- credentials_* (1 tables) ---
+  credentials_entity                             rows=50
+
+--- credit_* (1 tables) ---
+  credit_transactions                            rows=0
+
+--- daily_* (1 tables) ---
+  daily_metrics                                  rows=0
+
+--- deal_* (1 tables) ---
+  deal_activities                                rows=0
+
+--- default_* (1 tables) ---
+  default_checklist_items                        rows=19
+
+--- deliverability_* (1 tables) ---
+  deliverability_metrics                         rows=27
+
+--- delivery_* (1 tables) ---
+  delivery_connectors                            rows=0
+
+--- do_* (1 tables) ---
+  do_not_contact                                 rows=129
+
+--- document_* (1 tables) ---
+  document_tracking                              rows=3
+
+--- employer_* (1 tables) ---
+  employer_branding_content                      rows=0
+
+--- engagement_* (1 tables) ---
+  engagement_responses                           rows=30
+
+--- enrichment_* (1 tables) ---
+  enrichment_api_usage                           rows=0
+
+--- entity_* (1 tables) ---
+  entity_links                                   rows=0
+
+--- field_* (1 tables) ---
+  field_job_cards                                rows=5
+
+--- forecast_* (1 tables) ---
+  forecast_history                               rows=121
+
+--- google_* (1 tables) ---
+  google_reviews                                 rows=0
+
+--- inbound_* (1 tables) ---
+  inbound_messages                               rows=0
+
+--- inbox_* (1 tables) ---
+  inbox_rotation_log                             rows=0
+
+--- instrument_* (1 tables) ---
+  instrument_registry                            rows=10
+
+--- insurance_* (1 tables) ---
+  insurance_claims                               rows=0
+
+--- internal_* (1 tables) ---
+  internal_notes                                 rows=0
+
+--- journey_* (1 tables) ---
+  journey_stages                                 rows=0
+
+--- knowledge_* (1 tables) ---
+  knowledge_base                                 rows=111
+
+--- leave_* (1 tables) ---
+  leave_requests                                 rows=0
+
+--- linkedin_* (1 tables) ---
+  linkedin_outreach_queue                        rows=0
+
+--- lovable_* (1 tables) ---
+  lovable_sync                                   rows=0
+
+--- ltv_* (1 tables) ---
+  ltv_cac_snapshots                              rows=118
+
+--- maintenance_* (1 tables) ---
+  maintenance_contracts                          rows=4
+
+--- market_* (1 tables) ---
+  market_signals                                 rows=674
+
+--- master_* (1 tables) ---
+  master_api_keys                                rows=0
+
+--- meeting_* (1 tables) ---
+  meeting_links                                  rows=1
+
+--- multichannel_* (1 tables) ---
+  multichannel_outreach                          rows=769
+
+--- n8n_* (1 tables) ---
+  n8n_chat_histories                             rows=104
+
+--- nps_* (1 tables) ---
+  nps_surveys                                    rows=0
+
+--- optimization_* (1 tables) ---
+  optimization_reports                           rows=0
+
+--- outbound_* (1 tables) ---
+  outbound_messages                              rows=871
+
+--- package_* (1 tables) ---
+  package_items                                  rows=0
+
+--- pending_* (1 tables) ---
+  pending_actions                                rows=0
+
+--- predictive_* (1 tables) ---
+  predictive_scores                              rows=0
+
+--- premium_* (1 tables) ---
+  premium_pages                                  rows=0
+
+--- project_* (1 tables) ---
+  project_relation                               rows=1
+
+--- rate_* (1 tables) ---
+  rate_limits                                    rows=0
+
+--- recruitment_* (1 tables) ---
+  recruitment_campaigns                          rows=0
+
+--- review_* (1 tables) ---
+  review_response_templates                      rows=4
+
+--- scheduled_* (1 tables) ---
+  scheduled_messages                             rows=0
+
+--- scraped_* (1 tables) ---
+  scraped_content                                rows=5
+
+--- security_* (1 tables) ---
+  security_deposits                              rows=4
+
+--- send_* (1 tables) ---
+  send_time_preferences                          rows=95
+
+--- sending_* (1 tables) ---
+  sending_accounts                               rows=4
+
+--- service_* (1 tables) ---
+  service_visits                                 rows=6
+
+--- services_* (1 tables) ---
+  services_catalog                               rows=16
+
+--- signed_* (1 tables) ---
+  signed_consents                                rows=0
+
+--- smart_* (1 tables) ---
+  smart_tasks                                    rows=0
+
+--- storm_* (1 tables) ---
+  storm_events                                   rows=0
+
+--- trend_* (1 tables) ---
+  trend_insights                                 rows=5599
+
+--- trending_* (1 tables) ---
+  trending_topics                                rows=0
+
+--- unified_* (1 tables) ---
+  unified_predictions                            rows=0
+
+--- usage_* (1 tables) ---
+  usage_records                                  rows=3
+
+--- vip_* (1 tables) ---
+  vip_routing_rules                              rows=2
+
+--- visitor_* (1 tables) ---
+  visitor_sessions                               rows=1
+
+--- warmup_* (1 tables) ---
+  warmup_daily_log                               rows=13
+
+--- warranty_* (1 tables) ---
+  warranty_tracking                              rows=0

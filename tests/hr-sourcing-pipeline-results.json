@@ -1,0 +1,67 @@
+{
+  "timestamp": "2026-05-25T08:08:15.021Z",
+  "total": 4,
+  "pass": 4,
+  "empty": 0,
+  "fail": 0,
+  "results": [
+    {
+      "id": "T1",
+      "name": "Recruitment page loads",
+      "status": "PASS",
+      "evidence": {
+        "tabs_found": [
+          "Jobs",
+          "Candidates",
+          "Pipeline",
+          "Interviews",
+          "Sourcing"
+        ],
+        "header_visible": true
+      },
+      "screenshot": "screenshots\\2026-05-25-sourcing-pipeline\\t1_recruitment_page.png"
+    },
+    {
+      "id": "T2",
+      "name": "Sourcing tab",
+      "status": "PASS",
+      "evidence": {
+        "tab_opened": true,
+        "row_count": 2,
+        "empty_state": ""
+      },
+      "screenshot": "screenshots\\2026-05-25-sourcing-pipeline\\t2_sourcing_tab.png"
+    },
+    {
+      "id": "T3",
+      "name": "Candidates tab",
+      "status": "PASS",
+      "evidence": {
+        "tab_opened": true,
+        "candidate_count": 5
+      },
+      "screenshot": "screenshots\\2026-05-25-sourcing-pipeline\\t3_candidates_tab.png"
+    },
+    {
+      "id": "T4",
+      "name": "Pipeline kanban",
+      "status": "PASS",
+      "evidence": {
+        "tab_opened": true,
+        "stages_found": [
+          "Applied",
+          "Screening",
+          "Phone Screen",
+          "Interview",
+          "Technical",
+          "Final Round",
+          "Offer",
+          "Hired",
+          "Rejected"
+        ],
+        "applied_cards": 0
+      },
+      "screenshot": "screenshots\\2026-05-25-sourcing-pipeline\\t4_pipeline_kanban.png"
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+{
+  "total": 6,
+  "pass": 6,
+  "partial": 0,
+  "fail": 0,
+  "base_url": "http://localhost:4296",
+  "console_errors_sample": [],
+  "results": [
+    {
+      "id": "F1",
+      "name": "Leave Types live CRUD",
+      "verdict": "PASS",
+      "evidence": {
+        "card_visible": true,
+        "preexisting_rows": 7,
+        "created": true,
+        "deleted": true
+      },
+      "notes": [
+        "tab=true card=true preexisting_rows=7 dialog=true created=true deleted=true",
+        "preexisting_rows>=1 proves SLUG→UUID migration surfaced the 7 legacy leave types to the UUID-querying UI"
+      ],
+      "screenshot": "screenshots\\hr-rls-live\\f1_leave_types.png"
+    },
+    {
+      "id": "F2",
+      "name": "Recruitment funnel renders",
+      "verdict": "PASS",
+      "evidence": {
+        "card_visible": true,
+        "empty_state": false,
+        "total_candidates": 5
+      },
+      "notes": [
+        "tab=true card=true empty=false total=5",
+        "funnel renders WITH live candidate data"
+      ],
+      "screenshot": "screenshots\\hr-rls-live\\f2_recruitment_funnel.png"
+    },
+    {
+      "id": "F3",
+      "name": "Public Holidays live CRUD",
+      "verdict": "PASS",
+      "evidence": {
+        "card_visible": true,
+        "preexisting_rows": 2,
+        "created": true,
+        "deleted": true
+      },
+      "notes": [
+        "tab=true card=true preexisting_rows=2 dialog=true created=true deleted=true",
+        "preexisting_rows>=1 proves the 'zate'→UUID alias migration surfaced the 2 legacy holidays"
+      ],
+      "screenshot": "screenshots\\hr-rls-live\\f3_public_holidays.png"
+    },
+    {
+      "id": "F4",
+      "name": "Notifications admin feed loads",
+      "verdict": "PASS",
+      "evidence": {
+        "card_visible": true,
+        "empty_state": true
+      },
+      "notes": [
+        "card=true empty_or_data=true",
+        "F4 RLS active (tenant isolation + recipient policy); table empty → caught-up state is the honest outcome"
+      ],
+      "screenshot": "screenshots\\hr-rls-live\\f4_notifications.png"
+    },
+    {
+      "id": "F5a",
+      "name": "Shift Types live CRUD",
+      "verdict": "PASS",
+      "evidence": {
+        "card_visible": true,
+        "preexisting_rows": 0,
+        "created": true,
+        "deleted": true
+      },
+      "notes": [
+        "tab=true card=true preexisting_rows=0 dialog=true created=true deleted=true",
+        "create+delete round-trip proves hr_shifts tenant-isolation policy permits browser writes for the owning tenant"
+      ],
+      "screenshot": "screenshots\\hr-rls-live\\f5a_shift_types.png"
+    },
+    {
+      "id": "F5b",
+      "name": "Shift Assignments loads",
+      "verdict": "PASS",
+      "evidence": {
+        "tab_visible": true,
+        "card_visible": true,
+        "empty_state": true
+      },
+      "notes": [
+        "tab=true card=true empty=true",
+        "hr_employee_shifts cross-tenant leak was replaced with tenant isolation; table empty → honest empty state"
+      ],
+      "screenshot": "screenshots\\hr-rls-live\\f5b_assignments.png"
+    }
+  ]
+}

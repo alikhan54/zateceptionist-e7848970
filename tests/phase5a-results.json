@@ -1,0 +1,37 @@
+[
+  {
+    "journey": "J8",
+    "verdict": "REAL_PASS",
+    "db_row_id": "275e5262-3547-4357-806e-d12f4e367e38",
+    "ui_reflects": false,
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase5a-j8-add-prescription.png"
+  },
+  {
+    "journey": "J8b",
+    "verdict": "REAL_PASS",
+    "notes": "submit disabled + validation msg shown"
+  },
+  {
+    "journey": "J10",
+    "verdict": "REAL_PASS",
+    "db_row_id": "dd0c7564-3519-45b7-a75c-f5454847688a",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase5a-j10-mark-complete.png"
+  },
+  {
+    "journey": "J3",
+    "verdict": "REAL_PASS",
+    "db_row_id": "88fc6428-30ef-4f6a-9e58-88e939758dcd",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase5a-j3-reschedule.png"
+  },
+  {
+    "journey": "J4",
+    "verdict": "REAL_PASS",
+    "db_row_id": "95c0a73f-cc2b-4813-859a-cb5c0003b588",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase5a-j4-cancel.png"
+  },
+  {
+    "journey": "DEPT_VAL",
+    "verdict": "REAL_PASS",
+    "notes": "submit disabled + error shown when name blank"
+  }
+]

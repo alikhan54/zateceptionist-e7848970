@@ -1,0 +1,28 @@
+{
+  "functions": {
+    "get_user_tenant_uuid": {
+      "secdef": true,
+      "returns": "uuid"
+    },
+    "get_user_tenant_id": {
+      "secdef": true,
+      "returns": "text"
+    }
+  },
+  "test_users": {
+    "zate": {
+      "tenant_uuid": "ac308ab6-f381-4eef-88ec-4d5c7a860ff9",
+      "slug": "zateceptionist",
+      "user_id": "16228725-af1a-4f81-9296-bd363f78efb8",
+      "resolves_uuid": "ac308ab6-f381-4eef-88ec-4d5c7a860ff9",
+      "resolves_id": "zateceptionist"
+    },
+    "cosmique": {
+      "tenant_uuid": "933967dd-1f90-4676-96c1-42a01b6d9835",
+      "slug": "cosmique",
+      "user_id": null
+    }
+  },
+  "calibration_verdict": "PASS \u2014 sim faithfully reproduces production isolation; behavioral verification TRUSTWORTHY",
+  "policies_dumped": 1505
+}

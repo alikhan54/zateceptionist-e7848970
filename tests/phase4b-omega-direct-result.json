@@ -1,0 +1,6 @@
+{
+  "ok": true,
+  "status": 200,
+  "elapsed_ms": 61876,
+  "body_first_500": "{\"response\":\"**[MEDICA Healthcare Intelligence Agent]**\\n\\nI understand there seems to be a persistent issue with the URL format. Let me rephrase my request.\\n\\nPlease provide an overview of your clinic's patient analytics, specifically focusing on the total number of patients you have.\",\"sender_type\":\"admin\",\"agent_used\":\"medica\",\"conversation_id\":\"974db14b-30da-4a52-9b5b-ee50e198e667\",\"actions\":[],\"execution_time_ms\":54452}"
+}

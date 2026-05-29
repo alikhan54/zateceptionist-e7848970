@@ -1,0 +1,98 @@
+{
+  "timestamp": "2026-05-23T00:20:54.359Z",
+  "pages_tested": 10,
+  "navigated_count": 10,
+  "prefilled_count": 7,
+  "results": [
+    {
+      "page": "/hr/employees",
+      "ai_button_visible": true,
+      "url_after_click": "https://ai.zatesystems.com/hr/ai-assistant",
+      "navigated_to_ai_assistant": true,
+      "prefilled_text": "Analyze workforce demographics, headcount by department, and staffing concerns",
+      "message_matches": true,
+      "screenshot": "screenshots\\2026-05-23-askai-nav\\_hr_employees.png"
+    },
+    {
+      "page": "/hr/attendance",
+      "ai_button_visible": true,
+      "url_after_click": "https://ai.zatesystems.com/hr/ai-assistant",
+      "navigated_to_ai_assistant": true,
+      "prefilled_text": "Analyze attendance patterns, identify late trends, and suggest improvements",
+      "message_matches": true,
+      "screenshot": "screenshots\\2026-05-23-askai-nav\\_hr_attendance.png"
+    },
+    {
+      "page": "/hr/shifts",
+      "ai_button_visible": true,
+      "url_after_click": "https://ai.zatesystems.com/hr/ai-assistant",
+      "navigated_to_ai_assistant": true,
+      "prefilled_text": "Analyze the weekly shift schedule for coverage gaps, weekend balance and suggested rotations",
+      "message_matches": true,
+      "screenshot": "screenshots\\2026-05-23-askai-nav\\_hr_shifts.png"
+    },
+    {
+      "page": "/hr/leave",
+      "ai_button_visible": true,
+      "url_after_click": "https://ai.zatesystems.com/hr/ai-assistant",
+      "navigated_to_ai_assistant": true,
+      "prefilled_text": null,
+      "message_matches": false,
+      "screenshot": "screenshots\\2026-05-23-askai-nav\\_hr_leave.png"
+    },
+    {
+      "page": "/hr/departments",
+      "ai_button_visible": true,
+      "url_after_click": "https://ai.zatesystems.com/hr/ai-assistant",
+      "navigated_to_ai_assistant": true,
+      "prefilled_text": null,
+      "message_matches": false,
+      "screenshot": "screenshots\\2026-05-23-askai-nav\\_hr_departments.png"
+    },
+    {
+      "page": "/hr/performance",
+      "ai_button_visible": true,
+      "url_after_click": "https://ai.zatesystems.com/hr/ai-assistant",
+      "navigated_to_ai_assistant": true,
+      "prefilled_text": "Analyze performance trends, identify top performers and improvement areas",
+      "message_matches": true,
+      "screenshot": "screenshots\\2026-05-23-askai-nav\\_hr_performance.png"
+    },
+    {
+      "page": "/hr/training",
+      "ai_button_visible": true,
+      "url_after_click": "https://ai.zatesystems.com/hr/ai-assistant",
+      "navigated_to_ai_assistant": true,
+      "prefilled_text": "Recommend training programs based on performance gaps and skill requirements",
+      "message_matches": true,
+      "screenshot": "screenshots\\2026-05-23-askai-nav\\_hr_training.png"
+    },
+    {
+      "page": "/hr/recruitment",
+      "ai_button_visible": true,
+      "url_after_click": "https://ai.zatesystems.com/hr/ai-assistant",
+      "navigated_to_ai_assistant": true,
+      "prefilled_text": "Analyze the current recruitment pipeline: open roles, candidate quality, time-to-hire bottlenecks, and which jobs need the most attention",
+      "message_matches": false,
+      "screenshot": "screenshots\\2026-05-23-askai-nav\\_hr_recruitment.png"
+    },
+    {
+      "page": "/hr/documents",
+      "ai_button_visible": true,
+      "url_after_click": "https://ai.zatesystems.com/hr/ai-assistant",
+      "navigated_to_ai_assistant": true,
+      "prefilled_text": "Check document expiry status and list overdue renewals",
+      "message_matches": true,
+      "screenshot": "screenshots\\2026-05-23-askai-nav\\_hr_documents.png"
+    },
+    {
+      "page": "/hr/reports",
+      "ai_button_visible": true,
+      "url_after_click": "https://ai.zatesystems.com/hr/ai-assistant",
+      "navigated_to_ai_assistant": true,
+      "prefilled_text": "Generate a comprehensive HR analytics summary covering headcount, turnover, leave utilisation and key workforce metrics for this tenant",
+      "message_matches": true,
+      "screenshot": "screenshots\\2026-05-23-askai-nav\\_hr_reports.png"
+    }
+  ]
+}

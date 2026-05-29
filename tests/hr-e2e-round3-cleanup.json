@@ -1,0 +1,18 @@
+{
+  "employee_emails": [
+    "playwright+1779495194162@e2e.local"
+  ],
+  "leave_reasons": [
+    "PLAYWRIGHT-TEST leave 1779495194162"
+  ],
+  "job_titles": [
+    "PLAYWRIGHT-TEST Engineer 1779495194162"
+  ],
+  "agent_names": [
+    "PLAYWRIGHT-TEST Agent 1779495194162"
+  ],
+  "agent_ids": [
+    "1be189bd-39c7-434b-93f0-be9f28a5f457"
+  ],
+  "test_start_iso": "2026-05-23T00:13:14.162Z"
+}

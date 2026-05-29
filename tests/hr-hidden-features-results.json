@@ -1,0 +1,59 @@
+{
+  "total": 3,
+  "pass": 3,
+  "partial": 0,
+  "fail": 0,
+  "console_errors_sample": [],
+  "results": [
+    {
+      "id": "F2",
+      "name": "PipelineFunnel renders",
+      "verdict": "PASS",
+      "evidence": {
+        "funnel_visible": true,
+        "total": 5,
+        "stage_label_seen": true,
+        "empty_state": false
+      },
+      "notes": [
+        "funnel_title_visible=true",
+        "total=5 stage_label_seen=true empty_state=false"
+      ],
+      "screenshot": "screenshots\\hr-hidden-features\\f2_pipeline_funnel.png"
+    },
+    {
+      "id": "F1",
+      "name": "LeaveTypesTab renders",
+      "verdict": "PASS",
+      "evidence": {
+        "tab_visible": true,
+        "card_visible": true,
+        "empty_state_rls_gated": true,
+        "add_btn": true
+      },
+      "notes": [
+        "leave_types_tab_visible=true",
+        "card_visible=true empty_state=true add_btn=true",
+        "F1 reads are RLS-gated (0 browser policies) — empty state is the expected honest outcome"
+      ],
+      "screenshot": "screenshots\\hr-hidden-features\\f1_leave_types.png"
+    },
+    {
+      "id": "F3",
+      "name": "PublicHolidaysTab renders",
+      "verdict": "PASS",
+      "evidence": {
+        "tab_visible": true,
+        "card_visible": true,
+        "empty_state_rls_gated": true,
+        "add_btn": true
+      },
+      "notes": [
+        "holidays_tab_visible=true",
+        "card_visible=true empty_state=true add_btn=true",
+        "F3 reads are RLS-gated (0 browser policies) — empty state is the expected honest outcome"
+      ],
+      "screenshot": "screenshots\\hr-hidden-features\\f3_public_holidays.png"
+    }
+  ]
+}

@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { AskAIButton } from '@/components/hr/AskAIButton';
+import { LeaveTypesTab } from '@/components/hr/LeaveTypesTab';
+import { PublicHolidaysTab } from '@/components/hr/PublicHolidaysTab';
 import { useEmployees, useLeaveBalance, useLeaveRequests, type LeaveBalance } from '@/hooks/useHR';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -41,6 +44,8 @@ import { DateRange } from 'react-day-picker';
 
 export default function LeavePage() {
   const { t } = useTenant();
+  const { isAdmin, isManager } = useAuth();
+  const canManage = isAdmin || isManager;
   const { toast } = useToast();
   const { data: balances, isLoading: balanceLoading } = useLeaveBalance();
   const { data: requests, isLoading: requestsLoading, requestLeave, approveLeave } = useLeaveRequests();
@@ -388,7 +393,7 @@ export default function LeavePage() {
 
       {/* Tabs */}
       <Tabs defaultValue="requests" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
+        <TabsList className={cn('grid w-full lg:w-auto lg:inline-grid', canManage ? 'grid-cols-5' : 'grid-cols-3')}>
           <TabsTrigger value="requests" className="gap-2">
             <FileText className="h-4 w-4" />
             My Requests
@@ -406,6 +411,18 @@ export default function LeavePage() {
             <CalendarDays className="h-4 w-4" />
             Team Calendar
           </TabsTrigger>
+          {canManage && (
+            <TabsTrigger value="leave-types" className="gap-2">
+              <FileText className="h-4 w-4" />
+              Leave Types
+            </TabsTrigger>
+          )}
+          {canManage && (
+            <TabsTrigger value="holidays" className="gap-2">
+              <CalendarDays className="h-4 w-4" />
+              Holidays
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="requests">
@@ -542,6 +559,18 @@ export default function LeavePage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {canManage && (
+          <TabsContent value="leave-types">
+            <LeaveTypesTab />
+          </TabsContent>
+        )}
+
+        {canManage && (
+          <TabsContent value="holidays">
+            <PublicHolidaysTab />
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Leave Policy */}

@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AnimatedNumber } from '@/components/hr/AnimatedNumber';
 import { AskAIButton } from '@/components/hr/AskAIButton';
+import { WhoIsWorkingNow } from '@/components/hr/WhoIsWorkingNow';
 import { cn } from '@/lib/utils';
 import {
   Users, UserCheck, CalendarDays, Briefcase, AlertTriangle, Clock, CheckCircle2,
@@ -313,6 +314,9 @@ export default function HRDashboardPage() {
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
+              {/* Real-time attendance widget (Issue 4) */}
+              <WhoIsWorkingNow />
+
               <div className="grid gap-6 md:grid-cols-2">
                 {/* Department Distribution */}
                 <Card className="hover:shadow-md transition-shadow">

@@ -5,6 +5,7 @@ import { useTenant } from "@/contexts/TenantContext";
 import { AskAIButton } from "@/components/hr/AskAIButton";
 import { SourceBadge } from "@/components/hr/SourceBadge";
 import AIInterviewsTab from "@/components/hr/AIInterviewsTab";
+import { PipelineFunnel } from "@/components/hr/PipelineFunnel";
 import { useAutoMode } from "@/hooks/useAutoMode";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Bot } from "lucide-react";
@@ -219,6 +220,19 @@ export default function RecruitmentPage() {
   const [rawText, setRawText] = useState("");
   const [departmentId, setDepartmentId] = useState("");
   const [priority, setPriority] = useState("medium");
+  // Interview questions for new job posting (Issue 1)
+  type InterviewQuestion = {
+    id: string;
+    question: string;
+    type: "behavioral" | "technical" | "situational" | "culture_fit";
+    skills_assessed: string[];
+    evaluation_rubric: string;
+    expected_duration_seconds: number;
+    weight: number;
+    source?: string;
+  };
+  const [interviewQuestions, setInterviewQuestions] = useState<InterviewQuestion[]>([]);
+  const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
   const [selectedJob, setSelectedJob] = useState<JobRequisition | null>(null);
   const [isViewJobOpen, setIsViewJobOpen] = useState(false);
   const [isEditJobOpen, setIsEditJobOpen] = useState(false);
@@ -356,6 +370,76 @@ export default function RecruitmentPage() {
     return "?";
   };
 
+  const generateInterviewQuestions = async () => {
+    if (!jobForm.job_title) {
+      toast.error("Set the job title first");
+      return;
+    }
+    setIsGeneratingQuestions(true);
+    try {
+      const skills = jobForm.required_skills
+        ? jobForm.required_skills.split(",").map((s) => s.trim()).filter(Boolean)
+        : [];
+      const resp = await fetch(
+        "https://webhooks.zatesystems.com/webhook/hr/job/generate-interview-questions",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            job_title: jobForm.job_title,
+            department: departments.find((d) => d.id === departmentId)?.name || "",
+            required_skills: skills,
+            experience_required: jobForm.required_experience_years
+              ? Number(jobForm.required_experience_years)
+              : 0,
+            tenant_id: tenantConfig?.id || tenantId,
+          }),
+        }
+      );
+      const data = await resp.json();
+      if (!data.success || !Array.isArray(data.questions)) {
+        toast.error(data.error || "AI generation failed — add questions manually");
+        return;
+      }
+      setInterviewQuestions(data.questions);
+      toast.success(`${data.questions.length} questions generated. Edit any of them before posting.`);
+    } catch (e: any) {
+      toast.error(`AI generation failed: ${e?.message || "unknown"} — add questions manually`);
+    } finally {
+      setIsGeneratingQuestions(false);
+    }
+  };
+
+  const addManualQuestion = () => {
+    setInterviewQuestions((qs) => [
+      ...qs,
+      {
+        id: `q_${Date.now()}_${qs.length}`,
+        question: "",
+        type: "behavioral",
+        skills_assessed: [],
+        evaluation_rubric: "",
+        expected_duration_seconds: 90,
+        weight: 1.0,
+        source: "manual",
+      },
+    ]);
+  };
+
+  const updateQuestion = (
+    idx: number,
+    field: keyof InterviewQuestion,
+    value: any
+  ) => {
+    setInterviewQuestions((qs) =>
+      qs.map((q, i) => (i === idx ? { ...q, [field]: value } : q))
+    );
+  };
+
+  const removeQuestion = (idx: number) => {
+    setInterviewQuestions((qs) => qs.filter((_, i) => i !== idx));
+  };
+
   const handlePostJob = async () => {
     const WEBHOOK_BASE = 'https://webhooks.zatesystems.com/webhook';
     const tenantUuid = tenantConfig?.id || tenantId;
@@ -363,6 +447,13 @@ export default function RecruitmentPage() {
     const payload: any = {
       tenant_id: tenantUuid,
       mode: inputMode,
+      interview_questions: interviewQuestions,
+      interview_question_method:
+        interviewQuestions.length === 0
+          ? 'manual'
+          : interviewQuestions.every((q) => q.source === 'ai_generated')
+          ? 'ai_generated'
+          : 'hybrid',
     };
 
     if (inputMode === 'url') {
@@ -411,6 +502,29 @@ export default function RecruitmentPage() {
       const data = await response.json();
       const jobTitle = data?.job_title || jobForm.job_title || 'New position';
       const reqNumber = data?.requisition_number || '';
+      const newJobId = data?.id || data?.requisition_id || data?.job_id;
+
+      // Persist interview questions directly to the new requisition row.
+      // The /hr/job/ai-create webhook doesn't pass interview_questions through
+      // today, so we PATCH the row here. Skips silently if id can't be resolved.
+      if (newJobId && interviewQuestions.length > 0) {
+        try {
+          await supabase
+            .from('hr_job_requisitions')
+            .update({
+              interview_questions: interviewQuestions as any,
+              interview_question_method:
+                interviewQuestions.every((q) => q.source === 'ai_generated')
+                  ? 'ai_generated'
+                  : interviewQuestions.some((q) => q.source === 'ai_generated')
+                  ? 'hybrid'
+                  : 'manual',
+            } as any)
+            .eq('id', newJobId);
+        } catch {
+          /* non-fatal — admin can re-edit later */
+        }
+      }
 
       if (data?.ai_enriched) {
         toast.success(`${jobTitle} created with AI enrichment${reqNumber ? ` (${reqNumber})` : ''}`);
@@ -461,6 +575,7 @@ export default function RecruitmentPage() {
     setRawText("");
     setDepartmentId("");
     setPriority("medium");
+    setInterviewQuestions([]);
   };
 
   const openEditDialog = (job: JobRequisition) => {
@@ -885,6 +1000,119 @@ export default function RecruitmentPage() {
                     <Label>Job Description</Label>
                     <Textarea placeholder="Describe the role, responsibilities, and requirements..." rows={5} value={jobForm.job_description} onChange={(e) => setJobForm((f) => ({ ...f, job_description: e.target.value }))} />
                   </div>
+
+                  {/* Interview Questions section (Issue 1) */}
+                  <div className="space-y-2 border-t pt-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label className="text-base">Interview Questions</Label>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Used by AI Interview when candidates apply to this role. Optional — you can add them later.
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={generateInterviewQuestions}
+                          disabled={isGeneratingQuestions || !jobForm.job_title}
+                        >
+                          {isGeneratingQuestions ? (
+                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                          ) : (
+                            <Sparkles className="h-4 w-4 mr-1" />
+                          )}
+                          AI Generate
+                        </Button>
+                        <Button type="button" variant="outline" size="sm" onClick={addManualQuestion}>
+                          <Plus className="h-4 w-4 mr-1" />
+                          Add
+                        </Button>
+                      </div>
+                    </div>
+
+                    {interviewQuestions.length === 0 ? (
+                      <div className="border border-dashed rounded-lg p-6 text-center text-sm text-muted-foreground">
+                        No questions yet. Click <span className="font-medium">AI Generate</span> for 7 questions tailored to this role,
+                        or <span className="font-medium">Add</span> to write your own.
+                      </div>
+                    ) : (
+                      <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+                        {interviewQuestions.map((q, i) => (
+                          <Card key={q.id} className="p-3">
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <Select
+                                  value={q.type}
+                                  onValueChange={(v) => updateQuestion(i, "type", v)}
+                                >
+                                  <SelectTrigger className="w-[140px] h-7 text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="behavioral">Behavioral</SelectItem>
+                                    <SelectItem value="technical">Technical</SelectItem>
+                                    <SelectItem value="situational">Situational</SelectItem>
+                                    <SelectItem value="culture_fit">Culture Fit</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                {q.source === "ai_generated" && (
+                                  <Badge variant="outline" className="text-xs">
+                                    <Sparkles className="h-3 w-3 mr-1" />
+                                    AI
+                                  </Badge>
+                                )}
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={() => removeQuestion(i)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                            <Textarea
+                              value={q.question}
+                              onChange={(e) => updateQuestion(i, "question", e.target.value)}
+                              placeholder="Enter the question..."
+                              rows={2}
+                              className="text-sm mb-2"
+                            />
+                            <div className="grid grid-cols-1 gap-2">
+                              <div>
+                                <Label className="text-xs">Evaluation rubric (what a strong answer includes)</Label>
+                                <Textarea
+                                  value={q.evaluation_rubric}
+                                  onChange={(e) => updateQuestion(i, "evaluation_rubric", e.target.value)}
+                                  rows={2}
+                                  className="text-xs mt-1"
+                                  placeholder="A strong answer would mention..."
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Skills assessed (comma-separated)</Label>
+                                <Input
+                                  value={(q.skills_assessed || []).join(", ")}
+                                  onChange={(e) =>
+                                    updateQuestion(
+                                      i,
+                                      "skills_assessed",
+                                      e.target.value.split(",").map((s) => s.trim()).filter(Boolean)
+                                    )
+                                  }
+                                  className="text-xs mt-1 h-8"
+                                  placeholder="e.g. Leadership, Architecture"
+                                />
+                              </div>
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
                   <div className="flex items-center justify-between p-3 bg-primary/5 rounded-lg border border-primary/20">
                     <div className="flex items-center gap-2">
                       <Zap className="h-5 w-5 text-primary" />
@@ -1295,7 +1523,8 @@ export default function RecruitmentPage() {
         </TabsContent>
 
         {/* ===== PIPELINE TAB ===== */}
-        <TabsContent value="pipeline">
+        <TabsContent value="pipeline" className="space-y-4">
+          <PipelineFunnel />
           <Card>
             <CardHeader>
               <CardTitle>Candidate Pipeline</CardTitle>

@@ -1,0 +1,57 @@
+{
+  "total": 3,
+  "pass": 3,
+  "partial": 0,
+  "fail": 0,
+  "console_errors_sample": [],
+  "results": [
+    {
+      "id": "F4",
+      "name": "NotificationsFeed renders",
+      "verdict": "PASS",
+      "evidence": {
+        "card_visible": true,
+        "empty_state_rls_gated": true
+      },
+      "notes": [
+        "card_visible=true empty_state=true",
+        "F4 reads are RLS-gated (0 browser policies) — empty state is the expected honest outcome"
+      ],
+      "screenshot": "screenshots\\hr-f4f5\\f4_notifications.png"
+    },
+    {
+      "id": "F5a",
+      "name": "ShiftDefinitionsTab renders",
+      "verdict": "PASS",
+      "evidence": {
+        "tab_visible": true,
+        "card_visible": true,
+        "empty_state_rls_gated": true,
+        "add_btn": true
+      },
+      "notes": [
+        "shift_types_tab_visible=true",
+        "card_visible=true empty_state=true add_btn=true",
+        "F5a reads are RLS-gated (0 browser policies) — empty state is the expected honest outcome"
+      ],
+      "screenshot": "screenshots\\hr-f4f5\\f5a_shift_types.png"
+    },
+    {
+      "id": "F5b",
+      "name": "ShiftAssignmentsTab renders",
+      "verdict": "PASS",
+      "evidence": {
+        "tab_visible": true,
+        "card_visible": true,
+        "empty_state": true,
+        "add_btn": true
+      },
+      "notes": [
+        "assignments_tab_visible=true",
+        "card_visible=true empty_state=true add_btn=true",
+        "F5b: hr_employee_shifts has an allow-all policy (cross-tenant leak); query is tenant-scoped. See activation SQL."
+      ],
+      "screenshot": "screenshots\\hr-f4f5\\f5b_assignments.png"
+    }
+  ]
+}

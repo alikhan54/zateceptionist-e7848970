@@ -1,0 +1,37 @@
+[
+  {
+    "journey": "J12",
+    "verdict": "REAL_PASS",
+    "db_row_id": "62225f0a-9453-400f-8b6d-8204c232a06c",
+    "original_stock": 25,
+    "new_stock": 26,
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase5d-j12-adjust-stock.png"
+  },
+  {
+    "journey": "J13",
+    "verdict": "REAL_PASS",
+    "db_row_id": "92c9ebb3-893b-496e-921e-398ef05dc7d3",
+    "original_price": 2500,
+    "new_price": 2501,
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase5d-j13-edit-treatment.png"
+  },
+  {
+    "journey": "J15",
+    "verdict": "REAL_PASS",
+    "csv_path": "D:\\420-system\\frontend\\tests\\screenshots\\phase5d-j15-patients-1779272427588.csv",
+    "row_count": 3,
+    "sampled_ids": [
+      "178729e2-bc49-45f8-bb89-c0c8962e2594",
+      "5f7cef3b-4a22-420b-b07d-b96f994c9e13",
+      "2d45abfb-102c-435a-8b99-a55aeeff02ef"
+    ],
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase5d-j15-export-csv.png"
+  },
+  {
+    "journey": "OMEGA_PROGRESS",
+    "verdict": "REAL_PASS",
+    "pill_text": "IDLE",
+    "notes": "progress hint visible while thinking",
+    "screenshot": "D:\\420-system\\frontend\\tests\\screenshots\\phase5d-omega-progress.png"
+  }
+]

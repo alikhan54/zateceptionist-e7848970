@@ -1,0 +1,34 @@
+{
+  "phase": "10A.3",
+  "steps": [
+    {
+      "step": "baseline",
+      "reports": 0,
+      "video_scripts": 0
+    },
+    {
+      "step": "submit_clicked",
+      "t": 1779452942322
+    },
+    {
+      "step": "medical_report_created",
+      "report_id": "d5ce4ee5-8e3a-4790-a533-8322aa4e42e8"
+    },
+    {
+      "step": "video_script_created",
+      "script_id": "d7ca67b8-dcb9-425a-9245-eef099fbbcff",
+      "video_status": "script_ready",
+      "status": "draft",
+      "video_url": null,
+      "full_script_len": 498
+    },
+    {
+      "step": "ui_screenshot",
+      "path": "D:\\420-system\\frontend\\tests\\screenshots\\phase10a-avatar-after-upload.png"
+    },
+    {
+      "step": "cleanup_done"
+    }
+  ],
+  "verdict": "PARTIAL_VIDEO_MISSING"
+}

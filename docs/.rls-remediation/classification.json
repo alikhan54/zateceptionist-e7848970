@@ -1,0 +1,3887 @@
+{
+  "BUCKET1_drop_leak_only": [
+    {
+      "table": "accounting_clients",
+      "leak_policies": [
+        "rls_service_all"
+      ],
+      "rows": 445,
+      "ui_refs": 8,
+      "fmt": "SLUG",
+      "iso_funcs": [
+        "slug"
+      ],
+      "is_tier0": true,
+      "chosen": "drop_only(existing iso: slug)"
+    },
+    {
+      "table": "accounting_invoices",
+      "leak_policies": [
+        "rls_service_all"
+      ],
+      "rows": 5,
+      "ui_refs": 5,
+      "fmt": "SLUG",
+      "iso_funcs": [
+        "slug"
+      ],
+      "is_tier0": true,
+      "chosen": "drop_only(existing iso: slug)"
+    },
+    {
+      "table": "accounting_jobs",
+      "leak_policies": [
+        "rls_service_all"
+      ],
+      "rows": 5,
+      "ui_refs": 2,
+      "fmt": "SLUG",
+      "iso_funcs": [
+        "slug"
+      ],
+      "is_tier0": true,
+      "chosen": "drop_only(existing iso: slug)"
+    },
+    {
+      "table": "accounting_payments",
+      "leak_policies": [
+        "rls_service_all"
+      ],
+      "rows": 0,
+      "ui_refs": 4,
+      "fmt": "EMPTY",
+      "iso_funcs": [
+        "slug"
+      ],
+      "is_tier0": true,
+      "chosen": "drop_only(existing iso: slug)"
+    },
+    {
+      "table": "accounting_reminders",
+      "leak_policies": [
+        "rls_service_all"
+      ],
+      "rows": 1,
+      "ui_refs": 0,
+      "fmt": "SLUG",
+      "iso_funcs": [
+        "slug"
+      ],
+      "is_tier0": true,
+      "chosen": "drop_only(existing iso: slug)"
+    },
+    {
+      "table": "accounting_transactions",
+      "leak_policies": [
+        "rls_service_all"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [
+        "slug"
+      ],
+      "is_tier0": true,
+      "chosen": "drop_only(existing iso: slug)"
+    },
+    {
+      "table": "accounting_truelayer_connections",
+      "leak_policies": [
+        "rls_service_all"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [
+        "slug"
+      ],
+      "is_tier0": true,
+      "chosen": "drop_only(existing iso: slug)"
+    },
+    {
+      "table": "activities",
+      "leak_policies": [
+        "activities_allow_all"
+      ],
+      "rows": 0,
+      "ui_refs": 4,
+      "fmt": "EMPTY",
+      "iso_funcs": [
+        "uuid"
+      ],
+      "is_tier0": false,
+      "chosen": "drop_only(existing iso: uuid)"
+    },
+    {
+      "table": "ad_accounts",
+      "leak_policies": [
+        "Authenticated access"
+      ],
+      "rows": 0,
+      "ui_refs": 1,
+      "fmt": "EMPTY",
+      "iso_funcs": [
+        "other"
+      ],
+      "is_tier0": false,
+      "chosen": "drop_only(existing iso: other)"
+    },
+    {
+      "table": "ad_campaigns",
+      "leak_policies": [
+        "Authenticated access"
+      ],
+      "rows": 0,
+      "ui_refs": 1,
+      "fmt": "EMPTY",
+      "iso_funcs": [
+        "other"
+      ],
+      "is_tier0": false,
+      "chosen": "drop_only(existing iso: other)"
+    },
+    {
+      "table": "ad_creatives",
+      "leak_policies": [
+        "Authenticated access"
+      ],
+      "rows": 0,
+      "ui_refs": 1,
+      "fmt": "EMPTY",
+      "iso_funcs": [
+        "other"
+      ],
+      "is_tier0": false,
+      "chosen": "drop_only(existing iso: other)"
+    },
+    {
+      "table": "ad_performance_log",
+      "leak_policies": [
+        "Authenticated access"
+      ],
+      "rows": 0,
+      "ui_refs": 1,
+      "fmt": "EMPTY",
+      "iso_funcs": [
+        "other"
+      ],
+      "is_tier0": false,
+      "chosen": "drop_only(existing iso: other)"
+    },
+    {
+      "table": "audit_logs",
+      "leak_policies": [
+        "Anyone can insert audit logs"
+      ],
+      "rows": 6,
+      "ui_refs": 1,
+      "fmt": "SLUG",
+      "iso_funcs": [
+        "other"
+      ],
+      "is_tier0": false,
+      "chosen": "drop_only(existing iso: other)"
+    },
+    {
+      "table": "conversations",
+      "leak_policies": [
+        "allow_all_conversations_insert",
+        "allow_all_conversations_read",
+        "allow_all_conversations_update"
+      ],
+      "rows": 31,
+      "ui_refs": 25,
+      "fmt": "MIXED",
+      "iso_funcs": [
+        "uuid"
+      ],
+      "is_tier0": false,
+      "chosen": "drop_only(existing iso: uuid)"
+    },
+    {
+      "table": "hr_ai_interviews",
+      "leak_policies": [
+        "hr_ai_interviews_access",
+        "rls_service_all"
+      ],
+      "rows": 1,
+      "ui_refs": 2,
+      "fmt": "UUID",
+      "iso_funcs": [
+        "uuid"
+      ],
+      "is_tier0": false,
+      "chosen": "drop_only(existing iso: uuid)"
+    },
+    {
+      "table": "hr_auto_decisions",
+      "leak_policies": [
+        "rls_service_all"
+      ],
+      "rows": 679,
+      "ui_refs": 1,
+      "fmt": "UUID",
+      "iso_funcs": [
+        "uuid"
+      ],
+      "is_tier0": false,
+      "chosen": "drop_only(existing iso: uuid)"
+    },
+    {
+      "table": "hr_auto_mode_config",
+      "leak_policies": [
+        "rls_service_all"
+      ],
+      "rows": 41,
+      "ui_refs": 1,
+      "fmt": "UUID",
+      "iso_funcs": [
+        "uuid"
+      ],
+      "is_tier0": false,
+      "chosen": "drop_only(existing iso: uuid)"
+    },
+    {
+      "table": "hr_goals",
+      "leak_policies": [
+        "Authenticated access"
+      ],
+      "rows": 10,
+      "ui_refs": 2,
+      "fmt": "UUID",
+      "iso_funcs": [
+        "slug"
+      ],
+      "is_tier0": false,
+      "chosen": "drop_only(existing iso: slug)"
+    },
+    {
+      "table": "messages",
+      "leak_policies": [
+        "allow_all_messages_insert",
+        "allow_all_messages_read",
+        "allow_all_messages_update"
+      ],
+      "rows": 340,
+      "ui_refs": 35,
+      "fmt": "UUID",
+      "iso_funcs": [
+        "slug"
+      ],
+      "is_tier0": false,
+      "chosen": "drop_only(existing iso: slug)"
+    },
+    {
+      "table": "sales_ab_assignments",
+      "leak_policies": [
+        "tenant_isolation"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [
+        "other"
+      ],
+      "is_tier0": false,
+      "chosen": "drop_only(existing iso: other)"
+    },
+    {
+      "table": "sales_ab_tests",
+      "leak_policies": [
+        "tenant_isolation"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [
+        "other"
+      ],
+      "is_tier0": false,
+      "chosen": "drop_only(existing iso: other)"
+    },
+    {
+      "table": "sales_consent_records",
+      "leak_policies": [
+        "Tenant isolation for sales_consent_records"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [
+        "other"
+      ],
+      "is_tier0": false,
+      "chosen": "drop_only(existing iso: other)"
+    },
+    {
+      "table": "sales_conversations",
+      "leak_policies": [
+        "Tenant isolation for sales_conversations",
+        "sales_conversations_policy"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [
+        "other"
+      ],
+      "is_tier0": false,
+      "chosen": "drop_only(existing iso: other)"
+    },
+    {
+      "table": "sales_do_not_contact",
+      "leak_policies": [
+        "sales_dnc_policy"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [
+        "other",
+        "uuid"
+      ],
+      "is_tier0": false,
+      "chosen": "drop_only(existing iso: other,uuid)"
+    },
+    {
+      "table": "sales_marketing_bridge",
+      "leak_policies": [
+        "allow_all_bridge"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [
+        "uuid"
+      ],
+      "is_tier0": false,
+      "chosen": "drop_only(existing iso: uuid)"
+    },
+    {
+      "table": "tenant_integrations",
+      "leak_policies": [
+        "tenant_integrations_insert"
+      ],
+      "rows": 2,
+      "ui_refs": 2,
+      "fmt": "SLUG",
+      "iso_funcs": [
+        "slug"
+      ],
+      "is_tier0": false,
+      "chosen": "drop_only(existing iso: slug)"
+    }
+  ],
+  "BUCKET2_add_uuid_iso": [
+    {
+      "table": "aeo_brand_presence",
+      "leak_policies": [
+        "auth_all_aeo_bp"
+      ],
+      "rows": 8,
+      "ui_refs": 1,
+      "fmt": "UUID",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "aeo_content_scores",
+      "leak_policies": [
+        "auth_all_aeo_cs"
+      ],
+      "rows": 26,
+      "ui_refs": 1,
+      "fmt": "UUID",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "aeo_entity_graph",
+      "leak_policies": [
+        "auth_all_aeo_eg"
+      ],
+      "rows": 154,
+      "ui_refs": 1,
+      "fmt": "UUID",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "aeo_schema_registry",
+      "leak_policies": [
+        "auth_all_aeo_sr"
+      ],
+      "rows": 20,
+      "ui_refs": 1,
+      "fmt": "UUID",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ai_agent_metrics",
+      "leak_policies": [
+        "ai_agent_metrics_read"
+      ],
+      "rows": 11,
+      "ui_refs": 1,
+      "fmt": "UUID",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ai_agents",
+      "leak_policies": [
+        "ai_agents_anon_read"
+      ],
+      "rows": 3,
+      "ui_refs": 1,
+      "fmt": "UUID",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ai_decisions",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 700,
+      "ui_refs": 1,
+      "fmt": "UUID",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "conversation_resolution_log",
+      "leak_policies": [
+        "allow_all_conversation_resolution_log"
+      ],
+      "rows": 13,
+      "ui_refs": 0,
+      "fmt": "UUID",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "hr_attendance",
+      "leak_policies": [
+        "Authenticated access"
+      ],
+      "rows": 60,
+      "ui_refs": 4,
+      "fmt": "UUID",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "hr_attendance_rules",
+      "leak_policies": [
+        "tenant_attendance_rules_all"
+      ],
+      "rows": 1,
+      "ui_refs": 1,
+      "fmt": "UUID",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "hr_departments",
+      "leak_policies": [
+        "Authenticated access"
+      ],
+      "rows": 14,
+      "ui_refs": 1,
+      "fmt": "UUID",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "hr_document_acknowledgments",
+      "leak_policies": [
+        "hr_doc_ack_all"
+      ],
+      "rows": 1,
+      "ui_refs": 1,
+      "fmt": "UUID",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "hr_documents",
+      "leak_policies": [
+        "Authenticated access"
+      ],
+      "rows": 10,
+      "ui_refs": 4,
+      "fmt": "UUID",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "hr_leave_requests",
+      "leak_policies": [
+        "Authenticated access"
+      ],
+      "rows": 9,
+      "ui_refs": 3,
+      "fmt": "UUID",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "hr_performance_cycles",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 1,
+      "ui_refs": 1,
+      "fmt": "UUID",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "hr_performance_reviews",
+      "leak_policies": [
+        "Authenticated access"
+      ],
+      "rows": 9,
+      "ui_refs": 4,
+      "fmt": "UUID",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "hr_training_programs",
+      "leak_policies": [
+        "Authenticated access"
+      ],
+      "rows": 7,
+      "ui_refs": 2,
+      "fmt": "UUID",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "hr_training_records",
+      "leak_policies": [
+        "Authenticated access"
+      ],
+      "rows": 13,
+      "ui_refs": 2,
+      "fmt": "UUID",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "landing_pages",
+      "leak_policies": [
+        "auth_all_landing_pages"
+      ],
+      "rows": 9,
+      "ui_refs": 5,
+      "fmt": "UUID",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "marketing_calendar",
+      "leak_policies": [
+        "auth_all_marketing_calendar"
+      ],
+      "rows": 1,
+      "ui_refs": 2,
+      "fmt": "UUID",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "marketing_predictions",
+      "leak_policies": [
+        "mkt_predictions_access"
+      ],
+      "rows": 35,
+      "ui_refs": 0,
+      "fmt": "UUID",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "marketing_sequence_steps",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 22,
+      "ui_refs": 2,
+      "fmt": "UUID",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "message_sentiment",
+      "leak_policies": [
+        "allow_all_message_sentiment"
+      ],
+      "rows": 127,
+      "ui_refs": 0,
+      "fmt": "UUID",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "sla_breaches",
+      "leak_policies": [
+        "allow_all_sla_breaches"
+      ],
+      "rows": 274782,
+      "ui_refs": 0,
+      "fmt": "UUID",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "sla_policies",
+      "leak_policies": [
+        "allow_all_sla_policies"
+      ],
+      "rows": 80,
+      "ui_refs": 0,
+      "fmt": "UUID",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "video_performance_signals",
+      "leak_policies": [
+        "allow_read_vps",
+        "allow_write_vps"
+      ],
+      "rows": 154,
+      "ui_refs": 0,
+      "fmt": "UUID",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "video_projects",
+      "leak_policies": [
+        "auth_all_video_projects"
+      ],
+      "rows": 171,
+      "ui_refs": 3,
+      "fmt": "UUID",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "video_render_queue",
+      "leak_policies": [
+        "auth_all_video_render_queue"
+      ],
+      "rows": 106,
+      "ui_refs": 1,
+      "fmt": "UUID",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "voice_inbox_sync",
+      "leak_policies": [
+        "allow_all_voice_inbox_sync"
+      ],
+      "rows": 1,
+      "ui_refs": 0,
+      "fmt": "UUID",
+      "iso_funcs": [],
+      "is_tier0": false
+    }
+  ],
+  "BUCKET3_add_slug_iso": [
+    {
+      "table": "agent_contexts",
+      "leak_policies": [
+        "ac_allow_all"
+      ],
+      "rows": 34,
+      "ui_refs": 2,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "agent_memory",
+      "leak_policies": [
+        "agent_memory_service"
+      ],
+      "rows": 43,
+      "ui_refs": 1,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "analytics_hourly",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 1,
+      "ui_refs": 0,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "buying_committees",
+      "leak_policies": [
+        "bc_all"
+      ],
+      "rows": 953,
+      "ui_refs": 0,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "campaign_executions",
+      "leak_policies": [
+        "allow_all_campaign_executions"
+      ],
+      "rows": 20,
+      "ui_refs": 0,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "clinic_consultations",
+      "leak_policies": [
+        "clinic_consultations_tenant_isolation"
+      ],
+      "rows": 1,
+      "ui_refs": 4,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": true
+    },
+    {
+      "table": "collections_compliance_log",
+      "leak_policies": [
+        "collections_compliance_log_tenant_access"
+      ],
+      "rows": 8,
+      "ui_refs": 1,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "collections_kpis",
+      "leak_policies": [
+        "collections_kpis_tenant_access"
+      ],
+      "rows": 21,
+      "ui_refs": 1,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "consent_log",
+      "leak_policies": [
+        "cl_all"
+      ],
+      "rows": 31,
+      "ui_refs": 0,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "do_not_contact",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 129,
+      "ui_refs": 3,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "email_verification",
+      "leak_policies": [
+        "ev_read",
+        "ev_write"
+      ],
+      "rows": 314,
+      "ui_refs": 0,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "estimation_drawing_pages",
+      "leak_policies": [
+        "allow_all_edp"
+      ],
+      "rows": 18,
+      "ui_refs": 1,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "estimation_room_details",
+      "leak_policies": [
+        "allow_read_rd",
+        "allow_write_rd"
+      ],
+      "rows": 4,
+      "ui_refs": 0,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "estimation_room_polygons",
+      "leak_policies": [
+        "allow_all_erp"
+      ],
+      "rows": 35,
+      "ui_refs": 0,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "estimation_spec_data",
+      "leak_policies": [
+        "allow_read_sd",
+        "allow_write_sd"
+      ],
+      "rows": 1,
+      "ui_refs": 0,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "estimation_supplier_pricing",
+      "leak_policies": [
+        "allow_read_estimation_supplier_pricing",
+        "allow_write_estimation_supplier_pricing"
+      ],
+      "rows": 175,
+      "ui_refs": 1,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "estimation_transition_rules",
+      "leak_policies": [
+        "allow_read_tr",
+        "allow_write_tr"
+      ],
+      "rows": 25,
+      "ui_refs": 0,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "estimation_waste_matrix",
+      "leak_policies": [
+        "allow_read_wm",
+        "allow_write_wm"
+      ],
+      "rows": 52,
+      "ui_refs": 0,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "field_job_cards",
+      "leak_policies": [
+        "allow_all"
+      ],
+      "rows": 5,
+      "ui_refs": 1,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "instrument_registry",
+      "leak_policies": [
+        "allow_all"
+      ],
+      "rows": 10,
+      "ui_refs": 1,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "lead_signals",
+      "leak_policies": [
+        "ls_read",
+        "ls_write"
+      ],
+      "rows": 4174,
+      "ui_refs": 1,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "maintenance_contracts",
+      "leak_policies": [
+        "allow_all"
+      ],
+      "rows": 4,
+      "ui_refs": 2,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "multichannel_outreach",
+      "leak_policies": [
+        "mco_all"
+      ],
+      "rows": 769,
+      "ui_refs": 3,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "omega_alerts",
+      "leak_policies": [
+        "allow_all_omega_alerts"
+      ],
+      "rows": 23200,
+      "ui_refs": 2,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "omega_campaigns",
+      "leak_policies": [
+        "allow_all_omega_campaigns"
+      ],
+      "rows": 3,
+      "ui_refs": 0,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "onboarding_audit_log",
+      "leak_policies": [
+        "oal_allow_all"
+      ],
+      "rows": 138,
+      "ui_refs": 0,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "onboarding_module_status",
+      "leak_policies": [
+        "oms_allow_read",
+        "oms_allow_write"
+      ],
+      "rows": 37,
+      "ui_refs": 0,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ops_budget_actuals",
+      "leak_policies": [
+        "allow_all"
+      ],
+      "rows": 34,
+      "ui_refs": 0,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ops_budgets",
+      "leak_policies": [
+        "allow_all"
+      ],
+      "rows": 11,
+      "ui_refs": 3,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ops_compliance_log",
+      "leak_policies": [
+        "allow_all"
+      ],
+      "rows": 34,
+      "ui_refs": 1,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ops_compliance_rules",
+      "leak_policies": [
+        "allow_all_ops_compliance_rules"
+      ],
+      "rows": 200,
+      "ui_refs": 0,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ops_cost_savings",
+      "leak_policies": [
+        "allow_all"
+      ],
+      "rows": 10,
+      "ui_refs": 2,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ops_demand_forecasts",
+      "leak_policies": [
+        "allow_all"
+      ],
+      "rows": 1182,
+      "ui_refs": 1,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ops_industry_configs",
+      "leak_policies": [
+        "allow_all"
+      ],
+      "rows": 6,
+      "ui_refs": 1,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ops_inventory_items",
+      "leak_policies": [
+        "allow_all"
+      ],
+      "rows": 33,
+      "ui_refs": 3,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ops_inventory_movements",
+      "leak_policies": [
+        "allow_all"
+      ],
+      "rows": 191,
+      "ui_refs": 0,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ops_production_plans",
+      "leak_policies": [
+        "allow_all"
+      ],
+      "rows": 7,
+      "ui_refs": 2,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ops_production_tasks",
+      "leak_policies": [
+        "allow_all"
+      ],
+      "rows": 49,
+      "ui_refs": 1,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ops_purchase_orders",
+      "leak_policies": [
+        "allow_all"
+      ],
+      "rows": 41,
+      "ui_refs": 3,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ops_qc_checkpoints",
+      "leak_policies": [
+        "allow_all"
+      ],
+      "rows": 4,
+      "ui_refs": 0,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ops_qc_results",
+      "leak_policies": [
+        "allow_all"
+      ],
+      "rows": 3,
+      "ui_refs": 2,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ops_quality_alerts",
+      "leak_policies": [
+        "allow_all_ops_quality_alerts"
+      ],
+      "rows": 9,
+      "ui_refs": 0,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ops_quality_checks",
+      "leak_policies": [
+        "allow_all_ops_quality_checks"
+      ],
+      "rows": 8570,
+      "ui_refs": 0,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ops_shipment_events",
+      "leak_policies": [
+        "allow_all"
+      ],
+      "rows": 9,
+      "ui_refs": 0,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ops_shipments",
+      "leak_policies": [
+        "allow_all"
+      ],
+      "rows": 4,
+      "ui_refs": 2,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ops_simulations",
+      "leak_policies": [
+        "allow_all"
+      ],
+      "rows": 1,
+      "ui_refs": 0,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ops_slas",
+      "leak_policies": [
+        "allow_all"
+      ],
+      "rows": 5,
+      "ui_refs": 0,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ops_vendor_performance",
+      "leak_policies": [
+        "allow_all"
+      ],
+      "rows": 19,
+      "ui_refs": 0,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ops_vendors",
+      "leak_policies": [
+        "allow_all"
+      ],
+      "rows": 11,
+      "ui_refs": 2,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "security_deposits",
+      "leak_policies": [
+        "allow_all"
+      ],
+      "rows": 4,
+      "ui_refs": 1,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "sequence_ab_tests",
+      "leak_policies": [
+        "sat_all"
+      ],
+      "rows": 217,
+      "ui_refs": 1,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "service_visits",
+      "leak_policies": [
+        "allow_all"
+      ],
+      "rows": 6,
+      "ui_refs": 1,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "tenant_audit_log",
+      "leak_policies": [
+        "tenant_audit_log_authenticated_read"
+      ],
+      "rows": 80,
+      "ui_refs": 1,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "tender_documents",
+      "leak_policies": [
+        "allow_all"
+      ],
+      "rows": 4,
+      "ui_refs": 0,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "tender_payments",
+      "leak_policies": [
+        "allow_all"
+      ],
+      "rows": 6,
+      "ui_refs": 2,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": true
+    },
+    {
+      "table": "tender_stages",
+      "leak_policies": [
+        "allow_all"
+      ],
+      "rows": 8,
+      "ui_refs": 1,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "tenders",
+      "leak_policies": [
+        "allow_all"
+      ],
+      "rows": 8,
+      "ui_refs": 6,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "user_roles",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 48,
+      "ui_refs": 6,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "users",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 48,
+      "ui_refs": 34,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": false
+    }
+  ],
+  "BUCKET7_secrets_lock": [
+    {
+      "table": "api_key_pool",
+      "leak_policies": [
+        "akp_all"
+      ],
+      "rows": 14,
+      "ui_refs": 0,
+      "fmt": "SLUG",
+      "iso_funcs": [],
+      "is_tier0": true
+    },
+    {
+      "table": "tenant_oauth_grants",
+      "leak_policies": [
+        "rls_service_all"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [
+        "slug"
+      ],
+      "is_tier0": true
+    }
+  ],
+  "FLAG_mixed_format": [
+    {
+      "table": "contacts",
+      "leak_policies": [
+        "allow_all_contacts_insert",
+        "allow_all_contacts_read",
+        "allow_all_contacts_update",
+        "contacts_allow_all"
+      ],
+      "rows": 24,
+      "ui_refs": 18,
+      "fmt": "MIXED",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "hr_leave_balances",
+      "leak_policies": [
+        "Authenticated access"
+      ],
+      "rows": 104,
+      "ui_refs": 3,
+      "fmt": "MIXED",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ops_agent_memory",
+      "leak_policies": [
+        "allow_all"
+      ],
+      "rows": 90,
+      "ui_refs": 0,
+      "fmt": "MIXED",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ops_agent_tasks",
+      "leak_policies": [
+        "allow_all"
+      ],
+      "rows": 583,
+      "ui_refs": 3,
+      "fmt": "MIXED",
+      "iso_funcs": [],
+      "is_tier0": false
+    }
+  ],
+  "FLAG_empty_no_iso": [
+    {
+      "table": "ai_agent_conversations",
+      "leak_policies": [
+        "ai_agent_conv_read"
+      ],
+      "rows": 0,
+      "ui_refs": 1,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ai_agent_suggestions",
+      "leak_policies": [
+        "ai_agent_sugg_read"
+      ],
+      "rows": 0,
+      "ui_refs": 2,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ai_agent_tasks",
+      "leak_policies": [
+        "ai_agent_tasks_read"
+      ],
+      "rows": 0,
+      "ui_refs": 2,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ai_feedback",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ai_generated_messages",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ai_task_templates",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ai_tasks",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "analytics_events",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "api_usage_logs",
+      "leak_policies": [
+        "api_usage_logs_policy"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "audit_log",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "automation_audit_log",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "automation_rules",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 1,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "automation_settings",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "autonomous_workflows",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "business_insights",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "call_queue",
+      "leak_policies": [
+        "allow_all_access"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "call_records",
+      "leak_policies": [
+        "allow_all_call_records"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "calls",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 44,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "campaign_logs",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "campaign_metrics",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "campaign_send_log",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "campaign_templates",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "campaigns",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 37,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "channel_configurations",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "channel_messages",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "clinic_health_analyses",
+      "leak_policies": [
+        "clinic_health_analyses_all"
+      ],
+      "rows": 0,
+      "ui_refs": 3,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": true
+    },
+    {
+      "table": "clinic_medical_reports",
+      "leak_policies": [
+        "clinic_medical_reports_all"
+      ],
+      "rows": 0,
+      "ui_refs": 2,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": true
+    },
+    {
+      "table": "clinic_medical_review_queue",
+      "leak_policies": [
+        "clinic_medical_review_queue_all"
+      ],
+      "rows": 0,
+      "ui_refs": 1,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": true
+    },
+    {
+      "table": "clinic_post_care_schedule",
+      "leak_policies": [
+        "clinic_post_care_tenant_isolation"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": true
+    },
+    {
+      "table": "clinic_prescriptions",
+      "leak_policies": [
+        "clinic_prescriptions_tenant_isolation"
+      ],
+      "rows": 0,
+      "ui_refs": 2,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": true
+    },
+    {
+      "table": "clinic_video_scripts",
+      "leak_policies": [
+        "clinic_video_scripts_all"
+      ],
+      "rows": 0,
+      "ui_refs": 1,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": true
+    },
+    {
+      "table": "collections_field_visits",
+      "leak_policies": [
+        "collections_field_visits_tenant_access"
+      ],
+      "rows": 0,
+      "ui_refs": 1,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "comm_analytics_daily",
+      "leak_policies": [
+        "allow_read_comm_analytics",
+        "allow_write_comm_analytics"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "companies",
+      "leak_policies": [
+        "companies_allow_all"
+      ],
+      "rows": 0,
+      "ui_refs": 4,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "competitor_analysis",
+      "leak_policies": [
+        "Allow authenticated read competitor_analysis"
+      ],
+      "rows": 0,
+      "ui_refs": 3,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "competitor_intelligence",
+      "leak_policies": [
+        "ci_allow_all"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "consent",
+      "leak_policies": [
+        "allow_all_consent"
+      ],
+      "rows": 0,
+      "ui_refs": 12,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "consent_records",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "contact_channel_map",
+      "leak_policies": [
+        "allow_read_contact_channel_map",
+        "allow_write_contact_channel_map"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "contact_engagement_patterns",
+      "leak_policies": [
+        "allow_all_engagement_patterns"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "content_attribution",
+      "leak_policies": [
+        "allow_all_content_attribution"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "content_performance",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "conversation_merges",
+      "leak_policies": [
+        "allow_all_conversation_merges"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "conversation_messages",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "conversation_ratings",
+      "leak_policies": [
+        "allow_read_conversation_ratings",
+        "allow_write_conversation_ratings"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "conversation_tag_assignments",
+      "leak_policies": [
+        "allow_read_conv_tag_assign",
+        "allow_write_conv_tag_assign"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "conversions",
+      "leak_policies": [
+        "allow_all_access"
+      ],
+      "rows": 0,
+      "ui_refs": 5,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "credit_transactions",
+      "leak_policies": [
+        "Authenticated access"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": true
+    },
+    {
+      "table": "customer_360",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 1,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "customer_identities",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "customer_loyalty",
+      "leak_policies": [
+        "Allow all for customer_loyalty"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "customer_marketing_prefs",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "customer_relationships",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "customer_reviews",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "customer_timeline",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "daily_metrics",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "deal_activities",
+      "leak_policies": [
+        "allow_all_deal_activities"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "delivery_connectors",
+      "leak_policies": [
+        "Allow all for delivery_connectors"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "email_sequence_steps",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "email_sequences",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "employer_branding_content",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "entity_links",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "escalations",
+      "leak_policies": [
+        "allow_all_access"
+      ],
+      "rows": 0,
+      "ui_refs": 2,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "estimation_learning_data",
+      "leak_policies": [
+        "allow_all_learning",
+        "tenant_read_learning"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "estimation_revisions",
+      "leak_policies": [
+        "allow_read_estimation_revisions",
+        "allow_write_estimation_revisions"
+      ],
+      "rows": 0,
+      "ui_refs": 1,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "hr_announcements",
+      "leak_policies": [
+        "Authenticated access"
+      ],
+      "rows": 0,
+      "ui_refs": 1,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "hr_asset_assignments",
+      "leak_policies": [
+        "hr_asset_read"
+      ],
+      "rows": 0,
+      "ui_refs": 2,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "hr_audit_logs",
+      "leak_policies": [
+        "Authenticated access"
+      ],
+      "rows": 0,
+      "ui_refs": 1,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "hr_conversations",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "hr_document_templates",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "hr_employee_documents",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "hr_expense_claims",
+      "leak_policies": [
+        "Authenticated access"
+      ],
+      "rows": 0,
+      "ui_refs": 1,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "hr_interview_schedules",
+      "leak_policies": [
+        "hr_interview_schedules_access"
+      ],
+      "rows": 0,
+      "ui_refs": 1,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "hr_payroll_periods",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "hr_policy_acknowledgments",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "hr_recruitment_outreach",
+      "leak_policies": [
+        "hr_recruitment_outreach_access"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "hr_survey_responses",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "inbox_rotation_log",
+      "leak_policies": [
+        "rl_read",
+        "rl_write"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "insurance_claims",
+      "leak_policies": [
+        "allow_read_insurance_claims",
+        "allow_write_insurance_claims"
+      ],
+      "rows": 0,
+      "ui_refs": 1,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "landing_page_submissions",
+      "leak_policies": [
+        "landing_page_submissions_all"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "lead_ai_analysis",
+      "leak_policies": [
+        "lead_ai_analysis_policy"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "lead_gen_credit_logs",
+      "leak_policies": [
+        "lead_gen_credit_logs_policy"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "lead_gen_saved_searches",
+      "leak_policies": [
+        "lead_gen_saved_searches_policy"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "lead_gen_search_logs",
+      "leak_policies": [
+        "lead_gen_search_logs_policy"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "lead_gen_searches",
+      "leak_policies": [
+        "lead_gen_searches_all"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "lead_notifications",
+      "leak_policies": [
+        "notif_read",
+        "notif_write"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "leads",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 53,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "linkedin_outreach_queue",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "marketing_analytics",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "marketing_consent",
+      "leak_policies": [
+        "marketing_consent_all"
+      ],
+      "rows": 0,
+      "ui_refs": 2,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "marketing_performance_log",
+      "leak_policies": [
+        "allow_all_mar"
+      ],
+      "rows": 0,
+      "ui_refs": 1,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "marketing_sequence_enrollments",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "media_library",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "media_mentions",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "media_sources",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "message_templates",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "notifications",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 14,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "oauth_state_nonces",
+      "leak_policies": [
+        "rls_service_all"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": true
+    },
+    {
+      "table": "omega_approval_queue",
+      "leak_policies": [
+        "allow_all_omega_approval_queue"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "omega_feedback",
+      "leak_policies": [
+        "allow_all_omega_feedback"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "onboarding_checklists",
+      "leak_policies": [
+        "Authenticated access"
+      ],
+      "rows": 0,
+      "ui_refs": 1,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "onboarding_retry_queue",
+      "leak_policies": [
+        "orq_allow_all"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ops_agent_performance",
+      "leak_policies": [
+        "allow_all"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "orchestrator_events",
+      "leak_policies": [
+        "allow_all_access"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "packages",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 1,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "page_analytics",
+      "leak_policies": [
+        "anon_insert_pa",
+        "auth_all_page_analytics"
+      ],
+      "rows": 0,
+      "ui_refs": 2,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "pending_actions",
+      "leak_policies": [
+        "Authenticated access",
+        "allow_all_pending_actions"
+      ],
+      "rows": 0,
+      "ui_refs": 1,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "predictive_scores",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 1,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "premium_pages",
+      "leak_policies": [
+        "auth_all_premium_pages"
+      ],
+      "rows": 0,
+      "ui_refs": 2,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "pricing_logs",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "providers",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 7,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "rate_limits",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "recruitment_campaigns",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "restaurant_inventory",
+      "leak_policies": [
+        "Allow all for restaurant_inventory"
+      ],
+      "rows": 0,
+      "ui_refs": 1,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "restaurant_kitchen_display",
+      "leak_policies": [
+        "Allow all for restaurant_kitchen_display"
+      ],
+      "rows": 0,
+      "ui_refs": 1,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "restaurant_orders",
+      "leak_policies": [
+        "Allow all for restaurant_orders"
+      ],
+      "rows": 0,
+      "ui_refs": 2,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "revenue_attribution",
+      "leak_policies": [
+        "Allow authenticated",
+        "anon_read_revenue_attribution"
+      ],
+      "rows": 0,
+      "ui_refs": 2,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "revenue_forecasts",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "review_response_templates",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 4,
+      "ui_refs": 0,
+      "fmt": "NULLS",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "sales_analytics_daily",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "sales_calls",
+      "leak_policies": [
+        "tenant_isolation"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "sales_deals",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": true
+    },
+    {
+      "table": "sales_lead_assignments",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "scheduled_messages",
+      "leak_policies": [
+        "allow_all_scheduled_messages"
+      ],
+      "rows": 0,
+      "ui_refs": 1,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "video_templates",
+      "leak_policies": [
+        "anon_read_video_templates",
+        "auth_read_video_templates"
+      ],
+      "rows": 20,
+      "ui_refs": 1,
+      "fmt": "NULLS",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "warranty_tracking",
+      "leak_policies": [
+        "allow_read_warranty",
+        "allow_write_warranty"
+      ],
+      "rows": 0,
+      "ui_refs": 1,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "workflow_health_log",
+      "leak_policies": [
+        "rls_auth_read"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": "EMPTY",
+      "iso_funcs": [],
+      "is_tier0": false
+    }
+  ],
+  "FLAG_no_tenant_col": [
+    {
+      "table": "ab_test_events",
+      "leak_policies": [
+        "ab_test_events_all"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "accounting_companies_house_cache",
+      "leak_policies": [
+        "ch_cache_authenticated_read"
+      ],
+      "rows": 345,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": true
+    },
+    {
+      "table": "aeo_query_library",
+      "leak_policies": [
+        "anyone_read_aeo_ql"
+      ],
+      "rows": 58,
+      "ui_refs": 1,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ai_agent_templates",
+      "leak_policies": [
+        "ai_agent_templates_read"
+      ],
+      "rows": 10,
+      "ui_refs": 1,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ai_team_recommendations",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "analytics",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 39,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "apify_actors",
+      "leak_policies": [
+        "Public read"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "business_settings",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "call_logs",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "campaign_media",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "client_packages",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "company_policies",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "competitor_prices",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "consent_templates",
+      "leak_policies": [
+        "Public read"
+      ],
+      "rows": 0,
+      "ui_refs": 1,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "content_calendar",
+      "leak_policies": [
+        "content_calendar_all"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "content_versions",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "conversion_events",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "countries",
+      "leak_policies": [
+        "rls_auth_read"
+      ],
+      "rows": 65,
+      "ui_refs": 8,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "default_checklist_items",
+      "leak_policies": [
+        "rls_auth_read"
+      ],
+      "rows": 19,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "enrichment_api_usage",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "follow_up_tasks",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "follow_up_tracking",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "follow_ups",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "google_reviews",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 1,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "inbound_messages",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "industry_campaign_templates",
+      "leak_policies": [
+        "Public read"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "industry_lead_scoring",
+      "leak_policies": [
+        "Public read"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "industry_templates",
+      "leak_policies": [
+        "rls_auth_read"
+      ],
+      "rows": 19,
+      "ui_refs": 1,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "industry_vip_criteria",
+      "leak_policies": [
+        "Public read"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "internal_notes",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 1,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "inventory_items",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "inventory_stock",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "inventory_transactions",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ivr_templates",
+      "leak_policies": [
+        "rls_auth_read"
+      ],
+      "rows": 10,
+      "ui_refs": 1,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "journey_stages",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "lead_generation_jobs",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "leave_requests",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "lovable_sync",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "marketing_agencies",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "marketing_api_usage",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "marketing_personas",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 3,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "marketing_playbooks",
+      "leak_policies": [
+        "rls_auth_read"
+      ],
+      "rows": 30,
+      "ui_refs": 1,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "marketing_sequence_templates",
+      "leak_policies": [
+        "rls_auth_all"
+      ],
+      "rows": 9,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "marketing_touchpoints",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "n8n_chat_histories",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 104,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ops_industry_benchmarks",
+      "leak_policies": [
+        "allow_all"
+      ],
+      "rows": 9,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ops_po_line_items",
+      "leak_policies": [
+        "allow_all"
+      ],
+      "rows": 23,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ops_region_configs",
+      "leak_policies": [
+        "allow_all"
+      ],
+      "rows": 4,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "ops_templates",
+      "leak_policies": [
+        "allow_all"
+      ],
+      "rows": 2,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "organizations",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 6,
+      "ui_refs": 4,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "package_items",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "page_templates",
+      "leak_policies": [
+        "anon_read_pt",
+        "auth_all_page_templates"
+      ],
+      "rows": 12,
+      "ui_refs": 1,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "patient_visits",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": true
+    },
+    {
+      "table": "patient_vitals",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": true
+    },
+    {
+      "table": "permissions",
+      "leak_policies": [
+        "rls_auth_read"
+      ],
+      "rows": 54,
+      "ui_refs": 15,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "pricing_analytics",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "pricing_rules",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "profiles",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 1,
+      "ui_refs": 8,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "re_cross_border_rules",
+      "leak_policies": [
+        "rls_auth_read"
+      ],
+      "rows": 13,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "re_mortgage_banks",
+      "leak_policies": [
+        "rls_auth_read"
+      ],
+      "rows": 9,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "re_region_config",
+      "leak_policies": [
+        "rls_auth_read"
+      ],
+      "rows": 8,
+      "ui_refs": 2,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "re_training_knowledge",
+      "leak_policies": [
+        "rls_auth_read"
+      ],
+      "rows": 28,
+      "ui_refs": 1,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "reminders",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 5,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "reviews",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 14,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "role_permissions",
+      "leak_policies": [
+        "rls_auth_read"
+      ],
+      "rows": 270,
+      "ui_refs": 1,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "roles",
+      "leak_policies": [
+        "rls_auth_read"
+      ],
+      "rows": 5,
+      "ui_refs": 13,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "sales_emails",
+      "leak_policies": [
+        "Allow authenticated"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "signed_consents",
+      "leak_policies": [
+        "rls_auth_all"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "staff",
+      "leak_policies": [
+        "rls_auth_all"
+      ],
+      "rows": 0,
+      "ui_refs": 28,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "staff_chats",
+      "leak_policies": [
+        "rls_auth_all"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "staff_conversations",
+      "leak_policies": [
+        "rls_auth_all"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "staff_members",
+      "leak_policies": [
+        "rls_auth_all"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "staff_schedules",
+      "leak_policies": [
+        "rls_auth_all"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "storm_events",
+      "leak_policies": [
+        "allow_read_storm",
+        "allow_write_storm"
+      ],
+      "rows": 0,
+      "ui_refs": 1,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "subscription_plans",
+      "leak_policies": [
+        "rls_auth_read"
+      ],
+      "rows": 4,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "subscription_tiers",
+      "leak_policies": [
+        "rls_auth_all"
+      ],
+      "rows": 3,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "task_automation_rules_template",
+      "leak_policies": [
+        "rls_auth_read"
+      ],
+      "rows": 21,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "task_execution_log",
+      "leak_policies": [
+        "rls_auth_all"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "team_activity_logs",
+      "leak_policies": [
+        "rls_auth_all"
+      ],
+      "rows": 8,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "team_invitations",
+      "leak_policies": [
+        "rls_auth_all"
+      ],
+      "rows": 7,
+      "ui_refs": 2,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "team_member_notifications",
+      "leak_policies": [
+        "rls_auth_all"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "team_members",
+      "leak_policies": [
+        "rls_auth_all"
+      ],
+      "rows": 3,
+      "ui_refs": 4,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "tenants",
+      "leak_policies": [
+        "rls_auth_all"
+      ],
+      "rows": 0,
+      "ui_refs": 22,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "treatment_media",
+      "leak_policies": [
+        "rls_auth_all"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "treatment_notes",
+      "leak_policies": [
+        "rls_auth_all"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "treatment_records",
+      "leak_policies": [
+        "rls_auth_all"
+      ],
+      "rows": 0,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "trending_topics",
+      "leak_policies": [
+        "rls_auth_all"
+      ],
+      "rows": 0,
+      "ui_refs": 1,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "voice_packages",
+      "leak_policies": [
+        "rls_auth_read"
+      ],
+      "rows": 4,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "voice_phone_pool",
+      "leak_policies": [
+        "rls_auth_all"
+      ],
+      "rows": 1,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "voice_prompt_templates",
+      "leak_policies": [
+        "rls_auth_all"
+      ],
+      "rows": 15,
+      "ui_refs": 2,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "voice_provider_config",
+      "leak_policies": [
+        "rls_auth_all"
+      ],
+      "rows": 13,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "website_cta_clicks",
+      "leak_policies": [
+        "anon_insert_clicks"
+      ],
+      "rows": 26,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    },
+    {
+      "table": "website_leads",
+      "leak_policies": [
+        "anon_insert_leads"
+      ],
+      "rows": 2,
+      "ui_refs": 0,
+      "fmt": null,
+      "iso_funcs": [],
+      "is_tier0": false
+    }
+  ],
+  "FLAG_view": [],
+  "FLAG_tenant_config": [
+    {
+      "table": "tenant_config",
+      "leak_policies": [
+        "Authenticated can read config"
+      ],
+      "rows": 42,
+      "ui_refs": 30,
+      "fmt": "SLUG",
+      "iso_funcs": [
+        "slug"
+      ],
+      "is_tier0": true
+    }
+  ]
+}
