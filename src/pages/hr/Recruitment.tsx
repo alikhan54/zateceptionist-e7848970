@@ -5,6 +5,7 @@ import { useTenant } from "@/contexts/TenantContext";
 import { AskAIButton } from "@/components/hr/AskAIButton";
 import { SourceBadge } from "@/components/hr/SourceBadge";
 import AIInterviewsTab from "@/components/hr/AIInterviewsTab";
+import { PipelineFunnel } from "@/components/hr/PipelineFunnel";
 import { useAutoMode } from "@/hooks/useAutoMode";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Bot } from "lucide-react";
@@ -1522,7 +1523,8 @@ export default function RecruitmentPage() {
         </TabsContent>
 
         {/* ===== PIPELINE TAB ===== */}
-        <TabsContent value="pipeline">
+        <TabsContent value="pipeline" className="space-y-4">
+          <PipelineFunnel />
           <Card>
             <CardHeader>
               <CardTitle>Candidate Pipeline</CardTitle>
