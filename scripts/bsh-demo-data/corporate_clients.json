@@ -1,0 +1,182 @@
+[
+  {
+    "identifier": "BSH-CORP-001",
+    "name": "icddr,b-DEMO",
+    "sector": "research_institute",
+    "billing_mode": "credit",
+    "discount_pct": 20,
+    "covered_lives": 1366,
+    "active": true
+  },
+  {
+    "identifier": "BSH-CORP-002",
+    "name": "Grameenphone",
+    "sector": "telecom",
+    "billing_mode": "credit",
+    "discount_pct": 5,
+    "covered_lives": 4784,
+    "active": true
+  },
+  {
+    "identifier": "BSH-CORP-003",
+    "name": "BRAC Bank",
+    "sector": "bank",
+    "billing_mode": "prepaid",
+    "discount_pct": 12,
+    "covered_lives": 1050,
+    "active": true
+  },
+  {
+    "identifier": "BSH-CORP-004",
+    "name": "City Bank",
+    "sector": "bank",
+    "billing_mode": "credit",
+    "discount_pct": 10,
+    "covered_lives": 2145,
+    "active": true
+  },
+  {
+    "identifier": "BSH-CORP-005",
+    "name": "DBBL",
+    "sector": "bank",
+    "billing_mode": "prepaid",
+    "discount_pct": 20,
+    "covered_lives": 3548,
+    "active": true
+  },
+  {
+    "identifier": "BSH-CORP-006",
+    "name": "Square Pharma",
+    "sector": "pharma",
+    "billing_mode": "credit",
+    "discount_pct": 12,
+    "covered_lives": 2203,
+    "active": true
+  },
+  {
+    "identifier": "BSH-CORP-007",
+    "name": "Beximco",
+    "sector": "conglomerate",
+    "billing_mode": "credit",
+    "discount_pct": 15,
+    "covered_lives": 911,
+    "active": true
+  },
+  {
+    "identifier": "BSH-CORP-008",
+    "name": "Pran-RFL",
+    "sector": "fmcg",
+    "billing_mode": "prepaid",
+    "discount_pct": 5,
+    "covered_lives": 3776,
+    "active": true
+  },
+  {
+    "identifier": "BSH-CORP-009",
+    "name": "Robi Axiata",
+    "sector": "telecom",
+    "billing_mode": "prepaid",
+    "discount_pct": 20,
+    "covered_lives": 2725,
+    "active": true
+  },
+  {
+    "identifier": "BSH-CORP-010",
+    "name": "Ha-Meem Garments",
+    "sector": "garments",
+    "billing_mode": "credit",
+    "discount_pct": 15,
+    "covered_lives": 2141,
+    "active": true
+  },
+  {
+    "identifier": "BSH-CORP-011",
+    "name": "Beacon Garments",
+    "sector": "garments",
+    "billing_mode": "credit",
+    "discount_pct": 12,
+    "covered_lives": 504,
+    "active": true
+  },
+  {
+    "identifier": "BSH-CORP-012",
+    "name": "DESCO",
+    "sector": "utility",
+    "billing_mode": "split",
+    "discount_pct": 15,
+    "covered_lives": 1163,
+    "active": true
+  },
+  {
+    "identifier": "BSH-CORP-013",
+    "name": "MetLife BD",
+    "sector": "insurance",
+    "billing_mode": "prepaid",
+    "discount_pct": 20,
+    "covered_lives": 4000,
+    "active": true
+  },
+  {
+    "identifier": "BSH-CORP-014",
+    "name": "Green Delta Insurance",
+    "sector": "insurance",
+    "billing_mode": "prepaid",
+    "discount_pct": 10,
+    "covered_lives": 1765,
+    "active": true
+  },
+  {
+    "identifier": "BSH-CORP-015",
+    "name": "Pragati Insurance",
+    "sector": "insurance",
+    "billing_mode": "split",
+    "discount_pct": 12,
+    "covered_lives": 4761,
+    "active": true
+  },
+  {
+    "identifier": "BSH-CORP-016",
+    "name": "Walton",
+    "sector": "electronics",
+    "billing_mode": "prepaid",
+    "discount_pct": 12,
+    "covered_lives": 3198,
+    "active": true
+  },
+  {
+    "identifier": "BSH-CORP-017",
+    "name": "Akij Group",
+    "sector": "conglomerate",
+    "billing_mode": "credit",
+    "discount_pct": 12,
+    "covered_lives": 3254,
+    "active": true
+  },
+  {
+    "identifier": "BSH-CORP-018",
+    "name": "Bashundhara Group",
+    "sector": "conglomerate",
+    "billing_mode": "credit",
+    "discount_pct": 15,
+    "covered_lives": 4972,
+    "active": true
+  },
+  {
+    "identifier": "BSH-CORP-019",
+    "name": "Unilever BD",
+    "sector": "fmcg",
+    "billing_mode": "prepaid",
+    "discount_pct": 12,
+    "covered_lives": 55,
+    "active": true
+  },
+  {
+    "identifier": "BSH-CORP-020",
+    "name": "Standard Chartered BD",
+    "sector": "bank",
+    "billing_mode": "split",
+    "discount_pct": 15,
+    "covered_lives": 3366,
+    "active": true
+  }
+]

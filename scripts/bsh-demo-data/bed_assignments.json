@@ -1,0 +1,250 @@
+[
+  {
+    "identifier": "BSH-BED-001",
+    "ward": "Cardiac ICU",
+    "bed_no": "CAR-01",
+    "branch": "BSH-DHAKA-MAIN",
+    "status": "occupied",
+    "patient": "BSH-PT-0020"
+  },
+  {
+    "identifier": "BSH-BED-002",
+    "ward": "Cardiac ICU",
+    "bed_no": "CAR-02",
+    "branch": "BSH-DHAKA-MAIN",
+    "status": "occupied",
+    "patient": "BSH-PT-0009"
+  },
+  {
+    "identifier": "BSH-BED-003",
+    "ward": "Cardiac ICU",
+    "bed_no": "CAR-03",
+    "branch": "BSH-DHAKA-MAIN",
+    "status": "occupied",
+    "patient": "BSH-PT-0025"
+  },
+  {
+    "identifier": "BSH-BED-004",
+    "ward": "Cardiac ICU",
+    "bed_no": "CAR-04",
+    "branch": "BSH-DHAKA-MAIN",
+    "status": "available",
+    "patient": null
+  },
+  {
+    "identifier": "BSH-BED-005",
+    "ward": "General Male",
+    "bed_no": "GEN-01",
+    "branch": "BSH-DHAKA-MAIN",
+    "status": "available",
+    "patient": null
+  },
+  {
+    "identifier": "BSH-BED-006",
+    "ward": "General Male",
+    "bed_no": "GEN-02",
+    "branch": "BSH-DHAKA-MAIN",
+    "status": "available",
+    "patient": null
+  },
+  {
+    "identifier": "BSH-BED-007",
+    "ward": "General Male",
+    "bed_no": "GEN-03",
+    "branch": "BSH-DHAKA-MAIN",
+    "status": "available",
+    "patient": null
+  },
+  {
+    "identifier": "BSH-BED-008",
+    "ward": "General Male",
+    "bed_no": "GEN-04",
+    "branch": "BSH-DHAKA-MAIN",
+    "status": "occupied",
+    "patient": "BSH-PT-0035"
+  },
+  {
+    "identifier": "BSH-BED-009",
+    "ward": "General Male",
+    "bed_no": "GEN-05",
+    "branch": "BSH-DHAKA-MAIN",
+    "status": "available",
+    "patient": null
+  },
+  {
+    "identifier": "BSH-BED-010",
+    "ward": "General Male",
+    "bed_no": "GEN-06",
+    "branch": "BSH-DHAKA-MAIN",
+    "status": "occupied",
+    "patient": "BSH-PT-0016"
+  },
+  {
+    "identifier": "BSH-BED-011",
+    "ward": "General Female",
+    "bed_no": "GEN-01",
+    "branch": "BSH-DHAKA-MAIN",
+    "status": "available",
+    "patient": null
+  },
+  {
+    "identifier": "BSH-BED-012",
+    "ward": "General Female",
+    "bed_no": "GEN-02",
+    "branch": "BSH-DHAKA-MAIN",
+    "status": "occupied",
+    "patient": "BSH-PT-0002"
+  },
+  {
+    "identifier": "BSH-BED-013",
+    "ward": "General Female",
+    "bed_no": "GEN-03",
+    "branch": "BSH-DHAKA-MAIN",
+    "status": "occupied",
+    "patient": "BSH-PT-0049"
+  },
+  {
+    "identifier": "BSH-BED-014",
+    "ward": "General Female",
+    "bed_no": "GEN-04",
+    "branch": "BSH-DHAKA-MAIN",
+    "status": "occupied",
+    "patient": "BSH-PT-0014"
+  },
+  {
+    "identifier": "BSH-BED-015",
+    "ward": "General Female",
+    "bed_no": "GEN-05",
+    "branch": "BSH-DHAKA-MAIN",
+    "status": "occupied",
+    "patient": "BSH-PT-0001"
+  },
+  {
+    "identifier": "BSH-BED-016",
+    "ward": "General Female",
+    "bed_no": "GEN-06",
+    "branch": "BSH-DHAKA-MAIN",
+    "status": "available",
+    "patient": null
+  },
+  {
+    "identifier": "BSH-BED-017",
+    "ward": "Pediatric",
+    "bed_no": "PED-01",
+    "branch": "BSH-DHAKA-MAIN",
+    "status": "occupied",
+    "patient": "BSH-PT-0024"
+  },
+  {
+    "identifier": "BSH-BED-018",
+    "ward": "Pediatric",
+    "bed_no": "PED-02",
+    "branch": "BSH-DHAKA-MAIN",
+    "status": "available",
+    "patient": null
+  },
+  {
+    "identifier": "BSH-BED-019",
+    "ward": "Pediatric",
+    "bed_no": "PED-03",
+    "branch": "BSH-DHAKA-MAIN",
+    "status": "occupied",
+    "patient": "BSH-PT-0022"
+  },
+  {
+    "identifier": "BSH-BED-020",
+    "ward": "Pediatric",
+    "bed_no": "PED-04",
+    "branch": "BSH-DHAKA-MAIN",
+    "status": "occupied",
+    "patient": "BSH-PT-0021"
+  },
+  {
+    "identifier": "BSH-BED-021",
+    "ward": "Pediatric",
+    "bed_no": "PED-05",
+    "branch": "BSH-DHAKA-MAIN",
+    "status": "occupied",
+    "patient": "BSH-PT-0040"
+  },
+  {
+    "identifier": "BSH-BED-022",
+    "ward": "Post-Surgical",
+    "bed_no": "POS-01",
+    "branch": "BSH-DHAKA-MAIN",
+    "status": "occupied",
+    "patient": "BSH-PT-0043"
+  },
+  {
+    "identifier": "BSH-BED-023",
+    "ward": "Post-Surgical",
+    "bed_no": "POS-02",
+    "branch": "BSH-DHAKA-MAIN",
+    "status": "available",
+    "patient": null
+  },
+  {
+    "identifier": "BSH-BED-024",
+    "ward": "Post-Surgical",
+    "bed_no": "POS-03",
+    "branch": "BSH-DHAKA-MAIN",
+    "status": "available",
+    "patient": null
+  },
+  {
+    "identifier": "BSH-BED-025",
+    "ward": "Post-Surgical",
+    "bed_no": "POS-04",
+    "branch": "BSH-DHAKA-MAIN",
+    "status": "occupied",
+    "patient": "BSH-PT-0042"
+  },
+  {
+    "identifier": "BSH-BED-026",
+    "ward": "Post-Surgical",
+    "bed_no": "POS-05",
+    "branch": "BSH-DHAKA-MAIN",
+    "status": "occupied",
+    "patient": "BSH-PT-0045"
+  },
+  {
+    "identifier": "BSH-BED-027",
+    "ward": "Cabin Block",
+    "bed_no": "CAB-01",
+    "branch": "BSH-DHAKA-MAIN",
+    "status": "occupied",
+    "patient": "BSH-PT-0010"
+  },
+  {
+    "identifier": "BSH-BED-028",
+    "ward": "Cabin Block",
+    "bed_no": "CAB-02",
+    "branch": "BSH-DHAKA-MAIN",
+    "status": "occupied",
+    "patient": "BSH-PT-0008"
+  },
+  {
+    "identifier": "BSH-BED-029",
+    "ward": "Cabin Block",
+    "bed_no": "CAB-03",
+    "branch": "BSH-DHAKA-MAIN",
+    "status": "available",
+    "patient": null
+  },
+  {
+    "identifier": "BSH-BED-030",
+    "ward": "Cabin Block",
+    "bed_no": "CAB-04",
+    "branch": "BSH-DHAKA-MAIN",
+    "status": "available",
+    "patient": null
+  },
+  {
+    "identifier": "BSH-BED-031",
+    "ward": "Cabin Block",
+    "bed_no": "CAB-05",
+    "branch": "BSH-DHAKA-MAIN",
+    "status": "available",
+    "patient": null
+  }
+]

@@ -1,0 +1,68 @@
+[
+  {
+    "identifier": "BSH-PKG-001",
+    "name": "Executive Health Check",
+    "price_bdt": 12000,
+    "tests": [
+      "CBC",
+      "Lipid Profile",
+      "LFT",
+      "RFT",
+      "ECG",
+      "Chest X-ray"
+    ],
+    "target": "corporate executives"
+  },
+  {
+    "identifier": "BSH-PKG-002",
+    "name": "Pre-Marital Screening",
+    "price_bdt": 6500,
+    "tests": [
+      "CBC",
+      "Blood Group",
+      "HBsAg",
+      "VDRL",
+      "Thalassemia"
+    ],
+    "target": "couples"
+  },
+  {
+    "identifier": "BSH-PKG-003",
+    "name": "Cardiac Package",
+    "price_bdt": 15000,
+    "tests": [
+      "ECG",
+      "Echo",
+      "Troponin I",
+      "Lipid Profile",
+      "Stress Test"
+    ],
+    "target": "cardiac risk"
+  },
+  {
+    "identifier": "BSH-PKG-004",
+    "name": "Diabetic Package",
+    "price_bdt": 4500,
+    "tests": [
+      "HbA1c",
+      "Fasting Glucose",
+      "RFT",
+      "Urine R/E",
+      "Lipid Profile"
+    ],
+    "target": "diabetic monitoring"
+  },
+  {
+    "identifier": "BSH-PKG-005",
+    "name": "Pre-Medical (Overseas/Job)",
+    "price_bdt": 3500,
+    "tests": [
+      "CBC",
+      "Chest X-ray",
+      "HBsAg",
+      "Anti-HCV",
+      "Blood Group"
+    ],
+    "target": "overseas employment"
+  }
+]
