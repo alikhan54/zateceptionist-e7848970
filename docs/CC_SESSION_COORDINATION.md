@@ -1,6 +1,17 @@
 # CC Multi-Session Coordination
 
-**Last updated:** 2026-05-26 (HR V3 Decade-Ahead PARKED + Session A Cosmique PARKED)
+**Last updated:** 2026-05-30 (Session C — Smart Ledger Phase 1 SHIPPED + PARKED; HR clear to push)
+
+> **🅿️ SESSION C — SMART LEDGER: PARKED + SHIPPED 2026-05-30.** All work is on `origin/main` and live on Lovable; working tree clean (no uncommitted tracked changes). **HR / other sessions are clear to push to main.** Commits (in order):
+> - `40c38eb` — Phase 1 ship: D7-C Invoices + parity F1-F4 (un-revert of `39c1234`), D7-D Reminders, F5/F6 Calendar+Workload, D7-E ACCOUNTANT chat widget, D7-F Add Client, E2E spec. Shipped via `git rebase --onto` that **preserved all 17 other-session commits** (video/HR/MP-S1) — no force-push, plain FF.
+> - `e0647cf` — hide generic MAIN sidebar section for accounting tenants (gated on `isAccountingPracticeUK`; other tenants unchanged).
+> - `4d00056` — remove stale "coming May 25" banners for shipped features + soften Finance dates to "Phase 2".
+> - `95cc6b4` — route the OMEGA FAB → **ACCOUNTANT agent** for accounting tenants (gated, additive; fixes Adil's "OMEGA temporarily unavailable"). Live bundle `index-B9H-41CA.js`.
+> - Backend (DB/n8n, not git): 444/445 Companies House-enriched; RLS verified safe (HR V5's leak-fix preserved smart-ledger tenant reads).
+> - **Deferred (deliberate):** "E" — switching the smart-ledger ACCOUNTANT agent to Claude-premium + Ollama fallback in LangGraph `graph.py` (~5–10s vs ~25–40s today on hermes3:8b). Future cost + LangGraph-risk decision; **do NOT** touch `graph.py`/`server.py`/`definitions.py` without explicit approval.
+> - Recovery anchor: local branch `session-c-backup-pre-rebase-20260530` (retain ~48h).
+
+**Prior "Last updated":** 2026-05-26 (HR V3 Decade-Ahead PARKED + Session A Cosmique PARKED)
 
 ---
 
