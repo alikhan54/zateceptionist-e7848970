@@ -28,9 +28,11 @@ import {
   Pencil,
   Save,
   X as XIcon,
+  Bell,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { NotificationsFeed } from "@/components/hr/NotificationsFeed";
 
 // Lazy-load the punch-in widget so this page stays light when other tabs are
 // being used.
@@ -46,6 +48,7 @@ const ALLOWED_TABS = [
   "training",
   "documents",
   "reviews",
+  "notifications",
 ] as const;
 type TabKey = (typeof ALLOWED_TABS)[number];
 
@@ -159,7 +162,7 @@ export default function MyHR() {
         }}
         className="space-y-4"
       >
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="profile" className="gap-1">
             <UserIcon className="h-4 w-4" />
             <span className="hidden sm:inline">Profile</span>
@@ -187,6 +190,10 @@ export default function MyHR() {
           <TabsTrigger value="reviews" className="gap-1">
             <Star className="h-4 w-4" />
             <span className="hidden sm:inline">Reviews</span>
+          </TabsTrigger>
+          <TabsTrigger value="notifications" className="gap-1">
+            <Bell className="h-4 w-4" />
+            <span className="hidden sm:inline">Alerts</span>
           </TabsTrigger>
         </TabsList>
 
@@ -223,6 +230,10 @@ export default function MyHR() {
 
         <TabsContent value="reviews">
           <MyReviewsTab employeeId={employeeId} tenantUuid={tenantUuid} />
+        </TabsContent>
+
+        <TabsContent value="notifications">
+          <NotificationsFeed scope="mine" />
         </TabsContent>
       </Tabs>
     </div>
