@@ -3,6 +3,7 @@ import { useTenant } from '@/contexts/TenantContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { AskAIButton } from '@/components/hr/AskAIButton';
 import { LeaveTypesTab } from '@/components/hr/LeaveTypesTab';
+import { PublicHolidaysTab } from '@/components/hr/PublicHolidaysTab';
 import { useEmployees, useLeaveBalance, useLeaveRequests, type LeaveBalance } from '@/hooks/useHR';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -392,7 +393,7 @@ export default function LeavePage() {
 
       {/* Tabs */}
       <Tabs defaultValue="requests" className="space-y-4">
-        <TabsList className={cn('grid w-full lg:w-auto lg:inline-grid', canManage ? 'grid-cols-4' : 'grid-cols-3')}>
+        <TabsList className={cn('grid w-full lg:w-auto lg:inline-grid', canManage ? 'grid-cols-5' : 'grid-cols-3')}>
           <TabsTrigger value="requests" className="gap-2">
             <FileText className="h-4 w-4" />
             My Requests
@@ -414,6 +415,12 @@ export default function LeavePage() {
             <TabsTrigger value="leave-types" className="gap-2">
               <FileText className="h-4 w-4" />
               Leave Types
+            </TabsTrigger>
+          )}
+          {canManage && (
+            <TabsTrigger value="holidays" className="gap-2">
+              <CalendarDays className="h-4 w-4" />
+              Holidays
             </TabsTrigger>
           )}
         </TabsList>
@@ -556,6 +563,12 @@ export default function LeavePage() {
         {canManage && (
           <TabsContent value="leave-types">
             <LeaveTypesTab />
+          </TabsContent>
+        )}
+
+        {canManage && (
+          <TabsContent value="holidays">
+            <PublicHolidaysTab />
           </TabsContent>
         )}
       </Tabs>
