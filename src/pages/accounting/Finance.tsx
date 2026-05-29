@@ -229,13 +229,13 @@ export default function AccountingFinance() {
           <DisabledActionButton
             label="Add Payment"
             icon={PlusCircle}
-            tooltip="Available after TrueLayer connected (May 25)"
+            tooltip="Available after TrueLayer connected (Phase 2)"
             testId="finance-add-payment"
           />
           <DisabledActionButton
             label="Reconcile"
             icon={Link2}
-            tooltip="Available after TrueLayer connected (May 25)"
+            tooltip="Available after TrueLayer connected (Phase 2)"
             testId="finance-reconcile"
           />
         </div>
@@ -538,12 +538,12 @@ export default function AccountingFinance() {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
             <Sparkles className="h-4 w-4 text-primary" />
-            More finance features — May 25 onward
+            More finance features — Phase 2 onward
           </CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground">
           TrueLayer-powered live bank reconciliation, MoneyPax integration, partner-level KPIs, and
-          cash-flow forecasting land after the May 25 demo. This page is your starting view.
+          cash-flow forecasting land in Phase 2. This page is your starting view.
         </CardContent>
       </Card>
     </div>

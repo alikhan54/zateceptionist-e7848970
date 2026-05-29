@@ -58,9 +58,7 @@ import {
   Calendar as CalendarIcon,
   CheckCircle,
   MoreVertical,
-  Search,
-  Sparkles,
-} from "lucide-react";
+  Search,} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   useAccountingJobs,
@@ -698,21 +696,6 @@ export default function AccountingJobs() {
               )}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
-
-      {/* Footer hint */}
-      <Card className="border-primary/30 bg-card/60">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Sparkles className="h-4 w-4 text-primary" />
-            Smart Reminders — coming May 25, 2026
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          Once Reminders launches, each job&apos;s deadline can auto-schedule polite
-          client nudges via Email, WhatsApp, or SMS — UK business-hours aware,
-          skipping bank holidays.
         </CardContent>
       </Card>
 
