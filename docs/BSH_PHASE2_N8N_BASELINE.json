@@ -1,0 +1,72 @@
+{
+  "doc": "BSH-HMS Phase 2 — n8n Workflow Baseline & Verified State",
+  "purpose": "Ground-truth snapshot of the 12 BSH-HMS n8n workflows: their pre-existing state, the bsh-hms tag applied this session, industry-gate inspection, and proof that no sacred workflow was touched.",
+  "generated_by": "Claude Code autonomous session (BSH-HMS finish-everything-no-push mission, Section 2)",
+  "generated_at_utc": "2026-05-29",
+  "n8n_api": "http://localhost:5678/api/v1 (X-N8N-API-KEY)",
+
+  "premise_correction": {
+    "premise_in_task": "Find/execute workflow creation scripts to CREATE 12 BSH workflows.",
+    "finding": "The 12 BSH-HMS workflows ALREADY EXIST (created in prior sessions, updatedAt 2026-05-28). No creation scripts were located, and none were needed. Per the no-duplicate guardrail, this session VERIFIED + TAGGED them instead of recreating.",
+    "label": "VERIFIED-API"
+  },
+
+  "instance_totals": {
+    "total_workflows_before": 250,
+    "total_workflows_after": 250,
+    "bsh_hms_named_workflows": 12,
+    "duplicates_created": 0,
+    "label": "VERIFIED-API"
+  },
+
+  "tag": {
+    "name": "bsh-hms",
+    "id": "MQov3A1ClZWMuaUZ",
+    "created_this_session": true,
+    "note": "The n8n instance had ZERO tags before this session. bsh-hms is the first tag. Applied to all 12 BSH workflows via PUT /workflows/{id}/tags (additive — does not alter node graph or active state).",
+    "label": "VERIFIED-API"
+  },
+
+  "workflows": [
+    { "id": "sbAdElYSUloQaocX", "name": "BSH-HMS — Multi-Branch Hourly Aggregator v1.0", "active": false, "nodes": 4, "node_chain": "trigger > Fetch tenant_config > Is healthcare_hospital? > Aggregate Metrics", "inline_industry_gate": true, "tagged_bsh_hms": true, "updatedAt": "2026-05-28T23:13:03.265Z" },
+    { "id": "bWJdVOhrEkrXa7Ec", "name": "BSH-HMS — Bahmni Appointment Reminder v1.0", "active": false, "nodes": 2, "node_chain": "Daily 20:00 > Call OMEGA", "inline_industry_gate": false, "gate_strategy": "delegator — relies on OMEGA agent firewall + DB trigger", "tagged_bsh_hms": true, "updatedAt": "2026-05-28T21:29:03.100Z" },
+    { "id": "fyn6oq1JPk2lYxLo", "name": "BSH-HMS — Drug Interaction Alert v1.0", "active": false, "nodes": 5, "node_chain": "Webhook > Fetch tenant_config > Is healthcare_hospital? > Check Interactions > Respond", "inline_industry_gate": true, "tagged_bsh_hms": true, "updatedAt": "2026-05-28T23:12:55.461Z" },
+    { "id": "Fikr4yhlkcaRkXbn", "name": "BSH-HMS — Readmission Risk Daily v1.0", "active": false, "nodes": 4, "node_chain": "trigger > Fetch tenant_config > Is healthcare_hospital? > Readmission Risk", "inline_industry_gate": true, "tagged_bsh_hms": true, "updatedAt": "2026-05-28T23:13:01.457Z" },
+    { "id": "j0a1gkfhtffO4NGO", "name": "BSH-HMS — Bahmni Patient Education Video v1.0", "active": false, "nodes": 3, "node_chain": "On Lab Result Finalized > Trigger Doctor Avatar > Respond", "inline_industry_gate": false, "gate_strategy": "delegator — relies on Doctor Avatar workflow + DB trigger", "tagged_bsh_hms": true, "updatedAt": "2026-05-28T21:29:01.192Z" },
+    { "id": "8okfEV1oaNHz9TJA", "name": "BSH-HMS — Lab Critical-Mass Alert v1.0", "active": false, "nodes": 4, "node_chain": "trigger > Fetch tenant_config > Is healthcare_hospital? > Critical-Mass Check", "inline_industry_gate": true, "tagged_bsh_hms": true, "updatedAt": "2026-05-28T23:13:08.208Z" },
+    { "id": "T3vemVGW5sTVQOyQ", "name": "BSH-HMS — Corporate Invoice Batch v1.0", "active": false, "nodes": 4, "node_chain": "trigger > Fetch tenant_config > Is healthcare_hospital? > Generate Invoices", "inline_industry_gate": true, "tagged_bsh_hms": true, "updatedAt": "2026-05-28T23:13:04.926Z" },
+    { "id": "2TGvy6ct5i1yRaDy", "name": "BSH-HMS — Bahmni Lab Critical Alert v1.0", "active": false, "nodes": 2, "node_chain": "Every 10 min > Call MEDICA", "inline_industry_gate": false, "gate_strategy": "delegator — relies on MEDICA agent firewall + DB trigger", "tagged_bsh_hms": true, "updatedAt": "2026-05-28T21:28:59.517Z" },
+    { "id": "L44uqPiR3kTxgjaD", "name": "BSH-HMS — Voice OPD Reception v1.0", "active": false, "nodes": 5, "node_chain": "Webhook > Fetch tenant_config > Is healthcare_hospital? > Route OPD Call > Respond", "inline_industry_gate": true, "tagged_bsh_hms": true, "updatedAt": "2026-05-28T23:13:06.549Z" },
+    { "id": "0PlMzB0ypYCNXILi", "name": "BSH-HMS — No-Show Prediction Sweep v1.0", "active": false, "nodes": 4, "node_chain": "trigger > Fetch tenant_config > Is healthcare_hospital? > Predict No-Shows", "inline_industry_gate": true, "tagged_bsh_hms": true, "updatedAt": "2026-05-28T23:12:57.321Z" },
+    { "id": "TQinOm0rIW3dDbg0", "name": "BSH-HMS — Bahmni Daily Briefing v1.0", "active": false, "nodes": 2, "node_chain": "Daily 06:00 > Call OMEGA", "inline_industry_gate": false, "gate_strategy": "delegator — relies on OMEGA agent firewall + DB trigger", "tagged_bsh_hms": true, "updatedAt": "2026-05-28T21:29:04.809Z" },
+    { "id": "KdOewMAeqwGI7ucr", "name": "BSH-HMS — Bed Occupancy Forecast v1.0", "active": false, "nodes": 4, "node_chain": "trigger > Fetch tenant_config > Is healthcare_hospital? > Forecast Beds", "inline_industry_gate": true, "tagged_bsh_hms": true, "updatedAt": "2026-05-28T23:12:59.140Z" }
+  ],
+
+  "industry_gate_summary": {
+    "label": "VERIFIED-API",
+    "inline_gated_at_nodes_2_3": 8,
+    "inline_gated_ids": ["sbAdElYSUloQaocX","fyn6oq1JPk2lYxLo","Fikr4yhlkcaRkXbn","8okfEV1oaNHz9TJA","T3vemVGW5sTVQOyQ","L44uqPiR3kTxgjaD","0PlMzB0ypYCNXILi","KdOewMAeqwGI7ucr"],
+    "delegators_no_inline_gate": 4,
+    "delegator_ids": ["bWJdVOhrEkrXa7Ec","j0a1gkfhtffO4NGO","2TGvy6ct5i1yRaDy","TQinOm0rIW3dDbg0"],
+    "delegator_note": "These 4 are thin 2-3 node wrappers that delegate to OMEGA / MEDICA / Doctor-Avatar and reference the BSH tenant directly. They have no inline 'Is healthcare_hospital?' node, so their gating depends on (a) the called agent's M2 firewall industry gate and (b) the Supabase bsh_* DB triggers verified in Section 1. RECOMMENDATION: before activating any delegator for MULTI-tenant use, add the inline gate to match the other 8. For the single-tenant BSH demo this is acceptable because they target bsh-demo directly."
+  },
+
+  "sacred_safety": {
+    "label": "VERIFIED-API",
+    "drift_caused_by_this_session": 0,
+    "method": "Captured updatedAt for all 9 sacred workflows + Doctor Avatar BEFORE tagging, re-read AFTER tagging the 12 BSH workflows. All identical.",
+    "baseline_and_post": {
+      "E8HZhv4y4MRb6n9F": "2026-05-22T11:15:36.771Z",
+      "TXeVEskxcLuLwplr": "2026-05-22T11:15:36.855Z",
+      "fvXs1Z94tvje0QfY": "2026-05-29T11:11:43.746Z",
+      "Gnk01auPc9WLYIJU": "2026-03-28T07:09:18.980Z",
+      "dEgqwQ7YDm4i7706": "2026-05-19T05:52:32.282Z",
+      "aTGIlVgvf6lUWHlW": "2026-05-22T10:53:38.607Z",
+      "0CgtzVNs8zBWEFjg": "2026-04-16T15:17:47.158Z",
+      "cLTvu6oghz9B5p0z": "2026-04-22T17:53:39.765Z",
+      "5ZRNaT9BMmbSRj5v": "2026-03-27T07:11:01.753Z",
+      "lhdU0HUxmdgSSDpD": "2026-05-20T11:21:49.671Z"
+    },
+    "observation": "fvXs1Z94tvje0QfY (Video Intelligence Orchestrator) carried updatedAt=2026-05-29 (today) at the moment I captured the baseline — i.e. it was touched by concurrent activity (another session or cron) BEFORE this session began. This session did NOT modify it; its timestamp is identical before and after my tagging. Flagged for honesty."
+  }
+}
