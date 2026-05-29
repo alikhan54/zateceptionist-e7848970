@@ -30,7 +30,7 @@ interface ChatMessage {
 
 export function OmegaFloatingChat() {
   const { user, authUser, isAdmin } = useAuth();
-  const { tenantId, tenantConfig } = useTenant();
+  const { tenantId, tenantConfig, isAccountingPracticeUK } = useTenant();
   const tenantUuid = tenantConfig?.id;
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -141,6 +141,9 @@ export function OmegaFloatingChat() {
         sender_identifier: user?.email || "",
         sender_type: isAdmin ? "admin" : "team_member",
         tenant_uuid: tenantUuid || "",
+        // Accounting tenants → route to the purpose-built ACCOUNTANT agent (12 tools, fast + accurate).
+        // All other tenants → unchanged (generic OMEGA). Gated + additive = cross-tenant safe.
+        ...(isAccountingPracticeUK ? { agent_preference: "accountant" } : {}),
       }, tenantId);
       const data = res.data as any;
       if (res.success && data) {
@@ -162,7 +165,7 @@ export function OmegaFloatingChat() {
     } finally {
       setLoading(false);
     }
-  }, [input, loading, user, tenantId, tenantUuid, toast, speakResponse]);
+  }, [input, loading, user, tenantId, tenantUuid, toast, speakResponse, isAccountingPracticeUK]);
 
   const send = useCallback(() => sendMessage(), [sendMessage]);
 
@@ -190,7 +193,7 @@ export function OmegaFloatingChat() {
           <div className="flex items-center justify-between px-4 py-3 border-b bg-violet-500/5">
             <div className="flex items-center gap-2">
               <Brain className="h-5 w-5 text-violet-400" />
-              <span className="font-semibold text-sm">OMEGA AI</span>
+              <span className="font-semibold text-sm">{isAccountingPracticeUK ? "AI Accountant" : "OMEGA AI"}</span>
             </div>
             <div className="flex items-center gap-1">
               <Button
@@ -214,7 +217,7 @@ export function OmegaFloatingChat() {
               {messages.length === 0 && (
                 <div className="text-center text-muted-foreground py-12">
                   <Brain className="h-8 w-8 mx-auto mb-3 opacity-20" />
-                  <p className="text-sm">Ask OMEGA anything...</p>
+                  <p className="text-sm">{isAccountingPracticeUK ? "Ask your AI Accountant anything..." : "Ask OMEGA anything..."}</p>
                   {speechSupported && (
                     <p className="text-xs mt-1 opacity-60">or tap the mic to speak</p>
                   )}
@@ -252,7 +255,7 @@ export function OmegaFloatingChat() {
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === "Enter" && !e.shiftKey && send()}
-              placeholder={isListening ? "Listening..." : "Ask OMEGA..."}
+              placeholder={isListening ? "Listening..." : (isAccountingPracticeUK ? "Ask your AI Accountant..." : "Ask OMEGA...")}
               disabled={loading || isListening}
               className="flex-1 h-9 text-sm"
             />
