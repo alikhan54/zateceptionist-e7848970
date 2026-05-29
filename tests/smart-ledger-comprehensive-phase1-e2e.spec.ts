@@ -60,10 +60,13 @@ async function login(page: Page, email = EMAIL, password = PASSWORD) {
 // =====================================================================
 // Group A — Auth flow
 // =====================================================================
-test('E2E A1 — Auth: login + redirect to /accounting', async ({ page }) => {
+test('E2E A1 — Auth: login + redirect to authenticated landing page', async ({ page }) => {
   test.setTimeout(120_000);
   await login(page);
-  expect(page.url()).toContain('/accounting');
+  // App routes Smart Ledger admin to either /accounting (industry-gated workspace)
+  // or /dashboard (default OMEGA sphere — CLAUDE.md §22A). Either is acceptable;
+  // the canonical workspace verification happens in Group B (Dashboard).
+  expect(page.url()).toMatch(/\/(accounting|dashboard)/);
 });
 
 // =====================================================================
