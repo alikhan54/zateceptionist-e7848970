@@ -81,3 +81,29 @@ Closed the latent leak on the **127 empty tables** Phase 1 had flagged, *before*
 
 **Phase 2 artifacts:** `MASTER_RESTORE_v2.sql` (fresh post-Phase-1 net, 1,465 policies) · `FIX_empty.sql` · `ROLLBACK_empty.sql` · `apply_results_empty.json`.
 **Recovery:** surgical `psql … -f ROLLBACK_empty.sql`; full `psql … -f MASTER_RESTORE_v2.sql`.
+
+---
+
+# Phase 3 — FK-based PHI investigation + no-tenant-column triage (2026-05-30)
+
+**Phase 3 made NO database changes.** It investigated the last 2 PHI tables and produced an action plan for the 93 no-tenant-column tables.
+
+## Part A — the 2 PHI tables (`patient_visits`, `patient_vitals`) — FLAGGED, not applied
+Both are **empty (0 rows → no current exposure)**, carry `'Allow authenticated' USING(true)`, and have **no declared foreign key**. Their `customer_id` (uuid) plausibly references **`clinic_patients.id`** *or* **`customers.id`** — both exist and are tenant-isolated (slug), so the target is genuinely **ambiguous**. Per the rule "ambiguous FK chain → flag, don't guess," they were **not auto-fixed** (a wrong single-parent guess risks deny-all).
+
+A **ready-to-apply, provably leak-free** recommendation is in **`PHI_RECOMMENDED.sql`**: a dual-parent `EXISTS` (visible only if `customer_id` belongs to the current tenant in *either* parent). The app team should confirm the real parent when the patient-visit feature is built, then run it (and may tighten to the single parent). **Honest status: these 2 PHI tables still carry the leak, but hold no data today and the fix is one reviewed command away.**
+
+## Part B — 93 no-tenant-column tables — triage plan (read-only) → `NOCOL_TRIAGE.md`
+| Category | Count | Action |
+|---|---:|---|
+| **GLOBAL_leave_open** | 26 | Shared reference data (`countries`, `roles`, `permissions`, `subscription_plans/tiers`, `industry_templates`, `marketing_playbooks`, `voice_prompt_templates`…). Broad SELECT is **correct** — not real leaks. Only hardening: restrict WRITE to `service_role`. |
+| **USER_scopable** | 2 | `client_packages`, `profiles` — scope by `user_id`/`created_by = auth.uid()`. |
+| **FK_scopable** | 7 | Have a FK to a tenant-scoped parent — scope via `EXISTS`. **Directional**: several FKs are audit columns to `users` (`granted_by`, `deactivated_by`…), a weak scope signal needing human judgment. |
+| **AMBIGUOUS_flag** | 58 | No detectable scope key — human design needed. Includes the 2 PHI tables; most others are empty or likely-global/infra (`accounting_companies_house_cache` = shared UK-registry cache, `n8n_chat_histories` = n8n-internal). |
+
+**Net security read:** of the 97 still-flagged tables, **~26 are global-by-design** (broad read intentional), the **9 user/FK-scopable** have a clear path, and the **58 ambiguous** are mostly empty or shared/infra. The genuinely-concerning case — *populated, tenant-specific business data with no tenant key* — is rare and surfaced for manual review rather than guessed.
+
+## Cumulative (Phases 1–3)
+Of the original 341 leaky tables: **244 isolated/locked** (117 + 127), **97 flagged with a now-actionable plan** (26 global / 2 PHI ready-to-fix / 9 scopable / 58 ambiguous). All **populated** PHI/financial/secret tables are isolated or locked; the only remaining PHI tables are empty with a ready fix.
+
+**Phase 3 artifacts:** `MASTER_RESTORE_v3.sql` (current-state net, 1,451 policies) · `PHI_RECOMMENDED.sql` (ready, not applied) · `apply_results_phi.json` · `NOCOL_TRIAGE.md` · `nocol_triage.json`.

@@ -1,0 +1,942 @@
+{
+  "GLOBAL_leave_open": [
+    {
+      "table": "ai_agent_templates",
+      "rows": 10,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "ai_agent_templates_read"
+      ],
+      "recommend": "global reference \u2014 keep SELECT open; restrict WRITE to service_role"
+    },
+    {
+      "table": "apify_actors",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Public read"
+      ],
+      "recommend": "global reference \u2014 keep SELECT open; restrict WRITE to service_role"
+    },
+    {
+      "table": "business_settings",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "global reference \u2014 keep SELECT open; restrict WRITE to service_role"
+    },
+    {
+      "table": "consent_templates",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Public read"
+      ],
+      "recommend": "global reference \u2014 keep SELECT open; restrict WRITE to service_role"
+    },
+    {
+      "table": "countries",
+      "rows": 65,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "rls_auth_read"
+      ],
+      "recommend": "global reference \u2014 keep SELECT open; restrict WRITE to service_role"
+    },
+    {
+      "table": "default_checklist_items",
+      "rows": 19,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "rls_auth_read"
+      ],
+      "recommend": "global reference \u2014 keep SELECT open; restrict WRITE to service_role"
+    },
+    {
+      "table": "industry_campaign_templates",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Public read"
+      ],
+      "recommend": "global reference \u2014 keep SELECT open; restrict WRITE to service_role"
+    },
+    {
+      "table": "industry_lead_scoring",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Public read"
+      ],
+      "recommend": "global reference \u2014 keep SELECT open; restrict WRITE to service_role"
+    },
+    {
+      "table": "industry_templates",
+      "rows": 19,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "rls_auth_read"
+      ],
+      "recommend": "global reference \u2014 keep SELECT open; restrict WRITE to service_role"
+    },
+    {
+      "table": "industry_vip_criteria",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Public read"
+      ],
+      "recommend": "global reference \u2014 keep SELECT open; restrict WRITE to service_role"
+    },
+    {
+      "table": "ivr_templates",
+      "rows": 10,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "rls_auth_read"
+      ],
+      "recommend": "global reference \u2014 keep SELECT open; restrict WRITE to service_role"
+    },
+    {
+      "table": "marketing_personas",
+      "rows": 3,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "global reference \u2014 keep SELECT open; restrict WRITE to service_role"
+    },
+    {
+      "table": "marketing_playbooks",
+      "rows": 30,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "rls_auth_read"
+      ],
+      "recommend": "global reference \u2014 keep SELECT open; restrict WRITE to service_role"
+    },
+    {
+      "table": "marketing_sequence_templates",
+      "rows": 9,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "rls_auth_all"
+      ],
+      "recommend": "global reference \u2014 keep SELECT open; restrict WRITE to service_role"
+    },
+    {
+      "table": "ops_industry_benchmarks",
+      "rows": 9,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "allow_all"
+      ],
+      "recommend": "global reference \u2014 keep SELECT open; restrict WRITE to service_role"
+    },
+    {
+      "table": "ops_region_configs",
+      "rows": 4,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "allow_all"
+      ],
+      "recommend": "global reference \u2014 keep SELECT open; restrict WRITE to service_role"
+    },
+    {
+      "table": "ops_templates",
+      "rows": 2,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "allow_all"
+      ],
+      "recommend": "global reference \u2014 keep SELECT open; restrict WRITE to service_role"
+    },
+    {
+      "table": "page_templates",
+      "rows": 12,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "anon_read_pt",
+        "auth_all_page_templates"
+      ],
+      "recommend": "global reference \u2014 keep SELECT open; restrict WRITE to service_role"
+    },
+    {
+      "table": "permissions",
+      "rows": 54,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "rls_auth_read"
+      ],
+      "recommend": "global reference \u2014 keep SELECT open; restrict WRITE to service_role"
+    },
+    {
+      "table": "re_region_config",
+      "rows": 8,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "rls_auth_read"
+      ],
+      "recommend": "global reference \u2014 keep SELECT open; restrict WRITE to service_role"
+    },
+    {
+      "table": "re_training_knowledge",
+      "rows": 28,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "rls_auth_read"
+      ],
+      "recommend": "global reference \u2014 keep SELECT open; restrict WRITE to service_role"
+    },
+    {
+      "table": "roles",
+      "rows": 5,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "rls_auth_read"
+      ],
+      "recommend": "global reference \u2014 keep SELECT open; restrict WRITE to service_role"
+    },
+    {
+      "table": "subscription_plans",
+      "rows": 4,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "rls_auth_read"
+      ],
+      "recommend": "global reference \u2014 keep SELECT open; restrict WRITE to service_role"
+    },
+    {
+      "table": "subscription_tiers",
+      "rows": 3,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "rls_auth_all"
+      ],
+      "recommend": "global reference \u2014 keep SELECT open; restrict WRITE to service_role"
+    },
+    {
+      "table": "task_automation_rules_template",
+      "rows": 21,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "rls_auth_read"
+      ],
+      "recommend": "global reference \u2014 keep SELECT open; restrict WRITE to service_role"
+    },
+    {
+      "table": "voice_prompt_templates",
+      "rows": 15,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "rls_auth_all"
+      ],
+      "recommend": "global reference \u2014 keep SELECT open; restrict WRITE to service_role"
+    }
+  ],
+  "USER_scopable": [
+    {
+      "table": "client_packages",
+      "rows": 0,
+      "has_user": true,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "scope by user_id/created_by = auth.uid()"
+    },
+    {
+      "table": "profiles",
+      "rows": 1,
+      "has_user": true,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "scope by user_id/created_by = auth.uid()"
+    }
+  ],
+  "FK_scopable": [
+    {
+      "table": "ab_test_events",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": "test_id->ab_tests",
+      "leak": [
+        "ab_test_events_all"
+      ],
+      "recommend": "FK-scope via ab_tests (test_id)"
+    },
+    {
+      "table": "ai_team_recommendations",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": "applied_by->users",
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "FK-scope via users (applied_by)"
+    },
+    {
+      "table": "ops_po_line_items",
+      "rows": 23,
+      "has_user": false,
+      "fk_to_tenant_parent": "item_id->ops_inventory_items",
+      "leak": [
+        "allow_all"
+      ],
+      "recommend": "FK-scope via ops_inventory_items (item_id)"
+    },
+    {
+      "table": "role_permissions",
+      "rows": 270,
+      "has_user": false,
+      "fk_to_tenant_parent": "granted_by->users",
+      "leak": [
+        "rls_auth_read"
+      ],
+      "recommend": "FK-scope via users (granted_by)"
+    },
+    {
+      "table": "team_activity_logs",
+      "rows": 8,
+      "has_user": false,
+      "fk_to_tenant_parent": "actor_id->users",
+      "leak": [
+        "rls_auth_all"
+      ],
+      "recommend": "FK-scope via users (actor_id)"
+    },
+    {
+      "table": "team_invitations",
+      "rows": 7,
+      "has_user": false,
+      "fk_to_tenant_parent": "invited_by->users",
+      "leak": [
+        "rls_auth_all"
+      ],
+      "recommend": "FK-scope via users (invited_by)"
+    },
+    {
+      "table": "team_members",
+      "rows": 3,
+      "has_user": true,
+      "fk_to_tenant_parent": "deactivated_by->users",
+      "leak": [
+        "rls_auth_all"
+      ],
+      "recommend": "FK-scope via users (deactivated_by)"
+    }
+  ],
+  "AMBIGUOUS_flag": [
+    {
+      "table": "accounting_companies_house_cache",
+      "rows": 445,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "ch_cache_authenticated_read"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "aeo_query_library",
+      "rows": 58,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "anyone_read_aeo_ql"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "analytics",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "call_logs",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "campaign_media",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "company_policies",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "competitor_prices",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "content_calendar",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "content_calendar_all"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "content_versions",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "conversion_events",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "enrichment_api_usage",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "follow_up_tasks",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "follow_up_tracking",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "follow_ups",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "google_reviews",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "inbound_messages",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "internal_notes",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "inventory_items",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "inventory_stock",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "inventory_transactions",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "journey_stages",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "lead_generation_jobs",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "leave_requests",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "lovable_sync",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "marketing_agencies",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "marketing_api_usage",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "marketing_touchpoints",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "n8n_chat_histories",
+      "rows": 104,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "organizations",
+      "rows": 6,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "package_items",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "patient_visits",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "patient_vitals",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "pricing_analytics",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "pricing_rules",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "re_cross_border_rules",
+      "rows": 13,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "rls_auth_read"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "re_mortgage_banks",
+      "rows": 9,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "rls_auth_read"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "reminders",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "reviews",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "sales_emails",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "Allow authenticated"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "signed_consents",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "rls_auth_all"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "staff",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "rls_auth_all"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "staff_chats",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "rls_auth_all"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "staff_conversations",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "rls_auth_all"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "staff_members",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "rls_auth_all"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "staff_schedules",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "rls_auth_all"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "storm_events",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "allow_read_storm",
+        "allow_write_storm"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "task_execution_log",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "rls_auth_all"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "team_member_notifications",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "rls_auth_all"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "tenants",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "rls_auth_all"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "treatment_media",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "rls_auth_all"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "treatment_notes",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "rls_auth_all"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "treatment_records",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "rls_auth_all"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "trending_topics",
+      "rows": 0,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "rls_auth_all"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "voice_packages",
+      "rows": 4,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "rls_auth_read"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "voice_phone_pool",
+      "rows": 1,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "rls_auth_all"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "voice_provider_config",
+      "rows": 13,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "rls_auth_all"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "website_cta_clicks",
+      "rows": 26,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "anon_insert_clicks"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    },
+    {
+      "table": "website_leads",
+      "rows": 2,
+      "has_user": false,
+      "fk_to_tenant_parent": null,
+      "leak": [
+        "anon_insert_leads"
+      ],
+      "recommend": "manual review \u2014 no tenant/user/FK scope detected"
+    }
+  ]
+}
