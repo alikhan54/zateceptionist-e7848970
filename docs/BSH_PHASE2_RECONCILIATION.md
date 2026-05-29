@@ -63,22 +63,39 @@ Verified capability claims (from `docs/BSH_PHASE2_COMPLETE.md`, spot-checked aga
 
 ---
 
-## 4. What THIS branch adds (the genuine gaps) — `feature/bsh-hms-phase2-gaps`
+## 4. What THIS branch adds (`feature/bsh-hms-phase2-gaps`)
 
-4 commits, 13 files added + 1 modified, all atop `0c657b8`:
+15 commits atop `0c657b8` (phase2 base). The first 5 were the original gap-fill; Sections
+1–10 of the **"finish-everything-no-push"** mission added the rest.
 
-| Commit | Adds |
-|---|---|
-| `386ca8f` | `docs/BSH_DEMO_SCRIPT.md`, `BSH_LOOM_SCRIPT.md`, `BSH_FOLLOWUP_EMAILS.md`, `BSH_PITCH_TALKING_POINTS.md` |
-| `01556b6` | `docs/BSH_INTELLIGENCE_LAYER_DESIGN.md` (5 planes, 38-module map, R1–R11, Phase 3) |
-| `9664a12` | `scripts/generate-bsh-fixtures.py` + 6 JSON fixtures; modifies `scripts/bsh-demo-data/README.md` |
-| `e4232cc` | `supabase/migrations/39-bsh-clinical-log.sql` |
-| (this doc) | `docs/BSH_PHASE2_RECONCILIATION.md` + `scripts/bsh-reconciliation-selfcheck.sh` |
+| Commit | Section | Adds / does |
+|---|---|---|
+| `386ca8f` | gap | demo materials (DEMO_SCRIPT, LOOM_SCRIPT, FOLLOWUP_EMAILS, PITCH_TALKING_POINTS) |
+| `01556b6` | gap | `BSH_INTELLIGENCE_LAYER_DESIGN.md` |
+| `9664a12` | gap | `generate-bsh-fixtures.py` + 6 JSON fixtures |
+| `e4232cc` | gap | `supabase/migrations/39-bsh-clinical-log.sql` |
+| `91602ae` | gap | this reconciliation doc + first self-check |
+| `05deca0` | **S1** | **applied migrations 37/38/39 to LIVE Supabase**; inserted `bsh-demo` tenant_config; baseline + applied docs |
+| `6082f01` | **S2** | **verified + tagged 12 BSH n8n workflows** `bsh-hms` (already existed — not duplicated); baseline JSON + doc |
+| `c6586c2` | S3 | `BSH_PHASE3_FRONTEND_ARCHITECTURE.md` |
+| `745a992` | S4 | `BSH_VAPI_ASSISTANT_CONFIG.md` |
+| `ff76910` | S5 | `BSH_CLOUDFLARE_TUNNEL_SETUP.md` |
+| `b22aa45` | S6 | `BSH_BAHMNI_HARDENING.md` |
+| `6e90308` | S7 | `BSH_AMD_DEPLOY_DAY_PLAN.md` |
+| `1b3ae52` | S8 | `BSH_DEMO_REHEARSAL_CHECKLIST.md` |
+| `0f3dc30` | S9 | expand self-check 24→37 checks (run PASS) |
+| (this) | S10 | update this reconciliation doc |
 
-**NOT recreated (already existed — verified, skipped):** all of `services/`, OWA,
-`bahmni-config/`, migrations 37/38, deploy/seed/smoke scripts, all Phase 1/2 docs,
-`doctors.json`. No existing work was duplicated or modified except the README (stale
-"TO BE GENERATED" markers updated to reflect the now-generated fixtures).
+**Two state changes that are LIVE (not just files):**
+- **Supabase:** migrations 37/38/39 applied; `bsh-demo` tenant row exists
+  (industry=`healthcare_hospital`, subscription_status=**inactive**, bahmni_base_url=NULL). `[VERIFIED-DB]`
+- **n8n:** the 12 BSH workflows carry the `bsh-hms` tag and remain **INACTIVE**; instance steady at
+  250 workflows (0 duplicates); sacred workflows drift=0. `[VERIFIED-API]`
+
+**NOT recreated / NOT modified:** `services/`, OWA, `bahmni-config/`, migrations 37/38 files,
+deploy/seed/smoke scripts, `doctors.json`, sacred workflows, sacred frontend files, and all
+Cosmique/`healthcare_clinic` data. The only existing file modified was the fixtures README (stale
+"TO BE GENERATED" markers). No existing work duplicated.
 
 ---
 
@@ -112,12 +129,14 @@ Section 4 commits = `[COMMITTED-LOCAL, PUSH-BLOCKED]`. No claim of a successful 
 cd D:/420-system/repo
 bash scripts/bsh-reconciliation-selfcheck.sh
 ```
-Checks: branch, the 4 gap-fill commit hashes, the 11 base commits, all 14 expected files
-on disk, fixture record counts, and live origin push status. Exit 0 = local ground truth OK.
+Checks (37): branch; the 4 gap-fill commit hashes; the 11 base commits (resolved via
+local-or-origin refs, so it passes both pre-push and post-clone); the 14 gap-fill files on
+disk; 7 fixture record counts; and the 10 Section 1–8 deliverables on disk. Live origin push
+status is reported separately (informational, not counted). Exit 0 = local ground truth OK.
 
 Manual spot-checks:
 ```bash
-git log feature/bsh-hms-phase2..HEAD --oneline        # the 4 gap commits
+git log feature/bsh-hms-phase2..HEAD --oneline        # all 15 gap+section commits (after S10)
 git log origin/feature/bsh-hms-phase2 ^origin/main --oneline | wc -l   # => 11
 python scripts/generate-bsh-fixtures.py               # regenerate fixtures (deterministic)
 ```
@@ -137,3 +156,81 @@ corporate split-billing wiring. And: **this branch is not yet pushed to GitHub**
 
 **NOT OURS (USE, open-source):** the entire clinical records core — Bahmni / OpenMRS /
 OpenELIS / Odoo. We integrate via REST/FHIR; we did not fork it.
+
+---
+
+## 8. Mission ledger — "finish everything (no push)" (Sections 1–10)
+
+This branch went beyond the original gap-fill: Sections 1–10 of the *finish-everything-no-push*
+mission applied the two safe LIVE state changes and authored six deploy/demo specs. Below is the
+honest delta, the premise corrections found along the way, and the exact AMD-day action list.
+
+### 8.1 State delta
+
+| Dimension | Before | After | Label |
+|---|---|---|---|
+| Supabase migrations *applied* | 37/38 existed as files on `phase2`; not applied by us | 37 + 38 + 39 applied to LIVE Supabase (39 is new on this branch) | `[VERIFIED-DB]` |
+| `tenant_config` | existing rows | **+1**: `bsh-demo` (industry=`healthcare_hospital`, subscription_status=**inactive**, `bahmni_base_url`=NULL); **no existing row modified** | `[VERIFIED-DB]` |
+| n8n workflows tagged `bsh-hms` | 0 tagged | 12 tagged (they **already existed** — tagged, not created/duplicated); all **INACTIVE** | `[VERIFIED-API]` |
+| n8n total workflows | 250 | 250 (**0 duplicated**) | `[VERIFIED-API]` |
+| Sacred-workflow drift | 0 | 0 (sacred set untouched) | `[VERIFIED-API]` |
+| BSH spec docs | the 4 gap docs | **+6**: Phase-3 FE arch, VAPI config, Cloudflare tunnel, Bahmni hardening, AMD deploy-day plan, demo rehearsal checklist | `[VERIFIED-CODE]` (on disk) |
+| Self-check coverage | 24 checks | **37 checks** (+ Section deliverables; ref resolution fixed for pre-push) — runs PASS 37/0 | `[VERIFIED-CODE]` |
+| Branch commits atop `0c657b8` | 5 (gap-fill) | **15** (5 gap + S1–S10) | `[VERIFIED-CODE]` |
+
+### 8.2 Premise corrections logged this mission (honesty trail)
+
+Each doc records the ground-truth correction it found, rather than inheriting a stale assumption:
+1. **Founding correction (§1–2):** the "everything was hallucinated / only 40 tools survived" premise
+   was **wrong** — the 11-commit Phase-2 backend is real on GitHub; the 40 tools correctly live on the
+   AMD brain, not in the frontend repo.
+2. **Cloudflare ports:** not "8200–8203". Real = Bahmni **8080** + three services **9101/9102/9103**;
+   only **3** services exist (the 4th hostname is Bahmni itself). *(BSH_CLOUDFLARE_TUNNEL_SETUP.md)*
+3. **Deploy script name:** it is `deploy-bahmni-cloud.sh`, not `deploy-bahmni-amd.sh`.
+4. **Stale deploy step:** that script's printed "apply 37+38 via Studio" Next-step is **stale** — S1
+   already applied 37/38/39 via the Management API. *(BSH_AMD_DEPLOY_DAY_PLAN.md)*
+5. **Bahmni overlay is partial:** `bahmni-config/` on disk has only `registration/app.json`,
+   `translations/bn.json`, and a README — **not** the rich clinical/reports/openelis/odoo/theme tree the
+   README advertises. *(BSH_BAHMNI_HARDENING.md)*
+6. **Plaintext service-role key:** `deploy-bahmni-cloud.sh` writes the full Supabase service-role key in
+   **plaintext** to `.env` (chmod 600) — flagged as a hardening item, not silently accepted.
+
+Still **open verification items** flagged for demo day (not yet resolved):
+- `hospital_tenants` view/table existence — the demo script's Act 0 `SELECT * FROM hospital_tenants`
+  may need to fall back to `tenant_config`. `[CHECK]`
+- `BSH-DEMO-001` literal HN vs the generator's `BSH-{year}-{seq}` format — confirm the HN exists or
+  adjust the smoke/demo. `[CHECK]`
+
+### 8.3 Token spend `[estimate]`
+
+**Not metered — I have no access to a real token meter, so this is a rough estimate, not a measured
+figure.** Across the full multi-section mission (many file reads incl. several large docs + CLAUDE.md,
+the Supabase/n8n API calls in S1–S2, ~1,000+ lines of authored docs, the self-check expansion, and at
+least one context compaction), cumulative spend is **on the order of low-hundreds-of-thousands of
+tokens**. Treat the magnitude, not any digit, as the signal.
+
+### 8.4 AMD-day action list (ordered; full detail in `BSH_AMD_DEPLOY_DAY_PLAN.md`)
+
+The single blocker is the GitHub token. Everything below is gated on steps 1–3.
+1. Regenerate a GitHub token with write/`repo` scope for `alikhan54/zateceptionist-e7848970`.
+2. Point origin at it: `git remote set-url origin https://x-access-token:<NEW_TOKEN>@github.com/alikhan54/zateceptionist-e7848970` (or push interactively).
+3. `git push origin feature/bsh-hms-phase2-gaps` — **note** `-gaps` is stacked on `feature/bsh-hms-phase2`
+   (not on `main`), so push/ensure that base branch too.
+4. Re-run `bsh-reconciliation-selfcheck.sh`; §6 push-status flips to `[PUSHED]`.
+5. Deploy Bahmni on the AMD box: `bash scripts/deploy-bahmni-cloud.sh` (clones bahmni-docker lite,
+   overlays config, writes `.env`, waits for FHIR at `:8080`).
+6. Seed demo data **before** any credential rotation: `python scripts/seed-bahmni-demo-data.py`
+   (idempotent; uses Admin123 — rotate only after seeding).
+7. Start the 3 FastAPI services (9101/9102/9103); confirm each `/health` is 200.
+8. Flip `bsh-demo` to `subscription_status=active` + set `bahmni_base_url`; create the `hospital_tenants`
+   view (or update the demo script to read `tenant_config`).
+9. Activate the 12 BSH workflows (`activate-bsh-workflows.sh`), then re-toggle crons (T19) and confirm
+   `active=true` persisted.
+10. Add the Cloudflare ingress block + DNS CNAMEs (`BSH_CLOUDFLARE_TUNNEL_SETUP.md`); create the VAPI
+    assistant (`BSH_VAPI_ASSISTANT_CONFIG.md`); apply hardening — rotate Admin123, enable encrypted
+    off-box backups (`BSH_BAHMNI_HARDENING.md`).
+11. Run `bsh-e2e-smoke.sh` (Flows A–E + the Cosmique regression baseline); rehearse the 4 acts and warm
+    the models (`BSH_DEMO_REHEARSAL_CHECKLIST.md` → `pre-demo-warmup.ps1`).
+
+**Honesty close:** this branch is **committed locally only** — no successful push is claimed (§5).
+Sections 1–4 of this doc are `[VERIFIED]`; the Section 1–10 work is `[COMMITTED-LOCAL, PUSH-BLOCKED]`.
