@@ -17,8 +17,11 @@ for h in 386ca8f 01556b6 9664a12 e4232cc; do
 done
 
 echo "== 3. Base Phase-2 work present (11 commits ahead of main) =="
-n=$(git rev-list --count origin/feature/bsh-hms-phase2 ^origin/main 2>/dev/null || echo "?")
-[ "$n" = "11" ] && ok "origin/feature/bsh-hms-phase2 = 11 commits ahead of main" || no "expected 11, got $n"
+# Resolve refs that exist in BOTH pre-push (local-only) and post-clone (origin) states.
+if git rev-parse --verify -q main >/dev/null 2>&1; then mref=main; else mref=origin/main; fi
+if git rev-parse --verify -q feature/bsh-hms-phase2 >/dev/null 2>&1; then pref=feature/bsh-hms-phase2; else pref=origin/feature/bsh-hms-phase2; fi
+n=$(git rev-list --count "$mref".."$pref" 2>/dev/null || echo "?")
+[ "$n" = "11" ] && ok "$pref = 11 commits ahead of $mref" || no "expected 11, got $n ($mref..$pref)"
 
 echo "== 4. New files on disk =="
 for f in \
@@ -38,8 +41,21 @@ cnt(){ python -c "import json,sys;print(len(json.load(open(sys.argv[1],encoding=
 [ "$(cnt scripts/bsh-demo-data/lab_orders.json)" = "100" ] && ok "lab_orders=100" || no "lab_orders!=100"
 [ "$(cnt scripts/bsh-demo-data/corporate_clients.json)" = "20" ] && ok "corporate=20" || no "corporate!=20"
 [ "$(cnt scripts/bsh-demo-data/packages.json)" = "5" ] && ok "packages=5" || no "packages!=5"
+[ "$(cnt scripts/bsh-demo-data/appointments.json)" = "739" ] && ok "appointments=739" || no "appointments!=739"
+[ "$(cnt scripts/bsh-demo-data/bed_assignments.json)" = "31" ] && ok "bed_assignments=31" || no "bed_assignments!=31"
+[ "$(cnt scripts/bsh-demo-data/doctors.json)" = "5" ] && ok "doctors=5" || no "doctors!=5"
 
-echo "== 6. Origin push status (informational) =="
+echo "== 6. Section 1-8 gap deliverables on disk =="
+for f in \
+  docs/BSH_PHASE2_MIGRATION_BASELINE.json docs/BSH_PHASE2_MIGRATIONS_APPLIED.md \
+  docs/BSH_PHASE2_N8N_BASELINE.json docs/BSH_PHASE2_N8N_WORKFLOWS_CREATED.md \
+  docs/BSH_PHASE3_FRONTEND_ARCHITECTURE.md docs/BSH_VAPI_ASSISTANT_CONFIG.md \
+  docs/BSH_CLOUDFLARE_TUNNEL_SETUP.md docs/BSH_BAHMNI_HARDENING.md \
+  docs/BSH_AMD_DEPLOY_DAY_PLAN.md docs/BSH_DEMO_REHEARSAL_CHECKLIST.md; do
+  [ -f "$f" ] && ok "$f" || no "$f MISSING"
+done
+
+echo "== 7. Origin push status (informational) =="
 git fetch -q origin 2>/dev/null
 if git rev-parse --verify -q origin/feature/bsh-hms-phase2-gaps >/dev/null; then
   if [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/feature/bsh-hms-phase2-gaps)" ]; then
