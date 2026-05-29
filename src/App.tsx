@@ -102,6 +102,7 @@ const HRReportsPage = lazy(() => import("./pages/hr/Reports"));
 const HRAIAssistantPage = lazy(() => import("./pages/hr/AIAssistant"));
 const CompliancePage = lazy(() => import("./pages/hr/Compliance"));
 const ShiftsPage = lazy(() => import("./pages/hr/Shifts"));
+const HrNotificationsPage = lazy(() => import("./pages/hr/Notifications"));
 const AIAgentsPage = lazy(() => import("./pages/hr/AIAgents"));
 const AIAgentHirePage = lazy(() => import("./pages/hr/AIAgentHire"));
 const AIAgentProfilePage = lazy(() => import("./pages/hr/AIAgentProfile"));
@@ -1062,6 +1063,14 @@ const App = () => (
                     element={
                       <LazyPage>
                         <ShiftsPage />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/hr/notifications"
+                    element={
+                      <LazyPage>
+                        <HrNotificationsPage />
                       </LazyPage>
                     }
                   />

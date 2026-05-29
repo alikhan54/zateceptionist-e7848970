@@ -497,6 +497,7 @@ export function NavigationSidebar() {
         { title: "Documents", url: "/hr/documents", icon: FileText },
         { title: "Compliance", url: "/hr/compliance", icon: Shield },
         { title: "Reports", url: "/hr/reports", icon: BarChart3 },
+        { title: "Notifications", url: "/hr/notifications", icon: Bell },
       ]},
       { title: "AI Workforce", url: "/hr/ai-agents", icon: Bot, children: [
         { title: "AI Assistant", url: "/hr/ai-assistant", icon: Sparkles },
