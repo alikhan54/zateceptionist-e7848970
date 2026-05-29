@@ -59,3 +59,25 @@ Two reversible paths (the connecting pooler role has `bypassrls`, so DDL applies
 
 ## Artifacts (this folder)
 `MASTER_RESTORE.sql` (all 1,505 original policies) · `FIX.sql` (applied statements) · `ROLLBACK.sql` (surgical undo) · `classification.json` (per-table routing) · `apply_results.json` (per-table verdict + behavioral counts) · `all_policies.json` · `test_users.json` · `step0_summary.json`.
+
+---
+
+# Phase 2 — empty-table isolation (2026-05-30)
+
+Closed the latent leak on the **127 empty tables** Phase 1 had flagged, *before* any tenant goes live with real data.
+
+**Result:** **127/127 isolated, 0 skipped.** PHI first (7 `clinic_*` tables), then financial (5: `credit_transactions`, `sales_deals`, `revenue_attribution`, `revenue_forecasts`, `lead_gen_credit_logs`), then the rest.
+
+**Method — column-type-aware, format-agnostic:**
+- `uuid`-typed `tenant_id` → `((service_role) OR (tenant_id = get_user_tenant_uuid()))`.
+- `text`-typed `tenant_id` → **dual-format**: `((service_role) OR (tenant_id = (get_user_tenant_uuid())::text) OR (tenant_id = get_user_tenant_id()))`. Provably isolated *and* future-proof — a user only ever matches their own tenant's uuid-string **or** slug, so whichever representation data lands in, it's correctly scoped and never cross-tenant. No format guess required.
+- Empty → verification is **structural** (no broad-`true` remains; a broad `get_user_tenant` policy exists). A behavioral `own==sees` check runs only if a table unexpectedly already had rows (none did).
+
+**Verified (re-audit):** 127/127 now carry a broad tenant-isolation policy; platform-wide broad-`true` leaks fell **224 → 97** (exactly the still-flagged 93 no-tenant-column + 4 mixed-format; **0** outside that set); deny-all unchanged at **20** (no over-restriction). All `clinic_*` PHI tables now isolated.
+
+**Still open (future phases / manual):**
+- **93 no-tenant-column tables** — includes **`patient_visits` + `patient_vitals`** (PHI, but currently **empty** → no exposure today; they have *no* tenant/clinic/patient scope column, so they need a **manually designed FK-based policy** before receiving data). Most others are global reference data (`countries`, `roles`, `permissions`, …) where broad read may be intentional — triage individually.
+- **4 mixed-format tables** (`contacts`, `hr_leave_balances`, `ops_agent_memory`, `ops_agent_tasks`) — normalize `tenant_id` representation, then isolate.
+
+**Phase 2 artifacts:** `MASTER_RESTORE_v2.sql` (fresh post-Phase-1 net, 1,465 policies) · `FIX_empty.sql` · `ROLLBACK_empty.sql` · `apply_results_empty.json`.
+**Recovery:** surgical `psql … -f ROLLBACK_empty.sql`; full `psql … -f MASTER_RESTORE_v2.sql`.
