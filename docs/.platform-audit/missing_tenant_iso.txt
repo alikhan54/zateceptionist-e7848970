@@ -1,0 +1,745 @@
+=== Tables with a tenant_id column: 515 ===
+=== Of those, WEAK/MISSING tenant isolation: 236 ===
+
+  aeo_brand_presence: NO_TENANT_CHECK  (rows=8)
+     policies exist but none reference tenant_id
+  aeo_content_scores: NO_TENANT_CHECK  (rows=26)
+     policies exist but none reference tenant_id
+  aeo_entity_graph: NO_TENANT_CHECK  (rows=154)
+     policies exist but none reference tenant_id
+  aeo_schema_registry: NO_TENANT_CHECK  (rows=20)
+     policies exist but none reference tenant_id
+  agent_contexts: NO_TENANT_CHECK  (rows=34)
+     policies exist but none reference tenant_id
+  agent_memory: NO_TENANT_CHECK  (rows=43)
+     policies exist but none reference tenant_id
+  agent_performance: NO_POLICIES  (rows=0)
+     tenant_id exists, RLS on, but 0 policies (deny-all)
+  ai_agent_conversations: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  ai_agent_metrics: NO_TENANT_CHECK  (rows=11)
+     policies exist but none reference tenant_id
+  ai_agent_suggestions: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  ai_agent_tasks: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  ai_agents: NO_TENANT_CHECK  (rows=3)
+     policies exist but none reference tenant_id
+  ai_decisions: NO_TENANT_CHECK  (rows=700)
+     policies exist but none reference tenant_id
+  ai_feedback: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  ai_generated_messages: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  ai_insights: NO_POLICIES  (rows=0)
+     tenant_id exists, RLS on, but 0 policies (deny-all)
+  ai_model_configs: NO_POLICIES  (rows=47)
+     tenant_id exists, RLS on, but 0 policies (deny-all)
+  ai_task_templates: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  ai_tasks: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  analytics_events: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  analytics_hourly: NO_TENANT_CHECK  (rows=1)
+     policies exist but none reference tenant_id
+  api_key_pool: NO_TENANT_CHECK  (rows=14)
+     policies exist but none reference tenant_id
+  api_usage_logs: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  audit_log: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  automation_audit_log: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  automation_rules: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  automation_settings: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  autonomous_workflows: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  business_insights: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  buying_committees: NO_TENANT_CHECK  (rows=953)
+     policies exist but none reference tenant_id
+  call_queue: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  call_records: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  calls: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  campaign_executions: NO_TENANT_CHECK  (rows=20)
+     policies exist but none reference tenant_id
+  campaign_logs: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  campaign_metrics: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  campaign_send_log: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  campaign_templates: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  campaigns: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  channel_config: NO_POLICIES  (rows=0)
+     tenant_id exists, RLS on, but 0 policies (deny-all)
+  channel_configurations: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  channel_messages: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  clinic_consultations: NO_TENANT_CHECK  (rows=1)
+     policies exist but none reference tenant_id
+  clinic_health_analyses: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  clinic_medical_reports: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  clinic_medical_review_queue: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  clinic_post_care_schedule: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  clinic_prescriptions: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  clinic_video_scripts: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  collections_compliance_log: NO_TENANT_CHECK  (rows=8)
+     policies exist but none reference tenant_id
+  collections_field_visits: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  collections_kpis: NO_TENANT_CHECK  (rows=21)
+     policies exist but none reference tenant_id
+  comm_analytics_daily: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  companies: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  competitor_analysis: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  competitor_intelligence: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  competitor_profiles: NO_POLICIES  (rows=3)
+     tenant_id exists, RLS on, but 0 policies (deny-all)
+  consent: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  consent_log: NO_TENANT_CHECK  (rows=31)
+     policies exist but none reference tenant_id
+  consent_records: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  contact_channel_map: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  contact_engagement_patterns: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  contacts: NO_TENANT_CHECK  (rows=24)
+     policies exist but none reference tenant_id
+  content_attribution: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  content_performance: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  conversation_merges: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  conversation_messages: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  conversation_ratings: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  conversation_resolution_log: NO_TENANT_CHECK  (rows=13)
+     policies exist but none reference tenant_id
+  conversation_tag_assignments: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  conversions: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  credit_transactions: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  customer_360: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  customer_identities: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  customer_loyalty: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  customer_marketing_prefs: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  customer_relationships: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  customer_reviews: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  customer_timeline: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  daily_metrics: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  deal_activities: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  delivery_connectors: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  do_not_contact: NO_TENANT_CHECK  (rows=129)
+     policies exist but none reference tenant_id
+  email_sequence_steps: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  email_sequences: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  email_verification: NO_TENANT_CHECK  (rows=314)
+     policies exist but none reference tenant_id
+  employer_branding_content: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  entity_links: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  escalations: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  estimation_drawing_pages: NO_TENANT_CHECK  (rows=18)
+     policies exist but none reference tenant_id
+  estimation_learning_data: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  estimation_revisions: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  estimation_room_details: NO_TENANT_CHECK  (rows=4)
+     policies exist but none reference tenant_id
+  estimation_room_polygons: NO_TENANT_CHECK  (rows=35)
+     policies exist but none reference tenant_id
+  estimation_spec_data: NO_TENANT_CHECK  (rows=1)
+     policies exist but none reference tenant_id
+  estimation_supplier_pricing: NO_TENANT_CHECK  (rows=175)
+     policies exist but none reference tenant_id
+  estimation_transition_rules: NO_TENANT_CHECK  (rows=25)
+     policies exist but none reference tenant_id
+  estimation_waste_matrix: NO_TENANT_CHECK  (rows=52)
+     policies exist but none reference tenant_id
+  field_job_cards: NO_TENANT_CHECK  (rows=5)
+     policies exist but none reference tenant_id
+  hr_ai_insights: NO_POLICIES  (rows=0)
+     tenant_id exists, RLS on, but 0 policies (deny-all)
+  hr_announcements: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  hr_asset_assignments: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  hr_attendance: NO_TENANT_CHECK  (rows=60)
+     policies exist but none reference tenant_id
+  hr_attendance_corrections: NO_POLICIES  (rows=0)
+     tenant_id exists, RLS on, but 0 policies (deny-all)
+  hr_attendance_rules: NO_TENANT_CHECK  (rows=1)
+     policies exist but none reference tenant_id
+  hr_audit_logs: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  hr_compliance_logs: NO_POLICIES  (rows=0)
+     tenant_id exists, RLS on, but 0 policies (deny-all)
+  hr_conversations: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  hr_departments: NO_TENANT_CHECK  (rows=14)
+     policies exist but none reference tenant_id
+  hr_document_acknowledgments: NO_TENANT_CHECK  (rows=1)
+     policies exist but none reference tenant_id
+  hr_document_templates: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  hr_documents: NO_TENANT_CHECK  (rows=10)
+     policies exist but none reference tenant_id
+  hr_employee_documents: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  hr_employee_payroll: NO_POLICIES  (rows=0)
+     tenant_id exists, RLS on, but 0 policies (deny-all)
+  hr_expense_claims: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  hr_interview_schedules: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  hr_leave_balances: NO_TENANT_CHECK  (rows=104)
+     policies exist but none reference tenant_id
+  hr_leave_requests: NO_TENANT_CHECK  (rows=9)
+     policies exist but none reference tenant_id
+  hr_payroll: NO_POLICIES  (rows=0)
+     tenant_id exists, RLS on, but 0 policies (deny-all)
+  hr_payroll_periods: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  hr_performance_cycles: NO_TENANT_CHECK  (rows=1)
+     policies exist but none reference tenant_id
+  hr_performance_reviews: NO_TENANT_CHECK  (rows=9)
+     policies exist but none reference tenant_id
+  hr_policies: NO_POLICIES  (rows=0)
+     tenant_id exists, RLS on, but 0 policies (deny-all)
+  hr_policy_acknowledgments: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  hr_recruitment_outreach: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  hr_skills: NO_POLICIES  (rows=0)
+     tenant_id exists, RLS on, but 0 policies (deny-all)
+  hr_survey_responses: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  hr_surveys: NO_POLICIES  (rows=0)
+     tenant_id exists, RLS on, but 0 policies (deny-all)
+  hr_training_enrollments: NO_POLICIES  (rows=0)
+     tenant_id exists, RLS on, but 0 policies (deny-all)
+  hr_training_programs: NO_TENANT_CHECK  (rows=7)
+     policies exist but none reference tenant_id
+  hr_training_records: NO_TENANT_CHECK  (rows=13)
+     policies exist but none reference tenant_id
+  inbox_rotation_log: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  instrument_registry: NO_TENANT_CHECK  (rows=10)
+     policies exist but none reference tenant_id
+  insurance_claims: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  landing_page_submissions: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  landing_pages: NO_TENANT_CHECK  (rows=9)
+     policies exist but none reference tenant_id
+  lead_ai_analysis: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  lead_gen_credit_logs: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  lead_gen_saved_searches: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  lead_gen_search_logs: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  lead_gen_searches: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  lead_notifications: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  lead_signals: NO_TENANT_CHECK  (rows=4174)
+     policies exist but none reference tenant_id
+  leads: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  linkedin_outreach_queue: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  maintenance_contracts: NO_TENANT_CHECK  (rows=4)
+     policies exist but none reference tenant_id
+  marketing_analytics: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  marketing_calendar: NO_TENANT_CHECK  (rows=1)
+     policies exist but none reference tenant_id
+  marketing_consent: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  marketing_performance_log: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  marketing_predictions: NO_TENANT_CHECK  (rows=35)
+     policies exist but none reference tenant_id
+  marketing_sequence_enrollments: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  marketing_sequence_steps: NO_TENANT_CHECK  (rows=22)
+     policies exist but none reference tenant_id
+  media_library: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  media_mentions: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  media_sources: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  message_sentiment: NO_TENANT_CHECK  (rows=127)
+     policies exist but none reference tenant_id
+  message_templates: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  multichannel_outreach: NO_TENANT_CHECK  (rows=769)
+     policies exist but none reference tenant_id
+  notifications: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  oauth_state_nonces: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  omega_alerts: NO_TENANT_CHECK  (rows=23146)
+     policies exist but none reference tenant_id
+  omega_approval_queue: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  omega_campaigns: NO_TENANT_CHECK  (rows=3)
+     policies exist but none reference tenant_id
+  omega_feedback: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  onboarding_audit_log: NO_TENANT_CHECK  (rows=138)
+     policies exist but none reference tenant_id
+  onboarding_checklists: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  onboarding_module_status: NO_TENANT_CHECK  (rows=37)
+     policies exist but none reference tenant_id
+  onboarding_retry_queue: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  ops_agent_memory: NO_TENANT_CHECK  (rows=90)
+     policies exist but none reference tenant_id
+  ops_agent_performance: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  ops_agent_tasks: NO_TENANT_CHECK  (rows=583)
+     policies exist but none reference tenant_id
+  ops_budget_actuals: NO_TENANT_CHECK  (rows=34)
+     policies exist but none reference tenant_id
+  ops_budgets: NO_TENANT_CHECK  (rows=11)
+     policies exist but none reference tenant_id
+  ops_compliance_log: NO_TENANT_CHECK  (rows=34)
+     policies exist but none reference tenant_id
+  ops_compliance_rules: NO_TENANT_CHECK  (rows=200)
+     policies exist but none reference tenant_id
+  ops_cost_savings: NO_TENANT_CHECK  (rows=10)
+     policies exist but none reference tenant_id
+  ops_demand_forecasts: NO_TENANT_CHECK  (rows=1182)
+     policies exist but none reference tenant_id
+  ops_industry_configs: NO_TENANT_CHECK  (rows=6)
+     policies exist but none reference tenant_id
+  ops_inventory_items: NO_TENANT_CHECK  (rows=33)
+     policies exist but none reference tenant_id
+  ops_inventory_movements: NO_TENANT_CHECK  (rows=191)
+     policies exist but none reference tenant_id
+  ops_production_plans: NO_TENANT_CHECK  (rows=7)
+     policies exist but none reference tenant_id
+  ops_production_tasks: NO_TENANT_CHECK  (rows=49)
+     policies exist but none reference tenant_id
+  ops_purchase_orders: NO_TENANT_CHECK  (rows=41)
+     policies exist but none reference tenant_id
+  ops_qc_checkpoints: NO_TENANT_CHECK  (rows=4)
+     policies exist but none reference tenant_id
+  ops_qc_results: NO_TENANT_CHECK  (rows=3)
+     policies exist but none reference tenant_id
+  ops_quality_alerts: NO_TENANT_CHECK  (rows=9)
+     policies exist but none reference tenant_id
+  ops_quality_checks: NO_TENANT_CHECK  (rows=8435)
+     policies exist but none reference tenant_id
+  ops_shipment_events: NO_TENANT_CHECK  (rows=9)
+     policies exist but none reference tenant_id
+  ops_shipments: NO_TENANT_CHECK  (rows=4)
+     policies exist but none reference tenant_id
+  ops_simulations: NO_TENANT_CHECK  (rows=1)
+     policies exist but none reference tenant_id
+  ops_slas: NO_TENANT_CHECK  (rows=5)
+     policies exist but none reference tenant_id
+  ops_vendor_performance: NO_TENANT_CHECK  (rows=19)
+     policies exist but none reference tenant_id
+  ops_vendors: NO_TENANT_CHECK  (rows=11)
+     policies exist but none reference tenant_id
+  orchestrator_events: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  packages: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  page_analytics: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  pending_actions: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  predictive_scores: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  premium_pages: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  pricing_logs: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  providers: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  rate_limits: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  recruitment_campaigns: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  restaurant_inventory: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  restaurant_kitchen_display: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  restaurant_orders: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  revenue_attribution: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  revenue_forecasts: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  review_response_templates: NO_TENANT_CHECK  (rows=4)
+     policies exist but none reference tenant_id
+  sales_analytics_daily: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  sales_calls: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  sales_deals: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  sales_lead_assignments: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  scheduled_messages: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  scraped_content: NO_POLICIES  (rows=5)
+     tenant_id exists, RLS on, but 0 policies (deny-all)
+  security_deposits: NO_TENANT_CHECK  (rows=4)
+     policies exist but none reference tenant_id
+  sequence_ab_tests: NO_TENANT_CHECK  (rows=217)
+     policies exist but none reference tenant_id
+  service_visits: NO_TENANT_CHECK  (rows=6)
+     policies exist but none reference tenant_id
+  sla_breaches: NO_TENANT_CHECK  (rows=274364)
+     policies exist but none reference tenant_id
+  sla_policies: NO_TENANT_CHECK  (rows=80)
+     policies exist but none reference tenant_id
+  tenant_audit_log: NO_TENANT_CHECK  (rows=80)
+     policies exist but none reference tenant_id
+  tenant_channels: NO_POLICIES  (rows=0)
+     tenant_id exists, RLS on, but 0 policies (deny-all)
+  tender_documents: NO_TENANT_CHECK  (rows=4)
+     policies exist but none reference tenant_id
+  tender_payments: NO_TENANT_CHECK  (rows=6)
+     policies exist but none reference tenant_id
+  tender_stages: NO_TENANT_CHECK  (rows=8)
+     policies exist but none reference tenant_id
+  tenders: NO_TENANT_CHECK  (rows=8)
+     policies exist but none reference tenant_id
+  user_roles: NO_TENANT_CHECK  (rows=48)
+     policies exist but none reference tenant_id
+  users: NO_TENANT_CHECK  (rows=48)
+     policies exist but none reference tenant_id
+  video_performance_signals: NO_TENANT_CHECK  (rows=154)
+     policies exist but none reference tenant_id
+  video_projects: NO_TENANT_CHECK  (rows=171)
+     policies exist but none reference tenant_id
+  video_render_queue: NO_TENANT_CHECK  (rows=106)
+     policies exist but none reference tenant_id
+  video_templates: NO_TENANT_CHECK  (rows=20)
+     policies exist but none reference tenant_id
+  voice_inbox_sync: NO_TENANT_CHECK  (rows=1)
+     policies exist but none reference tenant_id
+  warranty_tracking: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+  workflow_health_log: NO_TENANT_CHECK  (rows=0)
+     policies exist but none reference tenant_id
+
+=== tenant_id tables that DO have a tenant_id-referencing policy (ok) ===
+  ab_tests
+  abm_activities
+  account_heat_map
+  accounting_clients
+  accounting_invoices
+  accounting_jobs
+  accounting_payments
+  accounting_reminders
+  accounting_transactions
+  accounting_truelayer_connections
+  activities
+  ad_accounts
+  ad_campaigns
+  ad_conversions
+  ad_creatives
+  ad_performance_log
+  ad_script_intelligence
+  agent_actions
+  agent_conversations
+  agent_execution_log
+  ai_agent_traces
+  ai_learning_store
+  ai_predictions
+  analytics_daily
+  appointments
+  audience_segments
+  audit_logs
+  auto_lead_gen_settings
+  autonomous_marketing_actions
+  b2c_discovered_leads
+  b2c_discovery_logs
+  b2c_intent_monitors
+  billing_events
+  billing_history
+  blog_posts
+  brand_visual_profiles
+  brand_voice_profiles
+  bsh_clinical_log
+  bsh_multibranch_metrics
+  bulk_call_campaigns
+  bulk_call_contacts
+  business_profiles
+  canned_responses
+  clinic_consent_forms
+  clinic_consent_templates
+  clinic_patient_files
+  clinic_patient_notes
+  clinic_patients
+  clinic_products
+  clinic_treatments
+  collections_accounts
+  collections_bucket_config
+  collections_compliance_rules
+  collections_contact_log
+  collections_ptp
+  collections_settlements
+  company_intelligence
+  company_research
+  competitor_ad_intelligence
+  competitor_content
+  competitor_tracking
+  competitors
+  consent_signatures
+  content_repurpose_jobs
+  conversation_tags
+  conversations
+  customer_health_scores
+  customer_lifecycle_enrollment
+  customer_lifecycle_stages
+  customer_ltv_cac
+  customers
+  deals
+  deliverability_metrics
+  document_tracking
+  email_sequence_subscribers
+  email_template_library
+  email_templates
+  email_warmup_status
+  engagement_responses
+  estimation_activity_log
+  estimation_bidsets
+  estimation_estimates
+  estimation_materials
+  estimation_projects
+  estimation_rfis
+  estimation_rooms
+  estimation_takeoff_items
+  estimation_team_assignments
+  estimation_waste_factors
+  forecast_history
+  hr_ai_interviews
+  hr_auto_decisions
+  hr_auto_mode_config
+  hr_candidates
+  hr_employee_shifts
+  hr_employees
+  hr_goals
+  hr_job_applications
+  hr_job_requisitions
+  hr_leave_types
+  hr_notifications
+  hr_public_holidays
+  hr_shifts
+  hr_sourcing_runs
+  influencer_campaign_members
+  influencer_campaigns
+  influencer_outreach_log
+  influencers
+  integration_logs
+  integration_usage
+  ivr_flows
+  knowledge_base
+  lead_engagement_events
+  lead_gen_credits
+  lead_gen_history
+  lead_interactions
+  lead_magnets
+  lead_score_predictions
+  lead_scoring_models
+  ltv_cac_snapshots
+  manual_email_campaigns
+  manual_email_recipients
+  market_signals
+  marketing_ai_activity
+  marketing_campaigns
+  marketing_content
+  marketing_sequences
+  meeting_links
+  message_queue
+  messages
+  nps_surveys
+  onboarding_sessions
+  optimization_reports
+  orchestrator_logs
+  outbound_messages
+  patient_testimonials
+  proposals
+  re_api_keys
+  re_automation_log
+  re_clients
+  re_commissions
+  re_compliance_alerts
+  re_deal_orchestrations
+  re_deals
+  re_documents
+  re_eoi
+  re_investment_portfolio
+  re_investment_routes
+  re_lead_scores
+  re_listings
+  re_market_data
+  re_market_forecasts
+  re_matches
+  re_offplan_projects
+  re_portal_credentials
+  re_portal_sync_log
+  re_price_predictions
+  re_road_shows
+  re_viewings
+  re_whatsapp_journeys
+  referrals
+  reply_events
+  reply_routing_rules
+  restaurant_menus
+  restaurant_reservations
+  sales_ab_assignments
+  sales_ab_tests
+  sales_analytics_by_rep
+  sales_assignment_rules
+  sales_assignments
+  sales_availability
+  sales_calendar_events
+  sales_communication_limits
+  sales_compliance_log
+  sales_consent_records
+  sales_conversations
+  sales_do_not_contact
+  sales_email_verification
+  sales_leads
+  sales_marketing_bridge
+  sales_phone_validation
+  sales_referrals
+  sales_sequences
+  sales_team_members
+  sales_territories
+  send_time_preferences
+  sending_accounts
+  seo_content_scores
+  seo_keyword_tracking
+  sequence_enrollments
+  sequence_step_history
+  sequence_templates
+  sequences
+  services
+  services_catalog
+  smart_tasks
+  social_accounts
+  social_content_posts
+  social_mentions
+  social_post_queue
+  social_posts
+  social_schedule_slots
+  subscriptions
+  system_events
+  system_health
+  target_accounts
+  target_personas
+  task_automation_rules
+  task_executions
+  tasks
+  tenant_config
+  tenant_cta_library
+  tenant_health_probe
+  tenant_icp_config
+  tenant_integrations
+  tenant_oauth_grants
+  tenant_onboarding
+  tenant_phone_numbers
+  tenant_providers
+  tenant_services
+  tenant_templates
+  treatments
+  trend_insights
+  trigger_events
+  trigger_monitors
+  unified_predictions
+  usage_records
+  video_analytics
+  video_assets
+  video_publishing_log
+  video_retargeting_audiences
+  video_view_tracking
+  vip_routing_rules
+  visitor_sessions
+  visits
+  voice_call_log
+  voice_credit_transactions
+  voice_credits
+  voice_invoices
+  voice_marketing_calls
+  voice_phone_numbers
+  voice_usage
+  warmup_daily_log
+  webhook_logs
+  website_visitors
+  workflow_errors
+  workflow_executions
+  yt_analytics_snapshots
+  yt_channel_audits
+  yt_channels
+  yt_client_economics
+  yt_client_reports
+  yt_competitor_alerts
+  yt_competitor_tracking
+  yt_content_calendar
+  yt_discovery_batches
+  yt_generated_assets
+  yt_oauth_connections
+  yt_outreach_campaigns
+  yt_outreach_sequences
+  yt_outreach_touches
+  yt_payment_transactions
+  yt_portal_messages
+  yt_portal_users
+  yt_seo_packages
+  yt_thumbnail_tests
+  yt_trending_topics
+  yt_video_scripts
