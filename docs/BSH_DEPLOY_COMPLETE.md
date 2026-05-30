@@ -4,6 +4,8 @@
 **Tenant:** `bsh-demo` (`healthcare_hospital`)
 **Status:** Backend live, merged to `origin/main`, multi-tenant safety verified.
 
+> **To resume BSH:** read `BSH_DEPLOY_COMPLETE.md` + `DEMO_ACCESS.txt`. Open items: rotate `Admin123`, Tier B appointments, whitelabel, Phase 3 frontend.
+
 The BSH-HMS healthcare_hospital vertical is fully deployed and verified on the live AMD
 server. The pitch centerpiece — *MEDICA reads a chart and cites real abnormal lab values* —
 holds post-merge, with cross-tenant leak-safety and a clean multi-tenant regression.

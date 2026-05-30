@@ -1,6 +1,6 @@
 # CC Multi-Session Coordination
 
-**Last updated:** 2026-05-30 (Session C — Smart Ledger SHIPPED+PARKED; Recruitment E2E SHIPPED+PARKED — UI on main, awaiting Publish, other sessions clear)
+**Last updated:** 2026-05-30 (Session BSH-HMS PARKED+COMPLETE — backend live, releases main; Session C — Smart Ledger SHIPPED+PARKED; Recruitment E2E SHIPPED+PARKED — UI on main, awaiting Publish, other sessions clear)
 
 > **🅿️ SESSION C — SMART LEDGER: PARKED + SHIPPED 2026-05-30.** All work is on `origin/main` and live on Lovable; working tree clean (no uncommitted tracked changes). **HR / other sessions are clear to push to main.** Commits (in order):
 > - `40c38eb` — Phase 1 ship: D7-C Invoices + parity F1-F4 (un-revert of `39c1234`), D7-D Reminders, F5/F6 Calendar+Workload, D7-E ACCOUNTANT chat widget, D7-F Add Client, E2E spec. Shipped via `git rebase --onto` that **preserved all 17 other-session commits** (video/HR/MP-S1) — no force-push, plain FF.
@@ -12,6 +12,19 @@
 > - Recovery anchor: local branch `session-c-backup-pre-rebase-20260530` (retain ~48h).
 
 **Prior "Last updated":** 2026-05-26 (HR V3 Decade-Ahead PARKED + Session A Cosmique PARKED)
+
+---
+
+## 🏁 Session BSH-HMS — PARKED + COMPLETE 2026-05-30
+
+**Bahmni HMS (`healthcare_hospital` vertical) SHIPPED to `origin/main` + live. This session RELEASES main — other sessions clear to commit.**
+- **origin/main HEAD: `d8cc4d0`.** All BSH work merged + pushed (`c9e209a` big merge → `8fd7a6b` → `a2e76f8` → `d8cc4d0`). 100% additive: **0 `src/`, 0 build-config, 0 sacred files** → Lovable build byte-identical (Publish is a no-op, optional).
+- **Bahmni LIVE** externally at `https://hms-bsh.zatesystems.com` (Cloudflare tunnel from the AMD box — box must stay ON). 50 patients, lab orders + results, abnormal values flagged.
+- **MEDICA centerpiece PROVEN live** (`/agent/medica` bsh-demo cites potassium 6.8, SGPT 180, cholesterol 7.8). Leak-safety verified: cosmique stays `not_configured`, no cross-tenant Bahmni leak. Regression clean (cosmique 3 patients, zate 613 leads).
+- **12 BSH n8n workflows active**; **9/9 sacred workflows untouched**. Daily Bahmni mysqldump task scheduled (`BSH-Bahmni-Daily-Backup`, 03:00, 14-day retention).
+- **Branch `feature/bsh-hms-phase2-gaps`: fully synced to origin (0 unpushed), safe to leave.** Brain code is image-baked (not git-tracked); recorded in `docs/BSH_LABS_CENTERPIECE_PROVEN.md` + `docs/BSH_DEPLOY_COMPLETE.md`.
+- **Pre-prod items deferred (NOT blocking):** rotate stock `admin:Admin123`, tighten `langgraph-agents/.env` ACL. Future: Tier B appointments, whitelabel branding, Phase 3 frontend (embed MEDICA in UI).
+- **MUST NOT TOUCH (BSH surface):** `services/bsh-*`, `bsh-intelligence-owa/`, `bahmni-config/`, `scripts/seed-bahmni-demo-data.py`, `supabase/migrations/37,38,39`, the 12 `BSH-HMS —` n8n workflows, Bahmni containers (`bahmni-lite-*`). All additive — touches no other session's files.
 
 ---
 
@@ -252,6 +265,7 @@ Any session that needs a sacred edit MUST:
 
 (Append-only. Each session adds an entry after pushing.)
 
+- `2026-05-30` · Session BSH-HMS · `d8cc4d0` · **PARK + COMPLETE** — BSH `healthcare_hospital` vertical merged to main (additive, 0 `src/`/sacred), Bahmni live at `hms-bsh.zatesystems.com`, MEDICA centerpiece proven, 12 workflows active, daily backup scheduled. Releases main.
 - `2026-05-24 21:15 PST` · Session HR-V3 · **NO COMMIT (ops-only)** — Emergency `docker restart n8n` to clear hung TypeORM pool. ALL webhooks recovered 503→200. Frontend code confirmed INTACT — no parallel-session corruption. RestartCount 0→1. 249 active workflows post-restart (above baseline). Only `docs/CC_SESSION_COORDINATION.md` written.
 - `2026-05-24` · Session F · `(no commit)` · **PARK** — ACSFX synthetic-data purge cleanup + verification. DB-only, zero `frontend/src/` or `frontend/tests/` changes. Cleaned 6 fabricated emails + 1 fake phone via tenant-scoped `UPDATE`. Multi-tenant isolation gate PASS (timestamp-proven). All 12 verifiable B2B leads render at `/sales/pipeline`. State doc: `frontend/docs/.session-state-acsfx-synthetic-purge.md`.
 - `2026-05-24` · Session D · `16dc4f7` · **PARK** — wait-hardening on `tests/hr-askai-navigation.spec.ts` (2-line). Pushed to branch `parked/hr-session-d-20260524` (NOT main). State doc: `frontend/docs/.session-state-hr-session-d.md`.
