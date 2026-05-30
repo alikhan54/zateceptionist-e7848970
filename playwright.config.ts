@@ -500,5 +500,10 @@ export default defineConfig({
       testMatch: /hr-v6-verify\.spec\.ts/,
       use: { browserName: 'chromium' }, // no setup dep — fresh login; V6 fix verification against local preview (HR_V6_BASE)
     },
+    {
+      name: 'hr-v7-verify',
+      testMatch: /hr-v7-verify\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — fresh login; V7 fix verification against local preview (HR_V7_BASE/HR_V6_BASE)
+    },
   ],
 });
