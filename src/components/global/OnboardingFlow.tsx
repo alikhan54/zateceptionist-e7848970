@@ -149,6 +149,14 @@ export function OnboardingFlow() {
     setShowTutorial(false);
   };
 
+  // V6: persist dismissal on EVERY close path (X / Esc / outside-click) so the
+  // tutorial doesn't reappear on the next hard reload. Previously only the
+  // Skip / Get-Started buttons wrote the flag, so closing via the X brought it back.
+  const handleTutorialOpenChange = (open: boolean) => {
+    setShowTutorial(open);
+    if (!open) localStorage.setItem(ONBOARDING_KEY, 'true');
+  };
+
   const toggleChecklistItem = (id: string) => {
     const updated = checklist.map(item =>
       item.id === id ? { ...item, completed: !item.completed } : item
@@ -165,7 +173,7 @@ export function OnboardingFlow() {
   return (
     <>
       {/* Onboarding Tutorial Modal */}
-      <Dialog open={showTutorial} onOpenChange={setShowTutorial}>
+      <Dialog open={showTutorial} onOpenChange={handleTutorialOpenChange}>
         <DialogContent className="max-w-xl p-0 gap-0 overflow-hidden">
           {/* Progress indicator */}
           <div className="flex gap-1 p-4 pb-0">
