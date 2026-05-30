@@ -246,28 +246,78 @@ export function useEmployees() {
     onError: (e: any) => toast.error(`Failed to add employee: ${e?.message || 'unknown error'}`),
   });
 
+  // V7: DIRECT supabase update (the /hr/employee/update webhook was unreliable — queue
+  // backlog Bug #96 — AND the dialog sent `department_name`, which is NOT a column).
+  // Whitelist real hr_employees columns; surface the REAL error.
+  const EMP_UPDATABLE = ['first_name', 'last_name', 'company_email', 'phone', 'position',
+    'employment_type', 'salary', 'employment_status', 'department', 'department_id',
+    'date_of_birth', 'date_of_joining'];
   const updateEmployee = useMutation({
-    mutationFn: async (data: Partial<Employee> & { id: string }) => {
+    mutationFn: async (data: any) => {
       if (!tenantUuid) throw new Error('No tenant');
-      return callWebhookOrThrow(WEBHOOKS.UPDATE_EMPLOYEE, data, tenantUuid);
+      if (!data?.id) throw new Error('Missing employee id');
+      const payload: any = { updated_at: new Date().toISOString() };
+      for (const k of EMP_UPDATABLE) if (data[k] !== undefined) payload[k] = data[k];
+      const { data: result, error } = await supabase
+        .from('hr_employees')
+        .update(payload)
+        .eq('id', data.id)
+        .eq('tenant_id', tenantUuid)
+        .select()
+        .maybeSingle();
+      if (error) throw new Error(error.message || 'Update failed');
+      if (!result) throw new Error('Update did not match any employee (tenant/RLS).');
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        await supabase.from('hr_audit_logs').insert({
+          tenant_id: (tenantConfig as any)?.tenant_id || tenantUuid,
+          entity_type: 'employee', entity_id: data.id, action: 'update',
+          actor_id: user?.id || null, actor_type: 'user', changes: payload,
+        });
+      } catch { /* audit is best-effort, never blocks the save */ }
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["employees", tenantUuid] });
       toast.success("Employee updated successfully");
     },
-    onError: () => toast.error("Failed to update employee"),
+    onError: (e: any) => toast.error(e?.message || "Failed to update employee"),
   });
 
+  // V7: direct soft-delete (same reliability fix). Writes the real termination columns.
   const terminateEmployee = useMutation({
     mutationFn: async (data: { id: string; reason?: string; effective_date?: string }) => {
       if (!tenantUuid) throw new Error('No tenant');
-      return callWebhookOrThrow(WEBHOOKS.TERMINATE_EMPLOYEE, data, tenantUuid);
+      const payload: any = {
+        employment_status: 'terminated',
+        termination_reason: data.reason || null,
+        termination_date: data.effective_date || new Date().toISOString().slice(0, 10),
+        updated_at: new Date().toISOString(),
+      };
+      const { data: result, error } = await supabase
+        .from('hr_employees')
+        .update(payload)
+        .eq('id', data.id)
+        .eq('tenant_id', tenantUuid)
+        .select()
+        .maybeSingle();
+      if (error) throw new Error(error.message || 'Terminate failed');
+      if (!result) throw new Error('Terminate did not match any employee (tenant/RLS).');
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        await supabase.from('hr_audit_logs').insert({
+          tenant_id: (tenantConfig as any)?.tenant_id || tenantUuid,
+          entity_type: 'employee', entity_id: data.id, action: 'terminate',
+          actor_id: user?.id || null, actor_type: 'user', changes: payload,
+        });
+      } catch { /* best-effort */ }
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["employees", tenantUuid] });
       toast.success("Employee terminated");
     },
-    onError: () => toast.error("Failed to terminate employee"),
+    onError: (e: any) => toast.error(e?.message || "Failed to terminate employee"),
   });
 
   return { ...query, createEmployee, updateEmployee, terminateEmployee };
