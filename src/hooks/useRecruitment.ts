@@ -292,6 +292,104 @@ export function useAIInterviews(applicationId?: string) {
   });
 }
 
+// ── Outreach Activity (P5) ──────────────────────────────────────────────
+// Unifies hr_recruitment_outreach (email/whatsapp/sms touchpoints) + hr_ai_interviews
+// (AI screening calls) into a single chronological activity feed. Display-only.
+export type RecruitmentActivityItem = {
+  id: string;
+  kind: 'email' | 'whatsapp' | 'sms' | 'call';
+  candidate_id?: string;
+  candidate_name?: string;
+  role?: string;
+  title: string;
+  status: string;
+  timestamp: string | null;
+  body?: string | null;
+  transcript?: unknown;
+  recording_url?: string | null;
+  ai_score?: number | null;
+  recommendation?: string | null;
+  duration_seconds?: number | null;
+};
+
+function outreachToActivity(r: any, name?: string, role?: string): RecruitmentActivityItem {
+  const ch = String(r.channel || 'email');
+  const kind = (ch === 'voice' || ch === 'voice_call') ? 'call'
+    : (['whatsapp', 'sms', 'email'].includes(ch) ? ch : 'email') as RecruitmentActivityItem['kind'];
+  return {
+    id: 'o_' + r.id, kind, candidate_id: r.candidate_id, candidate_name: name, role,
+    title: r.subject || (kind === 'email' ? 'Email outreach' : kind.toUpperCase() + ' message'),
+    status: r.status || 'sent',
+    timestamp: r.sent_at || r.created_at || null,
+    body: r.body || null,
+  };
+}
+function interviewToActivity(r: any, name?: string, role?: string): RecruitmentActivityItem {
+  return {
+    id: 'i_' + r.id, kind: 'call', candidate_id: r.candidate_id, candidate_name: name, role,
+    title: 'AI screening call',
+    status: r.status || 'scheduled',
+    timestamp: r.call_started_at || r.created_at || null,
+    transcript: r.transcript ?? null,
+    recording_url: r.recording_url || null,
+    ai_score: r.ai_score ?? null,
+    recommendation: r.recommendation || null,
+    duration_seconds: r.actual_duration_seconds ?? null,
+  };
+}
+const sortByTimeDesc = (a: RecruitmentActivityItem, b: RecruitmentActivityItem) =>
+  new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime();
+
+export function useCandidateActivity(candidateId?: string) {
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
+  return useQuery({
+    queryKey: ['recruitment_activity', tenantUuid, candidateId],
+    queryFn: async () => {
+      if (!tenantUuid || !candidateId) return [] as RecruitmentActivityItem[];
+      const [outreach, interviews] = await Promise.all([
+        supabase.from('hr_recruitment_outreach').select('*').eq('tenant_id', tenantUuid).eq('candidate_id', candidateId),
+        supabase.from('hr_ai_interviews').select('*').eq('tenant_id', tenantUuid).eq('candidate_id', candidateId),
+      ]);
+      return [
+        ...((outreach.data || []) as any[]).map((r) => outreachToActivity(r)),
+        ...((interviews.data || []) as any[]).map((r) => interviewToActivity(r)),
+      ].sort(sortByTimeDesc);
+    },
+    enabled: !!tenantUuid && !!candidateId,
+  });
+}
+
+export function useOutreachFeed(limit = 100) {
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
+  return useQuery({
+    queryKey: ['recruitment_outreach_feed', tenantUuid, limit],
+    queryFn: async () => {
+      if (!tenantUuid) return [] as RecruitmentActivityItem[];
+      const [outreach, interviews, cands, apps, reqs] = await Promise.all([
+        supabase.from('hr_recruitment_outreach').select('*').eq('tenant_id', tenantUuid).order('created_at', { ascending: false }).limit(limit),
+        supabase.from('hr_ai_interviews').select('*').eq('tenant_id', tenantUuid).order('created_at', { ascending: false }).limit(limit),
+        supabase.from('hr_candidates').select('id,first_name,last_name').eq('tenant_id', tenantUuid),
+        supabase.from('hr_job_applications').select('id,job_requisition_id').eq('tenant_id', tenantUuid),
+        supabase.from('hr_job_requisitions').select('id,job_title').eq('tenant_id', tenantUuid),
+      ]);
+      const nameById = new Map<string, string>();
+      for (const c of (cands.data || []) as any[]) nameById.set(c.id, `${c.first_name || ''} ${c.last_name || ''}`.trim() || 'Unknown candidate');
+      const reqById = new Map<string, string>();
+      for (const r of (reqs.data || []) as any[]) reqById.set(r.id, r.job_title);
+      const appToReq = new Map<string, string>();
+      for (const a of (apps.data || []) as any[]) appToReq.set(a.id, a.job_requisition_id);
+      const roleFor = (appId?: string) => { const rq = appId ? appToReq.get(appId) : undefined; return rq ? reqById.get(rq) : undefined; };
+      return [
+        ...((outreach.data || []) as any[]).map((r) => outreachToActivity(r, nameById.get(r.candidate_id), roleFor(r.application_id))),
+        ...((interviews.data || []) as any[]).map((r) => interviewToActivity(r, nameById.get(r.candidate_id), roleFor(r.application_id))),
+      ].sort(sortByTimeDesc);
+    },
+    enabled: !!tenantUuid,
+  });
+}
+
 export function useSourcingRuns(jobRequisitionId?: string) {
   const { tenantConfig } = useTenant();
   const tenantUuid = tenantConfig?.id;

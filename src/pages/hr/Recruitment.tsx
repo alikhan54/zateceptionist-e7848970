@@ -5,6 +5,7 @@ import { useTenant } from "@/contexts/TenantContext";
 import { AskAIButton } from "@/components/hr/AskAIButton";
 import { SourceBadge } from "@/components/hr/SourceBadge";
 import AIInterviewsTab from "@/components/hr/AIInterviewsTab";
+import { OutreachFeed, CandidateActivity } from "@/components/hr/OutreachActivity";
 import { PipelineFunnel } from "@/components/hr/PipelineFunnel";
 import { useAutoMode } from "@/hooks/useAutoMode";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -1218,6 +1219,7 @@ export default function RecruitmentPage() {
           <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
           <TabsTrigger value="interviews">Interviews</TabsTrigger>
           <TabsTrigger value="ai-interviews">AI Interviews</TabsTrigger>
+          <TabsTrigger value="outreach">Outreach</TabsTrigger>
           <TabsTrigger value="sourcing">Sourcing</TabsTrigger>
         </TabsList>
 
@@ -1816,6 +1818,22 @@ export default function RecruitmentPage() {
           <AIInterviewsTab />
         </TabsContent>
 
+        {/* ===== OUTREACH TAB ===== */}
+        <TabsContent value="outreach">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Send className="h-5 w-5 text-primary" />
+                Outreach Activity
+              </CardTitle>
+              <CardDescription>Every candidate touchpoint — email, AI calls and messages — newest first.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <OutreachFeed />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* ===== SOURCING TAB ===== */}
         <TabsContent value="sourcing">
           <Card>
@@ -2278,6 +2296,12 @@ export default function RecruitmentPage() {
                   <p className="text-sm whitespace-pre-wrap bg-primary/5 p-3 rounded-lg border border-primary/20">{selectedCandidate.contact_strategy}</p>
                 </div>
               )}
+
+              {/* Outreach Activity (P5) */}
+              <div>
+                <p className="text-sm text-muted-foreground mb-2">Outreach Activity</p>
+                <CandidateActivity candidateId={selectedCandidate.id} />
+              </div>
 
               {/* Added date */}
               <p className="text-xs text-muted-foreground">

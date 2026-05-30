@@ -505,5 +505,10 @@ export default defineConfig({
       testMatch: /hr-v7-verify\.spec\.ts/,
       use: { browserName: 'chromium' }, // no setup dep — fresh login; V7 fix verification against local preview (HR_V7_BASE/HR_V6_BASE)
     },
+    {
+      name: 'recruitment-outreach-verify',
+      testMatch: /recruitment-outreach-verify\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — fresh login; Outreach Activity UI vs local preview (RO_BASE/HR_V6_BASE)
+    },
   ],
 });
