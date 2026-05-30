@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTenant } from '@/contexts/TenantContext';
-import { useEmployees, useDepartments } from '@/hooks/useHR';
+import { useEmployees, useDepartments, useIsHRAdmin } from '@/hooks/useHR';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,7 @@ import { AskAIButton } from '@/components/hr/AskAIButton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Textarea } from '@/components/ui/textarea';
 import { AnimatedNumber } from '@/components/hr/AnimatedNumber';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -40,7 +41,8 @@ export default function EmployeesPage() {
   const { t, tenantConfig } = useTenant();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { data: employees, isLoading, createEmployee, updateEmployee } = useEmployees();
+  const { data: employees, isLoading, createEmployee, updateEmployee, terminateEmployee } = useEmployees();
+  const isAdmin = useIsHRAdmin();
   const { data: deptList } = useDepartments();
   const departments = ['All', ...(deptList || []).map(d => d.name)];
 
@@ -53,6 +55,14 @@ export default function EmployeesPage() {
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState(1);
+  // V6: edit + terminate (soft-delete) dialogs
+  const emptyEdit = { id: '', first_name: '', last_name: '', company_email: '', phone: '', position: '', department_name: '', employment_type: 'Full-time', salary: '', employment_status: 'active' };
+  const [editEmp, setEditEmp] = useState(emptyEdit);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [terminateEmp, setTerminateEmp] = useState<any>(null);
+  const [isTerminateOpen, setIsTerminateOpen] = useState(false);
+  const [terminateReason, setTerminateReason] = useState('');
+  const [terminateDate, setTerminateDate] = useState('');
 
   const displayEmployees = employees || [];
   
@@ -98,6 +108,56 @@ export default function EmployeesPage() {
 
   const openProfile = (employee: any) => {
     navigate(`/hr/employees/${employee.id}`);
+  };
+
+  // V6: open the edit dialog prefilled from the employee row
+  const openEdit = (employee: any) => {
+    setEditEmp({
+      id: employee.id,
+      first_name: employee.first_name || '',
+      last_name: employee.last_name || '',
+      company_email: employee.company_email || '',
+      phone: employee.phone || '',
+      position: employee.position || '',
+      department_name: employee.department_name || employee.department || '',
+      employment_type: employee.employment_type || 'Full-time',
+      salary: employee.salary != null ? String(employee.salary) : '',
+      employment_status: employee.employment_status || 'active',
+    });
+    setIsEditOpen(true);
+  };
+
+  const saveEdit = () => {
+    if (!editEmp.id) return;
+    updateEmployee.mutate({
+      id: editEmp.id,
+      first_name: editEmp.first_name,
+      last_name: editEmp.last_name,
+      company_email: editEmp.company_email,
+      phone: editEmp.phone || undefined,
+      position: editEmp.position || undefined,
+      department_name: editEmp.department_name || undefined,
+      employment_type: editEmp.employment_type || undefined,
+      salary: editEmp.salary ? Number(editEmp.salary) : undefined,
+      employment_status: editEmp.employment_status || undefined,
+    } as any, { onSuccess: () => setIsEditOpen(false) });
+  };
+
+  // V6: admin soft-delete (terminate) — backend writes employment_status/termination_reason/termination_date + audit
+  const openTerminate = (employee: any) => {
+    setTerminateEmp(employee);
+    setTerminateReason('');
+    setTerminateDate('');
+    setIsTerminateOpen(true);
+  };
+
+  const confirmTerminate = () => {
+    if (!terminateEmp || !terminateReason.trim()) return;
+    terminateEmployee.mutate({
+      id: terminateEmp.id,
+      reason: terminateReason.trim(),
+      effective_date: terminateDate || undefined,
+    }, { onSuccess: () => { setIsTerminateOpen(false); setTerminateEmp(null); } });
   };
 
   const formatCurrency = (amount: number, currency?: string) => {
@@ -341,9 +401,14 @@ export default function EmployeesPage() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => openProfile(employee)}><Eye className="h-4 w-4 mr-2" />View Profile</DropdownMenuItem>
-                      <DropdownMenuItem><Edit className="h-4 w-4 mr-2" />Edit</DropdownMenuItem>
-                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => openEdit(employee)}><Edit className="h-4 w-4 mr-2" />Edit</DropdownMenuItem>
                       <DropdownMenuItem><Mail className="h-4 w-4 mr-2" />Send Email</DropdownMenuItem>
+                      {isAdmin && employee.employment_status !== 'terminated' && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => openTerminate(employee)}><Trash2 className="h-4 w-4 mr-2" />Terminate</DropdownMenuItem>
+                        </>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -409,6 +474,59 @@ export default function EmployeesPage() {
           </Table>
         </Card>
       )}
+
+      {/* V6: Edit Employee dialog */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit {t('staff')}</DialogTitle>
+            <DialogDescription>Update details and save changes.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>First Name</Label><Input value={editEmp.first_name} onChange={(e) => setEditEmp({ ...editEmp, first_name: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Last Name</Label><Input value={editEmp.last_name} onChange={(e) => setEditEmp({ ...editEmp, last_name: e.target.value })} /></div>
+            </div>
+            <div className="space-y-2"><Label>Email</Label><Input type="email" value={editEmp.company_email} onChange={(e) => setEditEmp({ ...editEmp, company_email: e.target.value })} /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>Phone</Label><Input value={editEmp.phone} onChange={(e) => setEditEmp({ ...editEmp, phone: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Position</Label><Input value={editEmp.position} onChange={(e) => setEditEmp({ ...editEmp, position: e.target.value })} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>Department</Label><Select value={editEmp.department_name} onValueChange={(v) => setEditEmp({ ...editEmp, department_name: v })}><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger><SelectContent>{departments.filter(d => d !== 'All').map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent></Select></div>
+              <div className="space-y-2"><Label>Employment Type</Label><Select value={editEmp.employment_type} onValueChange={(v) => setEditEmp({ ...editEmp, employment_type: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{employmentTypes.filter(x => x !== 'All').map(x => <SelectItem key={x} value={x}>{x}</SelectItem>)}</SelectContent></Select></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>Annual Salary</Label><Input type="number" value={editEmp.salary} onChange={(e) => setEditEmp({ ...editEmp, salary: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Status</Label><Select value={editEmp.employment_status} onValueChange={(v) => setEditEmp({ ...editEmp, employment_status: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="active">Active</SelectItem><SelectItem value="on_leave">On Leave</SelectItem><SelectItem value="probation">Probation</SelectItem><SelectItem value="suspended">Suspended</SelectItem></SelectContent></Select></div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditOpen(false)}>Cancel</Button>
+            <Button onClick={saveEdit} disabled={!editEmp.first_name || !editEmp.last_name}>Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* V6: Terminate (soft-delete) dialog — admin only */}
+      <Dialog open={isTerminateOpen} onOpenChange={setIsTerminateOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Terminate {t('staff')}</DialogTitle>
+            <DialogDescription>
+              Sets {terminateEmp?.first_name} {terminateEmp?.last_name} to <strong>terminated</strong>. This is a soft-delete — the record is preserved for history, and the reason is written to the audit log.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="space-y-2"><Label>Reason <span className="text-destructive">*</span></Label><Textarea placeholder="Reason for termination (recorded in audit log)" value={terminateReason} onChange={(e) => setTerminateReason(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Effective Date</Label><Input type="date" value={terminateDate} onChange={(e) => setTerminateDate(e.target.value)} /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsTerminateOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={confirmTerminate} disabled={!terminateReason.trim()}>Terminate</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );
