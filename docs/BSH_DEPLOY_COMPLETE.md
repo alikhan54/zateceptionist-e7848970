@@ -100,3 +100,30 @@ The BSH merge has **zero `src/` changes** → Lovable Publish is a frontend **no
 - Bahmni admin password rotation (deferred to pre-demo, internal-only for now).
 - Tier B appointment flows (deferred).
 - Lovable Publish (no-op, user runs when convenient).
+
+## 10. Final handoff (2026-05-30)
+
+### External demo access — [VERIFIED]
+- `https://hms-bsh.zatesystems.com/openmrs` → **200** via Cloudflare tunnel; login page 200.
+- `admin` logs in (REST session `authenticated=true`). **50 patients**, **32 lab observations**
+  externally queryable. Local access note + login live in `D:/420-system/bsh-hms/DEMO_ACCESS.txt`
+  (gitignored, never committed). AMD box must be ON (tunnel runs from it).
+
+### Daily Bahmni backup — [VERIFIED, scheduled]
+- Windows task **`BSH-Bahmni-Daily-Backup`** runs `D:\420-system\bsh-hms\backup-bahmni.cmd`
+  daily at 03:00; 14-day retention; first dump = 135 MB (`openmrs_YYYYMMDD.sql`).
+- Exact dump command (password lives ONLY in the container env, never on disk):
+  ```
+  docker exec bahmni-lite-openmrsdb-1 sh -c "mysqldump -u root -p\"$MYSQL_ROOT_PASSWORD\" --single-transaction --no-tablespaces openmrs" > D:\420-system\bsh-hms\backups\openmrs_<date>.sql
+  ```
+
+### Security posture (pre-production items — flagged, intentionally deferred)
+- **Bahmni admin password NOT rotated** — kept stock `admin:Admin123` per user decision
+  (shared with partner + client for the pilot). **Rotate before production.**
+- `langgraph-agents/.env` is readable by local `Users`/`Authenticated Users` (inherited ACL);
+  acceptable on this single-operator box, **tighten before production** (`icacls /inheritance:r`).
+- No secrets tracked in git (verified: 0 `.env`/`.pem`/credential files in `git ls-files`).
+
+### Deferred (out of scope, future sessions)
+- **Tier B appointments**, **whitelabel branding**, **Phase 3 frontend** (embed the MEDICA
+  lab-reading centerpiece inside the Bahmni/420 UI — currently demoed live via API).
