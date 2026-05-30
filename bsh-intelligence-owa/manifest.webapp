@@ -1,0 +1,10 @@
+{
+  "name": "bsh-intelligence",
+  "version": "0.1.0-phase2f",
+  "description": "BSH Intelligence Overlay — talks to 420 OMEGA from inside Bahmni",
+  "launch_path": "/index.html",
+  "icons": {"128": "/img/icon-128.png"},
+  "developer": {"name": "Zate Systems"},
+  "default_locale": "en",
+  "type": "privileged"
+}

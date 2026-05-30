@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>BSH Intelligence</title>
+  <link rel="stylesheet" href="styles/zate-theme.css">
+</head>
+<body ng-app="bshIntelligence">
+  <div id="industry-guard-error" style="display:none;padding:2rem;text-align:center;font-family:sans-serif">
+    <h2>BSH Intelligence is only available for healthcare_hospital tenants.</h2>
+    <p>Your current tenant is configured for a different industry. Please contact your administrator.</p>
+  </div>
+  <div id="app-root" ng-controller="DashboardController as vm" style="display:none">
+    <header><h1>BSH Intelligence</h1></header>
+    <main>
+      <section data-panel="ai-sidebar" ng-include="'views/ai-sidebar.html'"></section>
+      <section data-panel="critical-alerts" ng-include="'views/critical-alerts.html'"></section>
+      <section data-panel="bed-board" ng-include="'views/bed-board.html'"></section>
+      <section data-panel="dashboard" ng-include="'views/dashboard.html'"></section>
+    </main>
+  </div>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.3/angular.min.js"></script>
+  <script src="scripts/services/industry-guard.js"></script>
+  <script src="scripts/services/zate-api.js"></script>
+  <script src="scripts/controllers/dashboard.js"></script>
+  <script src="scripts/app.js"></script>
+</body>
+</html>

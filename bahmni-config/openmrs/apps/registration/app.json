@@ -1,0 +1,22 @@
+{
+  "id": "bahmni.registration",
+  "extensionPoints": [
+    {
+      "id": "org.bahmni.registration.patient.search.additionalAttributes",
+      "description": "BSH HN identifier display"
+    }
+  ],
+  "config": {
+    "patientIdentifierFormat": "BSH-{year}-{seq:5}",
+    "patientIdentifierType": "Bahmni Hospital Number",
+    "patientAttributes": [
+      "hnCardNumber",
+      "corporateClient",
+      "foreignPassportNumber",
+      "preferredLanguage"
+    ],
+    "patientAttributesConfig": {
+      "preferredLanguage": {"options": ["bn", "en"], "default": "bn"}
+    }
+  }
+}

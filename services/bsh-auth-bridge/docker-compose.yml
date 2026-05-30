@@ -1,0 +1,21 @@
+services:
+  bsh-auth-bridge:
+    build: .
+    image: bsh-auth-bridge:phase2c
+    container_name: bsh-auth-bridge
+    ports:
+      - "9101:9101"
+    environment:
+      SUPABASE_URL: ${SUPABASE_URL:-https://fncfbywkemsxwuiowxxe.supabase.co}
+      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY}
+      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET}
+      BSH_BRIDGE_SIGNING_KEY: ${BSH_BRIDGE_SIGNING_KEY}
+      BSH_BRIDGE_TTL: "1800"
+    networks:
+      - langgraph-net
+    restart: unless-stopped
+
+networks:
+  langgraph-net:
+    external: true
+    name: langgraph-agents_langgraph-net

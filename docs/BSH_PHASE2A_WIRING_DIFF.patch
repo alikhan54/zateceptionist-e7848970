@@ -1,0 +1,36 @@
+--- a/langgraph-agents/agents/definitions.py	(post-Phase-1F)
++++ b/langgraph-agents/agents/definitions.py	(post-Phase-2A)
+@@ -107,6 +107,13 @@
+ # BSH-HMS Phase 1F: additive read-only Bahmni tools (graceful-fail when
+ # tenant_config.bahmni_base_url IS NULL — verified 15/15 in container 2026-05-29).
+ from tools.bahmni_tools import BAHMNI_TOOLS, MEDICA_BAHMNI_TOOLS
++# BSH-HMS Phase 2A: 25 industry-gated tools (healthcare_hospital only). Every
++# tool short-circuits with industry-mismatch error for any non-hospital tenant.
++# Verified 25/25 graceful-reject against Cosmique in container 2026-05-29.
++from tools.bahmni_tools_phase2 import (
++    BAHMNI_TOOLS_PHASE2_ALL,
++    BAHMNI_TOOLS_PHASE2_MEDICA,
++)
+
+ # ============================================================
+ # Agent Configurations
+@@ -388,6 +395,8 @@
+             *JARVIS_TOOLS,
+             # BSH-HMS Phase 1F: Bahmni read-only tools (additive, graceful-fail when bahmni_base_url IS NULL)
+             *BAHMNI_TOOLS,
++            # BSH-HMS Phase 2A: 25 industry-gated tools (healthcare_hospital only, inert for all other industries)
++            *BAHMNI_TOOLS_PHASE2_ALL,
+         ],
+     },
+
+     "medica": {
+@@ -428,6 +437,8 @@
+             get_tenant_config, log_event,
+             # BSH-HMS Phase 1F: Bahmni clinical-relevant read-only tools (additive, graceful-fail)
+             *MEDICA_BAHMNI_TOOLS,
++            # BSH-HMS Phase 2A: Bahmni clinical-action tools (industry-gated to healthcare_hospital)
++            *BAHMNI_TOOLS_PHASE2_MEDICA,
+         ],
+     },
+
+     "realty": {

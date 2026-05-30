@@ -1,0 +1,38 @@
+--- a/langgraph-agents/agents/definitions.py	(pre-BSH-Phase1F)
++++ b/langgraph-agents/agents/definitions.py	(post-BSH-Phase1F)
+@@ -102,6 +102,9 @@
+ from tools.accounting_tools import (
+     list_accounting_clients, get_client_360, list_jobs, get_job_detail,
+     get_finance_summary, list_invoices, get_invoice_detail,
+     list_overdue_invoices, list_upcoming_deadlines, get_payment_match_status,
+ )
++# BSH-HMS Phase 1F: additive read-only Bahmni tools (graceful-fail when
++# tenant_config.bahmni_base_url IS NULL — verified 15/15 in container 2026-05-29).
++from tools.bahmni_tools import BAHMNI_TOOLS, MEDICA_BAHMNI_TOOLS
+
+ # ============================================================
+ # Agent Configurations
+@@ -382,6 +385,8 @@
+             # Phase 2 surgical additions
+             score_lead,
+             export_quote,
+             # Jarvis direct-action tools (Phase Jarvis)
+             *JARVIS_TOOLS,
++            # BSH-HMS Phase 1F: Bahmni read-only tools (additive, graceful-fail when bahmni_base_url IS NULL)
++            *BAHMNI_TOOLS,
+         ],
+     },
+
+     "medica": {
+@@ -423,6 +428,8 @@
+         "tools": [
+             get_patient_health_score, list_medical_reports, get_health_analysis,
+             recommend_treatments, check_contraindications, get_review_queue,
+             patient_analytics, predict_no_show, calculate_patient_ltv,
+             get_tenant_config, log_event,
++            # BSH-HMS Phase 1F: Bahmni clinical-relevant read-only tools (additive, graceful-fail)
++            *MEDICA_BAHMNI_TOOLS,
+         ],
+     },
+
+     "realty": {

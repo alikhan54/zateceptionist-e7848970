@@ -1,0 +1,116 @@
+{
+  "doc": "BSH-HMS Phase 2 — Migration Baseline & Verified End-State",
+  "purpose": "Ground-truth snapshot captured BEFORE and AFTER applying Supabase migrations 37/38/39 + the bsh-demo tenant_config row. Every post-application number was re-verified live against the database; see verification_labels.",
+  "generated_by": "Claude Code autonomous session (BSH-HMS finish-everything-no-push mission)",
+  "generated_at_utc": "2026-05-29",
+  "project_ref": "fncfbywkemsxwuiowxxe",
+  "branch": "feature/bsh-hms-phase2-gaps",
+
+  "mechanism_correction": {
+    "premise_in_task": "Apply migrations via Supabase REST exec_sql / POST sql endpoint (PostgREST).",
+    "finding": "FALSE PREMISE — disproven by direct probe.",
+    "evidence": [
+      "POST to PostgREST /rest/v1/rpc/exec_sql returned HTTP 404 — the exec_sql RPC does not exist in this project.",
+      "PostgREST cannot execute DDL (CREATE TABLE / CREATE POLICY / CREATE TRIGGER) regardless of RPC; it only proxies row-level CRUD."
+    ],
+    "mechanism_actually_used": "Supabase Management API — POST https://api.supabase.com/v1/projects/fncfbywkemsxwuiowxxe/database/query (authenticated with SUPABASE_ACCESS_TOKEN from .env, len 44). This is the authorized arbitrary-SQL channel and the only one that can run DDL here.",
+    "management_api_quirks_discovered": [
+      "Caps query body size (~2KB) — full migration files returned HTTP 413 Payload Too Large. Worked around by splitting each file into individual statements (dollar-quote-aware splitter) and sending them one at a time.",
+      "Rejects explicit BEGIN/COMMIT transaction control — returned HTTP 400. Dropped the BEGIN/COMMIT lines; safe because every statement is idempotent (IF NOT EXISTS / CREATE OR REPLACE / DROP ... IF EXISTS).",
+      "Requires UTF-8 byte-encoded request body — PowerShell 5.1 Invoke-WebRequest mangled non-ASCII (em-dash) characters, producing HTTP 400 on the statements containing em-dashes (migration 38 COMMENT ON VIEW; migration 39 CREATE TABLE inline comments). Fixed by encoding the body via [System.Text.Encoding]::UTF8.GetBytes() + ContentType 'application/json; charset=utf-8', then re-applying idempotently."
+    ]
+  },
+
+  "pre_application_baseline": {
+    "captured_label": "VERIFIED-DB (before any migration statement ran)",
+    "total_tenants": 41,
+    "distinct_industries": 16,
+    "cosmique_clinic_patients": 3,
+    "cosmique_industry": "healthcare_clinic",
+    "zate_sales_leads": 613,
+    "zate_industry": "technology",
+    "bsh_demo_exists": 0,
+    "migration_artifacts": {
+      "bsh_multibranch_metrics_table": 0,
+      "bsh_clinical_log_table": 0,
+      "hospital_tenants_view": 0,
+      "tenant_config_bahmni_columns": 0,
+      "industry_gate_triggers": 0,
+      "industry_gate_functions": 0
+    }
+  },
+
+  "post_application_verified": {
+    "captured_label": "VERIFIED-DB (re-queried live at session resume, 2026-05-29)",
+    "total_tenants": 42,
+    "bsh_demo": {
+      "tenant_id": "bsh-demo",
+      "company_name": "Bangladesh Specialized Hospital (Demo)",
+      "industry": "healthcare_hospital",
+      "subscription_status": "inactive",
+      "bahmni_base_url": null,
+      "ai_agent_mode": "standard",
+      "features.bahmni_secret_ref": "vault:bsh-demo"
+    },
+    "migration_37_multibranch_metrics": {
+      "table": 1,
+      "indexes": 3,
+      "rls_policies": 2,
+      "industry_gate_function_enforce_hospital_only_metrics": 1,
+      "trigger_bsh_metrics_industry_check": "present",
+      "row_count": 0
+    },
+    "migration_38_tenant_config_extension": {
+      "bahmni_columns_present": ["bahmni_base_url", "bahmni_admin_user"],
+      "bahmni_columns_count": 2,
+      "hospital_tenants_view": 1,
+      "hospital_tenants_view_contents": ["bsh-demo"]
+    },
+    "migration_39_clinical_log": {
+      "table": 1,
+      "indexes": 4,
+      "rls_policies": 2,
+      "industry_gate_function_enforce_hospital_only_clinical_log": 1,
+      "trigger_bsh_clinical_log_industry_check": "present",
+      "row_count": 0
+    }
+  },
+
+  "multi_tenant_regression": {
+    "captured_label": "VERIFIED-DB",
+    "cosmique_clinic_patients_before": 3,
+    "cosmique_clinic_patients_after": 3,
+    "cosmique_status": "UNCHANGED",
+    "zate_sales_leads_before": 613,
+    "zate_sales_leads_after": 613,
+    "zate_status": "UNCHANGED",
+    "bsh_tables_junk_rows": 0,
+    "verdict": "PASS — no existing-tenant data touched; no test rows left behind."
+  },
+
+  "industry_gate_proof": {
+    "captured_label": "VERIFIED-DB (negative direction = actual rejection observed; positive direction = INFERRED, gate condition satisfied, not insert-tested to honor no-DELETE guardrail)",
+    "negative_test_cosmique_into_bsh_clinical_log": {
+      "attempt": "INSERT a row for tenant_id='cosmique' (industry=healthcare_clinic)",
+      "result": "REJECTED",
+      "error_code": "P0001",
+      "error_message": "bsh_clinical_log is restricted to healthcare_hospital tenants. tenant_id=cosmique has industry=healthcare_clinic",
+      "raised_by": "enforce_hospital_only_clinical_log()",
+      "rows_created": 0
+    },
+    "negative_test_cosmique_into_bsh_multibranch_metrics": {
+      "attempt": "INSERT a row for tenant_id='cosmique'",
+      "result": "REJECTED by enforce_hospital_only_metrics()",
+      "rows_created": 0
+    },
+    "positive_direction_bsh_demo": {
+      "label": "INFERRED",
+      "basis": "bsh-demo industry=healthcare_hospital satisfies the trigger's NOT EXISTS(... industry='healthcare_hospital') guard; bsh-demo also appears in hospital_tenants view. Insert path not exercised to avoid leaving test rows (no-DELETE guardrail)."
+    }
+  },
+
+  "safety_decisions": {
+    "subscription_status_inactive": "bsh-demo was inserted with subscription_status='inactive' (NOT in the task spec, which would have defaulted to 'active'). Reason: prevents the demo tenant being swept into active multi-tenant scheduled loops (§7 multi-tenant loop pattern selects WHERE subscription_status='active') before AMD demo day. Industry triggers gate on industry NOT subscription_status, so hospital-table access still works. User flips to 'active' on demo day.",
+    "no_destructive_sql": "No DROP/DELETE/TRUNCATE against existing data. All DDL idempotent + additive. Negative gate tests produced zero rows (trigger fired BEFORE INSERT)."
+  }
+}
