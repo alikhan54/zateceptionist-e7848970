@@ -1,6 +1,6 @@
 # CC Multi-Session Coordination
 
-**Last updated:** 2026-05-30 (Session C — Smart Ledger SHIPPED+PARKED; Recruitment E2E PARKED — branch unpushed, other sessions clear)
+**Last updated:** 2026-05-30 (Session C — Smart Ledger SHIPPED+PARKED; Recruitment E2E SHIPPED+PARKED — UI on main, awaiting Publish, other sessions clear)
 
 > **🅿️ SESSION C — SMART LEDGER: PARKED + SHIPPED 2026-05-30.** All work is on `origin/main` and live on Lovable; working tree clean (no uncommitted tracked changes). **HR / other sessions are clear to push to main.** Commits (in order):
 > - `40c38eb` — Phase 1 ship: D7-C Invoices + parity F1-F4 (un-revert of `39c1234`), D7-D Reminders, F5/F6 Calendar+Workload, D7-E ACCOUNTANT chat widget, D7-F Add Client, E2E spec. Shipped via `git rebase --onto` that **preserved all 17 other-session commits** (video/HR/MP-S1) — no force-push, plain FF.
@@ -15,10 +15,10 @@
 
 ---
 
-## 🏁 Recruitment E2E — PARKED 2026-05-30
+## 🏁 Recruitment E2E — SHIPPED + PARKED 2026-05-30
 
-**Branch:** `feature/recruitment-e2e-phase1` (2 commits, **NOT pushed**). Other sessions clear to proceed.
-- Commits: `6c853ba` docs (P0-P4 recon + plan), `29f104b` feat — Outreach Activity Log UI (P5). tsc clean, Playwright 2/2 vs local preview.
+**SHIPPED to `origin/main`** (tip `21fba34`, plain fast-forward — no force; V7 base `2b4a4bc` preserved). **UI goes live after Adeel clicks Publish in Lovable.** Branch `feature/recruitment-e2e-phase1` fully merged. Other sessions clear to proceed.
+- Commits on main: `6c853ba` docs (P0-P4 recon + plan), `29f104b` feat — Outreach Activity Log UI (P5), `21fba34` park note. tsc clean (merged tree), Playwright 2/2 vs local preview.
 - **LIVE in n8n (not git):** outreach orchestrator `Nb5nL49nR6JlkuYe` (`/webhook/hr/recruitment/outreach`), auto-dial `CvgvX7EL8M9wwoN8` (`/webhook/hr/recruitment/auto-dial`), and existing start-call `bcaK7Lxd0HgtVfqW` **patched** (warm intro + LLM `anthropic → openai/gpt-4o-mini`; backups in `.tmp_diag`).
 - Orchestrator fires **only on an explicit `application_id`** — **NO broad schedule active** (it contacts no one on its own; safe).
 - **Test data present in Zate** (Test Candidate + score-72 captured AI call + 1 sent email) — **NOT purged** (the Activity-log UI demos real data).
