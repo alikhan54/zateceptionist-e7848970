@@ -28,11 +28,14 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 export default function TrainingPage() {
   const { tenantConfig } = useTenant();
   const queryClient = useQueryClient();
-  const { programs, enrollments, enroll, createProgram } = useTraining();
+  const { programs, enrollments, enroll, createProgram, generateCourse, generateAvatarVideo } = useTraining();
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newProgram, setNewProgram] = useState({ name: '', description: '', duration_hours: '', max_participants: '' });
+  // V6: AI course generator dialog
+  const [isAiOpen, setIsAiOpen] = useState(false);
+  const [aiForm, setAiForm] = useState({ topic: '', category: 'compliance', duration_minutes: '30' });
   // Course player state — opened by Continue button on an enrolled course
   const [playerRecord, setPlayerRecord] = useState<any | null>(null);
   const [playerOpen, setPlayerOpen] = useState(false);
@@ -90,24 +93,41 @@ export default function TrainingPage() {
     });
   };
 
+  // V6: AI course generation (lesson + slides + quiz + objectives via Claude/Gemini)
+  const handleGenerateCourse = () => {
+    if (!aiForm.topic.trim()) return;
+    generateCourse.mutate({
+      topic: aiForm.topic.trim(),
+      category: aiForm.category || undefined,
+      duration_minutes: aiForm.duration_minutes ? Number(aiForm.duration_minutes) : undefined,
+    }, {
+      onSuccess: () => {
+        setIsAiOpen(false);
+        setAiForm({ topic: '', category: 'compliance', duration_minutes: '30' });
+      },
+    });
+  };
+
   // Some programs (AI-generated) store the full structured content in
   // description as a JSON blob. Detect and unwrap so the card renders the
   // human-readable lesson summary instead of `{"ai_generated":true,...}`.
   const displayPrograms = (programs.data || []).map((p: any) => {
+    // The generator stores the full AI package in `provider` (JSON); detect it
+    // so we can show the AI badge + a "Generate Video" affordance.
+    let providerMeta: any = {};
+    try { providerMeta = JSON.parse(p.provider || '{}'); } catch { /* provider may be a plain vendor name */ }
+    const is_ai = !!providerMeta.ai_generated || (typeof p.description === 'string' && p.description.includes('content_script'));
+    const has_video = !!providerMeta.avatar_video_url;
+    const base = { ...p, title: p.name || p.title, is_ai, has_video };
     const desc = p.description || '';
     if (typeof desc === 'string' && desc.trim().startsWith('{') && desc.includes('content_script')) {
       try {
         const meta = JSON.parse(desc);
         const summary = (meta.content_script || '').slice(0, 200).trim();
-        return {
-          ...p,
-          title: p.name || p.title,
-          description_display: summary || meta.summary || '',
-          ai_meta: meta,
-        };
+        return { ...base, description_display: summary || meta.summary || '', ai_meta: meta };
       } catch { /* fall through */ }
     }
-    return { ...p, title: p.name || p.title, description_display: desc };
+    return { ...base, description_display: desc };
   });
   // hr_training_records does not have program_id, so join to hr_training_programs
   // by training_name (the denormalized link). Pull the AI content blob from
@@ -164,6 +184,50 @@ export default function TrainingPage() {
         </div>
         <div className="flex items-center gap-2">
           <AskAIButton message="Recommend training programs based on performance gaps and skill requirements" label="AI Training Plan" />
+          {/* V6: real AI course generator (Claude/Gemini → lesson + slides + quiz) */}
+          <Dialog open={isAiOpen} onOpenChange={setIsAiOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="gap-2"><Sparkles className="h-4 w-4" />Generate AI Course</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" />Generate AI Course</DialogTitle>
+                <DialogDescription>AI writes the lesson, slides, quiz and learning objectives. Add an avatar video after it's created.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Topic *</Label>
+                  <Input placeholder="e.g. Patient Confidentiality (HIPAA)" value={aiForm.topic} onChange={e => setAiForm({ ...aiForm, topic: e.target.value })} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Category</Label>
+                    <Select value={aiForm.category} onValueChange={v => setAiForm({ ...aiForm, category: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="compliance">Compliance</SelectItem>
+                        <SelectItem value="technical">Technical</SelectItem>
+                        <SelectItem value="leadership">Leadership</SelectItem>
+                        <SelectItem value="soft_skills">Soft Skills</SelectItem>
+                        <SelectItem value="safety">Safety</SelectItem>
+                        <SelectItem value="general">General</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Duration (min)</Label>
+                    <Input type="number" placeholder="30" value={aiForm.duration_minutes} onChange={e => setAiForm({ ...aiForm, duration_minutes: e.target.value })} />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsAiOpen(false)}>Cancel</Button>
+                <Button onClick={handleGenerateCourse} disabled={generateCourse.isPending || !aiForm.topic.trim()}>
+                  {generateCourse.isPending ? 'Generating…' : 'Generate Course'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
               <Button className="gap-2">
@@ -306,6 +370,11 @@ export default function TrainingPage() {
                     <Button className="w-full" onClick={() => enroll.mutate({ program_id: program.id })} disabled={enroll.isPending}>
                       Enroll Now
                     </Button>
+                    {(program as any).is_ai && !(program as any).has_video && (
+                      <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => generateAvatarVideo.mutate({ training_program_id: program.id })} disabled={generateAvatarVideo.isPending}>
+                        <Sparkles className="h-3.5 w-3.5" />{generateAvatarVideo.isPending ? 'Generating video… (~min)' : 'Generate Avatar Video'}
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               ))}

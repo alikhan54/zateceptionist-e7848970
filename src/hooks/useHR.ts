@@ -759,7 +759,41 @@ export function useTraining() {
     onError: () => toast.error("Failed to create program"),
   });
 
-  return { programs, enrollments, enroll, createProgram };
+  // V6: AI course generator — Claude/Gemini writes lesson + slides + quiz + objectives
+  // into a new hr_training_programs row (n8n HTuKFLf8uiDnzPJA). Backend was unwired from UI.
+  const generateCourse = useMutation({
+    mutationFn: async (data: { topic: string; category?: string; duration_minutes?: number }) => {
+      if (!tenantUuid) throw new Error('No tenant');
+      return callWebhookOrThrow(WEBHOOKS.HR_TRAINING_GENERATE, {
+        topic: data.topic,
+        category: data.category || 'general',
+        duration_minutes: data.duration_minutes ?? 30,
+      }, tenantUuid);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["training-programs", tenantUuid] });
+      toast.success("AI course generated");
+    },
+    onError: (e: any) => toast.error(`AI course generation failed: ${e?.message || 'unknown'}`),
+  });
+
+  // V6: HeyGen avatar video for a generated course (n8n 4u2H6AwbDnYcGQW5, premium only).
+  // NOTE: HeyGen render can take a few minutes; the webhook is synchronous today.
+  const generateAvatarVideo = useMutation({
+    mutationFn: async (data: { training_program_id: string }) => {
+      if (!tenantUuid) throw new Error('No tenant');
+      return callWebhookOrThrow(WEBHOOKS.HR_TRAINING_AVATAR_VIDEO, {
+        training_program_id: data.training_program_id,
+      }, tenantUuid);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["training-programs", tenantUuid] });
+      toast.success("Avatar video generated");
+    },
+    onError: (e: any) => toast.error(`Video generation failed: ${e?.message || 'unknown'}`),
+  });
+
+  return { programs, enrollments, enroll, createProgram, generateCourse, generateAvatarVideo };
 }
 
 // ═══════════════════════════════════════════════════════════
