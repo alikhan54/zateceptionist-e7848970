@@ -22,7 +22,7 @@ import { differenceInDays, parseISO } from 'date-fns';
 
 export default function PerformancePage() {
   const { t } = useTenant();
-  const { data, isLoading, createReview, createGoal, aiGenerateReview } = usePerformance();
+  const { data, isLoading, createReview, createGoal, aiGenerateReview, createFeedback } = usePerformance();
   const { data: employees } = useEmployees();
   const employeeList = employees || [];
 
@@ -30,6 +30,10 @@ export default function PerformancePage() {
   const [isGoalOpen, setIsGoalOpen] = useState(false);
   const [newReview, setNewReview] = useState({ employee_id: '', employee_name: '', review_type: 'quarterly', review_period_start: '', review_period_end: '' });
   const [newGoal, setNewGoal] = useState({ title: '', description: '', category: 'performance', target_date: '' });
+  // V6: 360° feedback dialog
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackMode, setFeedbackMode] = useState<'give' | 'request'>('give');
+  const [feedbackForm, setFeedbackForm] = useState({ employee_id: '', comments: '' });
 
   const reviews = data?.reviews || [];
   const goals = data?.goals || [];
@@ -219,13 +223,13 @@ export default function PerformancePage() {
                   <MessageSquare className="h-10 w-10 mx-auto text-primary mb-3 group-hover:scale-110 transition-transform" />
                   <h4 className="font-semibold mb-2">Give Feedback</h4>
                   <p className="text-sm text-muted-foreground mb-4">Provide constructive feedback to your colleagues</p>
-                  <Button variant="outline">Start Feedback</Button>
+                  <Button variant="outline" onClick={() => { setFeedbackMode('give'); setFeedbackForm({ employee_id: '', comments: '' }); setFeedbackOpen(true); }}>Start Feedback</Button>
                 </div>
                 <div className="p-6 bg-muted/50 rounded-xl text-center hover:bg-muted transition-colors cursor-pointer group">
                   <Star className="h-10 w-10 mx-auto text-chart-4 mb-3 group-hover:scale-110 transition-transform" />
                   <h4 className="font-semibold mb-2">Request Feedback</h4>
                   <p className="text-sm text-muted-foreground mb-4">Ask colleagues for feedback on your performance</p>
-                  <Button variant="outline">Request Feedback</Button>
+                  <Button variant="outline" onClick={() => { setFeedbackMode('request'); setFeedbackForm({ employee_id: '', comments: '' }); setFeedbackOpen(true); }}>Request Feedback</Button>
                 </div>
               </div>
             </CardContent>
@@ -343,6 +347,49 @@ export default function PerformancePage() {
               setIsGoalOpen(false);
               setNewGoal({ title: '', description: '', category: 'performance', target_date: '' });
             }}>Add Goal</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* V6: 360° feedback dialog (Give / Request) */}
+      <Dialog open={feedbackOpen} onOpenChange={setFeedbackOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{feedbackMode === 'give' ? 'Give Feedback' : 'Request Feedback'}</DialogTitle>
+            <DialogDescription>
+              {feedbackMode === 'give'
+                ? 'Provide 360° feedback to a colleague — recorded in their review history.'
+                : 'Request 360° feedback about a colleague (creates a pending feedback item).'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>{feedbackMode === 'give' ? 'Colleague' : 'About'}</Label>
+              <Select value={feedbackForm.employee_id} onValueChange={(v) => setFeedbackForm({ ...feedbackForm, employee_id: v })}>
+                <SelectTrigger><SelectValue placeholder="Select colleague" /></SelectTrigger>
+                <SelectContent>{employeeList.map(emp => <SelectItem key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>{feedbackMode === 'give' ? 'Feedback' : 'Message (optional)'}</Label>
+              <Input placeholder={feedbackMode === 'give' ? 'Strengths, areas to improve, examples…' : 'What feedback are you requesting?'} value={feedbackForm.comments} onChange={(e) => setFeedbackForm({ ...feedbackForm, comments: e.target.value })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFeedbackOpen(false)}>Cancel</Button>
+            <Button
+              disabled={!feedbackForm.employee_id || (feedbackMode === 'give' && !feedbackForm.comments.trim()) || createFeedback.isPending}
+              onClick={() => {
+                createFeedback.mutate({
+                  employee_id: feedbackForm.employee_id,
+                  comments: feedbackForm.comments.trim() || 'Feedback requested',
+                  feedback_type: '360',
+                  status: feedbackMode === 'request' ? 'pending' : 'submitted',
+                }, { onSuccess: () => setFeedbackOpen(false) });
+              }}
+            >
+              {createFeedback.isPending ? 'Submitting…' : (feedbackMode === 'give' ? 'Submit Feedback' : 'Send Request')}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

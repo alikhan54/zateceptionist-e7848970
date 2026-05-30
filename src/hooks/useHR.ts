@@ -526,6 +526,8 @@ export function usePerformance() {
         goals: (goalsRes.data || []).map((g: any) => ({
           ...g,
           progress_percent: g.progress_percent ?? g.progress ?? 0,
+          // hr_goals column is `due_date`; surface it as target_date for the UI badge.
+          target_date: g.due_date ?? g.target_date ?? null,
         })) as Goal[],
         activeCycle: null,
       };
@@ -615,9 +617,11 @@ export function usePerformance() {
   const createGoal = useMutation({
     mutationFn: async (goal: { title: string; employee_id?: string; description?: string; category?: string; target_date?: string }) => {
       if (!tenantUuid) throw new Error('No tenant');
+      // hr_goals column is `due_date`, not `target_date` — remap so the date persists.
+      const { target_date, ...rest } = goal;
       const { data: result, error } = await supabase
         .from("hr_goals")
-        .insert({ ...goal, tenant_id: tenantUuid, progress_percent: 0, status: 'not_started' })
+        .insert({ ...rest, due_date: target_date || null, tenant_id: tenantUuid, progress_percent: 0, status: 'not_started' })
         .select()
         .single();
       if (error) throw error;
@@ -630,7 +634,61 @@ export function usePerformance() {
     onError: () => toast.error("Failed to create goal"),
   });
 
-  return { ...query, createReview, createGoal, aiGenerateReview };
+  // V6: 360°/peer feedback — stored as an hr_performance_reviews row.
+  // review_type CHECK allows 'self'|'manager'|'peer'|'360' (verified live).
+  const createFeedback = useMutation({
+    mutationFn: async (fb: { employee_id: string; comments: string; feedback_type?: string; status?: string }) => {
+      if (!tenantUuid) throw new Error('No tenant');
+      const { data: { user } } = await supabase.auth.getUser();
+      // cycle_id is NOT NULL — reuse the most-recent cycle or create one (mirror createReview)
+      const { data: cycles } = await supabase
+        .from('hr_performance_cycles')
+        .select('id')
+        .eq('tenant_id', tenantUuid)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      let cycleId = cycles?.[0]?.id;
+      if (!cycleId) {
+        const today = new Date(); const start = new Date(today); start.setMonth(start.getMonth() - 3);
+        const { data: newCycle, error: ccErr } = await supabase
+          .from('hr_performance_cycles')
+          .insert({
+            tenant_id: tenantUuid,
+            name: `feedback cycle ${start.toISOString().slice(0, 10)} to ${today.toISOString().slice(0, 10)}`,
+            type: 'quarterly', start_date: start.toISOString().slice(0, 10), end_date: today.toISOString().slice(0, 10), status: 'active',
+          })
+          .select()
+          .single();
+        if (ccErr) throw ccErr;
+        cycleId = newCycle.id;
+      }
+      const pending = fb.status === 'pending';
+      const { data: result, error } = await supabase
+        .from('hr_performance_reviews')
+        .insert({
+          tenant_id: tenantUuid,
+          employee_id: fb.employee_id,
+          cycle_id: cycleId,
+          review_type: fb.feedback_type === 'peer' ? 'peer' : '360',
+          status: pending ? 'pending' : 'submitted',
+          reviewer_id: user?.id,
+          rating_scale: 5,
+          comments: fb.comments,
+          submitted_at: pending ? null : new Date().toISOString(),
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['performance', tenantUuid] });
+      toast.success('Feedback submitted');
+    },
+    onError: (e: any) => toast.error(`Failed to submit feedback: ${e?.message || 'unknown'}`),
+  });
+
+  return { ...query, createReview, createGoal, aiGenerateReview, createFeedback };
 }
 
 // ═══════════════════════════════════════════════════════════
