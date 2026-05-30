@@ -495,5 +495,10 @@ export default defineConfig({
       testMatch: /hr-prod-qa\.spec\.ts/,
       use: { browserName: 'chromium' }, // no setup dep — fresh login as zate admin (ZATE_PASSWORD); production warrior QA
     },
+    {
+      name: 'hr-v6-verify',
+      testMatch: /hr-v6-verify\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — fresh login; V6 fix verification against local preview (HR_V6_BASE)
+    },
   ],
 });
