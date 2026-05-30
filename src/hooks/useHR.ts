@@ -901,7 +901,61 @@ export function useTraining() {
     onError: (e: any) => toast.error(`Video generation failed: ${e?.message || 'unknown'}`),
   });
 
-  return { programs, enrollments, enroll, createProgram, generateCourse, generateAvatarVideo };
+  // V7: course edit / soft-delete / manual content (direct supabase, tenant-isolated)
+  const updateCourse = useMutation({
+    mutationFn: async (data: { id: string; name?: string; description?: string; duration_hours?: number; type?: string; max_participants?: number }) => {
+      if (!tenantUuid) throw new Error('No tenant');
+      const { id, ...fields } = data;
+      const payload: any = {};
+      for (const k of ['name', 'description', 'duration_hours', 'type', 'max_participants'] as const)
+        if ((fields as any)[k] !== undefined) payload[k] = (fields as any)[k];
+      const { data: result, error } = await supabase
+        .from('hr_training_programs').update(payload).eq('id', id).eq('tenant_id', tenantUuid).select().maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!result) throw new Error('Course not found (tenant/RLS).');
+      return result;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["training-programs", tenantUuid] }); toast.success("Course updated"); },
+    onError: (e: any) => toast.error(e?.message || "Failed to update course"),
+  });
+
+  const deleteCourse = useMutation({
+    mutationFn: async (id: string) => {
+      if (!tenantUuid) throw new Error('No tenant');
+      // soft-delete: keep the row (preserves enrollments/history), hide via status
+      const { error } = await supabase.from('hr_training_programs').update({ status: 'cancelled' }).eq('id', id).eq('tenant_id', tenantUuid);
+      if (error) throw new Error(error.message);
+      return id;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["training-programs", tenantUuid] }); toast.success("Course removed"); },
+    onError: (e: any) => toast.error(e?.message || "Failed to remove course"),
+  });
+
+  // Add a manual video / document URL — merged into the course's `provider` JSON
+  // (same place the AI generator stores avatar_video_url), preserving any vendor name.
+  const addCourseMedia = useMutation({
+    mutationFn: async (data: { id: string; video_url?: string; document_url?: string }) => {
+      if (!tenantUuid) throw new Error('No tenant');
+      const { data: prog, error: ge } = await supabase
+        .from('hr_training_programs').select('provider').eq('id', data.id).eq('tenant_id', tenantUuid).maybeSingle();
+      if (ge) throw new Error(ge.message);
+      if (!prog) throw new Error('Course not found.');
+      let meta: any = {};
+      const orig = ((prog as any).provider || '').toString();
+      try { const p = JSON.parse(orig || '{}'); if (p && typeof p === 'object') meta = p; else if (orig.trim()) meta.vendor = orig; }
+      catch { if (orig.trim()) meta.vendor = orig; }
+      if (data.video_url) meta.avatar_video_url = data.video_url;
+      if (data.document_url) meta.document_url = data.document_url;
+      meta.manual_content = true;
+      const { error } = await supabase.from('hr_training_programs').update({ provider: JSON.stringify(meta) }).eq('id', data.id).eq('tenant_id', tenantUuid);
+      if (error) throw new Error(error.message);
+      return data.id;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["training-programs", tenantUuid] }); toast.success("Content added to course"); },
+    onError: (e: any) => toast.error(e?.message || "Failed to add content"),
+  });
+
+  return { programs, enrollments, enroll, createProgram, generateCourse, generateAvatarVideo, updateCourse, deleteCourse, addCourseMedia };
 }
 
 // ═══════════════════════════════════════════════════════════

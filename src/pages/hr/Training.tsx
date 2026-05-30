@@ -18,17 +18,17 @@ import { CircularProgress } from '@/components/hr/CircularProgress';
 import {
   GraduationCap, BookOpen, Clock, Users, Award, Play,
   CheckCircle2, Search, Calendar, TrendingUp, Sparkles, Trophy, Plus,
-  MoreVertical, RotateCcw, X
+  MoreVertical, RotateCcw, X, Edit, Trash2, FileText, Video
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 
 export default function TrainingPage() {
   const { tenantConfig } = useTenant();
   const queryClient = useQueryClient();
-  const { programs, enrollments, enroll, createProgram, generateCourse, generateAvatarVideo } = useTraining();
+  const { programs, enrollments, enroll, createProgram, generateCourse, generateAvatarVideo, updateCourse, deleteCourse, addCourseMedia } = useTraining();
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -36,6 +36,12 @@ export default function TrainingPage() {
   // V6: AI course generator dialog
   const [isAiOpen, setIsAiOpen] = useState(false);
   const [aiForm, setAiForm] = useState({ topic: '', category: 'compliance', duration_minutes: '30' });
+  // V7: course management
+  const [editCourse, setEditCourse] = useState<any>(null);
+  const [editCourseForm, setEditCourseForm] = useState({ name: '', description: '', duration_hours: '', type: 'online' });
+  const [deleteCourseTarget, setDeleteCourseTarget] = useState<any>(null);
+  const [mediaCourse, setMediaCourse] = useState<any>(null);
+  const [mediaForm, setMediaForm] = useState({ video_url: '', document_url: '' });
   // Course player state — opened by Continue button on an enrolled course
   const [playerRecord, setPlayerRecord] = useState<any | null>(null);
   const [playerOpen, setPlayerOpen] = useState(false);
@@ -108,10 +114,38 @@ export default function TrainingPage() {
     });
   };
 
+  // V7: render provider only when it's a clean vendor string — NEVER raw JSON.
+  const providerLabel = (prov: any) => {
+    if (!prov || typeof prov !== 'string') return null;
+    const t = prov.trim();
+    if (!t || t.startsWith('{') || t.startsWith('[')) return null;
+    return t.length > 40 ? t.slice(0, 40) + '…' : t;
+  };
+  const openEditCourse = (p: any) => {
+    setEditCourse(p);
+    const d = (p as any).description_display;
+    const clean = typeof d === 'string' && !d.trim().startsWith('{') ? d : '';
+    setEditCourseForm({ name: p.name || '', description: clean, duration_hours: p.duration_hours != null ? String(p.duration_hours) : '', type: p.type || 'online' });
+  };
+  const saveEditCourse = () => {
+    if (!editCourse) return;
+    updateCourse.mutate({
+      id: editCourse.id,
+      name: editCourseForm.name || undefined,
+      description: editCourseForm.description || undefined,
+      duration_hours: editCourseForm.duration_hours ? Number(editCourseForm.duration_hours) : undefined,
+      type: editCourseForm.type || undefined,
+    }, { onSuccess: () => setEditCourse(null) });
+  };
+  const saveMedia = () => {
+    if (!mediaCourse) return;
+    addCourseMedia.mutate({ id: mediaCourse.id, video_url: mediaForm.video_url || undefined, document_url: mediaForm.document_url || undefined }, { onSuccess: () => { setMediaCourse(null); setMediaForm({ video_url: '', document_url: '' }); } });
+  };
+
   // Some programs (AI-generated) store the full structured content in
   // description as a JSON blob. Detect and unwrap so the card renders the
   // human-readable lesson summary instead of `{"ai_generated":true,...}`.
-  const displayPrograms = (programs.data || []).map((p: any) => {
+  const displayPrograms = (programs.data || []).filter((p: any) => p.status !== 'cancelled').map((p: any) => {
     // The generator stores the full AI package in `provider` (JSON); detect it
     // so we can show the AI badge + a "Generate Video" affordance.
     let providerMeta: any = {};
@@ -127,7 +161,8 @@ export default function TrainingPage() {
         return { ...base, description_display: summary || meta.summary || '', ai_meta: meta };
       } catch { /* fall through */ }
     }
-    return { ...base, description_display: desc };
+    const cleanDesc = (typeof desc === 'string' && desc.trim().startsWith('{')) ? '' : desc;
+    return { ...base, description_display: cleanDesc };
   });
   // hr_training_records does not have program_id, so join to hr_training_programs
   // by training_name (the denormalized link). Pull the AI content blob from
@@ -349,6 +384,20 @@ export default function TrainingPage() {
                     <Badge className="absolute top-3 right-3 bg-background/80 text-foreground backdrop-blur-sm rounded-full">
                       <Clock className="h-3 w-3 mr-1" />{program.duration_hours}h
                     </Badge>
+                    {/* V7: course actions (edit / add media / delete) */}
+                    <div className="absolute bottom-2 right-2">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 bg-background/70 hover:bg-background backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity"><MoreVertical className="h-4 w-4" /></Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openEditCourse(program)}><Edit className="h-4 w-4 mr-2" />Edit course</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => { setMediaForm({ video_url: '', document_url: '' }); setMediaCourse(program); }}><Video className="h-4 w-4 mr-2" />Add video / document</DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteCourseTarget(program)}><Trash2 className="h-4 w-4 mr-2" />Delete course</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
                   <CardContent className="p-4 space-y-3">
                     <div className="flex items-start justify-between gap-2">
@@ -358,7 +407,9 @@ export default function TrainingPage() {
                     <p className="text-sm text-muted-foreground line-clamp-2">{(program as any).description_display || program.description || ''}</p>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{program.enrolled_count} enrolled</span>
-                      {program.provider && <span className="truncate">{program.provider}</span>}
+                      {providerLabel(program.provider) && <span className="truncate">{providerLabel(program.provider)}</span>}
+                      {(program as any).is_ai && <Badge variant="outline" className="text-[10px] gap-1 px-1.5 py-0 h-5"><Sparkles className="h-2.5 w-2.5" />AI</Badge>}
+                      {(program as any).has_video && <Badge variant="outline" className="text-[10px] gap-1 px-1.5 py-0 h-5"><Video className="h-2.5 w-2.5" />Video</Badge>}
                     </div>
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between text-sm">
@@ -509,7 +560,18 @@ export default function TrainingPage() {
                   {playerRecord.program.ai.content_script}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground italic">No AI-generated content available for this course yet.</p>
+                <div className="rounded-lg border border-dashed p-8 text-center space-y-3">
+                  <GraduationCap className="h-10 w-10 mx-auto text-muted-foreground/40" />
+                  <div>
+                    <p className="font-medium">No content in this course yet</p>
+                    <p className="text-sm text-muted-foreground mt-1">Add a video or document now, or generate AI content from the catalog.</p>
+                  </div>
+                  {playerRecord?.program?.id && (
+                    <Button variant="outline" size="sm" className="gap-2" onClick={() => { setMediaForm({ video_url: '', document_url: '' }); setMediaCourse(playerRecord.program); setPlayerOpen(false); }}>
+                      <Plus className="h-4 w-4" />Add video / document
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
           ) : quizScore === null ? (
@@ -589,6 +651,95 @@ export default function TrainingPage() {
               </Button>
             )}
             <Button variant="ghost" onClick={() => setPlayerOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* V7: Edit Course */}
+      <Dialog open={!!editCourse} onOpenChange={(o) => { if (!o) setEditCourse(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit course</DialogTitle>
+            <DialogDescription>Update the course details — changes apply to the catalog immediately.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Course name</Label>
+              <Input value={editCourseForm.name} onChange={(e) => setEditCourseForm({ ...editCourseForm, name: e.target.value })} placeholder="Course name" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Description</Label>
+              <Textarea value={editCourseForm.description} onChange={(e) => setEditCourseForm({ ...editCourseForm, description: e.target.value })} placeholder="Short description shown in the catalog" rows={3} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Duration (hours)</Label>
+                <Input type="number" min="0" step="0.5" value={editCourseForm.duration_hours} onChange={(e) => setEditCourseForm({ ...editCourseForm, duration_hours: e.target.value })} placeholder="e.g. 2" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Format</Label>
+                <Select value={editCourseForm.type} onValueChange={(v) => setEditCourseForm({ ...editCourseForm, type: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="online">Online</SelectItem>
+                    <SelectItem value="in_person">In person</SelectItem>
+                    <SelectItem value="hybrid">Hybrid</SelectItem>
+                    <SelectItem value="self_paced">Self-paced</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setEditCourse(null)}>Cancel</Button>
+            <Button onClick={saveEditCourse} disabled={updateCourse.isPending || !editCourseForm.name.trim()}>
+              {updateCourse.isPending ? 'Saving…' : 'Save changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* V7: Add manual video / document */}
+      <Dialog open={!!mediaCourse} onOpenChange={(o) => { if (!o) setMediaCourse(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Add video / document</DialogTitle>
+            <DialogDescription>Attach a training video or document to {mediaCourse?.name || 'this course'}.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label className="flex items-center gap-1.5"><Video className="h-3.5 w-3.5" />Video URL</Label>
+              <Input value={mediaForm.video_url} onChange={(e) => setMediaForm({ ...mediaForm, video_url: e.target.value })} placeholder="https://… (mp4, Loom, YouTube embed…)" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5" />Document URL</Label>
+              <Input value={mediaForm.document_url} onChange={(e) => setMediaForm({ ...mediaForm, document_url: e.target.value })} placeholder="https://… (PDF, slides, doc…)" />
+            </div>
+            <p className="text-xs text-muted-foreground">The video plays inside the course player. At least one URL is required.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setMediaCourse(null)}>Cancel</Button>
+            <Button onClick={saveMedia} disabled={addCourseMedia.isPending || (!mediaForm.video_url.trim() && !mediaForm.document_url.trim())}>
+              {addCourseMedia.isPending ? 'Adding…' : 'Add content'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* V7: Delete course confirmation */}
+      <Dialog open={!!deleteCourseTarget} onOpenChange={(o) => { if (!o) setDeleteCourseTarget(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete course?</DialogTitle>
+            <DialogDescription>
+              {deleteCourseTarget?.name || 'This course'} will be removed from the catalog. Existing enrollments and completion history are preserved.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeleteCourseTarget(null)}>Cancel</Button>
+            <Button variant="destructive" disabled={deleteCourse.isPending} onClick={() => { const id = deleteCourseTarget?.id; if (id) deleteCourse.mutate(id, { onSuccess: () => setDeleteCourseTarget(null) }); }}>
+              {deleteCourse.isPending ? 'Removing…' : 'Delete course'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
