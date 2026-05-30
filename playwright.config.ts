@@ -490,5 +490,10 @@ export default defineConfig({
         storageState: path.join(__dirname, 'tests', '.auth-state-acsfx.json'),
       },
     },
+    {
+      name: 'hr-prod-qa',
+      testMatch: /hr-prod-qa\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — fresh login as zate admin (ZATE_PASSWORD); production warrior QA
+    },
   ],
 });
