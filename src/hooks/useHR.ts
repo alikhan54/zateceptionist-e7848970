@@ -562,17 +562,32 @@ export function usePerformance() {
     queryFn: async () => {
       if (!tenantUuid) return { reviews: [] as PerformanceReview[], goals: [] as Goal[], activeCycle: null };
 
-      const [reviewsRes, goalsRes] = await Promise.all([
+      const [reviewsRes, goalsRes, empRes] = await Promise.all([
         supabase
           .from("hr_performance_reviews")
           .select("*")
           .eq("tenant_id", tenantUuid)
           .order("created_at", { ascending: false }),
         supabase.from("hr_goals").select("*").eq("tenant_id", tenantUuid).order("created_at", { ascending: false }),
+        supabase.from("hr_employees").select("id, first_name, last_name").eq("tenant_id", tenantUuid),
       ]);
 
+      // Reviews store only employee_id/reviewer_id (uuids) — resolve recipient names
+      // here so the UI never shows a blank name. (reviewer_id is an auth-user id, so it
+      // usually won't match an employee row — left null rather than guessed.)
+      const nameById = new Map<string, string>();
+      for (const e of (empRes.data || []) as any[]) {
+        nameById.set(e.id, `${e.first_name || ''} ${e.last_name || ''}`.trim() || 'Unknown');
+      }
+      const enrichedReviews = ((reviewsRes.data || []) as any[]).map((r) => ({
+        ...r,
+        employee_name: nameById.get(r.employee_id) || 'Unknown employee',
+        reviewer_name: r.reviewer_id ? (nameById.get(r.reviewer_id) || null) : null,
+        reviewed_on: r.created_at ? String(r.created_at).slice(0, 10) : null,
+      }));
+
       return {
-        reviews: (reviewsRes.data || []) as PerformanceReview[],
+        reviews: enrichedReviews as PerformanceReview[],
         goals: (goalsRes.data || []).map((g: any) => ({
           ...g,
           progress_percent: g.progress_percent ?? g.progress ?? 0,
@@ -627,7 +642,8 @@ export function usePerformance() {
         employee_id: review.employee_id,
         cycle_id: cycleId,
         review_type: 'manager',
-        status: 'draft',
+        // status CHECK allows pending/in_progress/submitted/acknowledged — NOT 'draft'.
+        status: 'in_progress',
         reviewer_id: user?.id,
         rating_scale: 5,
       };
@@ -738,7 +754,27 @@ export function usePerformance() {
     onError: (e: any) => toast.error(`Failed to submit feedback: ${e?.message || 'unknown'}`),
   });
 
-  return { ...query, createReview, createGoal, aiGenerateReview, createFeedback };
+  // V7: edit an existing review/feedback row (comments, rating, status). Tenant-isolated.
+  const updateReview = useMutation({
+    mutationFn: async (data: { id: string; comments?: string; overall_rating?: number | null; status?: string; strengths?: string; areas_for_improvement?: string }) => {
+      if (!tenantUuid) throw new Error('No tenant');
+      if (!data?.id) throw new Error('Missing review id');
+      const payload: any = {};
+      for (const k of ['comments', 'overall_rating', 'status', 'strengths', 'areas_for_improvement'] as const)
+        if ((data as any)[k] !== undefined) payload[k] = (data as any)[k];
+      if (payload.status === 'submitted') payload.submitted_at = new Date().toISOString();
+      if (payload.status === 'acknowledged') payload.acknowledged_at = new Date().toISOString();
+      const { data: result, error } = await supabase
+        .from('hr_performance_reviews').update(payload).eq('id', data.id).eq('tenant_id', tenantUuid).select().maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!result) throw new Error('Review not found (tenant/RLS).');
+      return result;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['performance', tenantUuid] }); toast.success('Review updated'); },
+    onError: (e: any) => toast.error(e?.message || 'Failed to update review'),
+  });
+
+  return { ...query, createReview, createGoal, aiGenerateReview, createFeedback, updateReview };
 }
 
 // ═══════════════════════════════════════════════════════════

@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
 import { AskAIButton } from '@/components/hr/AskAIButton';
-import { usePerformance, useEmployees } from '@/hooks/useHR';
+import { usePerformance, useEmployees, useCurrentEmployee } from '@/hooks/useHR';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -16,15 +17,17 @@ import { CircularProgress } from '@/components/hr/CircularProgress';
 import { AnimatedNumber } from '@/components/hr/AnimatedNumber';
 import {
   TrendingUp, Target, Star, Users, ClipboardCheck, Award,
-  MessageSquare, ChevronRight, Plus, Clock, AlertTriangle
+  MessageSquare, Plus, Clock, AlertTriangle, Pencil, CalendarDays
 } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
 
 export default function PerformancePage() {
   const { t } = useTenant();
-  const { data, isLoading, createReview, createGoal, aiGenerateReview, createFeedback } = usePerformance();
+  const { data, isLoading, createReview, createGoal, aiGenerateReview, createFeedback, updateReview } = usePerformance();
   const { data: employees } = useEmployees();
+  const { data: currentEmployee } = useCurrentEmployee();
   const employeeList = employees || [];
+  const myEmpId = currentEmployee?.id;
 
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [isGoalOpen, setIsGoalOpen] = useState(false);
@@ -34,18 +37,40 @@ export default function PerformancePage() {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedbackMode, setFeedbackMode] = useState<'give' | 'request'>('give');
   const [feedbackForm, setFeedbackForm] = useState({ employee_id: '', comments: '' });
+  // V7: edit review dialog
+  const [editReview, setEditReview] = useState<any>(null);
+  const [editReviewForm, setEditReviewForm] = useState({ comments: '', overall_rating: '', status: 'in_progress' });
 
   const reviews = data?.reviews || [];
   const goals = data?.goals || [];
+  // My Reviews = rows where the signed-in user is the reviewee (employee_id === my employee id).
+  const myReviews = myEmpId ? reviews.filter((r: any) => r.employee_id === myEmpId) : [];
 
+  // Real status set (DB CHECK): pending / in_progress / submitted / acknowledged.
+  const STATUS_META: Record<string, { label: string; cls: string }> = {
+    pending: { label: 'Pending', cls: 'bg-muted text-muted-foreground' },
+    in_progress: { label: 'In progress', cls: 'bg-chart-3/10 text-chart-3 border-chart-3/20' },
+    submitted: { label: 'Submitted', cls: 'bg-chart-4/10 text-chart-4 border-chart-4/20' },
+    acknowledged: { label: 'Acknowledged', cls: 'bg-chart-2/10 text-chart-2 border-chart-2/20' },
+  };
   const getStatusBadge = (status: string) => {
-    const styles: Record<string, string> = {
-      draft: 'bg-muted text-muted-foreground',
-      submitted: 'bg-chart-3/10 text-chart-3 border-chart-3/20',
-      reviewed: 'bg-chart-4/10 text-chart-4 border-chart-4/20',
-      completed: 'bg-chart-2/10 text-chart-2 border-chart-2/20',
-    };
-    return <Badge variant="outline" className={styles[status] || styles.draft}>{status}</Badge>;
+    const m = STATUS_META[status] || { label: status || 'unknown', cls: 'bg-muted text-muted-foreground' };
+    return <Badge variant="outline" className={m.cls}>{m.label}</Badge>;
+  };
+  const reviewTypeLabel = (rt?: string) =>
+    (({ manager: 'Manager review', self: 'Self-assessment', peer: 'Peer feedback', '360': '360° feedback' } as Record<string, string>)[rt || ''] || rt || 'Review');
+  const openEditReview = (r: any) => {
+    setEditReview(r);
+    setEditReviewForm({ comments: r.comments || '', overall_rating: r.overall_rating != null ? String(r.overall_rating) : '', status: r.status || 'in_progress' });
+  };
+  const saveEditReview = () => {
+    if (!editReview) return;
+    updateReview.mutate({
+      id: editReview.id,
+      comments: editReviewForm.comments || undefined,
+      overall_rating: editReviewForm.overall_rating ? Number(editReviewForm.overall_rating) : null,
+      status: editReviewForm.status || undefined,
+    }, { onSuccess: () => setEditReview(null) });
   };
 
   const getRatingStars = (rating: number) => (
@@ -53,6 +78,33 @@ export default function PerformancePage() {
       {Array.from({ length: 5 }, (_, i) => (
         <Star key={i} className={`h-4 w-4 ${i < rating ? 'text-chart-4 fill-chart-4' : 'text-muted'}`} />
       ))}
+    </div>
+  );
+
+  // Shared review row — always shows WHO the review is for, the type, the date,
+  // rating + status, and an Edit affordance. Used by My Reviews and Team Reviews.
+  const renderReviewRow = (review: any) => (
+    <div key={review.id} className="flex items-center justify-between p-4 border rounded-xl hover:shadow-md transition-all group gap-3">
+      <div className="flex items-center gap-4 min-w-0">
+        <Avatar className="ring-2 ring-background">
+          <AvatarFallback className="bg-primary/10 text-primary">{(review.employee_name || 'E').charAt(0).toUpperCase()}</AvatarFallback>
+        </Avatar>
+        <div className="min-w-0">
+          <p className="font-semibold truncate">{review.employee_name || 'Unknown employee'}</p>
+          <p className="text-sm text-muted-foreground flex items-center gap-1.5 flex-wrap">
+            <span>{reviewTypeLabel(review.review_type)}</span>
+            {review.reviewed_on && <><span>·</span><span className="inline-flex items-center gap-1"><CalendarDays className="h-3 w-3" />{review.reviewed_on}</span></>}
+          </p>
+          {review.comments && <p className="text-sm text-muted-foreground/80 line-clamp-1 mt-0.5">{review.comments}</p>}
+        </div>
+      </div>
+      <div className="flex items-center gap-3 shrink-0">
+        {review.overall_rating ? getRatingStars(review.overall_rating) : null}
+        {getStatusBadge(review.status)}
+        <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => openEditReview(review)} aria-label="Edit review">
+          <Pencil className="h-4 w-4" />
+        </Button>
+      </div>
     </div>
   );
 
@@ -165,13 +217,25 @@ export default function PerformancePage() {
 
         <TabsContent value="my-reviews">
           <Card>
-            <CardHeader><CardTitle>My Performance Reviews</CardTitle><CardDescription>Self-assessments and received feedback</CardDescription></CardHeader>
+            <CardHeader><CardTitle>My Performance Reviews</CardTitle><CardDescription>Reviews and feedback about you</CardDescription></CardHeader>
             <CardContent>
-              <div className="text-center py-12">
-                <ClipboardCheck className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                <p className="font-medium text-muted-foreground">No reviews assigned to you</p>
-                <p className="text-sm text-muted-foreground">Reviews will appear here when a cycle starts</p>
-              </div>
+              {isLoading ? (
+                <div className="space-y-4">{[...Array(2)].map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}</div>
+              ) : !myEmpId ? (
+                <div className="text-center py-12">
+                  <ClipboardCheck className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                  <p className="font-medium text-muted-foreground">We couldn't match your login to an employee record</p>
+                  <p className="text-sm text-muted-foreground">Ask HR to set your work email on your employee profile to see your reviews.</p>
+                </div>
+              ) : myReviews.length > 0 ? (
+                <div className="space-y-3">{myReviews.map(renderReviewRow)}</div>
+              ) : (
+                <div className="text-center py-12">
+                  <ClipboardCheck className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                  <p className="font-medium text-muted-foreground">No reviews about you yet</p>
+                  <p className="text-sm text-muted-foreground">Reviews appear here once a manager or peer submits one.</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -184,24 +248,7 @@ export default function PerformancePage() {
                 <div className="space-y-4">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}</div>
               ) : reviews.length > 0 ? (
                 <div className="space-y-3">
-                  {reviews.map((review) => (
-                    <div key={review.id} className="flex items-center justify-between p-4 border rounded-xl hover:shadow-md transition-all cursor-pointer group">
-                      <div className="flex items-center gap-4">
-                        <Avatar className="ring-2 ring-background">
-                          <AvatarFallback className="bg-primary/10 text-primary">{review.employee_name?.charAt(0) || 'E'}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-semibold">{review.employee_name}</p>
-                          <p className="text-sm text-muted-foreground">{review.period || `${review.review_period_start || ''} - ${review.review_period_end || ''}`}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        {review.overall_rating && getRatingStars(review.overall_rating)}
-                        {getStatusBadge(review.status)}
-                        <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </div>
-                    </div>
-                  ))}
+                  {reviews.map(renderReviewRow)}
                 </div>
               ) : (
                 <div className="text-center py-12">
@@ -390,6 +437,58 @@ export default function PerformancePage() {
             >
               {createFeedback.isPending ? 'Submitting…' : (feedbackMode === 'give' ? 'Submit Feedback' : 'Send Request')}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* V7: Edit review */}
+      <Dialog open={!!editReview} onOpenChange={(o) => { if (!o) setEditReview(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit review</DialogTitle>
+            <DialogDescription>
+              {editReview
+                ? <>{reviewTypeLabel(editReview.review_type)} for <span className="font-medium text-foreground">{editReview.employee_name || 'employee'}</span></>
+                : 'Update the review details.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Comments</Label>
+              <Textarea rows={4} placeholder="Strengths, areas to improve, examples…" value={editReviewForm.comments} onChange={(e) => setEditReviewForm({ ...editReviewForm, comments: e.target.value })} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Overall rating</Label>
+                <Select value={editReviewForm.overall_rating || 'none'} onValueChange={(v) => setEditReviewForm({ ...editReviewForm, overall_rating: v === 'none' ? '' : v })}>
+                  <SelectTrigger><SelectValue placeholder="No rating" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No rating</SelectItem>
+                    <SelectItem value="1">1 — Needs improvement</SelectItem>
+                    <SelectItem value="2">2 — Below expectations</SelectItem>
+                    <SelectItem value="3">3 — Meets expectations</SelectItem>
+                    <SelectItem value="4">4 — Exceeds expectations</SelectItem>
+                    <SelectItem value="5">5 — Outstanding</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={editReviewForm.status} onValueChange={(v) => setEditReviewForm({ ...editReviewForm, status: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="in_progress">In progress</SelectItem>
+                    <SelectItem value="submitted">Submitted</SelectItem>
+                    <SelectItem value="acknowledged">Acknowledged</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditReview(null)}>Cancel</Button>
+            <Button onClick={saveEditReview} disabled={updateReview.isPending}>{updateReview.isPending ? 'Saving…' : 'Save changes'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
