@@ -30,8 +30,26 @@ import {
   Pencil,
   Trash2,
   User,
+  Mic,
+  BookOpen,
 } from "lucide-react";
 import { PageLoading } from "@/components/shared/PageLoading";
+
+function ProvenanceBadge({ source }: { source: string | null }) {
+  const s = (source || "").toLowerCase();
+  const map: Record<string, { label: string; cls: string; Icon: any }> = {
+    manual: { label: "Manual", cls: "text-slate-500 border-slate-400/40", Icon: User },
+    voice: { label: "Voice", cls: "text-blue-500 border-blue-400/40", Icon: Mic },
+    knowledgebase: { label: "Knowledge base", cls: "text-teal-600 border-teal-400/40", Icon: BookOpen },
+  };
+  const cfg = map[s] || { label: "AI-sourced", cls: "text-violet-500 border-violet-400/40", Icon: Sparkles };
+  const { label, cls, Icon } = cfg;
+  return (
+    <Badge variant="outline" className={`text-xs ${cls}`}>
+      <Icon className="h-3 w-3 mr-1" /> {label}
+    </Badge>
+  );
+}
 
 function ScoreBadge({ score }: { score: number | null }) {
   if (score == null) return <span className="text-muted-foreground text-sm">--</span>;
@@ -408,15 +426,7 @@ export default function Vendors() {
 
                 {/* Provenance + manual actions */}
                 <div className="flex items-center justify-between border-t pt-2">
-                  {v.discovery_source === "manual" ? (
-                    <Badge variant="outline" className="text-xs text-slate-500 border-slate-400/40">
-                      <User className="h-3 w-3 mr-1" /> Manual
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-xs text-violet-500 border-violet-400/40">
-                      <Sparkles className="h-3 w-3 mr-1" /> AI-sourced
-                    </Badge>
-                  )}
+                  <ProvenanceBadge source={v.discovery_source} />
                   <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
                     <Button size="sm" variant="ghost" className="h-7 px-2" aria-label="Edit vendor" title="Edit vendor" onClick={() => openEdit(v)}>
                       <Pencil className="h-3.5 w-3.5" />
