@@ -20,6 +20,12 @@ import {
   XCircle,
   Activity,
   Terminal,
+  TrendingUp,
+  Truck,
+  Users,
+  Sparkles,
+  ShieldCheck,
+  Boxes,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { PageLoading } from "@/components/shared/PageLoading";
@@ -87,6 +93,57 @@ export default function OpsCommandCenter() {
     enabled: !!tenantConfig,
   });
 
+  // Tier 2 — agent-computed metrics (surfacing existing data; read-only)
+  const { data: vendorPerf = [] } = useQuery({
+    queryKey: ["ops_vendor_performance", tenantSlug],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("ops_vendor_performance")
+        .select("*")
+        .eq("tenant_id", tenantSlug);
+      return data || [];
+    },
+    enabled: !!tenantConfig,
+  });
+
+  const { data: savings = [] } = useQuery({
+    queryKey: ["ops_cost_savings_occ", tenantSlug],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("ops_cost_savings")
+        .select("*")
+        .eq("tenant_id", tenantSlug);
+      return data || [];
+    },
+    enabled: !!tenantConfig,
+  });
+
+  const { data: forecasts = [] } = useQuery({
+    queryKey: ["ops_demand_forecasts_occ", tenantSlug],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("ops_demand_forecasts")
+        .select("item_name,predicted_quantity,confidence_score,horizon_days,narrative")
+        .eq("tenant_id", tenantSlug)
+        .order("confidence_score", { ascending: false })
+        .limit(50);
+      return data || [];
+    },
+    enabled: !!tenantConfig,
+  });
+
+  const { data: shipments = [] } = useQuery({
+    queryKey: ["ops_shipments_occ", tenantSlug],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("ops_shipments")
+        .select("status,estimated_delivery,actual_delivery")
+        .eq("tenant_id", tenantSlug);
+      return data || [];
+    },
+    enabled: !!tenantConfig,
+  });
+
   const lowStockCount = useMemo(
     () => inventory.filter((i: any) => Number(i.current_stock ?? 0) <= Number(i.reorder_point ?? 0)).length,
     [inventory]
@@ -110,6 +167,118 @@ export default function OpsCommandCenter() {
     });
     return counts;
   }, [purchaseOrders]);
+
+  // Tier 2 — success metrics derived ONLY from real per-tenant data; null when absent.
+  const num = (v: any) => { const n = Number(v); return Number.isFinite(n) ? n : null; };
+
+  const inventoryHealth = useMemo(() => {
+    if (!inventory.length) return null;
+    const healthy = inventory.filter(
+      (i: any) => num(i.current_stock) !== null && num(i.reorder_point) !== null
+        && (num(i.current_stock) as number) > (num(i.reorder_point) as number)
+    ).length;
+    return Math.round((healthy / inventory.length) * 100);
+  }, [inventory]);
+
+  const criticalItem = useMemo(() => {
+    const below = inventory
+      .filter((i: any) => num(i.current_stock) !== null && num(i.reorder_point) !== null
+        && (num(i.current_stock) as number) <= (num(i.reorder_point) as number))
+      .sort((a: any, b: any) =>
+        ((num(a.current_stock) as number) - (num(a.reorder_point) as number))
+        - ((num(b.current_stock) as number) - (num(b.reorder_point) as number)));
+    return below[0] || null;
+  }, [inventory]);
+
+  const vendorStats = useMemo(() => {
+    if (!vendorPerf.length) return { onTime: null as number | null, avgScore: null as number | null, issued: 0 };
+    const issued = vendorPerf.reduce((s: number, v: any) => s + (num(v.pos_issued) || 0), 0);
+    const onTimeN = vendorPerf.reduce((s: number, v: any) => s + (num(v.pos_on_time) || 0), 0);
+    const scores = vendorPerf.map((v: any) => num(v.overall_score)).filter((x: any) => x !== null) as number[];
+    return {
+      onTime: issued > 0 ? Math.round((onTimeN / issued) * 100) : null,
+      avgScore: scores.length ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10 : null,
+      issued,
+    };
+  }, [vendorPerf]);
+
+  const poAiPct = useMemo(() => {
+    if (!purchaseOrders.length) return null;
+    const aiGen = purchaseOrders.filter((p: any) => Array.isArray(p.agent_actions) && p.agent_actions.length > 0).length;
+    return Math.round((aiGen / purchaseOrders.length) * 100);
+  }, [purchaseOrders]);
+
+  const shipOnTime = useMemo(() => {
+    const delivered = shipments.filter((s: any) => s.status === "delivered" && s.actual_delivery && s.estimated_delivery);
+    if (!delivered.length) return null;
+    const onTime = delivered.filter((s: any) => new Date(s.actual_delivery) <= new Date(s.estimated_delivery)).length;
+    return Math.round((onTime / delivered.length) * 100);
+  }, [shipments]);
+
+  const savingsIdentified = useMemo(
+    () => savings.filter((s: any) => s.status !== "rejected").reduce((sum: number, s: any) => sum + (num(s.estimated_saving) || 0), 0),
+    [savings]
+  );
+
+  const topForecast = forecasts[0] || null;
+
+  // Most recent task time per agent (for "agent outcomes" freshness)
+  const lastTaskByAgent = useMemo(() => {
+    const m: Record<string, string> = {};
+    tasks.forEach((t: any) => {
+      const a = (t.agent_name || "").toString().toUpperCase();
+      if (a && !m[a]) m[a] = t.created_at;
+    });
+    return m;
+  }, [tasks]);
+
+  const healthAttention = (lowStockCount > 0) || (vendorStats.onTime !== null && vendorStats.onTime < 80);
+
+  // Agent outcome rows — REAL data only; graceful "no actions yet" when empty.
+  const agentOutcomes = useMemo(() => {
+    const fmtAgo = (ts?: string) => {
+      try { return ts ? formatDistanceToNow(new Date(ts), { addSuffix: true }) : null; } catch { return null; }
+    };
+    return [
+      {
+        agent: "STOCKMASTER", icon: Boxes, color: "text-amber-500",
+        text: inventory.length === 0
+          ? "No inventory tracked yet"
+          : lowStockCount > 0
+            ? `Flagged ${lowStockCount} item${lowStockCount > 1 ? "s" : ""} below reorder${criticalItem ? `: ${criticalItem.name} (${num(criticalItem.current_stock)} vs ${num(criticalItem.reorder_point)})` : ""}`
+            : `All ${inventory.length} items above reorder — no action needed`,
+        ago: fmtAgo(lastTaskByAgent["STOCKMASTER"]),
+      },
+      {
+        agent: "ORACLE", icon: TrendingUp, color: "text-blue-500",
+        text: forecasts.length === 0
+          ? "No demand forecasts yet"
+          : `${forecasts.length} demand forecast${forecasts.length > 1 ? "s" : ""}${topForecast ? ` — top: ${Math.round(num(topForecast.predicted_quantity) || 0)}× ${topForecast.item_name} (${topForecast.horizon_days}d)` : ""}`,
+        ago: fmtAgo(lastTaskByAgent["ORACLE"]),
+      },
+      {
+        agent: "BUYER", icon: ShoppingCart, color: "text-indigo-500",
+        text: purchaseOrders.length === 0
+          ? "No purchase orders yet"
+          : `${purchaseOrders.length} purchase orders${poAiPct !== null ? `, ${poAiPct}% AI-generated` : ""}`,
+        ago: fmtAgo(lastTaskByAgent["BUYER"]),
+      },
+      {
+        agent: "DIPLOMAT", icon: Users, color: "text-cyan-600",
+        text: vendorPerf.length === 0
+          ? "No vendor scorecards yet"
+          : `Vendor scorecard${vendorStats.avgScore !== null ? ` avg ${vendorStats.avgScore}/5` : ""}${vendorStats.onTime !== null ? `, ${vendorStats.onTime}% on-time across ${vendorStats.issued} POs` : ""}`,
+        ago: fmtAgo(lastTaskByAgent["DIPLOMAT"]),
+      },
+      {
+        agent: "OPTIMIZER", icon: Sparkles, color: "text-emerald-500",
+        text: savings.length === 0
+          ? "No savings identified yet"
+          : `Identified ${formatCurrency(savingsIdentified)} across ${savings.length} opportunit${savings.length > 1 ? "ies" : "y"}`,
+        ago: fmtAgo(lastTaskByAgent["OPTIMIZER"]),
+      },
+    ];
+  }, [inventory, lowStockCount, criticalItem, forecasts, topForecast, purchaseOrders, poAiPct, vendorPerf, vendorStats, savings, savingsIdentified, lastTaskByAgent, formatCurrency]);
 
   const handleDispatch = async () => {
     if (!command.trim()) return;
@@ -171,6 +340,34 @@ export default function OpsCommandCenter() {
           <Activity className="w-3 h-3 mr-1" /> Live
         </Badge>
       </div>
+
+      {/* Headline insight — honest verdict from real numbers */}
+      <Card className={healthAttention ? "border-amber-500/40 bg-amber-500/5" : "border-emerald-500/40 bg-emerald-500/5"}>
+        <CardContent className="pt-6">
+          <div className="flex items-start gap-3">
+            {healthAttention ? (
+              <AlertTriangle className="h-6 w-6 text-amber-500 flex-shrink-0 mt-0.5" />
+            ) : (
+              <ShieldCheck className="h-6 w-6 text-emerald-500 flex-shrink-0 mt-0.5" />
+            )}
+            <div>
+              <p className="font-semibold text-lg leading-snug">
+                {inventory.length === 0
+                  ? "Operations module ready — no inventory tracked yet"
+                  : healthAttention
+                    ? `Operations need attention — ${lowStockCount > 0 ? `${lowStockCount} item${lowStockCount > 1 ? "s" : ""} below reorder${criticalItem ? ` (${criticalItem.name})` : ""}` : "vendor delivery lagging"}`
+                    : "Operations healthy — all items stocked, vendors performing"}
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {inventory.length > 0 && <>Inventory {inventoryHealth}% healthy. </>}
+                {vendorStats.onTime !== null && <>Vendors {vendorStats.onTime}% on-time. </>}
+                {poAiPct !== null && <>{purchaseOrders.length} POs ({poAiPct}% AI-generated). </>}
+                {savingsIdentified > 0 && <>{formatCurrency(savingsIdentified)} in savings identified.</>}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -236,6 +433,87 @@ export default function OpsCommandCenter() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Supply Chain success metrics — "are you winning?" (real data; — when absent) */}
+      <div>
+        <h3 className="font-semibold text-lg mb-3">Supply Chain Health</h3>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Inventory Health</p>
+              <p className={`text-2xl font-bold ${inventoryHealth === null ? "" : inventoryHealth >= 90 ? "text-green-500" : inventoryHealth >= 70 ? "text-amber-500" : "text-red-500"}`}>
+                {inventoryHealth === null ? "—" : `${inventoryHealth}%`}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">% items above reorder</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Vendor On-Time</p>
+              <p className={`text-2xl font-bold ${vendorStats.onTime === null ? "" : vendorStats.onTime >= 85 ? "text-green-500" : vendorStats.onTime >= 70 ? "text-amber-500" : "text-red-500"}`}>
+                {vendorStats.onTime === null ? "—" : `${vendorStats.onTime}%`}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">DIPLOMAT scorecard</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">POs AI-Generated</p>
+              <p className="text-2xl font-bold text-indigo-500">
+                {poAiPct === null ? "—" : `${poAiPct}%`}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">BUYER automation</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Shipments On-Time</p>
+              <p className={`text-2xl font-bold ${shipOnTime === null ? "" : shipOnTime >= 85 ? "text-green-500" : shipOnTime >= 60 ? "text-amber-500" : "text-red-500"}`}>
+                {shipOnTime === null ? "—" : `${shipOnTime}%`}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">COURIER tracking</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Savings Identified</p>
+              <p className="text-2xl font-bold text-emerald-500">
+                {savingsIdentified > 0 ? formatCurrency(savingsIdentified) : "—"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">OPTIMIZER</p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Agent Outcomes — proof the AI worked; REAL task data, graceful when empty */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bot className="h-5 w-5 text-purple-500" />
+            What Your Agents Did
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {agentOutcomes.map((o) => {
+              const Icon = o.icon;
+              return (
+                <div key={o.agent} className="flex items-start gap-3 border-b border-border/50 pb-3 last:border-0 last:pb-0">
+                  <Icon className={`h-4 w-4 mt-0.5 flex-shrink-0 ${o.color}`} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold tracking-wide">{o.agent}</span>
+                      {o.ago && <span className="text-xs text-muted-foreground">· {o.ago}</span>}
+                    </div>
+                    <p className="text-sm mt-0.5">{o.text}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Command Input */}
       <Card>
