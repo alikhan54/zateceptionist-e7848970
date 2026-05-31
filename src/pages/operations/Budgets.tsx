@@ -1,10 +1,21 @@
-import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 import {
   DollarSign,
   TrendingDown,
@@ -23,6 +34,10 @@ import {
   AlertTriangle,
   Bot,
   Sparkles,
+  Plus,
+  Pencil,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { useCurrencyFormatter } from "@/lib/formatCurrency";
@@ -34,10 +49,26 @@ const SAVINGS_STATUS_BADGE: Record<string, string> = {
   rejected: "bg-red-500/10 text-red-600 border-red-500/30",
 };
 
+const NOW = new Date();
+const BLANK_BUDGET = {
+  category: "",
+  budgeted_amount: "",
+  spent_amount: "",
+  period_year: String(NOW.getFullYear()),
+  period_month: String(NOW.getMonth() + 1),
+  currency: "AED",
+};
+
 export default function Budgets() {
   const { tenantConfig } = useTenant();
   const tenantSlug = tenantConfig?.tenant_id ?? "";
   const formatCurrency = useCurrencyFormatter();
+  const queryClient = useQueryClient();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [bForm, setBForm] = useState({ ...BLANK_BUDGET });
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
+  const [saving, setSaving] = useState(false);
 
   // Budgets
   const { data: budgets = [], isLoading: loadingBudgets } = useQuery({
@@ -52,6 +83,88 @@ export default function Budgets() {
     },
     enabled: !!tenantConfig,
   });
+
+  const budgetDefaults = useMemo(() => ({
+    industry: budgets[0]?.industry || tenantConfig?.industry || "general",
+    currency: budgets[0]?.currency || "AED",
+  }), [budgets, tenantConfig]);
+
+  const invalidateBudgets = () => queryClient.invalidateQueries({ queryKey: ["ops_budgets", tenantSlug] });
+
+  const buildBudget = () => ({
+    category: bForm.category.trim(),
+    budgeted_amount: bForm.budgeted_amount === "" ? 0 : Number(bForm.budgeted_amount),
+    spent_amount: bForm.spent_amount === "" ? 0 : Number(bForm.spent_amount),
+    period_year: Number(bForm.period_year),
+    period_month: Number(bForm.period_month),
+    currency: bForm.currency.trim() || budgetDefaults.currency,
+  });
+
+  const addBudget = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("ops_budgets").insert({
+        tenant_id: tenantSlug,
+        industry: budgetDefaults.industry,
+        ...buildBudget(),
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => { invalidateBudgets(); toast.success("Budget line added"); closeBudgetDialog(); },
+    onError: (e: any) => toast.error("Failed to add budget: " + (e?.message || "error")),
+  });
+
+  const updateBudget = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("ops_budgets")
+        .update({ ...buildBudget(), updated_at: new Date().toISOString() })
+        .eq("id", editingId)
+        .eq("tenant_id", tenantSlug);
+      if (error) throw error;
+    },
+    onSuccess: () => { invalidateBudgets(); toast.success("Budget updated"); closeBudgetDialog(); },
+    onError: (e: any) => toast.error("Failed to update budget: " + (e?.message || "error")),
+  });
+
+  const deleteBudget = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("ops_budgets")
+        .delete()
+        .eq("id", id)
+        .eq("tenant_id", tenantSlug);
+      if (error) throw error;
+    },
+    onSuccess: () => { invalidateBudgets(); toast.success("Budget deleted"); setDeleteTarget(null); },
+    onError: (e: any) => toast.error("Failed to delete budget: " + (e?.message || "error")),
+  });
+
+  const openAddBudget = () => {
+    setEditingId(null);
+    setBForm({ ...BLANK_BUDGET, currency: budgetDefaults.currency });
+    setDialogOpen(true);
+  };
+  const openEditBudget = (b: any) => {
+    setEditingId(b.id);
+    setBForm({
+      category: b.category || "",
+      budgeted_amount: b.budgeted_amount == null ? "" : String(b.budgeted_amount),
+      spent_amount: b.spent_amount == null ? "" : String(b.spent_amount),
+      period_year: String(b.period_year ?? NOW.getFullYear()),
+      period_month: String(b.period_month ?? NOW.getMonth() + 1),
+      currency: b.currency || budgetDefaults.currency,
+    });
+    setDialogOpen(true);
+  };
+  const closeBudgetDialog = () => { setDialogOpen(false); setEditingId(null); setSaving(false); };
+  const handleSaveBudget = async () => {
+    if (!bForm.category.trim()) { toast.error("Category is required"); return; }
+    setSaving(true);
+    try {
+      if (editingId) await updateBudget.mutateAsync();
+      else await addBudget.mutateAsync();
+    } finally { setSaving(false); }
+  };
 
   // Cost savings
   const { data: savings = [], isLoading: loadingSavings } = useQuery({
@@ -155,14 +268,19 @@ export default function Budgets() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <Wallet className="h-8 w-8 text-emerald-500" />
-          Budgets & Cost Optimization
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          TREASURER and OPTIMIZER agents manage finances and find savings
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <Wallet className="h-8 w-8 text-emerald-500" />
+            Budgets & Cost Optimization
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            TREASURER and OPTIMIZER agents manage finances — or set budgets manually
+          </p>
+        </div>
+        <Button variant="outline" onClick={openAddBudget}>
+          <Plus className="h-4 w-4 mr-2" /> Add Budget
+        </Button>
       </div>
 
       {/* Headline insight — honest verdict from real numbers */}
@@ -415,14 +533,27 @@ export default function Budgets() {
                   const spent = b.spent_amount || 0;
                   const pct = budgeted > 0 ? Math.round((spent / budgeted) * 100) : 0;
                   return (
-                    <div key={b.id} className="space-y-2">
+                    <div key={b.id} className="space-y-2 group">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium capitalize">
                           {(b.category || "Uncategorized").replace(/_/g, " ")}
+                          <span className="text-xs text-muted-foreground/70 ml-2 font-normal">
+                            {b.period_year}-{String(b.period_month).padStart(2, "0")}
+                          </span>
                         </span>
-                        <span className="text-xs text-muted-foreground">
-                          {formatCurrency(spent)} / {formatCurrency(budgeted)}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">
+                            {formatCurrency(spent)} / {formatCurrency(budgeted)}
+                          </span>
+                          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button size="sm" variant="ghost" className="h-6 px-1.5" aria-label="Edit budget" title="Edit budget" onClick={() => openEditBudget(b)}>
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                            <Button size="sm" variant="ghost" className="h-6 px-1.5 text-red-500 hover:text-red-600" aria-label="Delete budget" title="Delete budget" onClick={() => setDeleteTarget(b)}>
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
                       </div>
                       <div className="flex items-center gap-3">
                         <Progress
@@ -499,6 +630,72 @@ export default function Budgets() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Add / Edit budget dialog */}
+      <Dialog open={dialogOpen} onOpenChange={(o) => (o ? setDialogOpen(true) : closeBudgetDialog())}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingId ? "Edit Budget Line" : "Add Budget Line"}</DialogTitle>
+            <DialogDescription>
+              {editingId ? "Update this budget category. You can override TREASURER-set budgets." : "Manually set a budget for a category and period."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-2">
+            <div className="col-span-2 space-y-1.5">
+              <Label htmlFor="b-cat">Category *</Label>
+              <Input id="b-cat" value={bForm.category} onChange={(e) => setBForm({ ...bForm, category: e.target.value })} placeholder="e.g. Medical Supplies" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="b-budgeted">Budgeted Amount</Label>
+              <Input id="b-budgeted" type="number" value={bForm.budgeted_amount} onChange={(e) => setBForm({ ...bForm, budgeted_amount: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="b-spent">Spent Amount</Label>
+              <Input id="b-spent" type="number" value={bForm.spent_amount} onChange={(e) => setBForm({ ...bForm, spent_amount: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="b-year">Period Year</Label>
+              <Input id="b-year" type="number" value={bForm.period_year} onChange={(e) => setBForm({ ...bForm, period_year: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="b-month">Period Month</Label>
+              <Input id="b-month" type="number" min="1" max="12" value={bForm.period_month} onChange={(e) => setBForm({ ...bForm, period_month: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="b-currency">Currency</Label>
+              <Input id="b-currency" value={bForm.currency} onChange={(e) => setBForm({ ...bForm, currency: e.target.value })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeBudgetDialog} disabled={saving}>Cancel</Button>
+            <Button onClick={handleSaveBudget} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              {editingId ? "Save changes" : "Add budget"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirm */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete budget line?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the <span className="font-semibold capitalize">{(deleteTarget?.category || "").replace(/_/g, " ")}</span> budget for {deleteTarget?.period_year}-{String(deleteTarget?.period_month).padStart(2, "0")}. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              onClick={() => deleteTarget && deleteBudget.mutate(deleteTarget.id)}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
