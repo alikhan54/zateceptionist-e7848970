@@ -23,6 +23,8 @@ import { toast } from "sonner";
 import {
   ShoppingCart,
   Search,
+  ShieldCheck,
+  AlertTriangle,
   FileText,
   Truck,
   Clock,
@@ -236,8 +238,14 @@ export default function PurchaseOrders() {
     const deliveredCount = purchaseOrders.filter(
       (po: any) => po.status === "delivered"
     ).length;
-    return { total, totalValue, pendingCount, deliveredCount };
+    // Health-strip derivation (additive): % BUYER-generated (non-manual).
+    const aiCount = purchaseOrders.filter((po: any) => !isManualPO(po)).length;
+    const aiPct = total > 0 ? Math.round((aiCount / total) * 100) : null;
+    return { total, totalValue, pendingCount, deliveredCount, aiPct };
   }, [purchaseOrders]);
+
+  // Tier 2-style health verdict — pending approvals are the action item.
+  const poAttention = stats.total > 0 && stats.pendingCount > 0;
 
   if (!tenantConfig) return <PageLoading />;
 
@@ -258,6 +266,51 @@ export default function PurchaseOrders() {
           <Plus className="h-4 w-4 mr-2" /> Create PO
         </Button>
       </div>
+
+      {/* Health strip (Tier 2 style) — surfaces existing metrics, graceful when empty */}
+      <Card
+        className={
+          stats.total === 0
+            ? "border-border"
+            : poAttention
+            ? "border-amber-500/40 bg-amber-500/5"
+            : "border-emerald-500/40 bg-emerald-500/5"
+        }
+      >
+        <CardContent className="py-4">
+          <div className="flex items-center gap-3">
+            {stats.total === 0 ? (
+              <ShoppingCart className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+            ) : poAttention ? (
+              <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0" />
+            ) : (
+              <ShieldCheck className="h-5 w-5 text-emerald-500 flex-shrink-0" />
+            )}
+            <div className="min-w-0">
+              <p className="font-semibold leading-snug">
+                {stats.total === 0
+                  ? "No purchase orders yet"
+                  : poAttention
+                  ? `Purchasing needs attention — ${stats.pendingCount} pending approval`
+                  : "Purchasing on track"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {stats.total === 0 ? (
+                  "Create POs or let BUYER auto-generate them to track spend and approvals."
+                ) : (
+                  <>
+                    {stats.aiPct === null ? "—" : `${stats.aiPct}%`} AI-generated
+                    {" · "}
+                    {stats.pendingCount} pending approval
+                    {" · "}
+                    {formatCurrency(stats.totalValue)} total
+                  </>
+                )}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

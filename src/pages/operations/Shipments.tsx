@@ -26,6 +26,7 @@ import {
   Clock,
   CheckCircle2,
   AlertTriangle,
+  ShieldCheck,
   RotateCcw,
   MapPin,
   Calendar,
@@ -248,8 +249,32 @@ export default function Shipments() {
     const total = shipments.length;
     const inTransit = shipments.filter((s: any) => s.status === "in_transit").length;
     const delivered = shipments.filter((s: any) => s.status === "delivered").length;
-    return { total, inTransit, delivered };
+    // Health-strip derivations (additive; only from already-fetched rows).
+    const deliveredWithDates = shipments.filter(
+      (s: any) => s.status === "delivered" && s.actual_delivery && s.estimated_delivery
+    );
+    const onTimePct = deliveredWithDates.length
+      ? Math.round(
+          (deliveredWithDates.filter(
+            (s: any) => new Date(s.actual_delivery) <= new Date(s.estimated_delivery)
+          ).length /
+            deliveredWithDates.length) *
+            100
+        )
+      : null;
+    const atRisk = shipments.filter(
+      (s: any) =>
+        s.status !== "delivered" &&
+        s.status !== "returned" &&
+        Number(s.delay_probability ?? 0) >= 0.6
+    ).length;
+    return { total, inTransit, delivered, onTimePct, atRisk };
   }, [shipments]);
+
+  // Tier 2-style health verdict — at-risk shipments or sub-80% on-time = attention.
+  const shipAttention =
+    stats.total > 0 &&
+    (stats.atRisk > 0 || (stats.onTimePct !== null && stats.onTimePct < 80));
 
   if (!tenantConfig) return <PageLoading />;
 
@@ -270,6 +295,51 @@ export default function Shipments() {
           <Plus className="h-4 w-4 mr-2" /> Add Shipment
         </Button>
       </div>
+
+      {/* Health strip (Tier 2 style) — surfaces existing metrics, graceful when empty */}
+      <Card
+        className={
+          stats.total === 0
+            ? "border-border"
+            : shipAttention
+            ? "border-amber-500/40 bg-amber-500/5"
+            : "border-emerald-500/40 bg-emerald-500/5"
+        }
+      >
+        <CardContent className="py-4">
+          <div className="flex items-center gap-3">
+            {stats.total === 0 ? (
+              <Truck className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+            ) : shipAttention ? (
+              <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0" />
+            ) : (
+              <ShieldCheck className="h-5 w-5 text-emerald-500 flex-shrink-0" />
+            )}
+            <div className="min-w-0">
+              <p className="font-semibold leading-snug">
+                {stats.total === 0
+                  ? "No shipments yet"
+                  : shipAttention
+                  ? `Logistics needs attention${stats.atRisk > 0 ? ` — ${stats.atRisk} at delay risk` : ""}`
+                  : "Logistics on track"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {stats.total === 0 ? (
+                  "Log shipments or let COURIER track them to monitor on-time delivery."
+                ) : (
+                  <>
+                    {stats.onTimePct === null ? "—" : `${stats.onTimePct}%`} on-time
+                    {" · "}
+                    {stats.inTransit} in transit
+                    {" · "}
+                    {stats.atRisk} at delay risk
+                  </>
+                )}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -19,6 +19,8 @@ import { toast } from "sonner";
 import {
   Truck,
   Search,
+  ShieldCheck,
+  AlertTriangle,
   Star,
   CheckCircle2,
   Clock,
@@ -236,8 +238,21 @@ export default function Vendors() {
           vendors.length
         : 0;
     const topPerformer = vendors[0]?.name ?? "--";
-    return { total, approved, avgScore, topPerformer };
+    // Health-strip derivations (additive; only from already-fetched rows).
+    const approvedPct = total > 0 ? Math.round((approved / total) * 100) : null;
+    const scored = vendors.filter((v: any) => Number(v.score || 0) > 0);
+    const avgScoreDisplay = scored.length
+      ? scored.reduce((sum: number, v: any) => sum + Number(v.score), 0) / scored.length
+      : null;
+    const topByScore = [...scored].sort((a: any, b: any) => Number(b.score) - Number(a.score))[0] || null;
+    return { total, approved, avgScore, topPerformer, approvedPct, avgScoreDisplay, topByScore };
   }, [vendors]);
+
+  // Tier 2-style health verdict — honest thresholds, graceful when empty/unscored.
+  const vendorAttention =
+    stats.total > 0 &&
+    (((stats.approvedPct ?? 100) < 60) ||
+      (stats.avgScoreDisplay !== null && stats.avgScoreDisplay < 3));
 
   const handleScoreVendors = async () => {
     setScoring(true);
@@ -304,6 +319,51 @@ export default function Vendors() {
           </Button>
         </div>
       </div>
+
+      {/* Health strip (Tier 2 style) — surfaces existing metrics, graceful when empty */}
+      <Card
+        className={
+          stats.total === 0
+            ? "border-border"
+            : vendorAttention
+            ? "border-amber-500/40 bg-amber-500/5"
+            : "border-emerald-500/40 bg-emerald-500/5"
+        }
+      >
+        <CardContent className="py-4">
+          <div className="flex items-center gap-3">
+            {stats.total === 0 ? (
+              <Truck className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+            ) : vendorAttention ? (
+              <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0" />
+            ) : (
+              <ShieldCheck className="h-5 w-5 text-emerald-500 flex-shrink-0" />
+            )}
+            <div className="min-w-0">
+              <p className="font-semibold leading-snug">
+                {stats.total === 0
+                  ? "No suppliers added yet"
+                  : vendorAttention
+                  ? "Supplier network needs attention"
+                  : "Supplier network healthy"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {stats.total === 0 ? (
+                  "Add suppliers to track approval rate and DIPLOMAT performance scores."
+                ) : (
+                  <>
+                    Avg score {stats.avgScoreDisplay === null ? "—" : `${stats.avgScoreDisplay.toFixed(1)}/5`}
+                    {" · "}
+                    {stats.approvedPct === null ? "—" : `${stats.approvedPct}%`} approved
+                    {" · "}
+                    Top: {stats.topByScore?.name ?? "—"}
+                  </>
+                )}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
