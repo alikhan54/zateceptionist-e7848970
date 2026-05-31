@@ -55,7 +55,7 @@ export default function Budgets() {
         .from("ops_cost_savings")
         .select("*")
         .eq("tenant_id", tenantSlug)
-        .order("created_at", { ascending: false });
+        .order("identified_at", { ascending: false });
       return data || [];
     },
     enabled: !!tenantConfig,

@@ -88,7 +88,7 @@ export default function OpsCommandCenter() {
   });
 
   const lowStockCount = useMemo(
-    () => inventory.filter((i: any) => i.quantity_on_hand <= (i.reorder_point || 0)).length,
+    () => inventory.filter((i: any) => Number(i.current_stock ?? 0) <= Number(i.reorder_point ?? 0)).length,
     [inventory]
   );
 
