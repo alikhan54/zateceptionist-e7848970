@@ -35,6 +35,7 @@ export default function TrainingPage() {
   const [newProgram, setNewProgram] = useState({ name: '', description: '', duration_hours: '', max_participants: '' });
   // V6: AI course generator dialog
   const [isAiOpen, setIsAiOpen] = useState(false);
+  const [genCourseId, setGenCourseId] = useState<string | null>(null);
   const [aiForm, setAiForm] = useState({ topic: '', category: 'compliance', duration_minutes: '30' });
   // V7: course management
   const [editCourse, setEditCourse] = useState<any>(null);
@@ -421,6 +422,12 @@ export default function TrainingPage() {
                     <Button className="w-full" onClick={() => enroll.mutate({ program_id: program.id })} disabled={enroll.isPending}>
                       Enroll Now
                     </Button>
+                    {!(program as any).is_ai && (
+                      <Button variant="outline" size="sm" className="w-full gap-2" disabled={genCourseId === program.id}
+                        onClick={() => { setGenCourseId(program.id); generateCourse.mutate({ training_program_id: program.id, topic: (program as any).name || (program as any).title || 'this course', category: (program as any).category || 'general' }, { onSettled: () => setGenCourseId(null) }); }}>
+                        <Sparkles className="h-3.5 w-3.5" />{genCourseId === program.id ? 'Generating…' : 'Generate AI Content'}
+                      </Button>
+                    )}
                     {(program as any).is_ai && !(program as any).has_video && (
                       <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => generateAvatarVideo.mutate({ training_program_id: program.id })} disabled={generateAvatarVideo.isPending}>
                         <Sparkles className="h-3.5 w-3.5" />{generateAvatarVideo.isPending ? 'Generating video… (~min)' : 'Generate Avatar Video'}
@@ -564,12 +571,18 @@ export default function TrainingPage() {
                   <GraduationCap className="h-10 w-10 mx-auto text-muted-foreground/40" />
                   <div>
                     <p className="font-medium">No content in this course yet</p>
-                    <p className="text-sm text-muted-foreground mt-1">Add a video or document now, or generate AI content from the catalog.</p>
+                    <p className="text-sm text-muted-foreground mt-1">Generate AI content now, or add a video / document.</p>
                   </div>
                   {playerRecord?.program?.id && (
-                    <Button variant="outline" size="sm" className="gap-2" onClick={() => { setMediaForm({ video_url: '', document_url: '' }); setMediaCourse(playerRecord.program); setPlayerOpen(false); }}>
-                      <Plus className="h-4 w-4" />Add video / document
-                    </Button>
+                    <div className="flex items-center justify-center gap-2 flex-wrap">
+                      <Button size="sm" className="gap-2" disabled={genCourseId === playerRecord.program.id}
+                        onClick={() => { const pid = playerRecord.program.id; setGenCourseId(pid); generateCourse.mutate({ training_program_id: pid, topic: playerRecord.program.name || playerRecord.title || 'this course', category: playerRecord.program.category || 'general' }, { onSettled: () => setGenCourseId(null) }); }}>
+                        <Sparkles className="h-4 w-4" />{genCourseId === playerRecord.program.id ? 'Generating…' : 'Generate AI Content'}
+                      </Button>
+                      <Button variant="outline" size="sm" className="gap-2" onClick={() => { setMediaForm({ video_url: '', document_url: '' }); setMediaCourse(playerRecord.program); setPlayerOpen(false); }}>
+                        <Plus className="h-4 w-4" />Add video / document
+                      </Button>
+                    </div>
                   )}
                 </div>
               )}

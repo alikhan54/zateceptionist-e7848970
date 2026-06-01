@@ -905,20 +905,26 @@ export function useTraining() {
 
   // V6: AI course generator — Claude/Gemini writes lesson + slides + quiz + objectives
   // into a new hr_training_programs row (n8n HTuKFLf8uiDnzPJA). Backend was unwired from UI.
+  // Generate AI lesson/slides/quiz/objectives (n8n HTuKFLf8uiDnzPJA). Two modes:
+  //  • new course → pass {topic} only → INSERTs a new row.
+  //  • existing   → pass {training_program_id, topic} → writes content INTO that
+  //    course (UPDATE, no duplicate; preserves its name + any prior avatar/doc URL).
   const generateCourse = useMutation({
-    mutationFn: async (data: { topic: string; category?: string; duration_minutes?: number }) => {
+    mutationFn: async (data: { topic: string; category?: string; duration_minutes?: number; training_program_id?: string }) => {
       if (!tenantUuid) throw new Error('No tenant');
-      return callWebhookOrThrow(WEBHOOKS.HR_TRAINING_GENERATE, {
+      const payload: any = {
         topic: data.topic,
         category: data.category || 'general',
         duration_minutes: data.duration_minutes ?? 30,
-      }, tenantUuid);
+      };
+      if (data.training_program_id) payload.training_program_id = data.training_program_id;
+      return callWebhookOrThrow(WEBHOOKS.HR_TRAINING_GENERATE, payload, tenantUuid);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["training-programs", tenantUuid] });
-      toast.success("AI course generated");
+      toast.success("AI content generated");
     },
-    onError: (e: any) => toast.error(`AI course generation failed: ${e?.message || 'unknown'}`),
+    onError: (e: any) => toast.error(`AI generation failed: ${e?.message || 'unknown'}`),
   });
 
   // V6: HeyGen avatar video for a generated course (n8n 4u2H6AwbDnYcGQW5, premium only).
