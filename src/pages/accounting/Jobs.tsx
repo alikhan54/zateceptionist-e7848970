@@ -81,6 +81,11 @@ import { computeJobDates, formatCompanyType } from "@/lib/job-date-engine";
 // by the partial UNIQUE index on (tenant_id, job_id) WHERE job_id IS NOT NULL.
 import { useAccountingInvoices } from "@/hooks/useAccountingInvoices";
 import { useGenerateInvoiceNumber } from "@/hooks/useGenerateInvoiceNumber";
+// Phase F: bulk-enrol the statutory-deadline cadence (T-30 → T-0). The Reminders
+// Engine workflow (n8n iuCAelOlyPluKdHg) reads accounting_reminders AS-IS via
+// REM.7's target_type='job' branch — no n8n edit. Engine handles bank holidays.
+import { useScheduleJobReminders } from "@/hooks/useScheduleJobReminders";
+import { pickReminderWorkflowType } from "@/lib/reminder-cadence";
 
 type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
 
@@ -268,6 +273,8 @@ export default function AccountingJobs() {
   // only — the auto-invoice path runs after a successful createJob).
   const { createInvoice } = useAccountingInvoices();
   const generateInvoiceNumber = useGenerateInvoiceNumber();
+  // Phase F: bulk reminder enrolment for jobs with a statutory deadline.
+  const scheduleJobReminders = useScheduleJobReminders();
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingJob, setEditingJob] = useState<AccountingJob | null>(null);
@@ -423,6 +430,45 @@ export default function AccountingJobs() {
               });
             }
             // Silent on dup — the draft already exists, nothing to do.
+          }
+        }
+
+        // Phase F: enroll the statutory-deadline reminder cadence when:
+        //   1. The new job has a deadline (NULL ⇒ skip)
+        //   2. The job has a client (no recipient ⇒ skip — can't email)
+        //   3. The picked job_type has auto_reminder=true (decision #5: per-type opt-in)
+        // The Reminders Engine (n8n iuCAelOlyPluKdHg) reads accounting_reminders
+        // AS-IS via REM.7's target_type='job' branch; engine handles bank
+        // holidays + business-hours windows itself. We only INSERT here.
+        // Idempotent inside the hook: existing pending/sent reminders for the
+        // (job, target_type='job') triple ⇒ enrolment skipped silently.
+        const reminderEligible =
+          !!newJob.deadline &&
+          !!newJob.client_id &&
+          !!jt &&
+          jt.auto_reminder === true;
+        if (reminderEligible && jt) {
+          try {
+            const result = await scheduleJobReminders.mutateAsync({
+              jobId: newJob.id,
+              deadline: newJob.deadline,
+              channel: "email",
+              workflowType: pickReminderWorkflowType(jt.code),
+            });
+            if (result.inserted > 0) {
+              toast({
+                title: "Reminder schedule enrolled",
+                description: `${result.inserted} reminder${result.inserted === 1 ? "" : "s"} queued for "${form.title.trim()}"`,
+              });
+            }
+            // Silent on inserted=0 — either deadline in past or already enrolled.
+          } catch (remErr) {
+            const msg = remErr instanceof Error ? remErr.message : String(remErr);
+            toast({
+              title: "Reminder enrolment skipped",
+              description: msg,
+              variant: "destructive",
+            });
           }
         }
       }
