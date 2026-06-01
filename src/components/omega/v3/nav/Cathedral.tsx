@@ -249,6 +249,12 @@ function PulseCard({ section, index, cathedralOpen, onClick }: PulseCardProps) {
           );
         })}
       </ul>
+      {section.agentLine ? (
+        <span className="pulse-card-agentline" aria-label="agent activity">
+          <span className="pulse-card-agentline-dot" aria-hidden />
+          {section.agentLine}
+        </span>
+      ) : null}
       <Sparkline color={sparkColor} />
       <span className={`pulse-card-pill pulse-pill-${section.pillType}`}>{section.pillText}</span>
     </button>
