@@ -510,5 +510,10 @@ export default defineConfig({
       testMatch: /recruitment-outreach-verify\.spec\.ts/,
       use: { browserName: 'chromium' }, // no setup dep — fresh login; Outreach Activity UI vs local preview (RO_BASE/HR_V6_BASE)
     },
+    {
+      name: 'hr-course-gen-verify',
+      testMatch: /hr-course-gen-verify\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — fresh login; existing-course AI-content gen vs local preview (CG_BASE/HR_V6_BASE)
+    },
   ],
 });
