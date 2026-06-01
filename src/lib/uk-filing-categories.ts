@@ -44,7 +44,11 @@ export const FILING_CATEGORIES: FilingCategoryMeta[] = [
   { code: "accounts_full", label: "Year-End Accounts (Full)", short: "YE-Full", color: "hsl(180 50% 45%)", cadence: "annual" },
   { code: "accounts_micro", label: "Year-End Accounts (Micro)", short: "YE-Micro", color: "hsl(180 50% 60%)", cadence: "annual" },
   { code: "confirmation_statement", label: "Confirmation Statement", short: "CS", color: "hsl(140 50% 45%)", cadence: "annual" },
-  { code: "psc", label: "PSC Update", short: "PSC", color: "hsl(140 40% 60%)", cadence: "event" },
+  // Wave 1 rename (2026-06-02): label "PSC Update" → "Company Secretarial Services" per Adil.
+  // code='psc' preserved for back-compat with legacy accounting_jobs.category rows; Wave-1
+  // picker reads from useAccountingJobTypes (DB-backed). This legacy entry powers badge
+  // labels/colors only when a legacy row's category is rendered in the Jobs table.
+  { code: "psc", label: "Company Secretarial Services", short: "CSec", color: "hsl(140 40% 60%)", cadence: "event" },
   { code: "sa100", label: "Self Assessment (SA100)", short: "SA100", color: "hsl(30 70% 50%)", cadence: "annual" },
   { code: "sa800", label: "Partnership SA (SA800)", short: "SA800", color: "hsl(30 60% 60%)", cadence: "annual" },
   { code: "paye_rti", label: "PAYE RTI", short: "PAYE", color: "hsl(0 60% 55%)", cadence: "monthly" },

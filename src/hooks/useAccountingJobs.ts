@@ -26,9 +26,19 @@ export interface AccountingJob {
   /**
    * UK filing category — see `lib/uk-filing-categories.ts`.
    * NULL = untagged (default; existing demo jobs render as "Untagged").
-   * Requires migration `36-uk-filing-categories-migration.sql` to be applied.
+   *
+   * Wave 1 (2026-06-02): the column's CHECK constraint was dropped in
+   * migration 38 — any text value is accepted; canonical codes are now
+   * `accounting_job_types.code` per tenant. Written side-by-side with
+   * `job_type_id` until Wave 2 fully migrates.
    */
   category: string | null;
+  /**
+   * Wave 1 FK to accounting_job_types.id — populated when the picked
+   * category matches a job_type row in the tenant. NULL for legacy rows,
+   * "Untagged", and tenants without job_types seeded.
+   */
+  job_type_id: string | null;
   created_by: string | null;
   updated_by: string | null;
   created_at: string;
@@ -132,6 +142,11 @@ export function useAccountingJobs(filters: UseAccountingJobsFilters = {}) {
       if (job.category !== undefined && job.category !== null) {
         payload.category = job.category;
       }
+      // Wave 1 (migration 38): write job_type_id side-by-side when picker resolves a UUID.
+      // Omit when null to be migration-tolerant if a clone is rolled back to a pre-38 schema.
+      if (job.job_type_id !== undefined && job.job_type_id !== null) {
+        payload.job_type_id = job.job_type_id;
+      }
 
       const { data, error: insErr } = await supabase
         .from("accounting_jobs")
@@ -161,6 +176,10 @@ export function useAccountingJobs(filters: UseAccountingJobsFilters = {}) {
       // pattern as createJob. Explicit non-null values (e.g. 'vat') pass through.
       if (patch.category === undefined || patch.category === null) {
         delete finalPatch.category;
+      }
+      // Wave 1: same tolerance for job_type_id. Explicit UUIDs pass through.
+      if (patch.job_type_id === undefined || patch.job_type_id === null) {
+        delete finalPatch.job_type_id;
       }
 
       // Auto-stamp completed_at when transitioning to done; clear when reopened

@@ -74,6 +74,7 @@ import {
   CATEGORY_BY_CODE,
   type FilingCategory,
 } from "@/lib/uk-filing-categories";
+import { useAccountingJobTypes } from "@/hooks/useAccountingJobTypes";
 
 type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
 
@@ -246,6 +247,12 @@ export default function AccountingJobs() {
     deleteJob,
   } = useAccountingJobs(filters);
   const { data: clients = [] } = useAccountingClientsList();
+  // Wave 1: DB-driven job-type picker. Empty array for non-accounting tenants (no rows seeded).
+  const { data: jobTypes = [] } = useAccountingJobTypes();
+  const jobTypeByCode = useMemo(
+    () => new Map(jobTypes.map((t) => [t.code, t])),
+    [jobTypes],
+  );
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingJob, setEditingJob] = useState<AccountingJob | null>(null);
@@ -321,6 +328,15 @@ export default function AccountingJobs() {
       });
       return;
     }
+    // Wave 1 Phase B: write `category` (text) AND `job_type_id` (FK) side-by-side.
+    // If the picked code matches a row in accounting_job_types, persist the UUID; else null.
+    // Legacy FILING_CATEGORIES codes (vat, ct600, accounts_full, etc.) will not match any
+    // job_type row and will land as job_type_id=NULL — that's intentional back-compat for
+    // the 5 demo jobs created before the migration.
+    const pickedCategory =
+      form.category === CATEGORY_UNTAGGED_VALUE ? null : form.category;
+    const pickedJobTypeId =
+      pickedCategory != null ? (jobTypeByCode.get(pickedCategory)?.id ?? null) : null;
     const payload: Partial<AccountingJob> = {
       title: form.title.trim(),
       description: form.description.trim() || null,
@@ -330,7 +346,8 @@ export default function AccountingJobs() {
       priority: form.priority,
       owner_user_id: form.owner_user_id || null,
       deadline: toDeadlineDbValue(form.deadline),
-      category: form.category === CATEGORY_UNTAGGED_VALUE ? null : form.category,
+      category: pickedCategory,
+      job_type_id: pickedJobTypeId,
     };
     try {
       if (editingJob) {
@@ -866,11 +883,20 @@ export default function AccountingJobs() {
                   <SelectItem value={CATEGORY_UNTAGGED_VALUE}>
                     Untagged
                   </SelectItem>
-                  {FILING_CATEGORIES.map((c) => (
-                    <SelectItem key={c.code} value={c.code}>
-                      {c.label}
-                    </SelectItem>
-                  ))}
+                  {/* Wave 1: DB-driven options from accounting_job_types (active, by sort_order).
+                      Falls back to legacy FILING_CATEGORIES when no job_types are seeded
+                      (non-accounting tenants, or any tenant before the seed migration runs). */}
+                  {jobTypes.length > 0
+                    ? jobTypes.map((t) => (
+                        <SelectItem key={t.id} value={t.code}>
+                          {t.name}
+                        </SelectItem>
+                      ))
+                    : FILING_CATEGORIES.map((c) => (
+                        <SelectItem key={c.code} value={c.code}>
+                          {c.label}
+                        </SelectItem>
+                      ))}
                 </SelectContent>
               </Select>
             </div>
