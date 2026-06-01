@@ -181,6 +181,54 @@ function fmtMoney(currency: string, n: number): string {
   return `${currency} ${Math.round(n).toLocaleString("en-US")}`;
 }
 
+// ---- Batch 2 polish: human-readable agent activity --------------------------
+
+/** Map a raw tool_name/action_type to plain English (polish b). */
+const ACTION_PHRASES: Record<string, string> = {
+  ops_vendor_create: "registered a new vendor",
+  ops_po_create: "raised a purchase order",
+  ops_shipment_create: "logged a shipment",
+  ops_budget_create: "set a budget",
+  ops_inventory_status: "reviewed inventory",
+  ops_budget_status: "checked the budget",
+  ops_dispatch: "ran an operations task",
+  lead_create: "added a lead",
+  lead_update: "updated a lead",
+  lead_search: "searched leads",
+  sequence_enroll: "enrolled a lead in a sequence",
+  send_message: "sent a message",
+  channel_response: "replied on a channel",
+};
+
+/** Agent codenames (single lowercase word) → UPPERCASE; else Title Case. */
+function prettyAgent(name: unknown): string {
+  const n = (typeof name === "string" ? name : "").trim();
+  if (!n) return "OMEGA";
+  if (/^[a-z]+$/.test(n)) return n.toUpperCase(); // omega → OMEGA, medica → MEDICA
+  return n.charAt(0).toUpperCase() + n.slice(1);
+}
+
+/** Plain-English phrase for what an agent did — never a raw tool name. */
+function humanAction(toolName: unknown, actionType: unknown): string {
+  const t = (typeof toolName === "string" ? toolName : "").trim();
+  if (t && ACTION_PHRASES[t]) return ACTION_PHRASES[t];
+  if (t) return t.replace(/_/g, " ");
+  const a = (typeof actionType === "string" ? actionType : "").trim();
+  if (a === "respond") return "handled a conversation";
+  if (a && a !== "tool_call") return a.replace(/_/g, " ");
+  return "took an action";
+}
+
+/** Success-rate label that never shows 100% when a real failure exists (polish c):
+ *  1-decimal, capped at 99.9% whenever success < total. */
+function successLabel(success: number, total: number): { text: string; tone: Vital["tone"] } {
+  const raw = (success / total) * 100;
+  let r = Math.round(raw * 10) / 10;
+  if (success < total && r >= 100) r = 99.9;
+  const text = `${Number.isInteger(r) ? r : r.toFixed(1)}%`;
+  return { text, tone: r >= 95 ? "good" : "warn" };
+}
+
 interface Batch1Reads {
   aaTotal: number | string | null;
   aaWeek: number | string | null;
@@ -205,17 +253,18 @@ function buildBatch1Vitals(b: Batch1Reads, currency: string): SectionVital[] {
     const success = asNum(b.aaSuccess);
     const convos = asNum(b.aaConvos);
     const latest = Array.isArray(b.aaLatest) && b.aaLatest.length ? b.aaLatest[0] : null;
-    const successPct =
-      total && total > 0 && success !== null ? Math.round((success / total) * 100) : null;
     const hasData = total !== null || convos !== null;
     const vitals: Vital[] = [];
     if (total !== null) vitals.push({ label: "actions", value: String(total), tone: "good" });
     if (week !== null) vitals.push({ label: "this week", value: String(week), tone: "neutral" });
     if (convos !== null) vitals.push({ label: "conversations", value: String(convos), tone: "neutral" });
-    if (successPct !== null)
-      vitals.push({ label: "success", value: `${successPct}%`, tone: successPct >= 95 ? "good" : "warn" });
+    if (total && total > 0 && success !== null) {
+      const sl = successLabel(success, total); // polish c: never fake 100% on a real failure
+      vitals.push({ label: "success", value: sl.text, tone: sl.tone });
+    }
+    // polish b: human-readable — "OMEGA registered a new vendor" (no raw tool names)
     const agentLine = latest
-      ? `Last · ${(latest.agent_name as string) || "OMEGA"} → ${(latest.tool_name as string) || (latest.action_type as string) || "action"}`
+      ? `${prettyAgent(latest.agent_name)} ${humanAction(latest.tool_name, latest.action_type)}`
       : null;
     out.push({
       id: "omega",
@@ -249,19 +298,29 @@ function buildBatch1Vitals(b: Batch1Reads, currency: string): SectionVital[] {
     if (!hasOps) {
       out.push({ id: "operations", state: "module-ready", headline: null, vitals: [], agentLine: null });
     } else {
-      const attention = (low ?? 0) > 0;
-      const headline =
-        `${attention ? "Operations need attention" : "Operations healthy"} — ` +
-        `${invTotal ?? 0} stocked${(low ?? 0) > 0 ? `, ${low} low` : ""}` +
-        `${savings && savings > 0 ? `; ${fmtMoney(currency, savings)} saved` : ""}`;
-      const vitals: Vital[] = [{ label: "stocked", value: String(invTotal ?? 0), tone: "good" }];
-      if ((low ?? 0) > 0) vitals.push({ label: "low stock", value: String(low), tone: "warn" });
+      // polish a: owner-confident, threshold-based. Lead with the win at low
+      // severity; escalate wording only when low-stock is genuinely high (>=20%).
+      const totalN = invTotal ?? 0;
+      const lowN = low ?? 0;
+      const lowRatio = totalN > 0 ? lowN / totalN : 0;
+      const escalate = lowN > 0 && lowRatio >= 0.2;
+      const savedStr = savings && savings > 0 ? `; ${fmtMoney(currency, savings)} saved` : "";
+      let headline: string;
+      if (lowN === 0) headline = `Operations healthy — ${totalN} stocked${savedStr}`;
+      else if (!escalate) headline = `Running smooth — ${totalN} stocked${savedStr}`;
+      else headline = `Operations need attention — ${totalN} stocked, ${lowN} low${savedStr}`;
+      const vitals: Vital[] = [{ label: "stocked", value: String(totalN), tone: "good" }];
+      // low-stock stays a vital, but only RED (warn) when genuinely high — so the
+      // pill stays confident ("all healthy") at low severity.
+      if (lowN > 0)
+        vitals.push({ label: "low stock", value: String(lowN), tone: escalate ? "warn" : "neutral" });
       if (vendors !== null) vitals.push({ label: "vendors", value: String(vendors), tone: "neutral" });
       if (savings && savings > 0)
         vitals.push({ label: "saved", value: fmtMoney(currency, savings), tone: "good" });
+      // agentLine conveys it's HANDLED (polish a) + human (polish b).
       const parts: string[] = [];
-      if ((low ?? 0) > 0) parts.push(`STOCKMASTER flagged ${low} low-stock`);
-      if (savings && savings > 0) parts.push(`OPTIMIZER found ${fmtMoney(currency, savings)} saved`);
+      if (lowN > 0) parts.push(`STOCKMASTER is tracking ${lowN} low-stock item${lowN > 1 ? "s" : ""}`);
+      if (savings && savings > 0) parts.push(`OPTIMIZER found ${fmtMoney(currency, savings)} in savings`);
       const agentLine = parts.length ? parts.join(" · ") : null;
       out.push({ id: "operations", state: "active", headline, vitals: vitals.slice(0, 4), agentLine });
     }
@@ -303,13 +362,19 @@ function applyBatch1(base: PulseSection[], vitals: SectionVital[]): PulseSection
       if (warnCount > 0) {
         pillType = "warning";
         pillText = `${warnCount} need attention`;
+      } else if (sv.pill) {
+        pillText = sv.pill;
       }
-      // healthy path keeps the loved registry pill ("live" / "all healthy")
+      // else healthy path keeps the loved registry pill ("live" / "all healthy")
+    } else if (sv.state === "module-ready" && sv.pill) {
+      pillType = "normal";
+      pillText = sv.pill;
     }
-    // module-ready keeps the registry pill (e.g. "open analytics")
+    // module-ready w/o override keeps the registry pill (e.g. "open analytics")
     return [
       {
         ...s,
+        name: sv.name ?? s.name,
         meta: sv.headline ?? s.meta,
         metrics: metrics.length ? metrics : s.metrics,
         agentLine: sv.agentLine ?? null,
@@ -521,18 +586,8 @@ async function fetchAllMetrics(
     },
 
     // ===== Clients =====
-    {
-      key: "clients|total clients",
-      promise: countQuery("customers", { tenant_id: tenantSlug }),
-    },
-    {
-      key: "clients|today",
-      promise: countQuery(
-        "customers",
-        { tenant_id: tenantSlug },
-        { gte: { created_at: todayISO } },
-      ),
-    },
+    // (Batch 2 P3) clients queries REMOVED — Clients is now industry-routed in
+    // the Batch-2 reads below (clinic_patients / re_* / collections_* / customers).
 
     // ===== Settings =====
     // tenant_integrations has no `status` column — `is_active` (boolean) is the
@@ -556,19 +611,8 @@ async function fetchAllMetrics(
       label: "Conversations",
       promise: countQuery("conversations", { tenant_id: conv_id }),
     },
-    {
-      label: "Booked appointments",
-      // appointments.start_time is `time without time zone` (HH:MM:SS only) —
-      // it can't be compared to an ISO timestamp. Use scheduled_at (timestamptz).
-      promise: countQuery(
-        "appointments",
-        { tenant_id: tenantSlug },
-        {
-          in: { status: ["scheduled", "confirmed", "pending"] },
-          gte: { scheduled_at: todayISO },
-        },
-      ),
-    },
+    // "Booked appointments" hero moved to the Batch-2 block below (P4) — the old
+    // scheduled_at>=today filter showed 0 despite real appointments. Now upcoming + total.
   ];
 
   // Batch-1 consolidated reads (operations/omega) — run in the SAME batch.
@@ -585,12 +629,54 @@ async function fetchAllMetrics(
     rowsQuery("ops_agent_tasks", { tenant_id: tenantSlug }, "agent_name,status", { orderCol: "created_at", ascending: false, limit: 20 }), // 8 opsTasks
   ];
 
+  // ---- Batch 2: industry-routed Clients plan + appointments hero (all SLUG
+  //      [VERIFIED-DB 2026-06-01]). One card; the source/labels resolve by industry.
+  type ClientsPlan = { name: string; reads: { label: string; tone: Vital["tone"]; table: string }[] };
+  const clientsPlan: ClientsPlan =
+    tenantIndustry === "healthcare_clinic" || tenantIndustry === "healthcare"
+      ? {
+          name: "Patients",
+          reads: [
+            { label: "patients", tone: "good", table: "clinic_patients" },
+            { label: "consultations", tone: "neutral", table: "clinic_consultations" },
+            { label: "in post-care", tone: "neutral", table: "clinic_post_care_schedule" },
+          ],
+        }
+      : tenantIndustry === "real_estate"
+      ? {
+          name: "Clients",
+          reads: [
+            { label: "clients", tone: "good", table: "re_clients" },
+            { label: "listings", tone: "neutral", table: "re_listings" },
+            { label: "deals", tone: "good", table: "re_deals" },
+            { label: "viewings", tone: "neutral", table: "re_viewings" },
+          ],
+        }
+      : tenantIndustry === "banking_collections"
+      ? {
+          name: "Accounts",
+          reads: [
+            { label: "accounts", tone: "good", table: "collections_accounts" },
+            { label: "promises-to-pay", tone: "neutral", table: "collections_ptp" },
+          ],
+        }
+      : {
+          name: "Customers",
+          reads: [{ label: "customers", tone: "good", table: "customers" }],
+        };
+  const b2Promises: Promise<unknown>[] = [
+    ...clientsPlan.reads.map((r) => countQuery(r.table, { tenant_id: tenantSlug })),
+    countQuery("appointments", { tenant_id: tenantSlug }, { in: { status: ["scheduled", "confirmed"] } }), // upcoming
+    countQuery("appointments", { tenant_id: tenantSlug }), // total
+  ];
+
   // Single batch with global 5s timeout. Promise.allSettled never throws,
   // so the timeout is the only escape hatch.
   const allPromises = [
     ...queryDefs.map((d) => d.promise),
     ...heroDefs.map((d) => d.promise),
     ...b1Promises,
+    ...b2Promises,
   ];
 
   const settled = await withTimeout(
@@ -618,6 +704,46 @@ async function fetchAllMetrics(
     },
     currency,
   );
+
+  // ---- Batch 2: extract reads → industry-routed Clients vital + appts hero values
+  const b2Base = b1Base + b1Promises.length;
+  const b2val = (i: number): unknown => {
+    const r = settled[b2Base + i];
+    return r && r.status === "fulfilled" ? r.value : null;
+  };
+  const clientCounts = clientsPlan.reads.map((_, i) => asNum(b2val(i)));
+  const apptUpcoming = asNum(b2val(clientsPlan.reads.length));
+  const apptTotal = asNum(b2val(clientsPlan.reads.length + 1));
+
+  const primaryCount = clientCounts[0];
+  if (primaryCount === null || primaryCount === 0) {
+    // relevant-but-empty → module-ready CTA, never a fake count
+    batch1.push({
+      id: "clients",
+      state: "module-ready",
+      name: clientsPlan.name,
+      headline: `No ${clientsPlan.reads[0].label} yet`,
+      vitals: [],
+      agentLine: null,
+      pill: "set up",
+    });
+  } else {
+    const cVitals: Vital[] = clientsPlan.reads
+      .map((r, i) => ({ label: r.label, value: String(clientCounts[i] ?? 0), tone: r.tone }))
+      .filter((_, i) => clientCounts[i] !== null);
+    const headline = clientsPlan.reads
+      .slice(0, 2)
+      .map((r, i) => `${clientCounts[i] ?? 0} ${r.label}`)
+      .join(" · ");
+    batch1.push({
+      id: "clients",
+      state: "active",
+      name: clientsPlan.name,
+      headline,
+      vitals: cVitals.slice(0, 4),
+      agentLine: null,
+    });
+  }
 
   // ---- Process metric results
   const updates: MetricUpdate[] = [];
@@ -651,6 +777,15 @@ async function fetchAllMetrics(
 
   // ---- Process hero results
   const heroStats: CathedralStat[] = FALLBACK_STATS.map((stat) => {
+    // P4 — appointments: show upcoming + total. Resilient: never 0 when appts exist.
+    if (stat.label === "Booked appointments") {
+      if (apptTotal === null) return stat; // query failed → keep fallback
+      if (apptTotal === 0) return { ...stat, value: "0", delta: "none yet" };
+      const up = apptUpcoming ?? 0;
+      return up > 0
+        ? { ...stat, value: String(up), delta: `${apptTotal} total` }
+        : { ...stat, value: String(apptTotal), delta: "booked" };
+    }
     const heroIdx = heroDefs.findIndex((h) => h.label === stat.label);
     if (heroIdx === -1) return stat; // Agents healthy — keep fallback
     const r = settled[queryDefs.length + heroIdx];

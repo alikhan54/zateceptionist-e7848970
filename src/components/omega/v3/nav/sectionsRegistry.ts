@@ -86,6 +86,12 @@ export interface SectionVital {
   vitals: Vital[];
   /** "What your agents did" → PulseSection.agentLine. Null = not rendered. */
   agentLine: string | null;
+  /** Batch 2 — optional industry-routed card title override (e.g. clinic →
+   *  "Patients", banking → "Accounts"). Undefined keeps the registry name. */
+  name?: string;
+  /** Batch 2 — optional pill text override (e.g. module-ready CTA "set up").
+   *  Undefined keeps the registry/derived pill. */
+  pill?: string;
 }
 
 // ---- Type back-compat for any latent imports (Phase 2A → Phase 2A.5)
@@ -264,6 +270,9 @@ export const SECTIONS: PulseSection[] = [
   {
     id: "clients",
     name: "Clients",
+    // Honest neutral fallback (Batch 2, P3) — the resolver industry-routes the
+    // source (clinic_patients / re_clients / collections_accounts / customers)
+    // and overrides name + metrics. No fabricated "active accounts / NPS / +2 today".
     meta: "customer 360",
     route: "/customers",
     icon: "Users",
@@ -272,13 +281,8 @@ export const SECTIONS: PulseSection[] = [
     shortcut: "⌘3",
     enabled: true,
     pillType: "normal",
-    pillText: "+2 today",
-    metrics: [
-      { value: "0", label: "total clients" },
-      { value: "+0", label: "today" },
-      { value: "14", label: "active accounts", notConfigured: true },
-      { value: "8.4", label: "avg NPS", notConfigured: true },
-    ],
+    pillText: "live",
+    metrics: [],
   },
   {
     id: "analytics",
