@@ -76,6 +76,11 @@ import {
 } from "@/lib/uk-filing-categories";
 import { useAccountingJobTypes } from "@/hooks/useAccountingJobTypes";
 import { computeJobDates, formatCompanyType } from "@/lib/job-date-engine";
+// Phase E: auto-create a draft invoice when a job is created with an assignee
+// and the job-type has a default_fee. Idempotency is enforced at the DB layer
+// by the partial UNIQUE index on (tenant_id, job_id) WHERE job_id IS NOT NULL.
+import { useAccountingInvoices } from "@/hooks/useAccountingInvoices";
+import { useGenerateInvoiceNumber } from "@/hooks/useGenerateInvoiceNumber";
 
 type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
 
@@ -259,6 +264,10 @@ export default function AccountingJobs() {
     () => new Map(jobTypes.map((t) => [t.code, t])),
     [jobTypes],
   );
+  // Phase E: invoice creator + invoice-number generator (used inside handleSubmit
+  // only — the auto-invoice path runs after a successful createJob).
+  const { createInvoice } = useAccountingInvoices();
+  const generateInvoiceNumber = useGenerateInvoiceNumber();
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingJob, setEditingJob] = useState<AccountingJob | null>(null);
@@ -366,8 +375,56 @@ export default function AccountingJobs() {
         await updateJob.mutateAsync({ id: editingJob.id, patch: payload });
         toast({ title: "Job updated", description: form.title.trim() });
       } else {
-        await createJob.mutateAsync(payload);
+        const newJob = await createJob.mutateAsync(payload);
         toast({ title: "Job created", description: form.title.trim() });
+
+        // Phase E: auto-create a DRAFT invoice when:
+        //   1. Job has an assigned owner (owner_user_id set)
+        //   2. A real client is linked (not internal)
+        //   3. The picked job_type has a default_fee set (NOT NULL, > 0)
+        // Idempotency: the partial UNIQUE index on (tenant_id, job_id) WHERE
+        // job_id IS NOT NULL will reject a duplicate — we catch that quietly.
+        // Failure to create the invoice is non-fatal: the job still saved.
+        const jt = pickedCategory ? jobTypeByCode.get(pickedCategory) : null;
+        const eligible =
+          !!newJob.owner_user_id &&
+          !!newJob.client_id &&
+          !!jt &&
+          jt.default_fee != null &&
+          Number(jt.default_fee) > 0;
+        if (eligible && jt) {
+          try {
+            const invoiceNo = await generateInvoiceNumber();
+            await createInvoice.mutateAsync({
+              client_id: newJob.client_id as string,
+              invoice_no: invoiceNo,
+              amount: Number(jt.default_fee),
+              currency: jt.default_currency || "GBP",
+              status: "draft",
+              description: jt.name,
+              job_id: newJob.id,
+            });
+            toast({
+              title: "Draft invoice created",
+              description: `${invoiceNo} • ${jt.default_currency || "GBP"} ${Number(jt.default_fee).toFixed(2)} • ${jt.name}`,
+            });
+          } catch (invErr) {
+            // 23505 = unique_violation from Postgres → idempotent duplicate skip.
+            const msg = invErr instanceof Error ? invErr.message : String(invErr);
+            const code = (invErr as { code?: string } | null)?.code;
+            const isDup =
+              code === "23505" ||
+              /duplicate|unique|uq_acc_inv_tenant_job/i.test(msg);
+            if (!isDup) {
+              toast({
+                title: "Auto-invoice skipped",
+                description: msg,
+                variant: "destructive",
+              });
+            }
+            // Silent on dup — the draft already exists, nothing to do.
+          }
+        }
       }
       closeDialogs();
     } catch (err) {
