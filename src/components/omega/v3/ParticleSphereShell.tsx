@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Mic } from "lucide-react";
+import { Mic, MicOff, Volume2, VolumeX } from "lucide-react";
 import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useOmegaVoice } from "@/hooks/useOmegaVoice";
 import { callWebhook, WEBHOOKS } from "@/lib/api/webhooks";
 import { sanitizeResponse } from "@/lib/security/sanitizeResponse";
 import { ParticleSphere, type OmegaState } from "./ParticleSphere";
@@ -35,6 +36,9 @@ export function ParticleSphereShell() {
   // Phase 2B.1 — top bar reads from useTenant() instead of hardcoded text.
   const { tenantId, tenantConfig } = useTenant();
   const { user, isAdmin } = useAuth();
+  // Mic-fix: reuse the existing voice hook (Web Speech in + Edge/browser TTS out).
+  const voice = useOmegaVoice();
+  const prevListening = useRef(false);
   const tenantUuid = tenantConfig?.id;
   const businessName =
     tenantConfig?.company_name ??
@@ -119,9 +123,49 @@ export function ParticleSphereShell() {
         data.message ||
         data.error ||
         (res?.success ? "OMEGA returned an empty response." : "OMEGA is temporarily unavailable.");
-      typeTranscript(sanitizeResponse(reply));
+      const clean = sanitizeResponse(reply);
+      typeTranscript(clean);
+      voice.speakText(clean); // voice page — speak the reply aloud (no-op if muted)
     } catch {
       typeTranscript("OMEGA is temporarily unavailable. Try again in a moment.");
+    }
+  };
+
+  // ---- Mic (voice) wiring — reuse useOmegaVoice; turn-based, no barge-in. ----
+  // Reflect the REAL SpeechRecognition flag in the sphere + show live transcript.
+  useEffect(() => {
+    if (voice.isListening) {
+      setState("listening");
+      if (voice.transcript) setTranscript(voice.transcript);
+    }
+  }, [voice.isListening, voice.transcript]);
+
+  // When a listening turn ENDS (final result or manual stop): submit the
+  // transcript through the SAME path as typed input; if empty, return to idle.
+  useEffect(() => {
+    if (prevListening.current && !voice.isListening) {
+      const t = voice.transcript.trim();
+      if (t) sendQuery(t);
+      else setState("idle");
+    }
+    prevListening.current = voice.isListening;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [voice.isListening]);
+
+  // Mic button → toggle listening. Graceful when Web Speech is unsupported.
+  const handleMic = () => {
+    if (!voice.speechSupported) {
+      if (inputValue.trim()) sendQuery(inputValue);
+      else runIntroCycle();
+      return;
+    }
+    if (voice.isListening) {
+      voice.stopListening();
+    } else {
+      demoTimers.current.forEach((id) => clearTimeout(id));
+      demoTimers.current = [];
+      setTranscript("");
+      voice.startListening();
     }
   };
 
@@ -211,9 +255,8 @@ export function ParticleSphereShell() {
         </div>
       )}
 
-      {/* Minimal command bar — Enter submits a real OMEGA query.
-          The mic button replays the intro teaser; speech recognition lives in
-          OmegaFloatingChat for now. */}
+      {/* Minimal command bar — Enter submits a typed query; the mic toggles
+          live voice (Web Speech via useOmegaVoice); the speaker mutes voice-out. */}
       <div className="v3-commandbar">
         <input
           className="v3-input-pill"
@@ -226,11 +269,23 @@ export function ParticleSphereShell() {
           disabled={state === "thinking" || state === "speaking"}
         />
         <button
-          className={`v3-mic-btn ${state === "listening" ? "listening" : ""}`}
-          onClick={() => (inputValue.trim() ? sendQuery(inputValue) : runIntroCycle())}
-          aria-label="Submit query or replay intro"
+          className={`v3-mic-btn ${voice.isListening ? "listening" : ""}`}
+          onClick={handleMic}
+          aria-label={voice.isListening ? "Stop listening" : "Talk to OMEGA"}
+          title={voice.isListening ? "Stop listening" : "Talk to OMEGA"}
         >
-          <Mic size={22} strokeWidth={2.2} />
+          {voice.isListening ? <MicOff size={22} strokeWidth={2.2} /> : <Mic size={22} strokeWidth={2.2} />}
+        </button>
+        <button
+          className="v3-mic-btn"
+          onClick={() => {
+            if (voice.isSpeaking) voice.stopSpeaking();
+            voice.setVoiceEnabled(!voice.voiceEnabled);
+          }}
+          aria-label={voice.voiceEnabled ? "Mute OMEGA voice" : "Unmute OMEGA voice"}
+          title={voice.isSpeaking ? "Stop speaking" : voice.voiceEnabled ? "Mute voice" : "Unmute voice"}
+        >
+          {voice.voiceEnabled ? <Volume2 size={20} strokeWidth={2.2} /> : <VolumeX size={20} strokeWidth={2.2} />}
         </button>
       </div>
 

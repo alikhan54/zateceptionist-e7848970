@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { toast } from "sonner";
 import { useTenant } from "@/contexts/TenantContext";
 
 const WEBHOOK_BASE = "https://webhooks.zatesystems.com/webhook";
@@ -27,7 +28,16 @@ export function useOmegaVoice() {
         setTranscript(result[0].transcript);
         if (result.isFinal) setIsListening(false);
       };
-      recognition.onerror = () => setIsListening(false);
+      recognition.onerror = (event: any) => {
+        setIsListening(false);
+        // Surface permission failures instead of swallowing them (mic-fix).
+        const err = event?.error;
+        if (err === "not-allowed" || err === "service-not-allowed") {
+          toast.error("Microphone blocked", {
+            description: "Allow microphone access in your browser settings to talk to OMEGA.",
+          });
+        }
+      };
       recognition.onend = () => setIsListening(false);
       recognitionRef.current = recognition;
     }
