@@ -26,6 +26,26 @@ const STATE_LABEL: Record<OmegaState, string> = {
 const INTRO_TRANSCRIPT =
   "Ask me anything about your business — I have full access to your data, workflows, and AI agents.";
 
+// Holding phrases — spoken INSTANTLY (browser TTS) the moment a query is
+// submitted, so there's no dead air while the brain thinks. Rotated without an
+// immediate repeat. (Editable; user can tune the set later.)
+const HOLDING_PHRASES = [
+  "Let me pull that together for you.",
+  "One moment — gathering the details.",
+  "Looking into that now.",
+  "Give me a breath while I check the numbers.",
+  "On it — fetching the latest for you.",
+  "Let me dig into that.",
+  "Checking across your data now.",
+  "A moment while I bring this together.",
+];
+
+// Optional soft nudge if the brain reply takes longer than NUDGE_DELAY_MS.
+// Toggle with NUDGE_ENABLED.
+const NUDGE_ENABLED = true;
+const NUDGE_DELAY_MS = 7000;
+const NUDGE_PHRASES = ["Still on it…", "Almost there…", "Just a moment more…"];
+
 export function ParticleSphereShell() {
   const [state, setState] = useState<OmegaState>("idle");
   const [transcript, setTranscript] = useState("");
@@ -39,6 +59,14 @@ export function ParticleSphereShell() {
   // Mic-fix: reuse the existing voice hook (Web Speech in + Edge/browser TTS out).
   const voice = useOmegaVoice();
   const prevListening = useRef(false);
+  // Rotating-phrase picker (no immediate repeat) for holding + nudge sets.
+  const lastPhraseRef = useRef<Record<string, number>>({ hold: -1, nudge: -1 });
+  const pickPhrase = (list: string[], key: string) => {
+    let i = Math.floor(Math.random() * list.length);
+    if (list.length > 1 && i === lastPhraseRef.current[key]) i = (i + 1) % list.length;
+    lastPhraseRef.current[key] = i;
+    return list[i];
+  };
   const tenantUuid = tenantConfig?.id;
   const businessName =
     tenantConfig?.company_name ??
@@ -102,9 +130,21 @@ export function ParticleSphereShell() {
     setInputValue("");
     setState("listening");
     setTranscript(message);
+    // HOLDING PHRASE — spoken INSTANTLY (browser TTS, no network) the moment the
+    // query is submitted, so there's no dead air while the brain thinks.
+    voice.speakFiller(pickPhrase(HOLDING_PHRASES, "hold"));
     // brief listening pulse so the state pill reads naturally
     await new Promise((r) => setTimeout(r, 350));
     setState("thinking");
+    // Optional soft nudge if the brain takes a while — cleared the instant the
+    // reply arrives so it never talks over the answer.
+    let replied = false;
+    const nudgeTimer = NUDGE_ENABLED
+      ? window.setTimeout(() => {
+          if (!replied) voice.speakFiller(pickPhrase(NUDGE_PHRASES, "nudge"));
+        }, NUDGE_DELAY_MS)
+      : 0;
+    if (nudgeTimer) demoTimers.current.push(nudgeTimer as unknown as number);
     try {
       const res = await callWebhook(
         WEBHOOKS.OMEGA_CHAT,
@@ -117,6 +157,8 @@ export function ParticleSphereShell() {
         },
         tenantId,
       );
+      replied = true;
+      if (nudgeTimer) clearTimeout(nudgeTimer);
       const data = (res?.data ?? {}) as any;
       const reply =
         data.response ||
@@ -124,9 +166,15 @@ export function ParticleSphereShell() {
         data.error ||
         (res?.success ? "OMEGA returned an empty response." : "OMEGA is temporarily unavailable.");
       const clean = sanitizeResponse(reply);
+      // Clean hand-off: cut any holding phrase still playing, then WRITE + SPEAK
+      // the answer CONCURRENTLY (typewriter + TTS start together — not voice-last).
+      voice.stopSpeaking();
       typeTranscript(clean);
-      voice.speakText(clean); // voice page — speak the reply aloud (no-op if muted)
+      voice.speakText(clean);
     } catch {
+      replied = true;
+      if (nudgeTimer) clearTimeout(nudgeTimer);
+      voice.stopSpeaking();
       typeTranscript("OMEGA is temporarily unavailable. Try again in a moment.");
     }
   };
