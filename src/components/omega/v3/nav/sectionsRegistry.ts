@@ -60,6 +60,9 @@ export interface PulseSection {
   /** Pulse Batch 1+ — the "what your agents did" line rendered under the
    *  metrics. Null/undefined = nothing rendered. Set by usePulseData resolvers. */
   agentLine?: string | null;
+  /** Batch 3 — true when the card is an elegant module-ready INVITATION
+   *  (relevant-but-unconfigured). Drives a subtle CTA treatment in PulseCard. */
+  moduleReady?: boolean;
 }
 
 // ---- Pulse "speak the win" contract (Batch 1 foundation) ------------------
@@ -119,58 +122,45 @@ export const SECTIONS: PulseSection[] = [
   {
     id: "sales",
     name: "Sales AI",
-    meta: "10 agents · 32 tools",
+    // Batch 3 — neutral fallback; resolver fills real sales_leads/sequences + NOVA agentLine.
+    meta: "sales pipeline",
     route: "/sales",
     icon: "TrendingUp",
     color: "amber",
     layer: "operations",
     enabled: true,
     pillType: "normal",
-    pillText: "+24% week",
-    metrics: [
-      { value: "0", label: "in pipeline" },
-      { value: "0", label: "sequences active" },
-      { value: "0", label: "contacted today" },
-      { value: "0", label: "hot leads" },
-      { value: "$1.2M", label: "ARR managed", notConfigured: true },
-    ],
+    pillText: "live",
+    metrics: [],
   },
   {
     id: "marketing",
     name: "Marketing AI",
-    meta: "11 agents · 28 tools",
+    // Batch 3 — neutral fallback; resolver fills real social/blog/campaign counts.
+    meta: "campaigns & content",
     route: "/marketing",
     icon: "Megaphone",
     color: "rose",
     layer: "operations",
     enabled: true,
     pillType: "normal",
-    pillText: "8 campaigns",
-    metrics: [
-      { value: "0", label: "campaigns live" },
-      { value: "0", label: "posts this week" },
-      { value: "64", label: "leads from blog", notConfigured: true },
-      { value: "1.2k", label: "IG followers", notConfigured: true },
-      { value: "+12%", label: "engagement", notConfigured: true },
-    ],
+    pillText: "live",
+    metrics: [],
   },
   {
     id: "hr",
     name: "HR AI",
-    meta: "8 agents · 18 tools",
+    // Batch 3 — neutral fallback; resolver = active (candidates/reviews) or
+    // module-ready "set up your team" when empty.
+    meta: "team & hiring",
     route: "/hr",
     icon: "UserPlus",
     color: "emerald",
     layer: "operations",
     enabled: true,
     pillType: "normal",
-    pillText: "7 open",
-    metrics: [
-      { value: "7", label: "open roles", notConfigured: true },
-      { value: "3", label: "onboarding", notConfigured: true },
-      { value: "2", label: "reviews due", notConfigured: true },
-      { value: "94%", label: "team capacity", notConfigured: true },
-    ],
+    pillText: "live",
+    metrics: [],
   },
   {
     id: "operations",
@@ -191,20 +181,17 @@ export const SECTIONS: PulseSection[] = [
   {
     id: "comms",
     name: "Communications",
-    meta: "10 agents · 41 tools",
+    // Batch 3 — neutral fallback; resolver = active (calls/chats/emails) or
+    // module-ready "connect a channel" when none enabled.
+    meta: "channels & messaging",
     route: "/communications",
     icon: "Phone",
     color: "sky",
     layer: "operations",
     enabled: true,
-    pillType: "live",
-    pillText: "12 live now",
-    metrics: [
-      { value: "0", label: "calls today" },
-      { value: "0", label: "WhatsApp chats" },
-      { value: "0", label: "emails sent" },
-      { value: "41", label: "VAPI tools", notConfigured: true },
-    ],
+    pillType: "normal",
+    pillText: "live",
+    metrics: [],
   },
 
   // ===== Layer 2 — INTELLIGENCE (what OMEGA KNOWS) =====
@@ -217,15 +204,10 @@ export const SECTIONS: PulseSection[] = [
     color: "violet",
     layer: "intelligence",
     enabled: true,
-    pillType: "warning",
-    pillText: "3 gaps",
-    metrics: [
-      { value: "4.2k", label: "docs ingested", notConfigured: true },
-      { value: "2.1M", label: "tokens indexed", notConfigured: true },
-      { value: "78%", label: "knowledge confidence", notConfigured: true },
-      { value: "3", label: "knowledge gaps", isWarning: true, notConfigured: true },
-      { value: "80", label: "agents trained", notConfigured: true },
-    ],
+    pillType: "normal",
+    pillText: "live",
+    // Batch 3 — resolver surfaces real agent_memory; sourceless placeholders dropped.
+    metrics: [],
   },
   {
     id: "industry",
@@ -236,15 +218,10 @@ export const SECTIONS: PulseSection[] = [
     color: "coral",
     layer: "intelligence",
     enabled: true,
-    pillType: "warning",
-    pillText: "3 alerts",
-    metrics: [
-      { value: "", label: "tenant industry" },
-      { value: "0", label: "competitors tracked" },
-      { value: "0", label: "moves this week", isWarning: true },
-      { value: "Top 12%", label: "lead velocity", notConfigured: true },
-      { value: "Top 8%", label: "pipeline volume", notConfigured: true },
-    ],
+    pillType: "normal",
+    pillText: "live",
+    // Batch 3 — resolver surfaces real competitor_tracking; placeholders dropped.
+    metrics: [],
   },
 
   // ===== Layer 3 — REACH (who & where) =====
@@ -260,12 +237,8 @@ export const SECTIONS: PulseSection[] = [
     enabled: true,
     pillType: "warning",
     pillText: "3 hot",
-    metrics: [
-      { value: "10", label: "channels active" },
-      { value: "0", label: "conversations" },
-      { value: "3", label: "hot threads", notConfigured: true },
-      { value: "2", label: "awaiting response", notConfigured: true },
-    ],
+    // Batch 3 — resolver = active (open conversations) or module-ready "connect a channel".
+    metrics: [],
   },
   {
     id: "clients",
@@ -311,12 +284,8 @@ export const SECTIONS: PulseSection[] = [
     enabled: true,
     pillType: "normal",
     pillText: "all connected",
-    metrics: [
-      { value: "0", label: "integrations connected" },
-      { value: "Knowledge base", label: "managed" },
-      { value: "AI training", label: "active" },
-      { value: "Company info", label: "configured" },
-    ],
+    // Batch 3 — resolver = real integration count or module-ready "connect integrations".
+    metrics: [],
   },
 ];
 

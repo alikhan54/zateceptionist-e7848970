@@ -339,6 +339,143 @@ function buildBatch1Vitals(b: Batch1Reads, currency: string): SectionVital[] {
   return out;
 }
 
+// ---------- Batch 3 — remaining cards (real data OR elegant module-ready CTA) --
+
+interface Batch3Reads {
+  salesLeads: number | null; salesHot: number | null; sequencesActive: number | null;
+  novaLatest: Record<string, unknown>[] | null;
+  socialTotal: number | null; socialPublished: number | null; blogTotal: number | null; campaignsActive: number | null;
+  agentMemory: number | null;
+  competitors: number | null; compMoves: number | null;
+  hrCandidates: number | null; hrReviews: number | null;
+  convOpen: number | null; convTotal: number | null;
+  integrations: number | null;
+  channelsCount: number;
+}
+
+const plural = (n: number, s: string) => `${n} ${s}${n === 1 ? "" : "s"}`;
+
+/** Resolve the 8 remaining sections. Honesty-first: real data → active win;
+ *  relevant-but-empty → module-ready invitation; never a fabricated number. */
+function buildBatch3Vitals(b: Batch3Reads): SectionVital[] {
+  const out: SectionVital[] = [];
+
+  // ----- SALES -----
+  {
+    const leads = asNum(b.salesLeads), seq = asNum(b.sequencesActive), hot = asNum(b.salesHot);
+    const latest = Array.isArray(b.novaLatest) && b.novaLatest.length ? b.novaLatest[0] : null;
+    if ((leads ?? 0) <= 0 && (seq ?? 0) <= 0) {
+      out.push({ id: "sales", state: "module-ready", headline: "Start generating leads", vitals: [], agentLine: null, pill: "set up" });
+    } else {
+      const parts: string[] = [];
+      if ((leads ?? 0) > 0) parts.push(plural(leads as number, "in pipeline").replace("in pipelines", "in pipeline"));
+      if ((seq ?? 0) > 0) parts.push(`${seq} sequences live`);
+      const vitals: Vital[] = [];
+      if ((leads ?? 0) > 0) vitals.push({ label: "in pipeline", value: String(leads), tone: "good" });
+      if ((seq ?? 0) > 0) vitals.push({ label: "sequences", value: String(seq), tone: "neutral" });
+      if ((hot ?? 0) > 0) vitals.push({ label: "hot leads", value: String(hot), tone: "good" }); // dropped when 0
+      out.push({
+        id: "sales", state: "active",
+        headline: parts.join(" · "),
+        vitals: vitals.slice(0, 4),
+        agentLine: latest ? `NOVA ${humanAction(latest.tool_name, latest.action_type)}` : null,
+      });
+    }
+  }
+
+  // ----- MARKETING (honest draft/published split) -----
+  {
+    const social = asNum(b.socialTotal), pub = asNum(b.socialPublished), blog = asNum(b.blogTotal), camp = asNum(b.campaignsActive);
+    if ((social ?? 0) <= 0 && (blog ?? 0) <= 0 && (camp ?? 0) <= 0) {
+      out.push({ id: "marketing", state: "module-ready", headline: "Create your first campaign", vitals: [], agentLine: null, pill: "set up" });
+    } else {
+      const draft = Math.max(0, (social ?? 0) - (pub ?? 0));
+      const parts: string[] = [];
+      if ((social ?? 0) > 0) parts.push(`${draft} drafted`);
+      if ((blog ?? 0) > 0) parts.push(plural(blog as number, "blog"));
+      if ((camp ?? 0) > 0) parts.push(`${camp} live`);
+      const vitals: Vital[] = [];
+      if ((social ?? 0) > 0) vitals.push({ label: "drafted", value: String(draft), tone: "neutral" });
+      if (pub !== null && (social ?? 0) > 0) vitals.push({ label: "published", value: String(pub ?? 0), tone: (pub ?? 0) > 0 ? "good" : "neutral" });
+      if ((blog ?? 0) > 0) vitals.push({ label: "blog posts", value: String(blog), tone: "good" });
+      if ((camp ?? 0) > 0) vitals.push({ label: "campaigns", value: String(camp), tone: "good" });
+      out.push({ id: "marketing", state: "active", headline: parts.join(" · "), vitals: vitals.slice(0, 4), agentLine: null });
+    }
+  }
+
+  // ----- INTELLIGENCE (real agent_memory; sourceless placeholders dropped) -----
+  {
+    const mem = asNum(b.agentMemory);
+    if ((mem ?? 0) > 0) {
+      out.push({ id: "intel", state: "active", headline: `OMEGA remembers ${plural(mem as number, "returning contact")}`, vitals: [{ label: "memories", value: String(mem), tone: "good" }], agentLine: null });
+    } else {
+      out.push({ id: "intel", state: "module-ready", headline: "Learning as you go", vitals: [], agentLine: null, pill: "building" });
+    }
+  }
+
+  // ----- INDUSTRY VERTICALS (competitor intel) -----
+  {
+    const comp = asNum(b.competitors), moves = asNum(b.compMoves);
+    if ((comp ?? 0) > 0) {
+      const headline = (moves ?? 0) > 0 ? `${plural(moves as number, "competitor move")} this week` : `${plural(comp as number, "competitor")} tracked`;
+      const vitals: Vital[] = [{ label: "tracked", value: String(comp), tone: "neutral" }];
+      if ((moves ?? 0) > 0) vitals.push({ label: "moves this week", value: String(moves), tone: "warn" });
+      out.push({ id: "industry", state: "active", headline, vitals, agentLine: null });
+    } else {
+      out.push({ id: "industry", state: "module-ready", headline: "Track your competitors", vitals: [], agentLine: null, pill: "set up" });
+    }
+  }
+
+  // ----- HR (active when staffed/hiring; module-ready CTA otherwise) -----
+  {
+    const cand = asNum(b.hrCandidates), rev = asNum(b.hrReviews);
+    if ((cand ?? 0) > 0 || (rev ?? 0) > 0) {
+      const parts: string[] = [];
+      if ((cand ?? 0) > 0) parts.push(plural(cand as number, "candidate"));
+      if ((rev ?? 0) > 0) parts.push(`${rev} review${(rev as number) === 1 ? "" : "s"} pending`);
+      const vitals: Vital[] = [];
+      if ((cand ?? 0) > 0) vitals.push({ label: "candidates", value: String(cand), tone: "good" });
+      if ((rev ?? 0) > 0) vitals.push({ label: "reviews", value: String(rev), tone: "neutral" });
+      out.push({ id: "hr", state: "active", headline: parts.join(" · "), vitals, agentLine: null });
+    } else {
+      out.push({ id: "hr", state: "module-ready", headline: "Set up your team", vitals: [], agentLine: null, pill: "set up" });
+    }
+  }
+
+  // ----- COMMUNICATIONS (module-ready CTA when no channel enabled) -----
+  {
+    if (b.channelsCount > 0) {
+      out.push({ id: "comms", state: "active", headline: `${plural(b.channelsCount, "channel")} connected`, vitals: [{ label: "channels", value: String(b.channelsCount), tone: "good" }], agentLine: null });
+    } else {
+      out.push({ id: "comms", state: "module-ready", headline: "Connect a channel to handle chats automatically", vitals: [], agentLine: null, pill: "connect" });
+    }
+  }
+
+  // ----- UNIFIED INBOX (module-ready CTA when no conversations) -----
+  {
+    const open = asNum(b.convOpen), total = asNum(b.convTotal);
+    if ((open ?? 0) > 0) {
+      const vitals: Vital[] = [{ label: "open", value: String(open), tone: "good" }];
+      if (total !== null) vitals.push({ label: "total", value: String(total), tone: "neutral" });
+      out.push({ id: "inbox", state: "active", headline: `${plural(open as number, "open conversation")}`, vitals, agentLine: null });
+    } else {
+      out.push({ id: "inbox", state: "module-ready", headline: "Connect a channel to unify messages", vitals: [], agentLine: null, pill: "connect" });
+    }
+  }
+
+  // ----- SETTINGS (real integration count or module-ready CTA) -----
+  {
+    const integ = asNum(b.integrations);
+    if ((integ ?? 0) > 0) {
+      out.push({ id: "settings", state: "active", headline: `${plural(integ as number, "integration")} connected`, vitals: [{ label: "connected", value: String(integ), tone: "good" }], agentLine: null });
+    } else {
+      out.push({ id: "settings", state: "module-ready", headline: "Connect integrations & wire email", vitals: [], agentLine: null, pill: "set up" });
+    }
+  }
+
+  return out;
+}
+
 /** Map Batch-1 SectionVitals onto the existing PulseSection shape. hidden →
  *  section omitted; module-ready → keep registry pill; active → pill reflects
  *  warn tone. headline→meta, vitals→metrics, agentLine→the new span. */
@@ -378,6 +515,7 @@ function applyBatch1(base: PulseSection[], vitals: SectionVital[]): PulseSection
         meta: sv.headline ?? s.meta,
         metrics: metrics.length ? metrics : s.metrics,
         agentLine: sv.agentLine ?? null,
+        moduleReady: sv.state === "module-ready",
         pillType,
         pillText,
       },
@@ -446,160 +584,15 @@ async function fetchAllMetrics(
 
   /** Each entry: a key (sectionId|metricLabel) + a result promise.
    *  Phase 2B.1 widens the result type to allow string (e.g. ARR formatted as $1.2M). */
+  // Batch 1-3 replaced EVERY per-section count overlay with a SectionVital
+  // resolver (operations=B1, clients=B2, sales/marketing/hr/comms/intel/industry/
+  // inbox/settings=B3). queryDefs is now empty — the resolver batches (b1/b2/b3)
+  // below own all 13 cards. Kept as [] so the settled-index math is unchanged and
+  // so a future single-metric overlay can slot back in here if ever needed.
   const queryDefs: Array<{
     key: string;
     promise: Promise<number | string | null>;
-  }> = [
-    // ===== Sales AI =====
-    {
-      key: "sales|in pipeline",
-      promise: countQuery("sales_leads", { tenant_id: tenantSlug }),
-    },
-    // Phase 2B.1: sequences (SLUG, status='active')
-    {
-      key: "sales|sequences active",
-      promise: countQuery("sequences", {
-        tenant_id: tenantSlug,
-        status: "active",
-      }),
-    },
-    // ARR metric dropped — ltv_cac_snapshots has no `arr` column. Registry
-    // already marks this notConfigured; we no longer push an update for it.
-    // TODO: when deals start closing, compute ARR from
-    //   SUM(deals.value) WHERE stage='closed_won' AND tenant_id=slug
-    {
-      key: "sales|hot leads",
-      promise: countQuery(
-        "sales_leads",
-        { tenant_id: tenantSlug },
-        { gte: { lead_score: "75" } },
-      ),
-    },
-    {
-      key: "sales|contacted today",
-      promise: countQuery(
-        "sales_leads",
-        { tenant_id: tenantSlug },
-        { gte: { last_contact_at: dayAgoISO } },
-      ),
-    },
-
-    // ===== Marketing AI =====
-    {
-      key: "marketing|campaigns live",
-      promise: tenantUuid
-        ? countQuery(
-            "marketing_campaigns",
-            { tenant_id: tenantUuid },
-            { in: { status: ["active", "sending", "scheduled"] } },
-          )
-        : Promise.resolve(null),
-    },
-    {
-      key: "marketing|posts this week",
-      promise: tenantUuid
-        ? countQuery(
-            "social_posts",
-            { tenant_id: tenantUuid },
-            { gte: { created_at: weekAgoISO } },
-          )
-        : Promise.resolve(null),
-    },
-
-    // ===== Operations =====
-    // (Batch 1 P1) estimation_projects queries REMOVED — Operations is now
-    // resolved from universal ops_* in the Batch-1 reads below + buildBatch1Vitals.
-
-    // ===== Communications =====
-    // Phase 2B.1: calls today via voice_usage (SLUG)
-    {
-      key: "comms|calls today",
-      promise: countQuery(
-        "voice_usage",
-        { tenant_id: tenantSlug },
-        { gte: { created_at: dayAgoISO } },
-      ),
-    },
-    // Phase 2B.1: HR onboarding (UUID, speculative status='onboarding')
-    {
-      key: "hr|onboarding",
-      promise: tenantUuid
-        ? countQuery("hr_candidates", {
-            tenant_id: tenantUuid,
-            status: "onboarding",
-          })
-        : Promise.resolve(null),
-    },
-    // Phase 2B.1: HR reviews due (UUID, speculative status='pending')
-    {
-      key: "hr|reviews due",
-      promise: tenantUuid
-        ? countQuery("hr_performance_reviews", {
-            tenant_id: tenantUuid,
-            status: "pending",
-          })
-        : Promise.resolve(null),
-    },
-    {
-      key: "comms|WhatsApp chats",
-      promise: countQuery(
-        "conversations",
-        { tenant_id: conv_id, channel: "whatsapp" },
-        { gte: { last_message_at: dayAgoISO } },
-      ),
-    },
-    {
-      key: "comms|emails sent",
-      promise: countQuery(
-        "outbound_messages",
-        { tenant_id: tenantSlug, channel: "email" },
-        { gte: { created_at: dayAgoISO } },
-      ),
-    },
-
-    // ===== Industry Verticals =====
-    {
-      key: "industry|competitors tracked",
-      promise: tenantUuid
-        ? countQuery("competitor_tracking", { tenant_id: tenantUuid })
-        : Promise.resolve(null),
-    },
-    {
-      key: "industry|moves this week",
-      promise: tenantUuid
-        ? countQuery(
-            "competitor_tracking",
-            { tenant_id: tenantUuid },
-            { gte: { last_analyzed_at: weekAgoISO } },
-          )
-        : Promise.resolve(null),
-    },
-
-    // ===== Unified Inbox =====
-    {
-      key: "inbox|conversations",
-      promise: countQuery(
-        "conversations",
-        { tenant_id: conv_id },
-        { in: { status: ["open", "active"] } },
-      ),
-    },
-
-    // ===== Clients =====
-    // (Batch 2 P3) clients queries REMOVED — Clients is now industry-routed in
-    // the Batch-2 reads below (clinic_patients / re_* / collections_* / customers).
-
-    // ===== Settings =====
-    // tenant_integrations has no `status` column — `is_active` (boolean) is the
-    // closest available signal for a connected provider.
-    {
-      key: "settings|integrations connected",
-      promise: countQuery("tenant_integrations", {
-        tenant_id: tenantSlug,
-        is_active: true,
-      }),
-    },
-  ];
+  }> = [];
 
   // Hero stats run in the same batch
   const heroDefs: Array<{ label: string; promise: Promise<number | null> }> = [
@@ -670,6 +663,29 @@ async function fetchAllMetrics(
     countQuery("appointments", { tenant_id: tenantSlug }), // total
   ];
 
+  // ---- Batch 3: the remaining 8 cards (formats [VERIFIED-DB 2026-06-01]:
+  //      SLUG = sales_leads/sequences/agent_memory/tenant_integrations;
+  //      UUID = social_posts/blog_posts/marketing_campaigns/competitor_tracking;
+  //      hr_*/conversations = TEXT holding UUID values → query with tenantUuid/conv_id).
+  const b3Promises: Promise<unknown>[] = [
+    countQuery("sales_leads", { tenant_id: tenantSlug }), // 0 salesLeads
+    countQuery("sales_leads", { tenant_id: tenantSlug }, { gte: { lead_score: "75" } }), // 1 salesHot
+    countQuery("sequences", { tenant_id: tenantSlug, status: "active" }), // 2 sequencesActive
+    rowsQuery("agent_actions", { tenant_id: tenantSlug, agent_name: "nova" }, "tool_name,action_type", { orderCol: "created_at", ascending: false, limit: 1 }), // 3 novaLatest
+    tenantUuid ? countQuery("social_posts", { tenant_id: tenantUuid }) : Promise.resolve(null), // 4 socialTotal
+    tenantUuid ? countQuery("social_posts", { tenant_id: tenantUuid, status: "published" }) : Promise.resolve(null), // 5 socialPublished
+    tenantUuid ? countQuery("blog_posts", { tenant_id: tenantUuid }) : Promise.resolve(null), // 6 blogTotal
+    tenantUuid ? countQuery("marketing_campaigns", { tenant_id: tenantUuid }, { in: { status: ["active", "sending", "scheduled"] } }) : Promise.resolve(null), // 7 campaignsActive
+    countQuery("agent_memory", { tenant_id: tenantSlug, memory_type: "user_summary" }), // 8 agentMemory
+    tenantUuid ? countQuery("competitor_tracking", { tenant_id: tenantUuid }) : Promise.resolve(null), // 9 competitors
+    tenantUuid ? countQuery("competitor_tracking", { tenant_id: tenantUuid }, { gte: { last_analyzed_at: weekAgoISO } }) : Promise.resolve(null), // 10 compMoves
+    tenantUuid ? countQuery("hr_candidates", { tenant_id: tenantUuid }) : Promise.resolve(null), // 11 hrCandidates
+    tenantUuid ? countQuery("hr_performance_reviews", { tenant_id: tenantUuid }) : Promise.resolve(null), // 12 hrReviews
+    countQuery("conversations", { tenant_id: conv_id }, { in: { status: ["open", "active"] } }), // 13 convOpen
+    countQuery("conversations", { tenant_id: conv_id }), // 14 convTotal
+    countQuery("tenant_integrations", { tenant_id: tenantSlug, is_active: true }), // 15 integrations
+  ];
+
   // Single batch with global 5s timeout. Promise.allSettled never throws,
   // so the timeout is the only escape hatch.
   const allPromises = [
@@ -677,6 +693,7 @@ async function fetchAllMetrics(
     ...heroDefs.map((d) => d.promise),
     ...b1Promises,
     ...b2Promises,
+    ...b3Promises,
   ];
 
   const settled = await withTimeout(
@@ -744,6 +761,34 @@ async function fetchAllMetrics(
       agentLine: null,
     });
   }
+
+  // ---- Batch 3: extract reads → the remaining 8 SectionVitals
+  const b3Base = b2Base + b2Promises.length;
+  const b3val = (i: number): unknown => {
+    const r = settled[b3Base + i];
+    return r && r.status === "fulfilled" ? r.value : null;
+  };
+  batch1.push(
+    ...buildBatch3Vitals({
+      salesLeads: b3val(0) as number | null,
+      salesHot: b3val(1) as number | null,
+      sequencesActive: b3val(2) as number | null,
+      novaLatest: b3val(3) as Record<string, unknown>[] | null,
+      socialTotal: b3val(4) as number | null,
+      socialPublished: b3val(5) as number | null,
+      blogTotal: b3val(6) as number | null,
+      campaignsActive: b3val(7) as number | null,
+      agentMemory: b3val(8) as number | null,
+      competitors: b3val(9) as number | null,
+      compMoves: b3val(10) as number | null,
+      hrCandidates: b3val(11) as number | null,
+      hrReviews: b3val(12) as number | null,
+      convOpen: b3val(13) as number | null,
+      convTotal: b3val(14) as number | null,
+      integrations: b3val(15) as number | null,
+      channelsCount,
+    }),
+  );
 
   // ---- Process metric results
   const updates: MetricUpdate[] = [];

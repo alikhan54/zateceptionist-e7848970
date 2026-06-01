@@ -183,7 +183,7 @@ function PulseCard({ section, index, cathedralOpen, onClick }: PulseCardProps) {
     <button
       ref={cardRef}
       type="button"
-      className={`pulse-card ${section.enabled ? "" : "disabled"}`}
+      className={`pulse-card ${section.enabled ? "" : "disabled"} ${section.moduleReady ? "module-ready" : ""}`}
       style={cardStyle}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}

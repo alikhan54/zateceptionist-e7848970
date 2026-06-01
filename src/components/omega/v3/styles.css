@@ -1351,6 +1351,22 @@ body.cathedral-open .omega-shell-v3 .v3-wordmark {
   color: var(--pulse-ink-3);
 }
 
+/* Batch 3 — module-ready cards read as an elegant INVITATION (not empty/broken).
+   Keeps the pastel gradient card; the headline goes soft-accent italic and the
+   pill becomes a dashed CTA chip with a gentle arrow. */
+.pulse-cathedral .pulse-card.module-ready .pulse-card-meta {
+  color: color-mix(in srgb, var(--card-color, #6366f1) 70%, var(--pulse-ink-2));
+  font-style: italic;
+}
+.pulse-cathedral .pulse-card.module-ready .pulse-card-pill {
+  background: transparent;
+  border: 1px dashed color-mix(in srgb, var(--card-color, #6366f1) 45%, transparent);
+  color: var(--card-color, #6366f1);
+}
+.pulse-cathedral .pulse-card.module-ready .pulse-card-pill::after {
+  content: " →";
+}
+
 
 /* Phase 5d — OMEGA progress dots (thinking/listening state) */
 @keyframes omega-dot-bounce {
