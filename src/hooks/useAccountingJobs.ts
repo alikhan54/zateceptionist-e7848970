@@ -39,6 +39,14 @@ export interface AccountingJob {
    * "Untagged", and tenants without job_types seeded.
    */
   job_type_id: string | null;
+  /**
+   * Wave 1 Phase C: separate "period covered by the job" from "statutory
+   * deadline". Auto-filled by `computeJobDates` on job-type select but
+   * always user-editable. NULL when not applicable (e.g. anchor='none').
+   */
+  period_end: string | null;
+  /** Wave 1 Phase C: internal staff-only notes (free text). */
+  staff_notes: string | null;
   created_by: string | null;
   updated_by: string | null;
   created_at: string;
@@ -147,6 +155,13 @@ export function useAccountingJobs(filters: UseAccountingJobsFilters = {}) {
       if (job.job_type_id !== undefined && job.job_type_id !== null) {
         payload.job_type_id = job.job_type_id;
       }
+      // Wave 1 Phase C: period_end + staff_notes. Same migration-tolerance — omit when null.
+      if (job.period_end !== undefined && job.period_end !== null) {
+        payload.period_end = job.period_end;
+      }
+      if (job.staff_notes !== undefined && job.staff_notes !== null) {
+        payload.staff_notes = job.staff_notes;
+      }
 
       const { data, error: insErr } = await supabase
         .from("accounting_jobs")
@@ -181,6 +196,9 @@ export function useAccountingJobs(filters: UseAccountingJobsFilters = {}) {
       if (patch.job_type_id === undefined || patch.job_type_id === null) {
         delete finalPatch.job_type_id;
       }
+      // Wave 1 Phase C: tolerate undefined; explicit null clears period_end / staff_notes.
+      if (patch.period_end === undefined) delete finalPatch.period_end;
+      if (patch.staff_notes === undefined) delete finalPatch.staff_notes;
 
       // Auto-stamp completed_at when transitioning to done; clear when reopened
       if (patch.status === "done") {

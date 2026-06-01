@@ -75,6 +75,7 @@ import {
   type FilingCategory,
 } from "@/lib/uk-filing-categories";
 import { useAccountingJobTypes } from "@/hooks/useAccountingJobTypes";
+import { computeJobDates, formatCompanyType } from "@/lib/job-date-engine";
 
 type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
 
@@ -130,6 +131,9 @@ interface JobFormState {
   owner_user_id: string;
   deadline: string;
   category: string;  // FilingCategory code or CATEGORY_UNTAGGED_VALUE
+  // Wave 1 Phase C: period covered + internal staff-only notes (separate from `description`).
+  period_end: string;   // YYYY-MM-DD (empty string when blank)
+  staff_notes: string;
 }
 
 const EMPTY_FORM: JobFormState = {
@@ -141,6 +145,8 @@ const EMPTY_FORM: JobFormState = {
   owner_user_id: "",
   deadline: "",
   category: CATEGORY_UNTAGGED_VALUE,
+  period_end: "",
+  staff_notes: "",
 };
 
 function formatDateUK(value: string | null): string {
@@ -271,6 +277,9 @@ export default function AccountingJobs() {
       owner_user_id: editingJob.owner_user_id ?? "",
       deadline: toDeadlineInputValue(editingJob.deadline),
       category: editingJob.category ?? CATEGORY_UNTAGGED_VALUE,
+      // Phase C: hydrate period_end + staff_notes. Empty string when null.
+      period_end: editingJob.period_end ?? "",
+      staff_notes: editingJob.staff_notes ?? "",
     });
   }, [editingJob]);
 
@@ -348,6 +357,9 @@ export default function AccountingJobs() {
       deadline: toDeadlineDbValue(form.deadline),
       category: pickedCategory,
       job_type_id: pickedJobTypeId,
+      // Phase C: persist period_end + staff_notes. Empty form-string ⇒ null in DB.
+      period_end: form.period_end || null,
+      staff_notes: form.staff_notes.trim() || null,
     };
     try {
       if (editingJob) {
@@ -786,6 +798,22 @@ export default function AccountingJobs() {
                   ))}
                 </SelectContent>
               </Select>
+              {/* Phase C: read-only Client Type display from accounting_clients.company_type
+                  (populated by CH sync). Only renders when a real client is selected and
+                  the field is non-null. */}
+              {form.client_id !== INTERNAL_CLIENT_VALUE && (() => {
+                const c = clients.find((x) => x.id === form.client_id);
+                const label = formatCompanyType(c?.company_type);
+                if (!label) return null;
+                return (
+                  <p
+                    className="text-xs text-muted-foreground"
+                    data-testid="job-form-client-type"
+                  >
+                    Client type: <span className="font-medium">{label}</span>
+                  </p>
+                );
+              })()}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -874,7 +902,28 @@ export default function AccountingJobs() {
               <Label>UK filing category</Label>
               <Select
                 value={form.category}
-                onValueChange={(v) => setForm({ ...form, category: v })}
+                onValueChange={(v) => {
+                  // Phase C: on category change, auto-fill Period End + Deadline
+                  // from the picked job_type's anchor source. Fields remain editable
+                  // (the user can override afterwards). When the new type has no
+                  // computable dates (anchor='none' or 'manual', or required client
+                  // dates missing), the existing form values are preserved.
+                  const code = v === CATEGORY_UNTAGGED_VALUE ? null : v;
+                  const jt = code ? jobTypeByCode.get(code) ?? null : null;
+                  const selClient =
+                    form.client_id !== INTERNAL_CLIENT_VALUE
+                      ? clients.find((c) => c.id === form.client_id) ?? null
+                      : null;
+                  const dates = computeJobDates(jt, selClient);
+                  setForm({
+                    ...form,
+                    category: v,
+                    // Overwrite only when we computed a non-null value; otherwise
+                    // preserve whatever the user had so we don't wipe their input.
+                    period_end: dates.period_end ?? form.period_end,
+                    deadline: dates.deadline ?? form.deadline,
+                  });
+                }}
               >
                 <SelectTrigger data-testid="job-form-category">
                   <SelectValue />
@@ -899,6 +948,36 @@ export default function AccountingJobs() {
                       ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Phase C: Period End — period the job covers. Auto-filled by computeJobDates
+                on category change for ch_accounts/ch_confstmt/fixed_date anchors. Editable. */}
+            <div className="grid gap-2">
+              <Label htmlFor="job-period-end">Period end</Label>
+              <Input
+                id="job-period-end"
+                data-testid="job-form-period-end"
+                type="date"
+                value={form.period_end}
+                onChange={(e) => setForm({ ...form, period_end: e.target.value })}
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Auto-fills from the client's Companies House dates or the job type's fixed schedule; you can override.
+              </p>
+            </div>
+
+            {/* Phase C: internal staff-only notes. Separate from `description` which is
+                client-facing context. Plain textarea, optional. */}
+            <div className="grid gap-2">
+              <Label htmlFor="job-staff-notes">Notes for staff</Label>
+              <Textarea
+                id="job-staff-notes"
+                data-testid="job-form-staff-notes"
+                value={form.staff_notes}
+                onChange={(e) => setForm({ ...form, staff_notes: e.target.value })}
+                placeholder="Internal-only notes for the team (not shared with the client)."
+                rows={2}
+              />
             </div>
           </form>
           <DialogFooter className="gap-2">
