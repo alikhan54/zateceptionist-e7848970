@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTenant } from "@/contexts/TenantContext";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabase";
 
 // n8n webhook URLs are ALWAYS at /webhook/<path> — bare /<path> is NOT an alias
 // (documented in CLAUDE.md). Make the URL self-healing: if VITE_N8N_WEBHOOK_URL
@@ -68,32 +69,58 @@ export function useTriggerCompaniesHouseSync() {
           json.error || json.message || `Companies House sync HTTP ${resp.status}`,
         );
       }
-      return json;
+
+      // Wave 2b Phase A — the webhook's synced/cached counters are cosmetic (often
+      // 0 even on a successful PATCH). The SOURCE OF TRUTH is the DB column
+      // companies_house_sync_status, written by the workflow before it responds.
+      // Re-read it for the requested CRNs and report the real outcome so a working
+      // sync no longer shows "0 refreshed".
+      const wantCrns = cleaned.map((c) => c.toUpperCase());
+      let dbSynced = 0, dbNotFound = 0, dbFailed = 0;
+      try {
+        const { data: rows } = await supabase
+          .from("accounting_clients")
+          .select("company_no, companies_house_sync_status")
+          .eq("tenant_id", tenantId)
+          .in("company_no", wantCrns);
+        for (const r of (rows ?? []) as Array<{ companies_house_sync_status: string | null }>) {
+          const st = r.companies_house_sync_status;
+          if (st === "synced") dbSynced++;
+          else if (st === "not_found") dbNotFound++;
+          else if (st === "failed" || st === "rate_limited") dbFailed++;
+        }
+      } catch {
+        /* if the read fails, fall back to webhook ok=true as success below */
+      }
+      return { ...json, db_synced: dbSynced, db_not_found: dbNotFound, db_failed: dbFailed, requested: cleaned.length };
     },
     onSuccess: (json, companyNos) => {
-      // Phase 3 (2026-06-02) — invalidate ALL queryKeys that surface client data
-      // so the UI refetches the just-enriched rows. Previously this only invalidated
-      // ["accounting_clients", ...] which never existed (real key is *_full); the
-      // table didn't refresh after sync, masking the success.
+      // Invalidate every queryKey that surfaces client data so the UI refetches
+      // the just-enriched rows (no manual refresh).
       queryClient.invalidateQueries({ queryKey: ["accounting_clients_full", tenantId] });
       queryClient.invalidateQueries({ queryKey: ["finance_clients_lite", tenantId] });
       queryClient.invalidateQueries({ queryKey: ["accounting_clients_list", tenantId] });
 
-      const updated = (json.synced ?? 0) + (json.cached ?? 0);
+      // Wave 2b Phase A — toast from DB sync_status, not cosmetic counters.
       const total = companyNos.length;
-      const notFound = json.not_found ?? 0;
-      const failed = json.failed ?? 0;
+      const r = json as ChSyncResponse & { db_synced?: number; db_not_found?: number; db_failed?: number };
+      const synced = r.db_synced ?? 0;
+      const notFound = r.db_not_found ?? 0;
+      const failed = r.db_failed ?? 0;
 
-      if (failed > 0 || notFound > 0) {
+      if (notFound > 0 || failed > 0) {
         toast({
-          title: "CH sync partial",
-          description: `${updated}/${total} updated; ${notFound} not found, ${failed} failed`,
-          variant: notFound + failed > updated ? "destructive" : "default",
+          title: "Companies House sync partial",
+          description: `${synced}/${total} updated${notFound ? `; ${notFound} not found on CH` : ""}${failed ? `; ${failed} failed` : ""}`,
+          variant: notFound + failed > synced ? "destructive" : "default",
         });
       } else {
+        // ok=true with no not_found/failed → success. If the DB read returned
+        // nothing (e.g. timing), still report success since the webhook returned ok.
+        const n = synced || total;
         toast({
           title: "Companies House sync complete",
-          description: `${updated} of ${total} client${total === 1 ? "" : "s"} refreshed`,
+          description: `${n} client${n === 1 ? "" : "s"} refreshed from Companies House`,
         });
       }
     },
