@@ -74,6 +74,7 @@ import {
   jobCategoryMeta,
 } from "@/lib/uk-filing-categories";
 import { useAccountingJobTypes } from "@/hooks/useAccountingJobTypes";
+import { ManageJobTypesDialog } from "@/components/accounting/ManageJobTypesDialog";
 import { useAccountingJobStatuses } from "@/hooks/useAccountingJobStatuses";
 import { useAccountingJobStatusCounts } from "@/hooks/useAccountingJobStatusCounts";
 import { computeJobDates, formatCompanyType, computePriority, computeJobDescription } from "@/lib/job-date-engine";
@@ -220,7 +221,7 @@ function StatCard({
 
 export default function AccountingJobs() {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<AccountingJobStatus | "all">(
@@ -613,9 +614,12 @@ export default function AccountingJobs() {
             </div>
           )}
         </div>
-        <Button onClick={() => openCreate(clientParam || undefined)} data-testid="new-job-button">
-          <Plus className="mr-2 h-4 w-4" /> New Job
-        </Button>
+        <div className="flex items-center gap-2">
+          {isAdmin && <ManageJobTypesDialog />}
+          <Button onClick={() => openCreate(clientParam || undefined)} data-testid="new-job-button">
+            <Plus className="mr-2 h-4 w-4" /> New Job
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}

@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useTenant } from "@/contexts/TenantContext";
 
@@ -59,4 +59,67 @@ export function useAccountingJobTypes(opts: { activeOnly?: boolean } = {}) {
       return (data ?? []) as unknown as AccountingJobType[];
     },
   });
+}
+
+/**
+ * Wave 2a Phase 4 — admin add / edit / disable of accounting_job_types.
+ * RLS gates writes to the tenant (rls_tenant_write/update). Reads include
+ * inactive rows so the admin can re-enable. Slugifies new codes.
+ */
+export function slugifyJobTypeCode(name: string): string {
+  return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40) || "custom_type";
+}
+
+export function useAccountingJobTypesAdmin() {
+  const { tenantId } = useTenant();
+  const queryClient = useQueryClient();
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["accounting_job_types", tenantId] });
+  };
+
+  const createJobType = useMutation({
+    mutationFn: async (payload: Partial<AccountingJobType> & { name: string }) => {
+      if (!tenantId) throw new Error("No tenant context");
+      const code = payload.code?.trim() || slugifyJobTypeCode(payload.name);
+      const row = {
+        tenant_id: tenantId,
+        code,
+        name: payload.name.trim(),
+        anchor_source: payload.anchor_source ?? "manual",
+        period_interval_value: payload.period_interval_value ?? null,
+        period_interval_unit: payload.period_interval_unit ?? null,
+        deadline_interval_value: payload.deadline_interval_value ?? null,
+        deadline_interval_unit: payload.deadline_interval_unit ?? null,
+        fixed_period_date: payload.fixed_period_date ?? null,
+        fixed_deadline_date: payload.fixed_deadline_date ?? null,
+        default_fee: payload.default_fee ?? null,
+        default_currency: payload.default_currency ?? "GBP",
+        auto_reminder: payload.auto_reminder ?? true,
+        active: payload.active ?? true,
+        sort_order: payload.sort_order ?? 200,
+      };
+      const { data, error } = await supabase.from("accounting_job_types").insert(row as never).select("*").single();
+      if (error) throw error;
+      return data as unknown as AccountingJobType;
+    },
+    onSuccess: invalidate,
+  });
+
+  const updateJobType = useMutation({
+    mutationFn: async ({ id, patch }: { id: string; patch: Partial<AccountingJobType> }) => {
+      if (!tenantId) throw new Error("No tenant context");
+      const { data, error } = await supabase
+        .from("accounting_job_types")
+        .update(patch as never)
+        .eq("id", id)
+        .eq("tenant_id", tenantId)
+        .select("*")
+        .single();
+      if (error) throw error;
+      return data as unknown as AccountingJobType;
+    },
+    onSuccess: invalidate,
+  });
+
+  return { createJobType, updateJobType };
 }
