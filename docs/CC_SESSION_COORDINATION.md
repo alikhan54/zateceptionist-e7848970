@@ -1,8 +1,32 @@
 # CC Multi-Session Coordination
 
-**Last updated:** 2026-06-02 (HR course-gen + Zate real-team SHIPPED+PARKED — UI on main, awaiting Publish; prior: BSH-HMS PARKED+COMPLETE, Smart Ledger SHIPPED+PARKED, Recruitment E2E SHIPPED+PARKED. Other sessions clear)
+**Last updated:** 2026-06-02 (Smart Ledger Wave 1 B/C/E/F SHIPPED + live on Lovable — bundle `index-B6Klg84b.js` at origin/main `e1c9545`; Phase D HELD pending Video park; prior: HR course-gen + Zate real-team SHIPPED+PARKED, BSH-HMS PARKED+COMPLETE, Smart Ledger Phase 1 PARKED, Recruitment E2E PARKED)
 
-> **🅿️ SESSION C — SMART LEDGER: PARKED + SHIPPED 2026-05-30.** All work is on `origin/main` and live on Lovable; working tree clean (no uncommitted tracked changes). **HR / other sessions are clear to push to main.** Commits (in order):
+---
+
+## 🚢 Smart Ledger Wave 1 — B/C/E/F SHIPPED 2026-06-02 (D HELD)
+
+**Live on Lovable**: bundle `index-B6Klg84b.js`. origin/main tip `e1c9545`. Plain FF push, no force. HR's 3 prior commits + all Video/Pulse/Omega commits preserved as ancestors. Sentinel partial-green (Wave-1 DB gates GREEN; sacred-9 inspection BLOCKED by simultaneous T20 Supabase pooler distress on n8n — **independent of Wave 1, no n8n writes this ship**).
+
+Commits (rebased onto current main pre-push, in order):
+- `483f129` — **Phase B**: `accounting_job_types` foundation table (20 cols, 5 RLS policies, 14-row seed for smart-ledger), drop `acc_jobs_category_check`, add `accounting_jobs.{job_type_id, period_end, staff_notes}`, add `accounting_invoices.job_id` + partial UNIQUE `uq_acc_inv_tenant_job (tenant_id, job_id) WHERE job_id IS NOT NULL`, rename PSC Update→Company Secretarial Services, DB-driven `useAccountingJobTypes` picker with legacy fallback. Migration: `tenants/smart-ledger/deployment/38-wave1-job-types-and-job-fields.sql`.
+- `2eb2628` — **Phase C**: pure-fn `src/lib/job-date-engine.ts` (`computeJobDates` + `formatCompanyType`, 14/14 Node unit tests pass). On job-type select → auto-fill Period End + Deadline from `ch_accounts` / `ch_confstmt` / `fixed_date` / `manual` / `none` anchors; fields stay editable. Period End date input + Notes for staff textarea + read-only Client Type chip. Extended `useAccountingClientsList` to return `company_type` + 4 CH date fields.
+- `b7ee5c6` — **Phase E**: auto-draft invoice on job create when `owner_user_id && client_id && default_fee > 0` (decision #6: no £0 junk drafts). Idempotency proven via rolled-back DB probe — partial UNIQUE rejects dup `job_id` with SQLSTATE 23505 on `uq_acc_inv_tenant_job`, NULL `job_id` rows coexist. 23505 caught as silent skip; other errors surface non-blocking toast, job still saved.
+- `e1c9545` — **Phase F**: `src/lib/reminder-cadence.ts` (pure fn, 19/19 Node tests pass) — T-30 / every-4d to T-7 / every-2d in final week / T-0 cadence at 09:00 UTC. New `useScheduleJobReminders` hook bulk-INSERTs into `accounting_reminders` with `target_type='job'`, `status='pending'`, idempotent precheck. **Reminders Engine `iuCAelOlyPluKdHg` reads rows AS-IS** — REM.7 already has `target_type='job'` branch — **no n8n edit needed**. Server-side enrollment proof: 5/5 rolled-back tests confirm row shape + REM.4 filter match + tenant qualification + idempotency precheck + REM.7 target-fetch.
+
+**Cross-tenant safety verified post-ship**: cosmique/zate/aamerah unaffected. `accounting_job_types` only seeded for smart-ledger; picker falls back to legacy `FILING_CATEGORIES` for non-accounting tenants. accounting_clients still 445 / accounting_jobs 5 / accounting_invoices 5 / accounting_reminders 1 — zero deltas from pre-B baseline.
+
+**Phase D HELD** — requires editing n8n CH workflow `RCLewTLovTg1GxV4` (write `name` + formatted `address` to `accounting_clients` from CH `company_name`/`registered_office_address`) + Add Client form CH-lookup-on-CRN-blur. Waiting for "Video parked, go Phase D".
+
+**Worktree**: `D:/420-system/frontend-smart-ledger-wave1` (smart-ledger-wave1 branch). Other sessions clear to push to main. Wave 1 surface = `src/lib/job-date-engine.ts`, `src/lib/reminder-cadence.ts`, `src/lib/uk-filing-categories.ts` (label only), `src/hooks/useAccounting{Clients,Invoices,Jobs}*.ts`, `src/hooks/useAccountingJobTypes.ts`, `src/hooks/useScheduleJobReminders.ts`, `src/pages/accounting/Jobs.tsx`, `tests/wave1-phase-b-picker.spec.ts`, `playwright.config.ts` (additive entry). Migration SQL outside `frontend/`: `tenants/smart-ledger/deployment/38-wave1-job-types-and-job-fields.sql`.
+
+**Audit artefacts (local, not committed)**: `D:/420-system/.tmp_wave1_audit/PHASE_A_REPORT.md`, `PHASE_B_REPORT.md`, snapshots, idempotency + enrollment test scripts.
+
+**⚠️ INFRASTRUCTURE NOTE 2026-06-02 12:25Z**: n8n API throwing HTTP 503 for all `/api/v1/workflows/*` GETs at ship time (`Database connection timed out` / `Failed to hard-delete executions` in container logs). Container itself running OK (RestartCount=0). This is documented T20 Supabase pooler degradation, **NOT caused by Wave 1** (zero n8n writes this round). Wave-1 DB layer is fully verified (all reads work via direct pooler), and Lovable bundle deployed cleanly. Frontend operational; sacred-9 sentinel BLOCKED on inspection until pooler self-recovers (T18 says 1-5 min normally; may need `docker restart n8n` if sustained — held off because Video is reportedly still active).
+
+---
+
+> **🅿️ SESSION C — SMART LEDGER PHASE 1: PARKED + SHIPPED 2026-05-30.** All work is on `origin/main` and live on Lovable; working tree clean (no uncommitted tracked changes). **HR / other sessions are clear to push to main.** Commits (in order):
 > - `40c38eb` — Phase 1 ship: D7-C Invoices + parity F1-F4 (un-revert of `39c1234`), D7-D Reminders, F5/F6 Calendar+Workload, D7-E ACCOUNTANT chat widget, D7-F Add Client, E2E spec. Shipped via `git rebase --onto` that **preserved all 17 other-session commits** (video/HR/MP-S1) — no force-push, plain FF.
 > - `e0647cf` — hide generic MAIN sidebar section for accounting tenants (gated on `isAccountingPracticeUK`; other tenants unchanged).
 > - `4d00056` — remove stale "coming May 25" banners for shipped features + soften Finance dates to "Phase 2".
