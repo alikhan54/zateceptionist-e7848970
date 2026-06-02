@@ -43,6 +43,9 @@ interface AccountingClient {
   status: string | null;
   accounting_period_end: string | null;
   contact_email: string | null;
+  // Wave 2a Phase 1: surface CH company status + next accounts due in the list.
+  company_status: string | null;
+  accounts_next_due: string | null;
 }
 
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -83,6 +86,8 @@ export default function AccountingClients() {
         status: c.status,
         accounting_period_end: c.accounting_period_end,
         contact_email: c.contact_email,
+        company_status: c.company_status,
+        accounts_next_due: c.accounts_next_due,
       })),
     [fullClients],
   );
@@ -154,6 +159,8 @@ export default function AccountingClients() {
                 <TableHead>Company No.</TableHead>
                 <TableHead>VAT Number</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>CH Status</TableHead>
+                <TableHead>Accounts Due</TableHead>
                 <TableHead>Period End</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead className="w-12 text-right" />
@@ -163,7 +170,7 @@ export default function AccountingClients() {
               {isLoading ? (
                 Array.from({ length: 6 }).map((_, i) => (
                   <TableRow key={`skel-${i}`}>
-                    {Array.from({ length: 6 }).map((__, j) => (
+                    {Array.from({ length: 9 }).map((__, j) => (
                       <TableCell key={`skel-${i}-${j}`}>
                         <Skeleton className="h-4 w-full" />
                       </TableCell>
@@ -172,13 +179,13 @@ export default function AccountingClients() {
                 ))
               ) : error ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-sm text-destructive py-8">
+                  <TableCell colSpan={9} className="text-center text-sm text-destructive py-8">
                     Couldn't load clients: {error}
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-12">
+                  <TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-12">
                     {clients.length === 0 ? (
                       <div className="flex flex-col items-center gap-2">
                         <Users className="h-8 w-8 text-muted-foreground/50" />
@@ -208,6 +215,19 @@ export default function AccountingClients() {
                           {c.status ?? "active"}
                         </Badge>
                       </TableCell>
+                      <TableCell>
+                        {c.company_status ? (
+                          <Badge
+                            variant={c.company_status.toLowerCase() === "active" ? "default" : "secondary"}
+                            className="capitalize text-[10px]"
+                          >
+                            {c.company_status}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs">{formatPeriodEnd(c.accounts_next_due)}</TableCell>
                       <TableCell>{formatPeriodEnd(c.accounting_period_end)}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {c.contact_email || "—"}

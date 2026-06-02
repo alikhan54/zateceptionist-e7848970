@@ -308,6 +308,47 @@ export function AddClientForm({
           />
         </div>
       </div>
+
+      {/* Wave 2a Phase 1: read-only Companies House data panel (edit mode).
+          All fields are populated by the CH sync workflow + enrichment; shown
+          here so the practice can see the full official record at a glance. */}
+      {mode === "edit" && initial && (
+        <div className="rounded-md border bg-muted/30 p-3 space-y-2" data-testid="acf-ch-panel">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Companies House
+            </span>
+            {initial.companies_house_last_synced_at && (
+              <span className="text-[10px] text-muted-foreground">
+                synced {fmtChDate(initial.companies_house_last_synced_at)}
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs sm:grid-cols-3">
+            <ChField label="Company status" value={initial.company_status} />
+            <ChField label="Company type" value={initial.company_type} />
+            <ChField label="Incorporated" value={fmtChDate(initial.date_of_incorporation)} />
+            <ChField label="Accounts next due" value={fmtChDate(initial.accounts_next_due)} />
+            <ChField label="Accounts last made up" value={fmtChDate(initial.accounts_last_made_up)} />
+            <ChField label="Conf. stmt next due" value={fmtChDate(initial.confirmation_statement_next_due)} />
+            <ChField label="Conf. stmt last made up" value={fmtChDate(initial.confirmation_statement_last_made_up)} />
+            <ChField
+              label="SIC codes"
+              value={Array.isArray(initial.sic_codes) && initial.sic_codes.length ? initial.sic_codes.join(", ") : null}
+            />
+            <ChField
+              label="Directors"
+              value={Array.isArray(initial.directors) && initial.directors.length ? String(initial.directors.length) : null}
+            />
+          </div>
+          {!initial.companies_house_last_synced_at && (
+            <p className="text-[10px] italic text-muted-foreground">
+              Not yet synced from Companies House. Use the row "Sync from Companies House" action.
+            </p>
+          )}
+        </div>
+      )}
+
       <div className="flex justify-end gap-2 pt-2">
         {onCancel && (
           <Button type="button" variant="outline" onClick={onCancel} disabled={submitting}>
@@ -319,5 +360,23 @@ export function AddClientForm({
         </Button>
       </div>
     </form>
+  );
+}
+
+/** UK date formatter for the CH panel (YYYY-MM-DD or ISO → DD MMM YYYY). */
+function fmtChDate(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const datePart = value.length >= 10 ? value.slice(0, 10) : value;
+  const d = new Date(`${datePart}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
+}
+
+function ChField({ label, value }: { label: string; value: string | null | undefined }) {
+  return (
+    <div className="flex flex-col">
+      <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className="font-medium capitalize">{value ?? "—"}</span>
+    </div>
   );
 }
