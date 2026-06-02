@@ -593,6 +593,7 @@ export function NavigationSidebar() {
     collapsible: true,
     items: [
       { title: "Clinic Dashboard", url: "/clinic/dashboard", icon: Stethoscope },
+      { title: "Visit Board", url: "/clinic/waiting", icon: Activity },
       { title: "Patients", url: "/clinic/patients", icon: Heart },
       { title: "Treatments", url: "/clinic/treatments", icon: Syringe },
       { title: "Products", url: "/clinic/products", icon: Pill },

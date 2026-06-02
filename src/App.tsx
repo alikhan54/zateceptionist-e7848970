@@ -155,6 +155,7 @@ const ClinicProducts = lazy(() => import("./pages/clinic/Products"));
 const ConsultationNotes = lazy(() => import("./pages/clinic/ConsultationNotes"));
 const HealthReports = lazy(() => import("./pages/clinic/HealthReports"));
 const DoctorReviewQueue = lazy(() => import("./pages/clinic/DoctorReviewQueue"));
+const ClinicWaitingArea = lazy(() => import("./pages/clinic/WaitingArea"));
 
 // Real Estate Module
 const RealEstateDashboard = lazy(() => import("./pages/realestate/RealEstateDashboard"));
@@ -1265,6 +1266,14 @@ const App = () => (
 
                   {/* Clinic Module */}
                   <Route path="/clinic" element={<Navigate to="/clinic/dashboard" replace />} />
+                  <Route
+                    path="/clinic/waiting"
+                    element={
+                      <LazyPage>
+                        <ClinicWaitingArea />
+                      </LazyPage>
+                    }
+                  />
                   <Route
                     path="/clinic/dashboard"
                     element={
