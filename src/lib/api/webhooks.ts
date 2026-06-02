@@ -62,6 +62,8 @@ export const WEBHOOKS = {
   HR_REVIEW_GENERATE: "/hr/review/generate",
   HR_TRAINING_GENERATE: "/hr/training/generate",
   HR_TRAINING_AVATAR_VIDEO: "/hr/training/generate-avatar-video",
+  HR_CHAPTER_GENERATE: "/hr/training/generate-chapters",
+  HR_CHAPTER_POLL: "/hr/training/poll-chapters",
   HR_ATTENDANCE_TODAY: "/hr/attendance/today",
   HR_LEAVE_BALANCE: "/hr/leave/balance",
   HR_PAYROLL_SUMMARY: "/hr/payroll/summary",
