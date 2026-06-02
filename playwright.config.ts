@@ -525,5 +525,10 @@ export default defineConfig({
       testMatch: /hr-course-gen-verify\.spec\.ts/,
       use: { browserName: 'chromium' }, // no setup dep — fresh login; existing-course AI-content gen vs local preview (CG_BASE/HR_V6_BASE)
     },
+    {
+      name: 'chaptered-video-verify',
+      testMatch: /chaptered-video-verify\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — fresh login; chaptered HeyGen player vs local preview (CV_BASE/HR_V6_BASE)
+    },
   ],
 });
