@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,6 +22,8 @@ import {
 // name + address + dates + officers into the row we just INSERTed. The patched
 // CHS.11/CHS.13 (n8n RCLewTLovTg1GxV4) write name + formatted address back.
 import { useTriggerCompaniesHouseSync } from "@/hooks/useTriggerCompaniesHouseSync";
+// Phase B (2026-06-02): CH name search → autocomplete on the client-name field.
+import { useCompaniesHouseSearch, type ChSearchMatch } from "@/hooks/useCompaniesHouseSearch";
 
 const JURISDICTIONS: Array<{ code: string; label: string }> = [
   { code: "GB-ENG", label: "England & Wales" },
@@ -117,6 +119,14 @@ export function AddClientForm({
 
   const [form, setForm] = useState<FormState>(initial ? fromExisting(initial) : EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
+  // Phase B: CH name autocomplete. nameQuery drives the search; showSuggest toggles
+  // the dropdown; justPicked suppresses re-search right after a pick.
+  const [nameQuery, setNameQuery] = useState("");
+  const [showSuggest, setShowSuggest] = useState(false);
+  const justPicked = useRef(false);
+  const { matches: chMatches, loading: chSearchLoading } = useCompaniesHouseSearch(
+    mode === "create" ? nameQuery : "",
+  );
 
   useEffect(() => {
     setForm(initial ? fromExisting(initial) : EMPTY_FORM);
@@ -129,6 +139,27 @@ export function AddClientForm({
   function handleCrnBlur() {
     const j = jurisdictionFromCrn(form.company_no);
     if (j && !form.jurisdiction) set("jurisdiction", j);
+  }
+
+  // Phase B: pick a Companies House match → fill name + CRN (+ jurisdiction).
+  // The existing on-save CRN auto-sync then fills address/status/dates.
+  function pickChMatch(m: ChSearchMatch) {
+    justPicked.current = true;
+    setShowSuggest(false);
+    const crn = (m.company_number || "").toUpperCase();
+    setForm((prev) => ({
+      ...prev,
+      name: m.title || prev.name,
+      company_no: crn,
+      jurisdiction: prev.jurisdiction || jurisdictionFromCrn(crn) || "",
+    }));
+  }
+
+  function onNameChange(v: string) {
+    set("name", v);
+    if (justPicked.current) { justPicked.current = false; return; }
+    setNameQuery(v);
+    setShowSuggest(true);
   }
 
   function validate(): string | null {
@@ -188,17 +219,52 @@ export function AddClientForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4" data-testid="add-client-form">
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-1.5 sm:col-span-2">
+        <div className="space-y-1.5 sm:col-span-2 relative">
           <Label htmlFor="ac-name">Client name *</Label>
           <Input
             id="ac-name"
             data-testid="acf-name"
             value={form.name}
-            onChange={(e) => set("name", e.target.value)}
-            placeholder="e.g. Acme Holdings Ltd"
+            onChange={(e) => onNameChange(e.target.value)}
+            onFocus={() => { if (form.name.trim().length >= 2 && chMatches.length) setShowSuggest(true); }}
+            onBlur={() => setTimeout(() => setShowSuggest(false), 150)}
+            placeholder="Start typing a company name to search Companies House…"
+            autoComplete="off"
             required
             autoFocus
           />
+          {/* Phase B: CH name-search autocomplete dropdown (create mode). */}
+          {mode === "create" && showSuggest && (chSearchLoading || chMatches.length > 0) && (
+            <div
+              className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-72 overflow-y-auto"
+              data-testid="acf-name-suggest"
+            >
+              {chSearchLoading && (
+                <div className="px-3 py-2 text-xs text-muted-foreground">Searching Companies House…</div>
+              )}
+              {chMatches.map((m) => (
+                <button
+                  key={m.company_number ?? m.title ?? Math.random()}
+                  type="button"
+                  className="flex w-full flex-col items-start gap-0.5 border-b px-3 py-2 text-left text-xs hover:bg-muted/60 last:border-b-0"
+                  data-testid={`acf-suggest-${m.company_number}`}
+                  onMouseDown={(e) => { e.preventDefault(); pickChMatch(m); }}
+                >
+                  <span className="font-medium">{m.title}</span>
+                  <span className="text-muted-foreground">
+                    {m.company_number}
+                    {m.company_status ? ` · ${m.company_status}` : ""}
+                    {m.address_snippet ? ` · ${m.address_snippet}` : ""}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+          {mode === "create" && (
+            <p className="text-[10px] text-muted-foreground">
+              Pick a match to auto-fill the CRN + Companies House details, or type a name and enter the CRN manually.
+            </p>
+          )}
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="ac-crn">Company No.</Label>

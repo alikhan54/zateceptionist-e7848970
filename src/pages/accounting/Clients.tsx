@@ -46,6 +46,8 @@ interface AccountingClient {
   // Wave 2a Phase 1: surface CH company status + next accounts due in the list.
   company_status: string | null;
   accounts_next_due: string | null;
+  // Wave 2b Phase C: drive the "fetching from CH" spinner.
+  companies_house_sync_status: string | null;
 }
 
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -74,6 +76,8 @@ export default function AccountingClients() {
 
   const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
+  // Wave 2b Phase C: id of a just-added client awaiting CH sync → row shows a spinner.
+  const [syncingId, setSyncingId] = useState<string | null>(null);
   const [editTarget, setEditTarget] = useState<AccountingClientFull | null>(null);
 
   const clients: AccountingClient[] = useMemo(
@@ -88,6 +92,7 @@ export default function AccountingClients() {
         contact_email: c.contact_email,
         company_status: c.company_status,
         accounts_next_due: c.accounts_next_due,
+        companies_house_sync_status: c.companies_house_sync_status,
       })),
     [fullClients],
   );
@@ -221,7 +226,12 @@ export default function AccountingClients() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {c.company_status ? (
+                        {c.id === syncingId && c.companies_house_sync_status !== "synced" ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground" data-testid={`ch-fetching-${c.id}`}>
+                            <RefreshCw className="h-3 w-3 animate-spin" />
+                            Fetching from Companies House…
+                          </span>
+                        ) : c.company_status ? (
                           <Badge
                             variant={c.company_status.toLowerCase() === "active" ? "default" : "secondary"}
                             className="capitalize text-[10px]"
@@ -318,7 +328,17 @@ export default function AccountingClients() {
           </DialogHeader>
           <AddClientForm
             mode="create"
-            onSuccess={() => setAddOpen(false)}
+            onSuccess={(created) => {
+              setAddOpen(false);
+              // Phase C: if the new client has a CRN, the on-save CH sync is now
+              // running (~10-15s). Flag the row so it shows a "Fetching…" spinner
+              // until its sync_status flips to 'synced' (auto-cleared by the
+              // realtime-refreshed list, or after a 25s safety timeout).
+              if (created?.company_no) {
+                setSyncingId(created.id);
+                setTimeout(() => setSyncingId((cur) => (cur === created.id ? null : cur)), 25000);
+              }
+            }}
             onCancel={() => setAddOpen(false)}
           />
         </DialogContent>
