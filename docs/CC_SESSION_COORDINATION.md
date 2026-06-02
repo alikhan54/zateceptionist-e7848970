@@ -1,6 +1,6 @@
 # CC Multi-Session Coordination
 
-**Last updated:** 2026-05-30 (Session BSH-HMS PARKED+COMPLETE — backend live, releases main; Session C — Smart Ledger SHIPPED+PARKED; Recruitment E2E SHIPPED+PARKED — UI on main, awaiting Publish, other sessions clear)
+**Last updated:** 2026-06-02 (HR course-gen + Zate real-team SHIPPED+PARKED — UI on main, awaiting Publish; prior: BSH-HMS PARKED+COMPLETE, Smart Ledger SHIPPED+PARKED, Recruitment E2E SHIPPED+PARKED. Other sessions clear)
 
 > **🅿️ SESSION C — SMART LEDGER: PARKED + SHIPPED 2026-05-30.** All work is on `origin/main` and live on Lovable; working tree clean (no uncommitted tracked changes). **HR / other sessions are clear to push to main.** Commits (in order):
 > - `40c38eb` — Phase 1 ship: D7-C Invoices + parity F1-F4 (un-revert of `39c1234`), D7-D Reminders, F5/F6 Calendar+Workload, D7-E ACCOUNTANT chat widget, D7-F Add Client, E2E spec. Shipped via `git rebase --onto` that **preserved all 17 other-session commits** (video/HR/MP-S1) — no force-push, plain FF.
@@ -12,6 +12,18 @@
 > - Recovery anchor: local branch `session-c-backup-pre-rebase-20260530` (retain ~48h).
 
 **Prior "Last updated":** 2026-05-26 (HR V3 Decade-Ahead PARKED + Session A Cosmique PARKED)
+
+---
+
+## 🏁 HR course-gen + Zate real-team — SHIPPED + PARKED 2026-06-02
+
+**SHIPPED to `origin/main`** (tip `b353837`; merge-with-gates — dry-run clean, no force; base `24eeeb0` preserved). **UI live after Adeel clicks Publish.** Other sessions clear.
+- Commits: `9dd12ea` feat — Generate AI Content for an EXISTING course (no duplicate); `b353837` test+docs — course-gen UI verification + Zate team-cleanup record.
+- **Live in n8n (not git):** Training Generator `HTuKFLf8uiDnzPJA` patched → **existing-course mode** (pass `training_program_id` ⇒ writes content INTO that course, no duplicate; new-course path unchanged). Backup in `.tmp_diag`.
+- **Live in DB (not git):** Zate `hr_employees` cleaned — deleted 20 fakes (+ orphan attendance/leave/reviews/etc.), kept PHASE5-TestBot AI agent, added Adeel (CEO & CTO) / Moiz Hira (GM Sales) / Zaid (GM Marketing) + Executive/Sales/Marketing depts. Roster = 4; tenant-isolated (other tenants unchanged 41→24).
+- **NOT built (separate follow-up):** chaptered / longer training videos.
+- **Open flags for Adeel:** PHASE5-TestBot has a test-y display name (rename?); Zaid + Adeel have no surname.
+- Touched `hooks/useHR.ts`, `pages/hr/Training.tsx` (HR V3 parked owns these) + new `tests/hr-course-gen-verify.spec.ts` + `playwright.config.ts` entry.
 
 ---
 
