@@ -95,14 +95,19 @@ export default function AccountingClients() {
   const error = clientsError ? (clientsError as Error).message : null;
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const raw = search.trim();
+    const q = raw.toLowerCase();
     if (!q) return clients;
-    return clients.filter(
-      (c) =>
-        c.name?.toLowerCase().includes(q) ||
-        c.company_no?.toLowerCase().includes(q) ||
-        c.vat_number?.toLowerCase().includes(q),
-    );
+    // Wave 2a Phase 5: a numeric (or CRN-shaped, e.g. SC123456) query targets the
+    // company number; otherwise match by name. CRN match is a normalized
+    // startsWith so "12345678" or "SC1234" both resolve precisely (not a fuzzy
+    // both-field contains).
+    const looksLikeCrn = /^[0-9]+$/.test(raw) || /^[a-z]{1,2}[0-9]{4,}$/i.test(raw);
+    if (looksLikeCrn) {
+      const qn = q.replace(/\s+/g, "");
+      return clients.filter((c) => (c.company_no ?? "").toLowerCase().replace(/\s+/g, "").startsWith(qn));
+    }
+    return clients.filter((c) => c.name?.toLowerCase().includes(q));
   }, [clients, search]);
 
   const navigate = useNavigate();
@@ -135,7 +140,7 @@ export default function AccountingClients() {
           <div className="relative w-full md:w-72">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search by name, CRN, or VAT…"
+              placeholder="Search: number → CRN, text → name"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
