@@ -181,6 +181,11 @@ export default defineConfig({
       use: { browserName: 'chromium' }, // Wave 1 Phase B — Create Job picker reads accounting_job_types
     },
     {
+      name: 'wave1-prod-e2e',
+      testMatch: /wave1-prod-e2e\.spec\.ts/,
+      use: { browserName: 'chromium' }, // Wave 1 ship — PROD E2E + pixel proof
+    },
+    {
       name: 'smart-ledger-finance',
       testMatch: /smart-ledger-finance\.spec\.ts/,
       use: { browserName: 'chromium' }, // no setup dep — fresh login as Smart Ledger user; D7-B Finance verification
