@@ -62,6 +62,44 @@ export const CATEGORY_BY_CODE: Record<FilingCategory, FilingCategoryMeta> = Obje
   FILING_CATEGORIES.map((c) => [c.code, c]),
 ) as Record<FilingCategory, FilingCategoryMeta>;
 
+/**
+ * Wave 2a Phase 0 — badge metadata for the 14 DB-driven `accounting_job_types`
+ * codes (Wave 1 Phase B). Migrated MoneyPex jobs use these codes; without an
+ * entry here the Jobs-table badge rendered "untagged". This map powers
+ * `jobCategoryMeta()` (badge label/short/color) WITHOUT bloating the legacy
+ * FILING_CATEGORIES filter list. Keys are accounting_job_types.code values.
+ */
+export const JOB_TYPE_BADGE_META: Record<string, { label: string; short: string; color: string }> = {
+  annual_accounts:        { label: "Annual Accounts",            short: "AA",    color: "hsl(180 50% 45%)" },
+  corporation_tax:        { label: "Corporation Tax",            short: "CT",    color: "hsl(280 60% 55%)" },
+  confirmation_statement: { label: "Confirmation Statement",     short: "CS",    color: "hsl(140 50% 45%)" },
+  paye_monthly:           { label: "PAYE (Monthly)",             short: "PAYE",  color: "hsl(0 60% 55%)" },
+  self_assessment:        { label: "Self Assessment",            short: "SA",    color: "hsl(30 70% 50%)" },
+  vat_quarterly:          { label: "VAT Quarterly",              short: "VAT",   color: "hsl(210 80% 55%)" },
+  vat_registration:       { label: "VAT Registration",           short: "VAT-R", color: "hsl(210 70% 45%)" },
+  company_restoration:    { label: "Company Restoration",        short: "Rest",  color: "hsl(220 14% 50%)" },
+  vat_mtd:                { label: "VAT MTD Submission",         short: "MTD",   color: "hsl(210 70% 50%)" },
+  year_end_micro:         { label: "Year-End Accounts (Micro)",  short: "YE-M",  color: "hsl(180 50% 60%)" },
+  partnership_sa:         { label: "Partnership SA (SA800)",     short: "SA800", color: "hsl(30 60% 60%)" },
+  p11d:                   { label: "P11D Benefits",              short: "P11D",  color: "hsl(0 50% 65%)" },
+  cis_monthly:            { label: "CIS Monthly",                short: "CIS",   color: "hsl(340 60% 55%)" },
+  company_secretarial:    { label: "Company Secretarial Services", short: "CSec", color: "hsl(140 40% 60%)" },
+};
+
+/**
+ * Resolve badge metadata for a job's category code. Checks the Wave-2a
+ * job-type map first (DB-driven codes), then the legacy FILING_CATEGORIES,
+ * then a neutral fallback. Never returns null — callers always get a chip.
+ */
+export function jobCategoryMeta(code: string | null | undefined): { label: string; short: string; color: string } | null {
+  if (!code) return null;
+  const w2 = JOB_TYPE_BADGE_META[code];
+  if (w2) return w2;
+  const legacy = CATEGORY_BY_CODE[code as FilingCategory];
+  if (legacy) return { label: legacy.label, short: legacy.short, color: legacy.color };
+  return null;
+}
+
 export function categoryLabel(code: string | null | undefined): string {
   if (!code) return "Untagged";
   return CATEGORY_BY_CODE[code as FilingCategory]?.label ?? code;

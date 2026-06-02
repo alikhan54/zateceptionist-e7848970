@@ -71,8 +71,7 @@ import { useAccountingTeam } from "@/hooks/useAccountingTeam";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   FILING_CATEGORIES,
-  CATEGORY_BY_CODE,
-  type FilingCategory,
+  jobCategoryMeta,
 } from "@/lib/uk-filing-categories";
 import { useAccountingJobTypes } from "@/hooks/useAccountingJobTypes";
 import { computeJobDates, formatCompanyType } from "@/lib/job-date-engine";
@@ -785,20 +784,24 @@ export default function AccountingJobs() {
                         )}
                       </TableCell>
                       <TableCell>
-                        {job.category && CATEGORY_BY_CODE[job.category as FilingCategory] ? (
-                          <Badge
-                            variant="outline"
-                            className="font-medium"
-                            style={{
-                              borderColor: CATEGORY_BY_CODE[job.category as FilingCategory].color,
-                              color: CATEGORY_BY_CODE[job.category as FilingCategory].color,
-                            }}
-                          >
-                            {CATEGORY_BY_CODE[job.category as FilingCategory].short}
-                          </Badge>
-                        ) : (
-                          <span className="text-xs italic text-muted-foreground">untagged</span>
-                        )}
+                        {(() => {
+                          // Wave 2a Phase 0: resolve badge from the 14 DB-driven job_type
+                          // codes (migrated jobs) first, then legacy categories. Tooltip
+                          // shows the full label.
+                          const meta = jobCategoryMeta(job.category);
+                          return meta ? (
+                            <Badge
+                              variant="outline"
+                              className="font-medium"
+                              style={{ borderColor: meta.color, color: meta.color }}
+                              title={meta.label}
+                            >
+                              {meta.short}
+                            </Badge>
+                          ) : (
+                            <span className="text-xs italic text-muted-foreground">untagged</span>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell>
                         <Badge variant={STATUS_META[job.status].variant}>
