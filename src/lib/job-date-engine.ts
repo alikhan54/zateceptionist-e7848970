@@ -183,3 +183,52 @@ export function formatCompanyType(code: string | null | undefined): string | nul
   };
   return m[code] ?? code;
 }
+
+/**
+ * Wave 2a Phase 2 — auto-priority from days-to-deadline (confirmed boundaries):
+ *   deadline passed (<0) → urgent
+ *   0–30 days            → high
+ *   31–120 days          → medium
+ *   >120 days            → low
+ * Returns null when there's no deadline (caller keeps the current priority).
+ * Pure; pass `now` for deterministic tests.
+ */
+export function computePriority(
+  deadline: string | Date | null | undefined,
+  now: Date = new Date(),
+): "urgent" | "high" | "medium" | "low" | null {
+  if (!deadline) return null;
+  const dl = typeof deadline === "string" ? new Date(deadline.length >= 10 ? deadline.slice(0, 10) + "T00:00:00Z" : deadline) : deadline;
+  if (Number.isNaN(dl.getTime())) return null;
+  const day0 = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const dlDay = Date.UTC(dl.getUTCFullYear(), dl.getUTCMonth(), dl.getUTCDate());
+  const days = Math.round((dlDay - day0) / 86400000);
+  if (days < 0) return "urgent";
+  if (days <= 30) return "high";
+  if (days <= 120) return "medium";
+  return "low";
+}
+
+/**
+ * Wave 2a Phase 2 — auto-description from job type + period end.
+ *   Annual Accounts        → "Annual accounts filing for year end {date}"
+ *   Confirmation Statement → "Confirmation statement for period ending {date}"
+ *   else                   → "{Type} for period ending {date}"
+ * {date} = period_end formatted DD MMM YYYY. Returns "" when no period end
+ * (caller leaves description blank / user-entered untouched).
+ */
+export function computeJobDescription(
+  jobTypeName: string | null | undefined,
+  periodEnd: string | Date | null | undefined,
+): string {
+  if (!periodEnd) return "";
+  const d = typeof periodEnd === "string"
+    ? new Date((periodEnd.length >= 10 ? periodEnd.slice(0, 10) : periodEnd) + "T00:00:00Z")
+    : periodEnd;
+  if (Number.isNaN(d.getTime())) return "";
+  const dateStr = d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
+  const name = (jobTypeName || "").trim();
+  if (/annual accounts/i.test(name)) return `Annual accounts filing for year end ${dateStr}`;
+  if (/confirmation statement/i.test(name)) return `Confirmation statement for period ending ${dateStr}`;
+  return `${name || "Filing"} for period ending ${dateStr}`;
+}

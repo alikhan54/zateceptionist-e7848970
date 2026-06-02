@@ -74,7 +74,7 @@ import {
   jobCategoryMeta,
 } from "@/lib/uk-filing-categories";
 import { useAccountingJobTypes } from "@/hooks/useAccountingJobTypes";
-import { computeJobDates, formatCompanyType } from "@/lib/job-date-engine";
+import { computeJobDates, formatCompanyType, computePriority, computeJobDescription } from "@/lib/job-date-engine";
 // Phase 4 (2026-06-02): per-client tasking via ?client=<id>&new=1 URL params.
 import { useSearchParams } from "react-router-dom";
 // Phase E: auto-create a draft invoice when a job is created with an assignee
@@ -288,6 +288,10 @@ export default function AccountingJobs() {
   const [editingJob, setEditingJob] = useState<AccountingJob | null>(null);
   const [form, setForm] = useState<JobFormState>(EMPTY_FORM);
   const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
+  // Wave 2a Phase 2: track manual edits so auto-priority/auto-description never
+  // overwrite what the user typed/picked. Reset on dialog open/close.
+  const [priorityTouched, setPriorityTouched] = useState(false);
+  const [descriptionTouched, setDescriptionTouched] = useState(false);
 
   // Hydrate form when opening edit dialog
   useEffect(() => {
@@ -305,6 +309,10 @@ export default function AccountingJobs() {
       period_end: editingJob.period_end ?? "",
       staff_notes: editingJob.staff_notes ?? "",
     });
+    // Phase 2: existing job's priority + description are user data — preserve them
+    // (treat as touched so re-picking category won't auto-overwrite a saved value).
+    setPriorityTouched(true);
+    setDescriptionTouched(!!(editingJob.description && editingJob.description.trim()));
   }, [editingJob]);
 
   // Stats over the unfiltered list would be misleading once filters are active;
@@ -347,6 +355,9 @@ export default function AccountingJobs() {
         ? presetClientId
         : EMPTY_FORM.client_id,
     });
+    // Phase 2: fresh create → allow auto-priority/auto-description.
+    setPriorityTouched(false);
+    setDescriptionTouched(false);
     setShowCreateDialog(true);
   }
 
@@ -932,9 +943,10 @@ export default function AccountingJobs() {
                 id="job-description"
                 data-testid="job-form-description"
                 value={form.description}
-                onChange={(e) =>
-                  setForm({ ...form, description: e.target.value })
-                }
+                onChange={(e) => {
+                  setDescriptionTouched(true); // Phase 2: stop auto-description overwriting
+                  setForm({ ...form, description: e.target.value });
+                }}
                 placeholder="Optional notes, references, checklist hints…"
                 rows={3}
               />
@@ -1003,9 +1015,10 @@ export default function AccountingJobs() {
                 <Label>Priority</Label>
                 <Select
                   value={form.priority}
-                  onValueChange={(v) =>
-                    setForm({ ...form, priority: v as AccountingJobPriority })
-                  }
+                  onValueChange={(v) => {
+                    setPriorityTouched(true); // Phase 2: stop auto-priority overwriting
+                    setForm({ ...form, priority: v as AccountingJobPriority });
+                  }}
                 >
                   <SelectTrigger data-testid="job-form-priority">
                     <SelectValue />
@@ -1053,9 +1066,13 @@ export default function AccountingJobs() {
                   data-testid="job-form-deadline"
                   type="date"
                   value={form.deadline}
-                  onChange={(e) =>
-                    setForm({ ...form, deadline: e.target.value })
-                  }
+                  onChange={(e) => {
+                    // Phase 2: manual deadline edit refreshes auto-priority (unless
+                    // the user has set priority manually).
+                    const dl = e.target.value;
+                    const autoPriority = !priorityTouched && dl ? computePriority(dl) : null;
+                    setForm({ ...form, deadline: dl, priority: autoPriority ?? form.priority });
+                  }}
                 />
               </div>
             </div>
@@ -1077,13 +1094,25 @@ export default function AccountingJobs() {
                       ? clients.find((c) => c.id === form.client_id) ?? null
                       : null;
                   const dates = computeJobDates(jt, selClient);
+                  const newPeriodEnd = dates.period_end ?? form.period_end;
+                  const newDeadline = dates.deadline ?? form.deadline;
+                  // Phase 2: auto-priority from the (new) deadline + auto-description
+                  // from job type + period end — but NEVER overwrite manual input.
+                  const autoPriority =
+                    !priorityTouched && newDeadline
+                      ? computePriority(newDeadline)
+                      : null;
+                  const autoDesc =
+                    !descriptionTouched && jt && newPeriodEnd
+                      ? computeJobDescription(jt.name, newPeriodEnd)
+                      : null;
                   setForm({
                     ...form,
                     category: v,
-                    // Overwrite only when we computed a non-null value; otherwise
-                    // preserve whatever the user had so we don't wipe their input.
-                    period_end: dates.period_end ?? form.period_end,
-                    deadline: dates.deadline ?? form.deadline,
+                    period_end: newPeriodEnd,
+                    deadline: newDeadline,
+                    priority: autoPriority ?? form.priority,
+                    description: autoDesc !== null && autoDesc !== "" ? autoDesc : form.description,
                   });
                 }}
               >
