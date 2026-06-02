@@ -3,7 +3,12 @@ import { useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useTenant } from "@/contexts/TenantContext";
 
-export type AccountingJobStatus = "backlog" | "in_progress" | "review" | "done" | "blocked";
+// Wave 2a Phase 3: status is now a configurable code (accounting_job_statuses).
+// Keep legacy literals for autocomplete/back-compat while allowing the new
+// 13-stage codes (client_reached, paid, chasing, …) as plain strings.
+export type AccountingJobStatus =
+  | "backlog" | "in_progress" | "review" | "done" | "blocked"
+  | (string & {});
 export type AccountingJobPriority = "urgent" | "high" | "medium" | "low";
 
 export interface AccountingJobChecklistItem {

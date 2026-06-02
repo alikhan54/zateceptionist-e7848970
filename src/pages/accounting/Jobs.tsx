@@ -74,6 +74,8 @@ import {
   jobCategoryMeta,
 } from "@/lib/uk-filing-categories";
 import { useAccountingJobTypes } from "@/hooks/useAccountingJobTypes";
+import { useAccountingJobStatuses } from "@/hooks/useAccountingJobStatuses";
+import { useAccountingJobStatusCounts } from "@/hooks/useAccountingJobStatusCounts";
 import { computeJobDates, formatCompanyType, computePriority, computeJobDescription } from "@/lib/job-date-engine";
 // Phase 4 (2026-06-02): per-client tasking via ?client=<id>&new=1 URL params.
 import { useSearchParams } from "react-router-dom";
@@ -95,7 +97,9 @@ const OWNER_ALL = "all";
 const OWNER_ME = "me";
 const OWNER_UNASSIGNED = "unassigned";
 
-const STATUS_OPTIONS: AccountingJobStatus[] = [
+// Legacy 5-status fallback (used only when no DB statuses are seeded, e.g. a
+// non-accounting tenant). Wave 2a tenants drive status from accounting_job_statuses.
+const STATUS_OPTIONS: string[] = [
   "backlog",
   "in_progress",
   "review",
@@ -110,10 +114,7 @@ const PRIORITY_OPTIONS: AccountingJobPriority[] = [
   "low",
 ];
 
-const STATUS_META: Record<
-  AccountingJobStatus,
-  { variant: BadgeVariant; label: string }
-> = {
+const STATUS_META: Record<string, { variant: BadgeVariant; label: string }> = {
   backlog: { variant: "outline", label: "Backlog" },
   in_progress: { variant: "default", label: "In Progress" },
   review: { variant: "secondary", label: "Review" },
@@ -277,6 +278,27 @@ export default function AccountingJobs() {
     () => new Map(jobTypes.map((t) => [t.code, t])),
     [jobTypes],
   );
+  // Wave 2a Phase 3: DB-driven 13-stage status workflow.
+  const { data: jobStatuses = [] } = useAccountingJobStatuses();
+  const statusByCode = useMemo(
+    () => new Map(jobStatuses.map((s) => [s.code, s])),
+    [jobStatuses],
+  );
+  // Status codes to offer in selects/filters: DB stages (by sort_order) when
+  // seeded, else the legacy 5. Resolver returns {label,color,variant} for badges.
+  const statusOptionCodes = useMemo(
+    () => (jobStatuses.length ? jobStatuses.map((s) => s.code) : STATUS_OPTIONS),
+    [jobStatuses],
+  );
+  const statusMeta = (code: string): { label: string; color: string | null; variant: BadgeVariant } => {
+    const db = statusByCode.get(code);
+    if (db) return { label: db.label, color: db.color, variant: "outline" };
+    const legacy = STATUS_META[code];
+    if (legacy) return { label: legacy.label, color: null, variant: legacy.variant };
+    return { label: code, color: null, variant: "secondary" };
+  };
+  // Phase 3: unfiltered per-stage counts for the pipeline chip strip.
+  const { data: statusCounts = {} } = useAccountingJobStatusCounts();
   // Phase E: invoice creator + invoice-number generator (used inside handleSubmit
   // only — the auto-invoice path runs after a successful createJob).
   const { createInvoice } = useAccountingInvoices();
@@ -522,7 +544,7 @@ export default function AccountingJobs() {
       await updateJob.mutateAsync({ id: job.id, patch: { status: next } });
       toast({
         title: "Status changed",
-        description: `${job.title} → ${STATUS_META[next].label}`,
+        description: `${job.title} → ${statusMeta(next).label}`,
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Update failed";
@@ -646,9 +668,9 @@ export default function AccountingJobs() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All statuses</SelectItem>
-            {STATUS_OPTIONS.map((s) => (
+            {statusOptionCodes.map((s) => (
               <SelectItem key={s} value={s}>
-                {STATUS_META[s].label}
+                {statusMeta(s).label}
               </SelectItem>
             ))}
           </SelectContent>
@@ -702,6 +724,33 @@ export default function AccountingJobs() {
           </SelectContent>
         </Select>
       </div>
+
+      {/* Phase 3: compact pipeline chip strip — one chip per stage with its count,
+          click to filter. Only shown when DB stages are seeded (accounting tenant). */}
+      {jobStatuses.length > 0 && (
+        <div className="flex flex-wrap gap-2" data-testid="jobs-pipeline-strip">
+          {jobStatuses.map((s) => {
+            const count = statusCounts[s.code] ?? 0;
+            const activeChip = statusFilter === s.code;
+            return (
+              <button
+                key={s.code}
+                type="button"
+                onClick={() => setStatusFilter(activeChip ? "all" : s.code)}
+                data-testid={`pipeline-chip-${s.code}`}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                  activeChip ? "ring-2 ring-offset-1" : "hover:bg-muted/60"
+                }`}
+                style={{ borderColor: s.color ?? undefined, color: s.color ?? undefined }}
+                title={`${s.label}: ${count} job${count === 1 ? "" : "s"}`}
+              >
+                <span className="font-medium">{s.label}</span>
+                <span className="rounded-full bg-muted px-1.5 text-[10px] font-semibold text-foreground">{count}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Table */}
       <Card>
@@ -815,9 +864,16 @@ export default function AccountingJobs() {
                         })()}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={STATUS_META[job.status].variant}>
-                          {STATUS_META[job.status].label}
-                        </Badge>
+                        {(() => {
+                          const sm = statusMeta(job.status);
+                          return sm.color ? (
+                            <Badge variant="outline" className="font-medium" style={{ borderColor: sm.color, color: sm.color }}>
+                              {sm.label}
+                            </Badge>
+                          ) : (
+                            <Badge variant={sm.variant}>{sm.label}</Badge>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell>
                         <Badge variant={PRIORITY_META[job.priority].variant}>
@@ -856,7 +912,7 @@ export default function AccountingJobs() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            {STATUS_OPTIONS.filter((s) => s !== job.status).map(
+                            {statusOptionCodes.filter((s) => s !== job.status).map(
                               (s) => (
                                 <DropdownMenuItem
                                   key={s}
@@ -866,7 +922,7 @@ export default function AccountingJobs() {
                                   }}
                                   data-testid={`job-row-menu-status-${s}`}
                                 >
-                                  Move to {STATUS_META[s].label}
+                                  Move to {statusMeta(s).label}
                                 </DropdownMenuItem>
                               ),
                             )}
@@ -1003,9 +1059,9 @@ export default function AccountingJobs() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {STATUS_OPTIONS.map((s) => (
+                    {statusOptionCodes.map((s) => (
                       <SelectItem key={s} value={s}>
-                        {STATUS_META[s].label}
+                        {statusMeta(s).label}
                       </SelectItem>
                     ))}
                   </SelectContent>
