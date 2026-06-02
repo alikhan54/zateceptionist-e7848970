@@ -1,4 +1,7 @@
 import { useMemo, useState } from "react";
+// Phase 4 (2026-06-02): per-client tasking — clicking a row navigates to Jobs
+// filtered by client_id; "New job for this client" goes through the same URL with new=1.
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -97,11 +100,15 @@ export default function AccountingClients() {
     );
   }, [clients, search]);
 
-  const handleRowClick = () => {
-    toast({
-      title: "Per-client detail view",
-      description: "Jobs / invoices / payments / communication for a single client — coming in Phase 2.",
-    });
+  const navigate = useNavigate();
+  // Phase 4: row click → Jobs filtered by this client.
+  // Full 360-view (invoices/payments/comms in one panel) stays Phase 2; this unblocks tasking now.
+  const handleRowClick = (clientId: string) => {
+    navigate(`/accounting/jobs?client=${encodeURIComponent(clientId)}`);
+  };
+
+  const handleNewJobForClient = (clientId: string) => {
+    navigate(`/accounting/jobs?client=${encodeURIComponent(clientId)}&new=1`);
   };
 
   const handleEditClient = (id: string) => {
@@ -190,7 +197,8 @@ export default function AccountingClients() {
                     <TableRow
                       key={c.id}
                       className="cursor-pointer transition-colors hover:bg-muted/50"
-                      onClick={handleRowClick}
+                      onClick={() => handleRowClick(c.id)}
+                      data-testid={`client-row-${c.id}`}
                     >
                       <TableCell className="font-medium">{c.name}</TableCell>
                       <TableCell className="font-mono text-xs">{c.company_no || "—"}</TableCell>
@@ -246,10 +254,20 @@ export default function AccountingClients() {
                             <DropdownMenuItem
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleRowClick();
+                                handleRowClick(c.id);
                               }}
+                              data-testid={`client-row-view-jobs-${c.id}`}
                             >
-                              View details (Phase 2)
+                              View jobs for this client
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleNewJobForClient(c.id);
+                              }}
+                              data-testid={`client-row-new-job-${c.id}`}
+                            >
+                              New job for this client
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>

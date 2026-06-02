@@ -18,6 +18,10 @@ import {
   type ClientUpsertPayload,
   type AccountingClientFull,
 } from "@/hooks/useAccountingClients";
+// Phase 3 (2026-06-02): on save with a CRN, auto-fire CH sync so n8n PATCHes
+// name + address + dates + officers into the row we just INSERTed. The patched
+// CHS.11/CHS.13 (n8n RCLewTLovTg1GxV4) write name + formatted address back.
+import { useTriggerCompaniesHouseSync } from "@/hooks/useTriggerCompaniesHouseSync";
 
 const JURISDICTIONS: Array<{ code: string; label: string }> = [
   { code: "GB-ENG", label: "England & Wales" },
@@ -48,7 +52,10 @@ interface FormState {
 const EMPTY_FORM: FormState = {
   name: "",
   company_no: "",
-  vat_number: "",
+  // Phase 3 (2026-06-02): VAT defaults to "Exempt" per Adil's brief — UK accounting
+  // practices have many sub-threshold clients; "Exempt" is the safe default they can
+  // overwrite with a real VAT number.
+  vat_number: "Exempt",
   contact_email: "",
   contact_phone: "",
   beneficial_owner: "",
@@ -105,6 +112,8 @@ export function AddClientForm({
 }: AddClientFormProps) {
   const { toast } = useToast();
   const { createClient, updateClient } = useAccountingClients();
+  // Phase 3 (2026-06-02): auto-CH-sync after CREATE when CRN is set.
+  const chSync = useTriggerCompaniesHouseSync();
 
   const [form, setForm] = useState<FormState>(initial ? fromExisting(initial) : EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
@@ -149,6 +158,17 @@ export function AddClientForm({
       if (mode === "create") {
         const created = await createClient.mutateAsync(payload);
         toast({ title: "Client added", description: `${created.name} is on your roster.` });
+        // Phase 3 (2026-06-02): if a CRN was provided, auto-fire CH sync so the
+        // patched workflow (CHS.11/CHS.13) writes the official name + address +
+        // accounts/confirmation-statement dates + officers. Non-blocking — the
+        // client is already saved; sync failures surface their own toast via the
+        // hook. Realtime + onSuccess invalidations will refresh the list UI.
+        const crn = payload.company_no?.trim();
+        if (crn) {
+          chSync.mutateAsync([crn]).catch(() => {
+            /* toast handled inside the hook */
+          });
+        }
         setForm(EMPTY_FORM);
         onSuccess?.(created);
       } else {

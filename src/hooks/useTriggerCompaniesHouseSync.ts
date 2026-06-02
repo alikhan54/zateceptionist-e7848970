@@ -2,10 +2,24 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTenant } from "@/contexts/TenantContext";
 import { useToast } from "@/hooks/use-toast";
 
-const CH_WEBHOOK_URL =
-  (typeof import.meta !== "undefined" && (import.meta as { env?: { VITE_N8N_WEBHOOK_URL?: string } }).env?.VITE_N8N_WEBHOOK_URL
-    ? `${(import.meta as { env: { VITE_N8N_WEBHOOK_URL: string } }).env.VITE_N8N_WEBHOOK_URL}/companies-house-sync`
-    : "https://webhooks.zatesystems.com/webhook/companies-house-sync");
+// n8n webhook URLs are ALWAYS at /webhook/<path> — bare /<path> is NOT an alias
+// (documented in CLAUDE.md). Make the URL self-healing: if VITE_N8N_WEBHOOK_URL
+// is set without the /webhook segment, append it. Else fall back to the canonical
+// prod URL. Phase 3 (2026-06-02) — previous version produced ".../companies-house-sync"
+// without /webhook/ when the env var was set, which caused "Failed to fetch" on prod.
+function buildChWebhookUrl(): string {
+  const env =
+    typeof import.meta !== "undefined"
+      ? (import.meta as { env?: { VITE_N8N_WEBHOOK_URL?: string } }).env
+      : undefined;
+  const base = env?.VITE_N8N_WEBHOOK_URL?.replace(/\/+$/, "");
+  if (!base) return "https://webhooks.zatesystems.com/webhook/companies-house-sync";
+  // If the env var already includes /webhook, just append the path; else add /webhook/.
+  return /\/webhook$/.test(base)
+    ? `${base}/companies-house-sync`
+    : `${base}/webhook/companies-house-sync`;
+}
+const CH_WEBHOOK_URL = buildChWebhookUrl();
 
 interface ChSyncResponse {
   ok: boolean;
@@ -57,7 +71,11 @@ export function useTriggerCompaniesHouseSync() {
       return json;
     },
     onSuccess: (json, companyNos) => {
-      queryClient.invalidateQueries({ queryKey: ["accounting_clients", tenantId] });
+      // Phase 3 (2026-06-02) — invalidate ALL queryKeys that surface client data
+      // so the UI refetches the just-enriched rows. Previously this only invalidated
+      // ["accounting_clients", ...] which never existed (real key is *_full); the
+      // table didn't refresh after sync, masking the success.
+      queryClient.invalidateQueries({ queryKey: ["accounting_clients_full", tenantId] });
       queryClient.invalidateQueries({ queryKey: ["finance_clients_lite", tenantId] });
       queryClient.invalidateQueries({ queryKey: ["accounting_clients_list", tenantId] });
 

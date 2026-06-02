@@ -66,6 +66,11 @@ export interface UseAccountingJobsFilters {
    */
   ownerUserId?: string | "unassigned";
   category?: string;
+  /**
+   * Phase 4 (2026-06-02): per-client tasking — filter jobs to a single client_id.
+   * Driven by /accounting/jobs?client=<uuid> URL param from the Clients page.
+   */
+  clientId?: string;
 }
 
 export function useAccountingJobs(filters: UseAccountingJobsFilters = {}) {
@@ -90,6 +95,8 @@ export function useAccountingJobs(filters: UseAccountingJobsFilters = {}) {
         q = q.eq("owner_user_id", filters.ownerUserId);
       }
       if (filters.category) q = q.eq("category", filters.category);
+      // Phase 4: per-client tasking filter — driven by ?client=<uuid> URL param.
+      if (filters.clientId) q = q.eq("client_id", filters.clientId);
 
       // Open jobs first (alphabetically 'backlog' < 'blocked' < 'done' — ordering by deadline takes precedence)
       // Deadline asc with nulls last so dated work bubbles up; done jobs sink via secondary sort

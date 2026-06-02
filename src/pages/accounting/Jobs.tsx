@@ -76,6 +76,8 @@ import {
 } from "@/lib/uk-filing-categories";
 import { useAccountingJobTypes } from "@/hooks/useAccountingJobTypes";
 import { computeJobDates, formatCompanyType } from "@/lib/job-date-engine";
+// Phase 4 (2026-06-02): per-client tasking via ?client=<id>&new=1 URL params.
+import { useSearchParams } from "react-router-dom";
 // Phase E: auto-create a draft invoice when a job is created with an assignee
 // and the job-type has a default_fee. Idempotency is enforced at the DB layer
 // by the partial UNIQUE index on (tenant_id, job_id) WHERE job_id IS NOT NULL.
@@ -237,6 +239,11 @@ export default function AccountingJobs() {
     return team.find((m) => m.email?.toLowerCase() === user.email?.toLowerCase())?.id ?? null;
   }, [team, user?.email]);
 
+  // Phase 4 (2026-06-02): /accounting/jobs?client=<uuid>&new=1 drives per-client tasking.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const clientParam = searchParams.get("client") || "";
+  const newJobParam = searchParams.get("new") === "1";
+
   const filters = useMemo(() => {
     const f: Record<string, unknown> = {};
     if (statusFilter !== "all") f.status = statusFilter;
@@ -250,8 +257,10 @@ export default function AccountingJobs() {
     } else if (ownerFilter !== OWNER_ALL && ownerFilter !== OWNER_ME) {
       f.ownerUserId = ownerFilter;
     }
+    // Phase 4: filter the Jobs list to a single client when present.
+    if (clientParam) f.clientId = clientParam;
     return f;
-  }, [statusFilter, priorityFilter, search, categoryFilter, ownerFilter, currentUserPublicId]);
+  }, [statusFilter, priorityFilter, search, categoryFilter, ownerFilter, currentUserPublicId, clientParam]);
 
   const {
     jobs,
@@ -332,8 +341,13 @@ export default function AccountingJobs() {
     };
   }, [jobs]);
 
-  function openCreate() {
-    setForm(EMPTY_FORM);
+  function openCreate(presetClientId?: string) {
+    setForm({
+      ...EMPTY_FORM,
+      client_id: presetClientId && presetClientId !== ""
+        ? presetClientId
+        : EMPTY_FORM.client_id,
+    });
     setShowCreateDialog(true);
   }
 
@@ -341,7 +355,21 @@ export default function AccountingJobs() {
     setShowCreateDialog(false);
     setEditingJob(null);
     setForm(EMPTY_FORM);
+    // Phase 4: clear the new=1 URL param so reload doesn't re-open the dialog.
+    if (newJobParam) {
+      const sp = new URLSearchParams(searchParams);
+      sp.delete("new");
+      setSearchParams(sp, { replace: true });
+    }
   }
+
+  // Phase 4: on mount, if ?new=1, auto-open the Create dialog pre-filled with the URL client.
+  useEffect(() => {
+    if (newJobParam && !showCreateDialog && !editingJob) {
+      openCreate(clientParam || undefined);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newJobParam, clientParam]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -509,6 +537,12 @@ export default function AccountingJobs() {
   const dialogOpen = showCreateDialog || !!editingJob;
   const dialogMode: "create" | "edit" = editingJob ? "edit" : "create";
 
+  // Phase 4: name of the client we're filtered to (for header chip).
+  const filteredClientName = useMemo(() => {
+    if (!clientParam) return null;
+    return clients.find((c) => c.id === clientParam)?.name ?? null;
+  }, [clientParam, clients]);
+
   return (
     <div className="space-y-6 p-6">
       {/* Header */}
@@ -519,13 +553,35 @@ export default function AccountingJobs() {
             {isLoading
               ? "Loading…"
               : `${jobs.length} ${jobs.length === 1 ? "job" : "jobs"}${
-                  statusFilter !== "all" || priorityFilter !== "all" || search
+                  statusFilter !== "all" || priorityFilter !== "all" || search || clientParam
                     ? " (filtered)"
                     : ""
                 }`}
           </p>
+          {/* Phase 4: per-client filter chip — visible when ?client= is in the URL */}
+          {clientParam && (
+            <div className="mt-2 flex items-center gap-2 rounded-md border border-primary/40 bg-primary/5 px-3 py-1.5 text-xs"
+                 data-testid="jobs-client-filter-chip">
+              <span className="text-muted-foreground">Showing jobs for:</span>
+              <span className="font-medium">{filteredClientName ?? clientParam}</span>
+              <button
+                type="button"
+                className="ml-auto text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  const sp = new URLSearchParams(searchParams);
+                  sp.delete("client");
+                  sp.delete("new");
+                  setSearchParams(sp, { replace: true });
+                }}
+                data-testid="jobs-clear-client-filter"
+                aria-label="Clear client filter"
+              >
+                Clear filter
+              </button>
+            </div>
+          )}
         </div>
-        <Button onClick={openCreate} data-testid="new-job-button">
+        <Button onClick={() => openCreate(clientParam || undefined)} data-testid="new-job-button">
           <Plus className="mr-2 h-4 w-4" /> New Job
         </Button>
       </div>
