@@ -547,7 +547,7 @@ export default function TrainingPage() {
                 <CourseChapters
                   programId={playerRecord.program.id}
                   generating={generateChapters.isPending}
-                  onGenerate={() => generateChapters.mutate({ training_program_id: playerRecord.program.id })}
+                  onGenerate={(mode) => generateChapters.mutate({ training_program_id: playerRecord.program.id, avatar_mode: mode })}
                   onRefresh={() => refreshChapters.mutate({ training_program_id: playerRecord.program.id })}
                 />
               )}

@@ -530,5 +530,10 @@ export default defineConfig({
       testMatch: /chaptered-video-verify\.spec\.ts/,
       use: { browserName: 'chromium' }, // no setup dep — fresh login; chaptered HeyGen player vs local preview (CV_BASE/HR_V6_BASE)
     },
+    {
+      name: 'chaptered-custom-avatar-verify',
+      testMatch: /chaptered-custom-avatar-verify\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — fresh login; custom-avatar chaptered player vs local preview (CA_BASE/HR_V6_BASE)
+    },
   ],
 });

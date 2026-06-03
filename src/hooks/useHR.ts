@@ -1000,9 +1000,9 @@ export function useTraining() {
   // Chaptered training videos — async HeyGen (n8n cMU1weyCZFP3kVrw). Completion via the
   // HeyGen webhook → receiver KyIF7qhdTZR3o9E5, or the poll-once fallback NaVWUiV5oXsFZXDH.
   const generateChapters = useMutation({
-    mutationFn: async (data: { training_program_id: string; max_chapters?: number }) => {
+    mutationFn: async (data: { training_program_id: string; max_chapters?: number; avatar_mode?: string }) => {
       if (!tenantUuid) throw new Error('No tenant');
-      return callWebhookOrThrow(WEBHOOKS.HR_CHAPTER_GENERATE, { training_program_id: data.training_program_id, max_chapters: data.max_chapters }, tenantUuid);
+      return callWebhookOrThrow(WEBHOOKS.HR_CHAPTER_GENERATE, { training_program_id: data.training_program_id, max_chapters: data.max_chapters, avatar_mode: data.avatar_mode }, tenantUuid);
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["course-chapters", tenantUuid] }); toast.success("Chapter video generation started"); },
     onError: (e: any) => toast.error(`Chapter generation failed: ${e?.message || 'unknown'}`),

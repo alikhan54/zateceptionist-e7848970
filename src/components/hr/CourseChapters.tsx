@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { Film, Loader2, Sparkles, RefreshCw, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
+import { Film, Loader2, Sparkles, RefreshCw, CheckCircle2, AlertTriangle, Clock, User } from 'lucide-react';
 import { useCourseChapters } from '@/hooks/useHR';
+import { useTenant } from '@/contexts/TenantContext';
 
 const STATUS: Record<string, { label: string; cls: string; icon: any }> = {
   ready: { label: 'Ready', cls: 'bg-chart-2/10 text-chart-2 border-chart-2/20', icon: CheckCircle2 },
@@ -19,10 +22,17 @@ const STATUS: Record<string, { label: string; cls: string; icon: any }> = {
  */
 export function CourseChapters({ programId, onGenerate, onRefresh, generating }: {
   programId?: string;
-  onGenerate?: () => void;
+  onGenerate?: (avatarMode: string) => void;
   onRefresh?: () => void;
   generating?: boolean;
 }) {
+  const { tenantConfig } = useTenant();
+  const feats = (tenantConfig?.features || {}) as Record<string, any>;
+  const customAvatarLabel = feats.heygen_avatar_label as string | undefined;
+  const customAvatarPreview = feats.heygen_avatar_preview_url as string | undefined;
+  const hasCustomAvatar = !!feats.heygen_talking_photo_id;
+  const [avatarMode, setAvatarMode] = useState<string>(hasCustomAvatar ? 'custom' : 'default');
+
   const { data: chapters = [], isLoading } = useCourseChapters(programId);
   const ready = chapters.filter((c: any) => c.status === 'ready').length;
   const total = chapters.length;
@@ -39,13 +49,29 @@ export function CourseChapters({ programId, onGenerate, onRefresh, generating }:
           )}
         </div>
         <div className="flex items-center gap-2">
+          {hasCustomAvatar && onGenerate && (
+            <div className="flex items-center gap-1.5" data-testid="avatar-picker">
+              {avatarMode === 'custom' && customAvatarPreview && (
+                <img src={customAvatarPreview} alt="lecturer avatar" className="h-8 w-8 rounded-full object-cover border" data-testid="avatar-preview" />
+              )}
+              <Select value={avatarMode} onValueChange={setAvatarMode}>
+                <SelectTrigger className="h-8 w-[190px] text-xs">
+                  <span className="flex items-center gap-1.5 truncate"><User className="h-3.5 w-3.5 shrink-0" /><SelectValue /></span>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="custom" data-testid="avatar-custom">{customAvatarLabel || 'Custom avatar'}</SelectItem>
+                  <SelectItem value="default">Default (Anna)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           {anyGenerating && onRefresh && (
             <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={onRefresh} data-testid="chapters-refresh">
               <RefreshCw className="h-3.5 w-3.5" />Refresh
             </Button>
           )}
           {onGenerate && (
-            <Button size="sm" className="gap-1.5 h-8" onClick={onGenerate} disabled={generating} data-testid="chapters-generate">
+            <Button size="sm" className="gap-1.5 h-8" onClick={() => onGenerate(avatarMode)} disabled={generating} data-testid="chapters-generate">
               <Sparkles className="h-3.5 w-3.5" />{generating ? 'Starting…' : (total > 0 ? 'Regenerate' : 'Generate Chapter Videos')}
             </Button>
           )}
