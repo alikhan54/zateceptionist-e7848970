@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { UserPlus, HeartPulse, Phone, IdCard, ShieldCheck } from "lucide-react";
+import { EmiratesIdScan, type ExtractedId } from "@/components/clinic/EmiratesIdScan";
 
 const selectClass = "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm";
 
@@ -73,6 +74,20 @@ export function PatientRegistrationDialog({
   const setMed = (key: string, patch: Partial<{ value: boolean; details: string }>) =>
     setMedical((m) => ({ ...m, [key]: { ...m[key], ...patch } }));
 
+  // OCR prefill from the Emirates-ID scan (server-side Gemini); staff review before saving.
+  const applyOcr = (d: ExtractedId) => {
+    if (d.full_name) setFullName(d.full_name);
+    if (d.date_of_birth) setDob(d.date_of_birth);
+    if (d.emirates_id) setEmiratesId(d.emirates_id);
+    if (d.nationality) setNationality(d.nationality);
+    if (d.address) setAddress(d.address);
+    if (d.gender) {
+      const g = d.gender.toLowerCase();
+      if (g.startsWith("m")) setGender("male");
+      else if (g.startsWith("f")) setGender("female");
+    }
+  };
+
   const submit = async () => {
     if (!fullName.trim()) { toast({ title: "Full name is required", variant: "destructive" }); return; }
     if (!phone.trim()) { toast({ title: "Phone is required", variant: "destructive" }); return; }
@@ -134,6 +149,12 @@ export function PatientRegistrationDialog({
         </DialogHeader>
 
         <div className="space-y-5 py-1">
+          {/* Emirates-ID scan accelerator — prefill identity fields (server-side OCR; review before save) */}
+          <div className="flex items-center justify-between rounded-md border border-dashed bg-muted/30 px-3 py-2">
+            <span className="text-xs text-muted-foreground">Scan an Emirates ID / passport to auto-fill — or just type below.</span>
+            <EmiratesIdScan onExtracted={applyOcr} />
+          </div>
+
           {/* Identity */}
           <section className="space-y-3">
             <div className="text-sm font-semibold flex items-center gap-2"><IdCard className="h-4 w-4" /> Identity</div>
