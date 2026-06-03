@@ -27,6 +27,33 @@ export interface ClinicPatient {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  // Phase 1 additive intake/screening fields (optional; populated by registration)
+  nationality?: string | null;
+  country_of_residence?: string | null;
+  emirate?: string | null;
+  emirates_id?: string | null;
+  address?: string | null;
+  file_number?: string | null;
+  language?: string | null;
+  marketing_consent?: boolean;
+  preferred_practitioner?: string | null;
+  emergency_contact_name?: string | null;
+  emergency_contact_number?: string | null;
+  emergency_contact_relationship?: string | null;
+  // structured medical-flag pairs — SOURCE OF TRUTH for screening (Phase 1 convention)
+  medical_heart_disease?: boolean;
+  medical_heart_disease_details?: string | null;
+  medical_blood_pressure?: boolean;
+  medical_blood_pressure_details?: string | null;
+  medical_allergy?: boolean;
+  medical_allergy_details?: string | null;
+  medical_diabetes?: boolean;
+  medical_diabetes_details?: string | null;
+  medical_other?: boolean;
+  medical_other_details?: string | null;
+  treatment_interests?: string[] | null;
+  registration_signature_url?: string | null;
+  consultation_status?: string | null;
 }
 
 export function useClinicPatients(searchTerm?: string) {

@@ -11,10 +11,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useClinicPatients } from "@/hooks/useClinicPatients";
+import { PatientRegistrationDialog } from "@/components/clinic/PatientRegistrationDialog";
 import { Search, UserPlus, Phone, Mail, Heart, Star, ChevronRight, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -39,11 +37,10 @@ export default function Patients() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const [newPatient, setNewPatient] = useState({ full_name: "", phone: "", email: "", gender: "female", skin_type: "", preferred_contact: "whatsapp" });
   const { patients, isLoading, stats, createPatient } = useClinicPatients(searchTerm);
 
   // Phase 12.C — bulk + filter
-  const { tenantId } = useTenant();
+  const { tenantId, isHealthcareClinic } = useTenant();
   const queryClient = useQueryClient();
   const [sortBy, setSortBy] = useState("created");
   const [bulkBusy, setBulkBusy] = useState(false);
@@ -102,21 +99,6 @@ export default function Patients() {
     toast({ title: "Patients exported", description: `${rows.length} row${rows.length === 1 ? "" : "s"} downloaded` });
   };
 
-  const handleAddPatient = async () => {
-    if (!newPatient.full_name || !newPatient.phone) {
-      toast({ title: "Error", description: "Name and phone are required", variant: "destructive" });
-      return;
-    }
-    try {
-      await createPatient.mutateAsync(newPatient as any);
-      toast({ title: "Success", description: "Patient added successfully" });
-      setShowAddDialog(false);
-      setNewPatient({ full_name: "", phone: "", email: "", gender: "female", skin_type: "", preferred_contact: "whatsapp" });
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
-    }
-  };
-
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
@@ -133,57 +115,11 @@ export default function Patients() {
           >
             <Download className="mr-2 h-4 w-4" /> Export CSV
           </Button>
-          <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-            <DialogTrigger asChild>
-              <Button data-testid="add-patient-button"><UserPlus className="mr-2 h-4 w-4" /> Add Patient</Button>
-            </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>New Patient</DialogTitle></DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label>Full Name *</Label>
-                <Input value={newPatient.full_name} onChange={(e) => setNewPatient({...newPatient, full_name: e.target.value})} placeholder="e.g. Aisha Al Maktoum" />
-              </div>
-              <div className="grid gap-2">
-                <Label>Phone *</Label>
-                <Input value={newPatient.phone} onChange={(e) => setNewPatient({...newPatient, phone: e.target.value})} placeholder="+971501234567" />
-              </div>
-              <div className="grid gap-2">
-                <Label>Email</Label>
-                <Input value={newPatient.email} onChange={(e) => setNewPatient({...newPatient, email: e.target.value})} placeholder="patient@email.com" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label>Gender</Label>
-                  <Select value={newPatient.gender} onValueChange={(v) => setNewPatient({...newPatient, gender: v})}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="female">Female</SelectItem>
-                      <SelectItem value="male">Male</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label>Skin Type</Label>
-                  <Select value={newPatient.skin_type} onValueChange={(v) => setNewPatient({...newPatient, skin_type: v})}>
-                    <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="normal">Normal</SelectItem>
-                      <SelectItem value="oily">Oily</SelectItem>
-                      <SelectItem value="dry">Dry</SelectItem>
-                      <SelectItem value="combination">Combination</SelectItem>
-                      <SelectItem value="sensitive">Sensitive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <Button onClick={handleAddPatient} disabled={createPatient.isPending}>
-                {createPatient.isPending ? "Adding..." : "Add Patient"}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+          {isHealthcareClinic && (
+            <Button data-testid="add-patient-button" onClick={() => setShowAddDialog(true)}>
+              <UserPlus className="mr-2 h-4 w-4" /> Register Patient
+            </Button>
+          )}
         </div>
       </div>
 
@@ -302,6 +238,12 @@ export default function Patients() {
         onArchive={handleBulkArchive}
         busy={bulkBusy}
         entityNoun="patient"
+      />
+
+      <PatientRegistrationDialog
+        open={showAddDialog}
+        onOpenChange={setShowAddDialog}
+        onCreate={(payload) => createPatient.mutateAsync(payload as any)}
       />
     </div>
   );

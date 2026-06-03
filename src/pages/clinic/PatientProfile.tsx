@@ -13,6 +13,7 @@ import { PatientPhotosTab } from "@/components/clinic/PatientPhotosTab";
 import { EditPatientDialog } from "@/components/clinic/EditPatientDialog";
 import { PatientFilesTab } from "@/components/clinic/PatientFilesTab";
 import { PatientNotesTab } from "@/components/clinic/PatientNotesTab";
+import { PatientVisitsTab } from "@/components/clinic/PatientVisitsTab";
 import { useTenant } from "@/contexts/TenantContext";
 import {
   ArrowLeft, Phone, Mail, Cake, User, Stethoscope, Activity,
@@ -57,7 +58,7 @@ export default function PatientProfile() {
   const { patientId } = useParams<{ patientId: string }>();
   const navigate = useNavigate();
   const { data, isLoading } = useClinicPatient(patientId);
-  const { tenantConfig } = useTenant();
+  const { tenantConfig, isHealthcareClinic } = useTenant();
   const tenantUuid = tenantConfig?.id || "";
   const [addRxOpen, setAddRxOpen] = useState(false);
   const [editPatientOpen, setEditPatientOpen] = useState(false);
@@ -322,9 +323,10 @@ export default function PatientProfile() {
 
       {/* Tabs */}
       <Tabs defaultValue="timeline" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5 max-w-2xl">
+        <TabsList className={`grid w-full ${isHealthcareClinic ? "grid-cols-6 max-w-3xl" : "grid-cols-5 max-w-2xl"}`}>
           <TabsTrigger value="timeline"><ClipboardList className="h-3.5 w-3.5 mr-1.5" />Timeline</TabsTrigger>
           <TabsTrigger value="treatments"><Stethoscope className="h-3.5 w-3.5 mr-1.5" />Care</TabsTrigger>
+          {isHealthcareClinic && <TabsTrigger value="visits" data-testid="patient-visits-trigger"><Activity className="h-3.5 w-3.5 mr-1.5" />Visits</TabsTrigger>}
           <TabsTrigger value="photos"><ImageIcon className="h-3.5 w-3.5 mr-1.5" />Photos</TabsTrigger>
           <TabsTrigger value="files"><BookOpen className="h-3.5 w-3.5 mr-1.5" />Files</TabsTrigger>
           <TabsTrigger value="notes"><Pencil className="h-3.5 w-3.5 mr-1.5" />Notes</TabsTrigger>
@@ -447,6 +449,13 @@ export default function PatientProfile() {
             </div>
           )}
         </TabsContent>
+
+        {/* Visits — Phase 2d (read-only encounter history) */}
+        {isHealthcareClinic && (
+          <TabsContent value="visits">
+            {patientId && <PatientVisitsTab patientId={patientId} />}
+          </TabsContent>
+        )}
 
         {/* Photos — Phase 7 C.1 */}
         <TabsContent value="photos">

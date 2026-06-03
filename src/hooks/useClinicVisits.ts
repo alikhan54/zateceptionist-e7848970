@@ -148,6 +148,43 @@ export function useClinicVisits() {
   return { visits, isLoading, refetch, createVisit, saveVitals, completeVisit };
 }
 
+// Read-only visit history for one patient: each past visit + the treatments administered
+// on it (clinic_visit_treatments). Tenant-scoped; RLS filters cross-tenant. Newest first.
+export interface PatientVisitTreatment {
+  id: string; visit_id: string; treatment_id: string;
+  dose_administered: string | null; dose_unit: string | null;
+  package_id: string | null; administration_details: string | null; created_at: string;
+}
+export interface PatientVisit extends ClinicVisit { treatments: PatientVisitTreatment[]; }
+
+export function useClinicPatientVisits(patientId: string | undefined) {
+  const { tenantId } = useTenant();
+  return useQuery({
+    queryKey: ["clinic_patient_visits", tenantId, patientId],
+    queryFn: async () => {
+      if (!tenantId || !patientId) return [] as PatientVisit[];
+      const { data: visits, error } = await supabase
+        .from("clinic_visits" as any)
+        .select("*")
+        .eq("tenant_id", tenantId)
+        .eq("patient_id", patientId)
+        .order("visit_date", { ascending: false });
+      if (error) throw error;
+      const list = (visits || []) as unknown as ClinicVisit[];
+      if (list.length === 0) return [] as PatientVisit[];
+      const { data: tx } = await supabase
+        .from("clinic_visit_treatments" as any)
+        .select("id, visit_id, treatment_id, dose_administered, dose_unit, package_id, administration_details, created_at")
+        .eq("tenant_id", tenantId)
+        .in("visit_id", list.map((v) => v.id));
+      const byVisit: Record<string, PatientVisitTreatment[]> = {};
+      for (const t of (tx || []) as unknown as PatientVisitTreatment[]) (byVisit[t.visit_id] ||= []).push(t);
+      return list.map((v) => ({ ...v, treatments: byVisit[v.id] || [] })) as PatientVisit[];
+    },
+    enabled: !!tenantId && !!patientId,
+  });
+}
+
 // Active vitals config rows for the tenant (drives alert thresholds; empty => defaults).
 export function useClinicVitalsConfig() {
   const { tenantId } = useTenant();
