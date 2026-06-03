@@ -9,7 +9,7 @@ import { useTenant } from "@/contexts/TenantContext";
 import { useToast } from "@/hooks/use-toast";
 import { useClinicVisits, useClinicVitalsConfig, type ClinicVisit, type VitalsPayload } from "@/hooks/useClinicVisits";
 import { useClinicPatients } from "@/hooks/useClinicPatients";
-import { useAdministeredVisitIds } from "@/hooks/useClinicTreatmentAdmin";
+import { useVisitTreatmentCounts } from "@/hooks/useClinicTreatmentAdmin";
 import { TreatmentAdminDialog } from "@/components/clinic/TreatmentAdminDialog";
 import {
   VITAL_FIELDS, buildThresholdMap, classifyVital, summarizeVitals, type VitalStatus,
@@ -43,7 +43,7 @@ export default function WaitingArea() {
   const { toast } = useToast();
   const thresholds = useMemo(() => buildThresholdMap(vitalsConfig), [vitalsConfig]);
 
-  const { data: administeredSet } = useAdministeredVisitIds();
+  const { data: txCounts } = useVisitTreatmentCounts();
   const [checkInOpen, setCheckInOpen] = useState(false);
   const [patientSearch, setPatientSearch] = useState("");
   const [vitalsVisit, setVitalsVisit] = useState<ClinicVisit | null>(null);
@@ -125,17 +125,18 @@ export default function WaitingArea() {
             {v.current_status === "in_progress" && v.vitals_completed && (
               <>
                 <Button size="sm" variant="outline" onClick={() => setVitalsVisit(v)}>Review Vitals</Button>
-                {administeredSet?.has(v.id) ? (
-                  <Badge variant="secondary" data-testid="treatment-recorded-badge" className="cursor-pointer" onClick={() => setAdminVisit(v)}>Treatment recorded</Badge>
-                ) : (
-                  <Button size="sm" variant="outline" data-testid="administer-treatment-btn" onClick={() => setAdminVisit(v)}>
-                    <Syringe className="h-4 w-4 mr-1" />Administer
-                  </Button>
-                )}
+                <Button size="sm" variant="outline" data-testid="administer-treatment-btn" onClick={() => setAdminVisit(v)}>
+                  <Syringe className="h-4 w-4 mr-1" />{(txCounts?.get(v.id) ?? 0) > 0 ? `Treatments (${txCounts!.get(v.id)})` : "Add treatment"}
+                </Button>
                 <Button size="sm" data-testid="complete-visit-btn" onClick={() => handleComplete(v)} disabled={completeVisit.isPending}>
                   <CheckCircle2 className="h-4 w-4 mr-1" />Complete Visit
                 </Button>
               </>
+            )}
+            {v.current_status === "completed" && (txCounts?.get(v.id) ?? 0) > 0 && (
+              <Button size="sm" variant="outline" data-testid="view-ledger-btn" onClick={() => setAdminVisit(v)}>
+                <Syringe className="h-4 w-4 mr-1" />View ledger ({txCounts!.get(v.id)})
+              </Button>
             )}
           </div>
         </CardContent>
@@ -224,7 +225,7 @@ export default function WaitingArea() {
       <TreatmentAdminDialog
         visit={adminVisit}
         onClose={() => setAdminVisit(null)}
-        onAdministered={() => setAdminVisit(null)}
+        onAdministered={() => { /* keep dialog open to stack more treatments; board refreshes via query invalidation */ }}
       />
     </div>
   );

@@ -156,6 +156,7 @@ const ConsultationNotes = lazy(() => import("./pages/clinic/ConsultationNotes"))
 const HealthReports = lazy(() => import("./pages/clinic/HealthReports"));
 const DoctorReviewQueue = lazy(() => import("./pages/clinic/DoctorReviewQueue"));
 const ClinicWaitingArea = lazy(() => import("./pages/clinic/WaitingArea"));
+const ClinicPackages = lazy(() => import("./pages/clinic/ClinicPackages"));
 
 // Real Estate Module
 const RealEstateDashboard = lazy(() => import("./pages/realestate/RealEstateDashboard"));
@@ -1271,6 +1272,14 @@ const App = () => (
                     element={
                       <LazyPage>
                         <ClinicWaitingArea />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/clinic/packages"
+                    element={
+                      <LazyPage>
+                        <ClinicPackages />
                       </LazyPage>
                     }
                   />
