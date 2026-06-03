@@ -9,10 +9,12 @@ import { useTenant } from "@/contexts/TenantContext";
 import { useToast } from "@/hooks/use-toast";
 import { useClinicVisits, useClinicVitalsConfig, type ClinicVisit, type VitalsPayload } from "@/hooks/useClinicVisits";
 import { useClinicPatients } from "@/hooks/useClinicPatients";
+import { useAdministeredVisitIds } from "@/hooks/useClinicTreatmentAdmin";
+import { TreatmentAdminDialog } from "@/components/clinic/TreatmentAdminDialog";
 import {
   VITAL_FIELDS, buildThresholdMap, classifyVital, summarizeVitals, type VitalStatus,
 } from "@/lib/clinic/vitalsThresholds";
-import { Activity, UserPlus, Clock, Stethoscope, CheckCircle2, AlertTriangle, Search, Lock } from "lucide-react";
+import { Activity, UserPlus, Clock, Stethoscope, CheckCircle2, AlertTriangle, Search, Lock, Syringe } from "lucide-react";
 
 const REQUIRED = ["temperature", "heart_rate", "blood_pressure_systolic", "blood_pressure_diastolic", "spo2"];
 
@@ -41,9 +43,11 @@ export default function WaitingArea() {
   const { toast } = useToast();
   const thresholds = useMemo(() => buildThresholdMap(vitalsConfig), [vitalsConfig]);
 
+  const { data: administeredSet } = useAdministeredVisitIds();
   const [checkInOpen, setCheckInOpen] = useState(false);
   const [patientSearch, setPatientSearch] = useState("");
   const [vitalsVisit, setVitalsVisit] = useState<ClinicVisit | null>(null);
+  const [adminVisit, setAdminVisit] = useState<ClinicVisit | null>(null);
 
   // MANDATORY industry gate: the /clinic route is reachable by URL for any authed user
   // (no route-level gate), so non-clinic tenants must NOT see floor data/PHI here.
@@ -121,6 +125,13 @@ export default function WaitingArea() {
             {v.current_status === "in_progress" && v.vitals_completed && (
               <>
                 <Button size="sm" variant="outline" onClick={() => setVitalsVisit(v)}>Review Vitals</Button>
+                {administeredSet?.has(v.id) ? (
+                  <Badge variant="secondary" data-testid="treatment-recorded-badge" className="cursor-pointer" onClick={() => setAdminVisit(v)}>Treatment recorded</Badge>
+                ) : (
+                  <Button size="sm" variant="outline" data-testid="administer-treatment-btn" onClick={() => setAdminVisit(v)}>
+                    <Syringe className="h-4 w-4 mr-1" />Administer
+                  </Button>
+                )}
                 <Button size="sm" data-testid="complete-visit-btn" onClick={() => handleComplete(v)} disabled={completeVisit.isPending}>
                   <CheckCircle2 className="h-4 w-4 mr-1" />Complete Visit
                 </Button>
@@ -206,6 +217,14 @@ export default function WaitingArea() {
             toast({ title: "Could not save vitals", description: e.message, variant: "destructive" });
           }
         }}
+      />
+
+      {/* Treatment administration dialog (writes clinic_visit_treatments + clinic_visit_consumables
+          + decrements ops inventory; idempotency guard prevents double-decrement). */}
+      <TreatmentAdminDialog
+        visit={adminVisit}
+        onClose={() => setAdminVisit(null)}
+        onAdministered={() => setAdminVisit(null)}
       />
     </div>
   );
