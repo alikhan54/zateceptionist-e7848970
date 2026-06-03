@@ -535,5 +535,10 @@ export default defineConfig({
       testMatch: /chaptered-custom-avatar-verify\.spec\.ts/,
       use: { browserName: 'chromium' }, // no setup dep — fresh login; custom-avatar chaptered player vs local preview (CA_BASE/HR_V6_BASE)
     },
+    {
+      name: 'rehost-permanent-verify',
+      testMatch: /rehost-permanent-verify\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — fresh login; re-host permanence (Supabase storage) vs local preview (RH_BASE/HR_V6_BASE)
+    },
   ],
 });
