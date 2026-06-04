@@ -40,7 +40,7 @@ export type VitalsPayload = Partial<Pick<ClinicVisit,
 const SELECT = "*, patient:clinic_patients(id, full_name, phone, date_of_birth)";
 
 export function useClinicVisits() {
-  const { tenantId } = useTenant();
+  const { tenantId, isHealthcareClinic } = useTenant();
   const { authUser } = useAuth();
   const queryClient = useQueryClient();
   const staffId = authUser?.id ?? null; // public.users.id (FK target for *_staff_id)
@@ -141,6 +141,74 @@ export function useClinicVisits() {
         .eq("id", id)
         .eq("tenant_id", tenantId);
       if (error) throw error;
+
+      // Phase 3b (additive): schedule ONE day-1 post-care follow-up for this completed visit.
+      // Best-effort — NEVER blocks completion; idempotent on visit_id; healthcare-clinic only.
+      // The "420 Clinic Appointment Reminders + No-Show" workflow's delivery branch then enqueues
+      // it via the central queue (does NOT touch ops_inventory_* or clinic_visit_* consumption rows).
+      if (isHealthcareClinic) {
+        try {
+          const { data: existing } = await supabase
+            .from("clinic_post_care_schedule" as any)
+            .select("id")
+            .eq("tenant_id", tenantId)
+            .eq("visit_id", id)
+            .limit(1);
+          if (!existing || existing.length === 0) {
+            let patientId = visits.find((v) => v.id === id)?.patient_id ?? null;
+            if (!patientId) {
+              const { data: vrow } = await supabase
+                .from("clinic_visits" as any)
+                .select("patient_id")
+                .eq("id", id)
+                .eq("tenant_id", tenantId)
+                .single();
+              patientId = (vrow as any)?.patient_id ?? null;
+            }
+            if (patientId) {
+              // name the administered treatments in the message (best-effort; generic if none)
+              let treatmentLabel = "treatment";
+              try {
+                const { data: vts } = await supabase
+                  .from("clinic_visit_treatments" as any)
+                  .select("treatment_id")
+                  .eq("tenant_id", tenantId)
+                  .eq("visit_id", id);
+                const ids = [...new Set(((vts as any[]) || []).map((t) => t.treatment_id).filter(Boolean))];
+                if (ids.length) {
+                  const { data: trs } = await supabase
+                    .from("clinic_treatments" as any)
+                    .select("id, name")
+                    .eq("tenant_id", tenantId)
+                    .in("id", ids);
+                  const names = ((trs as any[]) || []).map((t) => t.name).filter(Boolean);
+                  if (names.length) treatmentLabel = names.join(", ");
+                }
+              } catch {
+                /* keep generic label */
+              }
+              const tomorrow = new Date();
+              tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+              await supabase.from("clinic_post_care_schedule" as any).insert({
+                tenant_id: tenantId,
+                patient_id: patientId,
+                visit_id: id,
+                treatment_name: treatmentLabel,
+                day_number: 1,
+                scheduled_date: tomorrow.toISOString().slice(0, 10),
+                channel: "whatsapp",
+                message_template:
+                  `Hi {name}, hope you're feeling great after your ${treatmentLabel} at the clinic today. ` +
+                  `Aftercare reminder: apply SPF, stay hydrated, and avoid direct heat/sun. Reply here if you have any questions.`,
+                status: "pending",
+              } as any);
+            }
+          }
+        } catch (e) {
+          // never block visit completion on the follow-up write
+          console.warn("[clinic] post-care follow-up scheduling failed (non-blocking):", e);
+        }
+      }
     },
     onSuccess: invalidate,
   });
