@@ -9,7 +9,7 @@
 | Timestamp (UTC) | Session ID | Phase / Activity | Areas touched | Status |
 |---|---|---|---|---|
 | 2026-06-04 | jx-p0-discovery | Phase 0 discovery — read-only | none (docs only: COORDINATION.md, STATE_JEWELRY.md, DISCOVERY_FINDINGS.md on branch `feat/jx-p0`) | in progress |
-| 2026-06-04T16:09:21Z | jx-p0-discovery (resume) | Phase 0 RESUME — read-only | none (docs only; recovered prior `.tmp_jx` introspection, finishing auth/templates/RLS/risk on branch `feat/jx-p0`) | in progress |
+| 2026-06-04T16:09:21Z | jx-p0-discovery (resume) | Phase 0 RESUME — read-only | none (docs only; recovered prior `.tmp_jx` introspection, finishing auth/templates/RLS/risk on branch `feat/jx-p0`) | ✅ complete — DISCOVERY_FINDINGS.md written; Phase 0 closed |
 
 ## Locks (claim before editing a shared file in a later phase)
 
