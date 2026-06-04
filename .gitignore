@@ -30,3 +30,4 @@ test-results/
 # BSH demo access (LOCAL ONLY, never commit)
 DEMO_ACCESS.txt
 bsh-hms/
+docs/n8n-rehost/

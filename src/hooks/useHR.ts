@@ -997,7 +997,52 @@ export function useTraining() {
     onError: (e: any) => toast.error(e?.message || "Failed to add content"),
   });
 
-  return { programs, enrollments, enroll, createProgram, generateCourse, generateAvatarVideo, updateCourse, deleteCourse, addCourseMedia };
+  // Chaptered training videos — async HeyGen (n8n cMU1weyCZFP3kVrw). Completion via the
+  // HeyGen webhook → receiver KyIF7qhdTZR3o9E5, or the poll-once fallback NaVWUiV5oXsFZXDH.
+  const generateChapters = useMutation({
+    mutationFn: async (data: { training_program_id: string; max_chapters?: number; avatar_mode?: string }) => {
+      if (!tenantUuid) throw new Error('No tenant');
+      return callWebhookOrThrow(WEBHOOKS.HR_CHAPTER_GENERATE, { training_program_id: data.training_program_id, max_chapters: data.max_chapters, avatar_mode: data.avatar_mode }, tenantUuid);
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["course-chapters", tenantUuid] }); toast.success("Chapter video generation started"); },
+    onError: (e: any) => toast.error(`Chapter generation failed: ${e?.message || 'unknown'}`),
+  });
+  const refreshChapters = useMutation({
+    mutationFn: async (data: { training_program_id: string }) => {
+      if (!tenantUuid) throw new Error('No tenant');
+      return callWebhookOrThrow(WEBHOOKS.HR_CHAPTER_POLL, { training_program_id: data.training_program_id }, tenantUuid);
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["course-chapters", tenantUuid] }); },
+    onError: () => { /* poll is best-effort */ },
+  });
+
+  return { programs, enrollments, enroll, createProgram, generateCourse, generateAvatarVideo, updateCourse, deleteCourse, addCourseMedia, generateChapters, refreshChapters };
+}
+
+// Chapters for a course (hr_course_chapters). Auto-polls every 8s while any chapter is
+// still generating, so completed videos appear without a manual refresh.
+export function useCourseChapters(programId?: string) {
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
+  return useQuery({
+    queryKey: ["course-chapters", tenantUuid, programId],
+    queryFn: async () => {
+      if (!tenantUuid || !programId) return [] as any[];
+      const { data, error } = await supabase
+        .from('hr_course_chapters')
+        .select('*')
+        .eq('tenant_id', tenantUuid)
+        .eq('training_program_id', programId)
+        .order('chapter_order', { ascending: true });
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+    enabled: !!tenantUuid && !!programId,
+    refetchInterval: (q: any) => {
+      const rows = (q?.state?.data as any[]) || [];
+      return rows.some((r) => r.status === 'generating' || r.status === 'queued') ? 8000 : false;
+    },
+  });
 }
 
 // ═══════════════════════════════════════════════════════════

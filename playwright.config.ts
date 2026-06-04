@@ -525,5 +525,20 @@ export default defineConfig({
       testMatch: /hr-course-gen-verify\.spec\.ts/,
       use: { browserName: 'chromium' }, // no setup dep — fresh login; existing-course AI-content gen vs local preview (CG_BASE/HR_V6_BASE)
     },
+    {
+      name: 'chaptered-video-verify',
+      testMatch: /chaptered-video-verify\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — fresh login; chaptered HeyGen player vs local preview (CV_BASE/HR_V6_BASE)
+    },
+    {
+      name: 'chaptered-custom-avatar-verify',
+      testMatch: /chaptered-custom-avatar-verify\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — fresh login; custom-avatar chaptered player vs local preview (CA_BASE/HR_V6_BASE)
+    },
+    {
+      name: 'rehost-permanent-verify',
+      testMatch: /rehost-permanent-verify\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — fresh login; re-host permanence (Supabase storage) vs local preview (RH_BASE/HR_V6_BASE)
+    },
   ],
 });
