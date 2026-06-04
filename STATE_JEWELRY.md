@@ -23,7 +23,8 @@
 | 4 | **Jewelry vertical FE** — `isJewellery` gating + Jewelry sidebar + Command Center + Gold Rate (built + tested on LOCAL preview; **NOT deployed**) | ✅ VERIFIED (local) | 2026-06-04 |
 | 5 | **Inventory/Stock page** — item entry + live calc valuation + stone sub-grid + tag/barcode + list/search/edit → `jx_item`/`jx_stone` (LOCAL; **NOT deployed**) | ✅ VERIFIED (local) | 2026-06-04 |
 | 6 | **Point of Sale** — atomic sale via `jx_create_sale` RPC + live calc + old-gold (no double-count) + mixed tender + itemized invoice → `jx_sale`/`jx_sale_item`/`jx_old_gold`/`jx_gold_ledger` + mark sold (RPC LIVE in DB; FE LOCAL, **NOT deployed**) | ✅ VERIFIED (local) | 2026-06-04 |
-| (later) | **PKR double-entry GL posting** (`jx_account`/`jx_voucher`/`jx_voucher_line`) = Phase 8; remaining pages (Orders/Customers/Workers/Repairs); **deploy P4–P6** (merge→main / Lovable publish) | NOT STARTED | — |
+| 7 | **Orders/Custom** — bespoke spec + FIX-RATE lock + advance + status pipeline via `jx_create_order` RPC → `jx_order`/`jx_order_item` (RPC LIVE in DB; FE LOCAL, **NOT deployed**) | ✅ VERIFIED (local) | 2026-06-04 |
+| (later) | **Phase 8 = PKR double-entry GL + order→sale finalization** (`jx_account`/`jx_voucher`/`jx_voucher_line` + gold posting); remaining pages (Customers/Workers/Repairs); **deploy P4–P7** (merge→main / Lovable publish) | NOT STARTED | — |
 
 ## Phase 1 — provisioning (VERIFIED 2026-06-04)
 **New tenant (LIVE in production):**
@@ -108,6 +109,20 @@ Direct sale: pick in-stock items → live calc.ts pricing (editable rate/waste/m
   - **Isolation both directions:** control bbqtonight has **no Point of Sale / no Jewelry** section; SET-ROLE-authenticated as bbq sees **0** legacy `jx_sale`/`jx_gold_ledger` and a direct INSERT of a legacy `jx_sale` is **DENIED by RLS** (so the SECURITY-INVOKER RPC cannot write Legacy rows when called by another tenant). No console errors.
   - Screenshots: `.tmp_jx/shots/p6-sale1-invoice.png`, `p6-sale2-invoice.png`, `p6-control-bbq.png` (not committed).
 - **Cleanup confirmed:** all test sales/items/old_gold/ledger/stones deleted (legacy jx_sale=0, jx_gold_ledger=0, jx_item=0); 22K rate restored to placeholder; `onboarding_completed`→false. The `jx_create_sale` function remains live (additive, reversible, no prod caller until P4–P6 deploy).
+
+## Phase 7 — Orders/Custom (VERIFIED on LOCAL preview 2026-06-04 — RPC live in DB; FE NOT deployed)
+Bespoke orders: spec lines → calc.ts estimate at **fixed_rate** (when locked) else live rate → advance + delivery date → **status pipeline** (booked → in_workshop → ready → delivered/cancelled). Records `jx_order`/`jx_order_item` via `jx_create_order`. **SCOPE: no final sale, no gold ledger, no vouchers** (order→sale finalization + GL = Phase 8). Notifications **prepared/displayed only** (Phase 13 sends).
+
+- **RPC (additive, LIVE in DB via direct 5432):** `public.jx_create_order(p_payload jsonb)` — `SECURITY INVOKER`, one txn: per-tenant `order_no` (ORD-NNNNN) + `jx_order` + `jx_order_item[]`; `tenant_id=get_user_tenant_id()`. File `repo/supabase/migrations/jx-004-create-order-rpc.sql` (rollback `DROP FUNCTION public.jx_create_order(jsonb)`).
+- **New FE files:** `src/pages/jewelry/Orders.tsx`, `src/hooks/useJewelryOrders.ts`. **Edits:** `NavigationSidebar.tsx` (+"Orders" in Jewelry section), `App.tsx` (+`/jewelry/orders`). No package.json/lockfile change.
+- **FIX-RATE model:** toggling fix-rate snapshots the current live `jx_gold_rate` for the line's karat into `jx_order.fixed_rate`; estimates use `fixed_rate` when `is_fix_rate` else live. Detail view recomputes line via calc.ts `saleLineTotal` (stored making/polish/stone as fixed charges) at the effective rate.
+- **PROOF (executed, local preview):**
+  - **Booking:** 22K/net 10/waste 8/making 800/stone 15000, fix-rate ON → note "Rate locked at PKR 22,000/g"; line est **260,600** (calc.ts A @22000); net_amount **260,600**; advance 50,000 → **balance 210,600**. DB: `jx_order` ORD-00001 `is_fix_rate=true`, `fixed_rate=22000`, advance 50000, net 260600, balance 210600; `jx_order_item` line_total 260600.
+  - **FIX-RATE LOCK (the USP):** changed live 22K → 24,000 via the Gold Rate page, reopened the order → estimate **STILL 260,600** (locked @22000), **NOT 282,200** (what 24,000 would give). Live-rate badge on a fresh line showed 24,000 while the order held 22,000 — visible side-by-side.
+  - **Status pipeline:** booked→in_workshop→ready→delivered each persisted (`jx_order.status`); the would-be customer message displayed per status (NOT sent).
+  - **Isolation both ways:** control bbqtonight has no Orders/Jewelry; SET-ROLE-authenticated as bbq sees **0** legacy `jx_order` and a direct legacy INSERT is **DENIED by RLS**. No console errors.
+  - Screenshots: `.tmp_jx/shots/p7-order-booked.png`, `p7-fixrate-lock.png`, `p7-pipeline.png`, `p7-control-bbq.png` (not committed).
+- **Cleanup confirmed:** test order+items deleted (legacy jx_order=0, jx_order_item=0); **all 4 gold rates restored to placeholder** (the Gold Rate UI save upserts every karat, so 24/21/18 had flipped to manual@1 — all reset to placeholder@1); `onboarding_completed`→false. `jx_create_order` remains live (additive, no prod caller until deploy).
 
 ## Phase 0 discovery checklist (VERIFIED vs OPEN)
 | Item | Status | Where |

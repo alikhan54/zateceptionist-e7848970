@@ -161,6 +161,7 @@ const JewelryDashboard = lazy(() => import("./pages/jewelry/Dashboard"));
 const JewelryGoldRate = lazy(() => import("./pages/jewelry/GoldRate"));
 const JewelryInventory = lazy(() => import("./pages/jewelry/Inventory"));
 const JewelryPOS = lazy(() => import("./pages/jewelry/PointOfSale"));
+const JewelryOrders = lazy(() => import("./pages/jewelry/Orders"));
 
 // Real Estate Module
 const RealEstateDashboard = lazy(() => import("./pages/realestate/RealEstateDashboard"));
@@ -1300,6 +1301,14 @@ const App = () => (
                     element={
                       <LazyPage>
                         <JewelryPOS />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/jewelry/orders"
+                    element={
+                      <LazyPage>
+                        <JewelryOrders />
                       </LazyPage>
                     }
                   />

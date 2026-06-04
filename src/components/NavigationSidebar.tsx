@@ -593,6 +593,7 @@ export function NavigationSidebar() {
     items: [
       { title: "Command Center", url: "/jewelry/dashboard", icon: LayoutDashboard },
       { title: "Point of Sale", url: "/jewelry/pos", icon: ShoppingCart },
+      { title: "Orders", url: "/jewelry/orders", icon: ClipboardList },
       { title: "Inventory", url: "/jewelry/inventory", icon: Package },
       { title: "Gold Rate", url: "/jewelry/gold-rate", icon: Banknote },
     ],
