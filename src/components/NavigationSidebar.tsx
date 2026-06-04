@@ -592,6 +592,7 @@ export function NavigationSidebar() {
     collapsible: true,
     items: [
       { title: "Command Center", url: "/jewelry/dashboard", icon: LayoutDashboard },
+      { title: "Inventory", url: "/jewelry/inventory", icon: Package },
       { title: "Gold Rate", url: "/jewelry/gold-rate", icon: Banknote },
     ],
   };

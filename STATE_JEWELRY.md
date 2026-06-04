@@ -21,7 +21,8 @@
 | 2 | **Jewelry calculation engine** — pure TS `src/lib/jewelry/calc.ts` + unit tests (NO production change) | ✅ VERIFIED | 2026-06-04 |
 | 3 | **`jx_*` schema (15 tables) + RLS + Legacy seed** (production DDL — additive, reversible) | ✅ VERIFIED | 2026-06-04 |
 | 4 | **Jewelry vertical FE** — `isJewellery` gating + Jewelry sidebar + Command Center + Gold Rate (built + tested on LOCAL preview; **NOT deployed**) | ✅ VERIFIED (local) | 2026-06-04 |
-| (later) | PKR ledger posting (`jx_account`/`jx_voucher`/`jx_voucher_line`); remaining jewelry pages (Items/Sales/Orders/Customers/Workers); **deploy P4** (merge→main / Lovable publish) | NOT STARTED | — |
+| 5 | **Inventory/Stock page** — item entry + live calc valuation + stone sub-grid + tag/barcode + list/search/edit → `jx_item`/`jx_stone` (LOCAL; **NOT deployed**) | ✅ VERIFIED (local) | 2026-06-04 |
+| (later) | PKR ledger posting (`jx_account`/`jx_voucher`/`jx_voucher_line`); remaining jewelry pages (Sales/Orders/Customers/Workers/Repairs); **deploy P4+P5** (merge→main / Lovable publish) | NOT STARTED | — |
 
 ## Phase 1 — provisioning (VERIFIED 2026-06-04)
 **New tenant (LIVE in production):**
@@ -77,6 +78,22 @@ First frontend change. Built + tested on a **local Vite preview** (`npm run dev`
   - Screenshots: `.tmp_jx/shots/p4-legacy-command-center-after-save.png`, `p4-control-bbqtonight.png`, `p4-legacy-gold-rate-*.png` (local, not committed).
 - **State restored after test:** Legacy `onboarding_completed` reverted true→false; `jx_gold_rate` restored to placeholder (test rates were fabricated — the shop sets its own real rates). Live DB back to as-provisioned; only the FE branch carries changes.
 - **Deploy = a later step** (merge `feat/jx-p4`→main / Lovable publish). Note: the welcome-tutorial modal + onboarding gate are existing platform behaviors; a fresh jewellery tenant sees onboarding first (expected).
+
+## Phase 5 — Inventory/Stock page (VERIFIED on LOCAL preview 2026-06-04 — NOT DEPLOYED)
+Item entry with **live calc.ts valuation** + stone sub-grid + tag/barcode + list/search/edit, writing `jx_item`/`jx_stone`. Frontend + DB writes only (no DDL/n8n). Mirrors clinic CRUD; shadcn/Tailwind, native. Tested on local Vite preview (localhost:8081, live Supabase). **Not merged/published.**
+
+- **New files:** `src/pages/jewelry/Inventory.tsx`, `src/hooks/useJewelryInventory.ts`.
+- **Surgical edits (additive):** `NavigationSidebar.tsx` (+"Inventory" item in the EXISTING Jewelry section, icon `Package`), `App.tsx` (+lazy route `/jewelry/inventory`). No other section/route touched. No package.json/lockfile change.
+- **Hook (`useJewelryInventory`):** jx_item/jx_stone CRUD filtered by `tenantId` (slug), RLS-reliant, `tenant_id=slug` on insert (never `tenantConfig.id`). `createItem`/`updateItem` (update replaces linked stones)/`deleteItem` (deletes stones then item)/`fetchStones`. Photo upload reuses the shared **`media`** storage bucket → `jx_item.photo_urls` (clean reusable pattern existed; implemented, not exercised by the automated test).
+- **Live valuation reuses calc.ts** (`pureWeight`, `saleLineTotal`) — no re-implemented math. Form shows pure weight, valuation-at-current-rate (with metal/making/polish/stones breakdown), summed stone weight, and item_cost (when purchase_rate set). `qty>1` creates N rows with suffixed tags (jx_item is per-piece — no qty column).
+- **PROOF (executed, local preview — calc test A inputs @ 22K rate 22000):**
+  - Live calc matched calc.ts EXACTLY: **Pure 9.1667 g** (`pureWeight(10,22)`), **Valuation PKR 260,600** (breakdown metal 237,600 · making 8,000 · polish 0 · stones 15,000 = `saleLineTotal` A). 
+  - **DB rows correct:** `jx_item` (Gold/22K, net 10, **pure_weight 9.167**, stone_weight 0.5, status `in_stock`) + linked `jx_stone` (price 15000, weight 0.5).
+  - **Edit persists:** changed size→`RING-7` via row-click edit → DB confirmed.
+  - **Isolation both directions:** control bbqtonight sidebar has **no Inventory/Jewelry** (Restaurant intact), `/jewelry/inventory` leaks **no** Legacy tag, and a DB `SET ROLE authenticated` as bbq sees **0** legacy `jx_item`. No console errors.
+  - Screenshots: `.tmp_jx/shots/p5-legacy-item-form.png` (live calc panel), `p5-legacy-list.png`, `p5-control-bbq.png` (not committed).
+- **Cleanup confirmed:** test item+stone deleted (legacy jx_item=0, jx_stone=0); 22K rate restored to placeholder; `onboarding_completed` reverted to false. Live DB back to as-provisioned.
+- **Photo-pattern note:** uses the existing `media` bucket (same as clinic photos) — no new storage setup; photo upload wired but optional (test created an item without a photo).
 
 ## Phase 0 discovery checklist (VERIFIED vs OPEN)
 | Item | Status | Where |

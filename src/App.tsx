@@ -159,6 +159,7 @@ const DoctorReviewQueue = lazy(() => import("./pages/clinic/DoctorReviewQueue"))
 // Jewelry Module (Project JX)
 const JewelryDashboard = lazy(() => import("./pages/jewelry/Dashboard"));
 const JewelryGoldRate = lazy(() => import("./pages/jewelry/GoldRate"));
+const JewelryInventory = lazy(() => import("./pages/jewelry/Inventory"));
 
 // Real Estate Module
 const RealEstateDashboard = lazy(() => import("./pages/realestate/RealEstateDashboard"));
@@ -1282,6 +1283,14 @@ const App = () => (
                     element={
                       <LazyPage>
                         <JewelryGoldRate />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/jewelry/inventory"
+                    element={
+                      <LazyPage>
+                        <JewelryInventory />
                       </LazyPage>
                     }
                   />
