@@ -4,9 +4,9 @@
 
 ---
 
-## 🔧 HR Recruitment Sourcing — FIX (branch, NOT pushed) 2026-06-04
+## 🚢 HR Recruitment Sourcing — FIX SHIPPED 2026-06-04
 
-**Session:** HR-Recruitment-Sourcing. **Branch `fix/hr-recruitment-sourcing-chain`** off main (commit `deb30a4`, **NOT pushed** — awaiting Adeel review). HR-recruitment domain only.
+**Session:** HR-Recruitment-Sourcing. **SHIPPED to `origin/main`** via merge-with-gates (merge commit `86805bb`, base `6ea6097` clinic; dry-run clean, no force; tsc clean on merged tree). Branch `fix/hr-recruitment-sourcing-chain` (deb30a4 + dc3ff55 + 98d4fea). **UI goes live after Adeel clicks Publish in Lovable.** HR-recruitment domain only. **This un-breaks the Recruitment page** (the duplicate `Bot` import crash). n8n backend (5 hardened Sourcing v2 workflows + watchdog `k99volCaSogFb6un`) already live in Supabase n8n schema; auto-source-on-post live (premium+Apify, idempotent), proven post-reboot (auto run created + idempotency skip + visible in UI Sourcing tab).
 
 **Root cause found + fixed (the sourcing stall, all tenants):** the Sourcing v2 chain handed control between phases via n8n's *own internal webhooks* (`callNext`, 5s timeout, swallowed errors, no retry). A dropped internal hop stranded a run at `status=running` forever with no `error_log` (data writes go to Supabase REST = reliable; the control hop rode the fragile n8n webhook layer). Confirmed on the stuck Video-Editor run (job `d44b7ac3`, run `3fe73504`): `entry→phase2` skip-branch handoff dropped → phase2 never started.
 
