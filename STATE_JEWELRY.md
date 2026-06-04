@@ -12,13 +12,30 @@
 
 ## Phase status
 
+> Phase numbering follows the operator's sequencing: P0 discovery → **P1 provision tenant+login** → (later) schema/RLS, gating, PKR ledger; the **jewellery vertical UI is P4**.
+
 | Phase | Description | Status | Date |
 |---|---|---|---|
 | 0 | Discovery (read-only): schema, gating, onboarding/login, accounting reuse, ops finance, templates, risk | ✅ COMPLETE | 2026-06-04 |
-| 1 | (future) Schema + RLS for `jx_*` jewelry tables (fresh PKR ledger) | NOT STARTED | — |
-| 2 | (future) `isJewellery` gating: TenantContext + NavigationSidebar + App.tsx | NOT STARTED | — |
-| 3 | (future) `industry_templates` row + `tenant_config` INSERT + auth login provisioning | NOT STARTED | — |
-| 4 | (future) PKR ledger build (BUILD FRESH — confirmed, no reuse) | NOT STARTED | — |
+| 1 | **Provision Legacy Jewellers `tenant_config` row + owner auth login** (FIRST production change) | ✅ VERIFIED | 2026-06-04 |
+| (later) | Schema + RLS for `jx_*` tables; `isJewellery` gating (TenantContext/Sidebar/App.tsx); PKR ledger; jewellery vertical UI (P4) | NOT STARTED | — |
+
+## Phase 1 — provisioning (VERIFIED 2026-06-04)
+**New tenant (LIVE in production):**
+- `tenant_config.id` (UUID) = **`f1abef0c-43e1-4589-8746-9a890f7718fd`**
+- slug `legacy-jewellers` · industry **`jewellery`** · currency **PKR** · tz `Asia/Karachi` · country `PK` · `subscription_status=active` · `primary_language=en` · `onboarding_completed=false` (as-provisioned) · features `{hr,sales,voice,marketing}` · branding **placeholder** gold `#C9A227` / charcoal `#2B2B2B` (no packet; cosmetic, easily UPDATEd)
+- Owner auth user: `auth.users.id` = **`43878ac8-9877-4e89-8d0d-86e4d1e13283`**, email `info@thelegacyjewellers.com`, `email_confirm=true`, `user_metadata.tenant_id=legacy-jewellers`
+- `public.users.id` = `97635d3a-2d88-4e92-9fb3-a5033af1fbcd`, tenant `legacy-jewellers`, role **admin**, active; `user_roles` → `legacy-jewellers`/admin
+- **Trigger path = BIND** (createUser fired 0.4s after tenant_config INSERT) → **no phantom**
+
+**How (replicated SL's proven flow):** `repo/tenants/legacy-jewellers/deployment/provision-legacy-jewellers.py` (clone of SL `01-tenant-config-insert.sql` + `21-day4-auth-users.py`, combined so the <300s BIND window fires). Writes via **direct 5432 (primary)** — T18 had pooler 6543 routed read-only at commit time. Result JSON (redacted): `deployment/provision-result.json`. Secret temp password: gitignored `D:/420-system/tenants/legacy-jewellers/.credentials/` (outside repo).
+
+**Evidence (all PASS):**
+- Script gates **V1–V8 PASS**; independent DB re-read (primary) confirmed every field.
+- `tenant_config` 43→**44**; phantom (`info-%`)=**0**; legacy users=**1**.
+- **Isolation:** other-tenant users **46 unchanged**; control `zateceptionist` row **md5 byte-identical** (`5e5aa84195787fc12d435a88cbcbb11f`) before/after (incl. across a temporary onboarding-flag flip).
+- **Playwright login (production):** `info@thelegacyjewellers.com` authenticates → lands on `/dashboard`; fresh tenant correctly shows the onboarding wizard. With onboarding temporarily completed, the sidebar shows **all horizontals** (Dashboard/Inbox/Appointments/Customers/Tasks + Sales AI/Marketing AI/HR AI/Operations/Communications + AI Command/OMEGA/Analytics/Settings) and **NO industry vertical** (cf. bbqtonight which shows a RESTAURANT section). Flag reverted to false after capture. Control `bbqtonight` login unaffected.
+- **Note:** `onboarding_completed` was toggled true→(capture)→false on the legacy row only (control md5 unchanged throughout); left **false** so the client gets the standard onboarding first-run. Operator may set it true if a direct-to-app handover is preferred.
 
 ## Phase 0 discovery checklist (VERIFIED vs OPEN)
 | Item | Status | Where |
