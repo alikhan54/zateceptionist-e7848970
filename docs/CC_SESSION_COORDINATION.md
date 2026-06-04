@@ -4,6 +4,19 @@
 
 ---
 
+## 🚢 HR Video Stack — SHIPPED 2026-06-04
+
+**SHIPPED to `origin/main`** via merge-with-gates (merge commit `8c7ce4e`, base `ee9c73b`; **dry-run CLEAN — zero conflicts**, no force; tsc clean; **UI live after Adeel clicks Publish**). Branch `feature/hr-rehost-videos` was the tip of the stack (`c9d4bbb` chaptered → `27e02bb` custom-avatar → `2a8aed6` rehost), so this ships all three:
+- **Chaptered training videos** — async HeyGen video per course section, `CourseChapters.tsx` player, `hr_course_chapters` table.
+- **Custom lecturer avatar** — Adeel HeyGen Talking-Photo + voice + picker.
+- **Permanent Supabase storage** — videos re-hosted from HeyGen temp URLs into the `training-videos` bucket (the temp-URL re-host), via the receiver/poll n8n workflows.
+
+**Backend already live (not git):** HeyGen workflows, `training-videos` storage bucket, `hr_course_chapters` table. Frontend touched `useHR.ts`, `Training.tsx`, `webhooks.ts`, new `components/hr/CourseChapters.tsx`, tests + screenshots.
+
+**⚠️ Secret hygiene:** the 2 n8n Code-node exports `docs/n8n-rehost/{receiver,poll}-*.js` inline the Supabase **service_role key** — they were **EXCLUDED from the ship + `docs/n8n-rehost/` gitignored** (kept untracked at `D:/420-system/.n8n-ref/` for reference; the live n8n workflows are unaffected). **Note for Adeel:** that service_role key is *already* committed repo-wide in 9 `tests/*.spec.ts` files on main — **it should be rotated.**
+
+---
+
 ## 🚢 HR Recruitment Sourcing — FIX SHIPPED 2026-06-04
 
 **Session:** HR-Recruitment-Sourcing. **SHIPPED to `origin/main`** via merge-with-gates (merge commit `86805bb`, base `6ea6097` clinic; dry-run clean, no force; tsc clean on merged tree). Branch `fix/hr-recruitment-sourcing-chain` (deb30a4 + dc3ff55 + 98d4fea). **UI goes live after Adeel clicks Publish in Lovable.** HR-recruitment domain only. **This un-breaks the Recruitment page** (the duplicate `Bot` import crash). n8n backend (5 hardened Sourcing v2 workflows + watchdog `k99volCaSogFb6un`) already live in Supabase n8n schema; auto-source-on-post live (premium+Apify, idempotent), proven post-reboot (auto run created + idempotency skip + visible in UI Sourcing tab).
