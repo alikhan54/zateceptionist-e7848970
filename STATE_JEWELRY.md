@@ -20,7 +20,8 @@
 | 1 | **Provision Legacy Jewellers `tenant_config` row + owner auth login** (FIRST production change) | ✅ VERIFIED | 2026-06-04 |
 | 2 | **Jewelry calculation engine** — pure TS `src/lib/jewelry/calc.ts` + unit tests (NO production change) | ✅ VERIFIED | 2026-06-04 |
 | 3 | **`jx_*` schema (15 tables) + RLS + Legacy seed** (production DDL — additive, reversible) | ✅ VERIFIED | 2026-06-04 |
-| (later) | `isJewellery` gating (TenantContext/Sidebar/App.tsx); PKR ledger posting (`jx_account`/`jx_voucher`/`jx_voucher_line`); jewellery vertical UI (P4) | NOT STARTED | — |
+| 4 | **Jewelry vertical FE** — `isJewellery` gating + Jewelry sidebar + Command Center + Gold Rate (built + tested on LOCAL preview; **NOT deployed**) | ✅ VERIFIED (local) | 2026-06-04 |
+| (later) | PKR ledger posting (`jx_account`/`jx_voucher`/`jx_voucher_line`); remaining jewelry pages (Items/Sales/Orders/Customers/Workers); **deploy P4** (merge→main / Lovable publish) | NOT STARTED | — |
 
 ## Phase 1 — provisioning (VERIFIED 2026-06-04)
 **New tenant (LIVE in production):**
@@ -62,6 +63,20 @@ Production DDL — **15 NEW `jx_*` tables only**, additive & reversible. No exis
     - Control bbqtonight (`bbqtonight-547b8e1b`): SELECT `jx_*` → **0 rows**; cross-tenant INSERT → **DENIED** `42501 "new row violates row-level security policy"`.
   - Final state clean: `jx_customer=0` (no test rows persisted), `jx_setting=1`, `jx_gold_rate=4`.
 - **Rollback path proven-by-construction:** `jx-001-rollback.sql` drops only the 15 `jx_*` tables (not needed — all gates passed).
+
+## Phase 4 — jewelry vertical frontend (VERIFIED on LOCAL preview 2026-06-04 — NOT DEPLOYED)
+First frontend change. Built + tested on a **local Vite preview** (`npm run dev`, localhost:8081, live Supabase). **Not merged to main, not published in Lovable** — production is unaffected. Mirrors the clinic vertical (shadcn/Card + Tailwind, native look).
+
+- **New files:** `src/pages/jewelry/Dashboard.tsx` (Command Center), `src/pages/jewelry/GoldRate.tsx`, `src/hooks/useJewelry.ts`.
+- **Surgical edits (additive):** `src/contexts/TenantContext.tsx` (+`isJewellery = industry==='jewellery'`: interface, const, value — 3 lines), `src/components/NavigationSidebar.tsx` (+`isJewellery` destructure, +`jewellerySection` {Command Center, Gold Rate}, +render block gated `isJewellery`, between HR AI and the other verticals), `src/App.tsx` (+2 lazy routes `/jewelry/dashboard` + `/jewelry/gold-rate` + redirect). **No existing section/route/file removed or restructured.** No feature flag. No package.json/lockfile change.
+- **Hook correctness:** `useJewelry` filters jx_* by `tenantId` (the SLUG from `useTenant()`), relies on RLS, sets `tenant_id=slug` on insert — NOT `tenantConfig.id` (the known zero-rows UUID bug). Reuses `calc.ts` for tola math (per-tola = per-gram × grams/tola via `tolaToGrams`).
+- **Command Center cards:** Gold Position (fine g by karat from `jx_gold_ledger`; empty→0g "No gold movements yet"), Today's Gold Rate (latest per karat; placeholder→amber "not real yet" banner+badge prompting to set it), Cash Today (`jx_sale` today; empty→PKR 0), Orders Due (`jx_order` pending; empty→0), Agent Feed (placeholder). Each card has a substantive value line. Graceful empty states (fresh tenant) — no crash, no console errors.
+- **PROOF (executed, local preview):**
+  - **Manual rate save:** filled 24/22/21/18 per-gram (24750 for 22K) → Save → DB `jx_gold_rate` rows flipped to **`source='manual'`** with correct per-tola (24750×11.6638=288679.05) → reload Command Center shows **PKR 24,750/g 22K "Manual rate set"**, placeholder banner gone.
+  - **UI isolation BOTH directions (Playwright, screenshots):** Legacy → sees **Jewelry** section + all horizontals (Sales/Marketing/HR/Operations/Communications), **0 other verticals**; control bbqtonight → **NO Jewelry** section, RESTAURANT + horizontals intact (no regression), and hitting `/jewelry/dashboard` directly leaks **0** of Legacy's data (RLS). No console errors.
+  - Screenshots: `.tmp_jx/shots/p4-legacy-command-center-after-save.png`, `p4-control-bbqtonight.png`, `p4-legacy-gold-rate-*.png` (local, not committed).
+- **State restored after test:** Legacy `onboarding_completed` reverted true→false; `jx_gold_rate` restored to placeholder (test rates were fabricated — the shop sets its own real rates). Live DB back to as-provisioned; only the FE branch carries changes.
+- **Deploy = a later step** (merge `feat/jx-p4`→main / Lovable publish). Note: the welcome-tutorial modal + onboarding gate are existing platform behaviors; a fresh jewellery tenant sees onboarding first (expected).
 
 ## Phase 0 discovery checklist (VERIFIED vs OPEN)
 | Item | Status | Where |

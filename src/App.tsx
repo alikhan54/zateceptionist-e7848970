@@ -156,6 +156,10 @@ const ConsultationNotes = lazy(() => import("./pages/clinic/ConsultationNotes"))
 const HealthReports = lazy(() => import("./pages/clinic/HealthReports"));
 const DoctorReviewQueue = lazy(() => import("./pages/clinic/DoctorReviewQueue"));
 
+// Jewelry Module (Project JX)
+const JewelryDashboard = lazy(() => import("./pages/jewelry/Dashboard"));
+const JewelryGoldRate = lazy(() => import("./pages/jewelry/GoldRate"));
+
 // Real Estate Module
 const RealEstateDashboard = lazy(() => import("./pages/realestate/RealEstateDashboard"));
 const PropertyListings = lazy(() => import("./pages/realestate/PropertyListings"));
@@ -1259,6 +1263,25 @@ const App = () => (
                     element={
                       <LazyPage>
                         <AccountImport />
+                      </LazyPage>
+                    }
+                  />
+
+                  {/* Jewelry Module (Project JX) */}
+                  <Route path="/jewelry" element={<Navigate to="/jewelry/dashboard" replace />} />
+                  <Route
+                    path="/jewelry/dashboard"
+                    element={
+                      <LazyPage>
+                        <JewelryDashboard />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/jewelry/gold-rate"
+                    element={
+                      <LazyPage>
+                        <JewelryGoldRate />
                       </LazyPage>
                     }
                   />

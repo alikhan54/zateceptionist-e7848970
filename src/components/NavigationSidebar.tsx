@@ -156,7 +156,7 @@ export function NavigationSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, isAdmin, isMasterAdmin, authUser, hasPermission } = useAuth();
-  const { tenantConfig, translate, tenantId, setTenantId, isRestaurant, isBankingCollections, isHealthcareClinic, isConstructionEstimation, isRealEstate, isYouTubeAgency, isLaboratoryInstruments, isRoofing, isAccountingPracticeUK } = useTenant();
+  const { tenantConfig, translate, tenantId, setTenantId, isRestaurant, isBankingCollections, isHealthcareClinic, isConstructionEstimation, isRealEstate, isYouTubeAgency, isLaboratoryInstruments, isRoofing, isAccountingPracticeUK, isJewellery } = useTenant();
   const { isEnabled } = useFeatureFlags();
   const { toast } = useToast();
 
@@ -584,6 +584,15 @@ export function NavigationSidebar() {
       { title: "Consultation Notes", url: "/clinic/consultations", icon: ClipboardCheck },
       { title: "Health Reports", url: "/clinic/health-reports", icon: FileText },
       { title: "Doctor Reviews", url: "/clinic/review-queue", icon: ClipboardList },
+    ],
+  };
+
+  const jewellerySection: NavSection = {
+    label: "Jewelry",
+    collapsible: true,
+    items: [
+      { title: "Command Center", url: "/jewelry/dashboard", icon: LayoutDashboard },
+      { title: "Gold Rate", url: "/jewelry/gold-rate", icon: Banknote },
     ],
   };
 
@@ -1017,6 +1026,11 @@ export function NavigationSidebar() {
 
         {/* HR AI Section */}
         {canAccessSection(hrSection) && <CollapsibleSection section={hrSection} sectionKey="hr" />}
+
+        {/* Jewelry Section — jewellery industry only (Legacy Jewellers) */}
+        {isJewellery && canAccessSection(jewellerySection) && (
+          <CollapsibleSection section={jewellerySection} sectionKey="jewelry" />
+        )}
 
         {/* Restaurant Section — restaurant tenants only */}
         {isRestaurant && canAccessSection(restaurantSection) && (

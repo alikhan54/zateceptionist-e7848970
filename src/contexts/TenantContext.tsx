@@ -466,6 +466,7 @@ interface TenantContextType {
   isRoofing: boolean;
   isForexTrading: boolean;
   isAccountingPracticeUK: boolean;
+  isJewellery: boolean;
   brandBackgroundColor: string | null;
   refreshConfig: () => Promise<void>;
 }
@@ -672,6 +673,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const isRoofing = industry === "roofing";
   const isForexTrading = industry === "forex_trading";
   const isAccountingPracticeUK = industry === "accounting_practice_uk";
+  const isJewellery = industry === "jewellery";
 
   // Brand background color (Smart Ledger uses #faf6ed cream).
   // Reads from tenant_config.features.brand_background_color — additive convention.
@@ -714,6 +716,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         isRoofing,
         isForexTrading,
         isAccountingPracticeUK,
+        isJewellery,
         brandBackgroundColor,
         refreshConfig: fetchTenantConfig,
       }}
