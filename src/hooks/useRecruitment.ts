@@ -523,10 +523,21 @@ export function useCreateJob() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data: JobRequisition) => {
       queryClient.invalidateQueries({ queryKey: ['hr_job_requisitions'] });
       queryClient.invalidateQueries({ queryKey: ['recruitment_stats'] });
       toast.success('Job posted successfully');
+      // Auto-source on post: when the toggle is on, actually kick off Sourcing v2
+      // (trigger_type:'auto') — previously the toggle was decorative and nothing fired.
+      // The entry workflow enforces the guardrails (premium+Apify tenants only, and
+      // idempotent: skips if a run already exists for this job), so this is a safe
+      // fire-and-forget. Job creation already succeeded; a webhook hiccup never blocks
+      // the post, and the Sourcing tab + watchdog are the fallbacks.
+      if (data?.auto_source_enabled && tenantUuid) {
+        callWebhook('/hr/job/trigger-sourcing-v2', { job_requisition_id: data.id, trigger_type: 'auto' }, tenantUuid)
+          .then(() => queryClient.invalidateQueries({ queryKey: ['hr_sourcing_runs'] }))
+          .catch(() => { /* non-blocking — manual Sourcing button + watchdog remain */ });
+      }
     },
     onError: () => toast.error('Failed to create job posting'),
   });

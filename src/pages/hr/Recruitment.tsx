@@ -9,7 +9,9 @@ import { OutreachFeed, CandidateActivity } from "@/components/hr/OutreachActivit
 import { PipelineFunnel } from "@/components/hr/PipelineFunnel";
 import { useAutoMode } from "@/hooks/useAutoMode";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Bot } from "lucide-react";
+// NOTE: `Bot` is imported from lucide-react in the consolidated block below — a
+// duplicate standalone `import { Bot }` here caused "Identifier 'Bot' has already
+// been declared" and broke the whole Recruitment page render. Removed (pre-existing).
 import { formatDistanceToNow } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -536,6 +538,17 @@ export default function RecruitmentPage() {
       // Invalidate queries to refresh job list
       queryClient.invalidateQueries({ queryKey: ['hr_job_requisitions'] });
       queryClient.invalidateQueries({ queryKey: ['recruitment_stats'] });
+
+      // Auto-source on post: when the toggle is on, actually start Sourcing v2 for the
+      // new job. This toggle was previously decorative — the /hr/job/ai-create webhook
+      // does NOT start sourcing. The entry workflow enforces the guardrails (premium+Apify
+      // tenants only, idempotent per job), so this fire-and-forget is safe; the Sourcing
+      // tab + watchdog are the fallbacks if it ever drops.
+      if (inputMode === 'manual' && jobForm.auto_source_enabled && newJobId && tenantUuid) {
+        callWebhook('/hr/job/trigger-sourcing-v2', { job_requisition_id: newJobId, trigger_type: 'auto' }, tenantUuid)
+          .then(() => queryClient.invalidateQueries({ queryKey: ['hr_sourcing_runs'] }))
+          .catch(() => { /* non-blocking — manual Sourcing button + watchdog remain */ });
+      }
     } catch (error: any) {
       // Fallback: if webhook fails for manual mode, insert directly
       if (inputMode === 'manual') {
@@ -1118,8 +1131,8 @@ export default function RecruitmentPage() {
                     <div className="flex items-center gap-2">
                       <Zap className="h-5 w-5 text-primary" />
                       <div>
-                        <p className="text-sm font-medium">Auto-source candidates</p>
-                        <p className="text-xs text-muted-foreground">AI will find matching candidates automatically</p>
+                        <p className="text-sm font-medium">Auto-source candidates on post</p>
+                        <p className="text-xs text-muted-foreground">AI starts sourcing matching candidates the moment you post this job (premium tenants)</p>
                       </div>
                     </div>
                     <Switch checked={jobForm.auto_source_enabled} onCheckedChange={(v) => setJobForm((f) => ({ ...f, auto_source_enabled: v }))} />

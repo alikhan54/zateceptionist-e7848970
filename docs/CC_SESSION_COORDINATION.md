@@ -4,6 +4,24 @@
 
 ---
 
+## 🔧 HR Recruitment Sourcing — FIX (branch, NOT pushed) 2026-06-04
+
+**Session:** HR-Recruitment-Sourcing. **Branch `fix/hr-recruitment-sourcing-chain`** off main (commit `deb30a4`, **NOT pushed** — awaiting Adeel review). HR-recruitment domain only.
+
+**Root cause found + fixed (the sourcing stall, all tenants):** the Sourcing v2 chain handed control between phases via n8n's *own internal webhooks* (`callNext`, 5s timeout, swallowed errors, no retry). A dropped internal hop stranded a run at `status=running` forever with no `error_log` (data writes go to Supabase REST = reliable; the control hop rode the fragile n8n webhook layer). Confirmed on the stuck Video-Editor run (job `d44b7ac3`, run `3fe73504`): `entry→phase2` skip-branch handoff dropped → phase2 never started.
+
+**Shipped:**
+- **n8n (live, persisted in Supabase n8n schema — NOT git):** hardened all 4 handoffs in the Sourcing v2 chain (`YsOhnEct1zWljE3L` TS, `l1RMxMScCbvXOqmm` P1, `XjSilVmjJeRIwNMF` P2, `PWb5cPBpK4FTgwwW` P3, `0Z1A7e5Cp8LraOnL` P4) with **deliver-and-verify retry** (fire → confirm next phase `*_started_at` → retry → mark `failed`+`error_log` on exhaustion). Added entry auto-guard (trigger_type=`auto` → premium+Apify only + idempotent skip-if-run-exists). P4 got richer app-insert error capture. **NEW watchdog cron `k99volCaSogFb6un`** (every 2 min) — marks stuck runs failed past 15 min; already auto-unstuck the real stale run.
+- **Frontend (on branch):** `useRecruitment.ts` (useCreateJob auto-fires sourcing on post) + `Recruitment.tsx` (auto-fire on the primary ai-create path + toggle relabel "Auto-source candidates on post" + **fixed a pre-existing duplicate `Bot` import that was crashing the ENTIRE Recruitment page render** — was on main since `2abb4f7`).
+
+**Proven:** full chain ran → Apify returned 15 real LinkedIn profiles → 10 saved to `hr_candidates`+`hr_job_applications` (Zate) → **shown in the Recruitment UI** (Candidates tab, LinkedIn badges; Jobs card "10 applicants/10 AI found/completed"). Auto-source frontend fire proven via console (no manual click).
+
+**Owns (coordinate — HR V3 + Recruitment-E2E parked own these too):** `src/hooks/useRecruitment.ts`, `src/pages/hr/Recruitment.tsx`, the 5 Sourcing v2 workflows + new watchdog `k99volCaSogFb6un`.
+
+**⚠️ Infra note:** Docker Desktop engine crashed mid-session (~2026-06-03 22:25 UTC, independent of these changes) and was force-restarted (user-approved). Left a test job `f61f8ba9` "QA AutoSource Test - Graphic Designer" (Zate) for the auto-source proof — safe to delete.
+
+---
+
 ## 🚢 Smart Ledger Wave 1 — B/C/E/F SHIPPED 2026-06-02 (D HELD)
 
 **Live on Lovable**: bundle `index-B6Klg84b.js`. origin/main tip `e1c9545`. Plain FF push, no force. HR's 3 prior commits + all Video/Pulse/Omega commits preserved as ancestors. Sentinel partial-green (Wave-1 DB gates GREEN; sacred-9 inspection BLOCKED by simultaneous T20 Supabase pooler distress on n8n — **independent of Wave 1, no n8n writes this ship**).
