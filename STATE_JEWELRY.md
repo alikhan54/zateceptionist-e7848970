@@ -18,7 +18,8 @@
 |---|---|---|---|
 | 0 | Discovery (read-only): schema, gating, onboarding/login, accounting reuse, ops finance, templates, risk | ✅ COMPLETE | 2026-06-04 |
 | 1 | **Provision Legacy Jewellers `tenant_config` row + owner auth login** (FIRST production change) | ✅ VERIFIED | 2026-06-04 |
-| (later) | Schema + RLS for `jx_*` tables; `isJewellery` gating (TenantContext/Sidebar/App.tsx); PKR ledger; jewellery vertical UI (P4) | NOT STARTED | — |
+| 2 | **Jewelry calculation engine** — pure TS `src/lib/jewelry/calc.ts` + unit tests (NO production change) | ✅ VERIFIED | 2026-06-04 |
+| (later) | Schema + RLS for `jx_*` tables; `isJewellery` gating (TenantContext/Sidebar/App.tsx); PKR ledger persistence; jewellery vertical UI (P4) | NOT STARTED | — |
 
 ## Phase 1 — provisioning (VERIFIED 2026-06-04)
 **New tenant (LIVE in production):**
@@ -36,6 +37,15 @@
 - **Isolation:** other-tenant users **46 unchanged**; control `zateceptionist` row **md5 byte-identical** (`5e5aa84195787fc12d435a88cbcbb11f`) before/after (incl. across a temporary onboarding-flag flip).
 - **Playwright login (production):** `info@thelegacyjewellers.com` authenticates → lands on `/dashboard`; fresh tenant correctly shows the onboarding wizard. With onboarding temporarily completed, the sidebar shows **all horizontals** (Dashboard/Inbox/Appointments/Customers/Tasks + Sales AI/Marketing AI/HR AI/Operations/Communications + AI Command/OMEGA/Analytics/Settings) and **NO industry vertical** (cf. bbqtonight which shows a RESTAURANT section). Flag reverted to false after capture. Control `bbqtonight` login unaffected.
 - **Note:** `onboarding_completed` was toggled true→(capture)→false on the legacy row only (control md5 unchanged throughout); left **false** so the client gets the standard onboarding first-run. Operator may set it true if a direct-to-app handover is preferred.
+
+## Phase 2 — calculation engine (VERIFIED 2026-06-04)
+Pure, side-effect-free TypeScript module — proves the math BEFORE anything prices money. **No production changes** (new namespaced files only).
+
+- **Module:** `src/lib/jewelry/calc.ts` — `pureWeight`, `gramsToTola`/`tolaToGrams`, `saleLineTotal`, `applyTax`, `oldGoldCredit`, `saleTotal`, `goldLedgerFineGrams`, `karatFactor`, `round`/`round2`/`round3`; constants `KARAT_FACTOR` (exact karat/24), `TOLA_GRAMS=11.6638`.
+- **Tests:** `src/lib/jewelry/calc.test.ts` — run with Node's native runner (`node --test src/lib/jewelry/calc.test.ts`); Node v24.14 strips TS types + `node:test`/`node:assert` are built in. **No test runner added** → package.json/lockfile untouched, no FE-PACKAGE lock needed.
+- **Result: 15/15 pass, 0 fail.** Pinned proofs: A line subtotal **260600** (wastage 0.8, metal 237600, making 8000, stone 15000) & pureWeight(10,22)≈**9.1667**; B fixed-making subtotal **95000**; C old-gold credit **157666.67** → saleTotal netBill **102573.33** / cashBalance **7426.67**; D tola round-trip; E making-tax **240**. Extras: generic karat/24, qty×rate stones, polish+other, value/fixed_per_gram tax, deduction old-gold, signed ledger grams, float-drift rounding.
+- **Key correctness decision:** `KARAT_FACTOR[22] = 22/24` (exact, displays ≈0.916667) — using the rounded 0.916667 would yield old-gold credit 157666.72, not the spec's 157666.67. Rounding applied only at boundaries (money 2dp, weights 3dp); intermediates keep full precision. Tax always derived from the passed `TaxRule` (never hard-coded).
+- **Flexibility for later tuning (no rewrite):** optional `makingBasis`/`polishBasis` ('net'|'gross'), configurable `tola` param, `wastePct`/`deductionPct` defaults. `saleLineTotal` additionally returns `fineGrams` (pure content) to feed the gold ledger + fixed_per_gram tax.
 
 ## Phase 0 discovery checklist (VERIFIED vs OPEN)
 | Item | Status | Where |
