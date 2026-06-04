@@ -19,7 +19,8 @@
 | 0 | Discovery (read-only): schema, gating, onboarding/login, accounting reuse, ops finance, templates, risk | ✅ COMPLETE | 2026-06-04 |
 | 1 | **Provision Legacy Jewellers `tenant_config` row + owner auth login** (FIRST production change) | ✅ VERIFIED | 2026-06-04 |
 | 2 | **Jewelry calculation engine** — pure TS `src/lib/jewelry/calc.ts` + unit tests (NO production change) | ✅ VERIFIED | 2026-06-04 |
-| (later) | Schema + RLS for `jx_*` tables; `isJewellery` gating (TenantContext/Sidebar/App.tsx); PKR ledger persistence; jewellery vertical UI (P4) | NOT STARTED | — |
+| 3 | **`jx_*` schema (15 tables) + RLS + Legacy seed** (production DDL — additive, reversible) | ✅ VERIFIED | 2026-06-04 |
+| (later) | `isJewellery` gating (TenantContext/Sidebar/App.tsx); PKR ledger posting (`jx_account`/`jx_voucher`/`jx_voucher_line`); jewellery vertical UI (P4) | NOT STARTED | — |
 
 ## Phase 1 — provisioning (VERIFIED 2026-06-04)
 **New tenant (LIVE in production):**
@@ -46,6 +47,21 @@ Pure, side-effect-free TypeScript module — proves the math BEFORE anything pri
 - **Result: 15/15 pass, 0 fail.** Pinned proofs: A line subtotal **260600** (wastage 0.8, metal 237600, making 8000, stone 15000) & pureWeight(10,22)≈**9.1667**; B fixed-making subtotal **95000**; C old-gold credit **157666.67** → saleTotal netBill **102573.33** / cashBalance **7426.67**; D tola round-trip; E making-tax **240**. Extras: generic karat/24, qty×rate stones, polish+other, value/fixed_per_gram tax, deduction old-gold, signed ledger grams, float-drift rounding.
 - **Key correctness decision:** `KARAT_FACTOR[22] = 22/24` (exact, displays ≈0.916667) — using the rounded 0.916667 would yield old-gold credit 157666.72, not the spec's 157666.67. Rounding applied only at boundaries (money 2dp, weights 3dp); intermediates keep full precision. Tax always derived from the passed `TaxRule` (never hard-coded).
 - **Flexibility for later tuning (no rewrite):** optional `makingBasis`/`polishBasis` ('net'|'gross'), configurable `tola` param, `wastePct`/`deductionPct` defaults. `saleLineTotal` additionally returns `fineGrams` (pure content) to feed the gold ledger + fixed_per_gram tax.
+
+## Phase 3 — schema + RLS + seed (VERIFIED 2026-06-04)
+Production DDL — **15 NEW `jx_*` tables only**, additive & reversible. No existing table touched (preview proved every op targets `public.jx_*`). Applied via **direct 5432 (primary)** — pooler 6543 is T18-prone.
+
+- **Migrations (committed):** `repo/supabase/migrations/jx-001-schema.sql` (15 tables + indexes + RLS), `jx-002-seed-legacy.sql` (Legacy seed), `jx-001-rollback.sql` (DROP all 15, CASCADE).
+- **15 tables:** `jx_setting, jx_gold_rate, jx_customer, jx_worker, jx_tax_rule, jx_item, jx_stone, jx_sale, jx_sale_item, jx_order, jx_order_item, jx_old_gold, jx_worker_txn, jx_repair, jx_gold_ledger`. Common: `id` uuid PK, `tenant_id` TEXT NOT NULL, `created_at`/`updated_at`. Columns aligned with `calc.ts` (e.g. `net_weight`, `waste_pct`, `line_total`, `net_bill`, `cash_balance`, `old_gold_credit`, `paid_used_gold_value`, `fine_grams`, `zero_deduction`). `jx_item` UNIQUE(tenant_id, tag_number); CHECKs on `jx_tax_rule.basis` + `jx_gold_ledger.direction`; FKs within `jx_*`. Ledger posting tables deferred to the ledger phase (per plan).
+- **RLS:** every table has the canonical accounting_invoices **5-policy block** (`rls_master_admin_all` + `rls_tenant_read`/`write`/`update`/`delete`, `tenant_id = get_user_tenant_id()`, slug-keyed, `TO public`). Verified exactly 5 policies/table.
+- **Seed (Legacy only):** `jx_setting` 1 row (PKR, tola 11.6638, PSQCA, WhatsApp +923402786222, 10 collections); `jx_gold_rate` 4 rows (24/22/21/18) `source='placeholder'`, `rate_per_gram=1` — **NOT real rates** (shop sets real rates in P4).
+- **PROOF — 20/20 checks (executed):**
+  - Structural (14/14): 15 tables exist, RLS enabled on all 15, exactly the 5 canonical policies each, seed 1+4.
+  - **RLS isolation BOTH directions, real auth path** — DB-level (`SET ROLE authenticated` + real `sub`) AND REST (password-grant JWT via PostgREST), 6/6 REST:
+    - Legacy (`get_user_tenant_id='legacy-jewellers'`): SELECT sees its seed (1 setting, 4 rates); INSERT own row allowed (rolled back / deleted — no trace).
+    - Control bbqtonight (`bbqtonight-547b8e1b`): SELECT `jx_*` → **0 rows**; cross-tenant INSERT → **DENIED** `42501 "new row violates row-level security policy"`.
+  - Final state clean: `jx_customer=0` (no test rows persisted), `jx_setting=1`, `jx_gold_rate=4`.
+- **Rollback path proven-by-construction:** `jx-001-rollback.sql` drops only the 15 `jx_*` tables (not needed — all gates passed).
 
 ## Phase 0 discovery checklist (VERIFIED vs OPEN)
 | Item | Status | Where |
