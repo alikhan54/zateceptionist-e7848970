@@ -22,7 +22,8 @@
 | 3 | **`jx_*` schema (15 tables) + RLS + Legacy seed** (production DDL — additive, reversible) | ✅ VERIFIED | 2026-06-04 |
 | 4 | **Jewelry vertical FE** — `isJewellery` gating + Jewelry sidebar + Command Center + Gold Rate (built + tested on LOCAL preview; **NOT deployed**) | ✅ VERIFIED (local) | 2026-06-04 |
 | 5 | **Inventory/Stock page** — item entry + live calc valuation + stone sub-grid + tag/barcode + list/search/edit → `jx_item`/`jx_stone` (LOCAL; **NOT deployed**) | ✅ VERIFIED (local) | 2026-06-04 |
-| (later) | PKR ledger posting (`jx_account`/`jx_voucher`/`jx_voucher_line`); remaining jewelry pages (Sales/Orders/Customers/Workers/Repairs); **deploy P4+P5** (merge→main / Lovable publish) | NOT STARTED | — |
+| 6 | **Point of Sale** — atomic sale via `jx_create_sale` RPC + live calc + old-gold (no double-count) + mixed tender + itemized invoice → `jx_sale`/`jx_sale_item`/`jx_old_gold`/`jx_gold_ledger` + mark sold (RPC LIVE in DB; FE LOCAL, **NOT deployed**) | ✅ VERIFIED (local) | 2026-06-04 |
+| (later) | **PKR double-entry GL posting** (`jx_account`/`jx_voucher`/`jx_voucher_line`) = Phase 8; remaining pages (Orders/Customers/Workers/Repairs); **deploy P4–P6** (merge→main / Lovable publish) | NOT STARTED | — |
 
 ## Phase 1 — provisioning (VERIFIED 2026-06-04)
 **New tenant (LIVE in production):**
@@ -94,6 +95,19 @@ Item entry with **live calc.ts valuation** + stone sub-grid + tag/barcode + list
   - Screenshots: `.tmp_jx/shots/p5-legacy-item-form.png` (live calc panel), `p5-legacy-list.png`, `p5-control-bbq.png` (not committed).
 - **Cleanup confirmed:** test item+stone deleted (legacy jx_item=0, jx_stone=0); 22K rate restored to placeholder; `onboarding_completed` reverted to false. Live DB back to as-provisioned.
 - **Photo-pattern note:** uses the existing `media` bucket (same as clinic photos) — no new storage setup; photo upload wired but optional (test created an item without a photo).
+
+## Phase 6 — Point of Sale (VERIFIED on LOCAL preview 2026-06-04 — RPC live in DB; FE NOT deployed)
+Direct sale: pick in-stock items → live calc.ts pricing (editable rate/waste/making) → old-gold credit → tax+discount → mixed tender → **atomic save** via the `jx_create_sale` RPC → itemized printable invoice. PKR double-entry GL is **Phase 8** (not built here).
+
+- **RPC (additive DDL, LIVE in prod DB via direct 5432):** `public.jx_create_sale(p_payload jsonb)` — `SECURITY INVOKER` (RLS applies), one transaction: generate per-tenant `sale_no` (INV-NNNNN), INSERT `jx_sale` + `jx_sale_item[]` + `jx_old_gold?` + `jx_gold_ledger` (one OUT/sold line `reason='sale'`, one IN/old-gold `reason='old_gold_in'`, signed `fine_grams`), UPDATE `jx_item.status='sold'`. `tenant_id=get_user_tenant_id()` everywhere. File: `repo/supabase/migrations/jx-003-create-sale-rpc.sql` (rollback: `DROP FUNCTION public.jx_create_sale(jsonb)`).
+- **New FE files:** `src/pages/jewelry/PointOfSale.tsx`, `src/hooks/useJewelrySales.ts`. **Edits:** `NavigationSidebar.tsx` (+"Point of Sale" in Jewelry section), `App.tsx` (+`/jewelry/pos` route). No package.json/lockfile change.
+- **Old-gold model (no double-count):** calc.ts `saleTotal` subtracts the old-gold credit from `net_bill`; tender = cash/card/cheque only (`usedGoldValue=0`); `cash_balance=(cash+card+cheque)−net_bill`. Old gold shown as a CREDIT line, never a tender. All money via calc.ts; RPC only persists.
+- **PROOF (executed, local preview — EXACT to the rupee):**
+  - **Sale 1 (no old gold):** line **260,600** (= calc.ts `saleLineTotal` A @22000), net_bill **260,600**, cash 260,600 → **balance 0**. DB: `jx_sale` INV-00001 (net_bill 260600, paid_used_gold_value 0), `jx_sale_item` present, `jx_gold_ledger` OUT `reason='sale'` **−9.167**, `jx_item` P6-ITEM-1 **status='sold'**. Invoice rendered.
+  - **Sale 2 (zero-deduction old gold = calc test C):** old-gold credit **157,666.67**; tax-on-making 3% → 240; discount 600; **net_bill 102,573.33** AND **cash_balance 7,426.67** (cash 110,000) — **proves NO double-count** (`paid_used_gold_value=0`). DB: `jx_old_gold` (8g 22K, credit 157666.67, zero_deduction=true), `jx_gold_ledger` BOTH OUT **−9.167** (sale) AND IN **+7.333** (old_gold_in); SUM(fine_grams) net position = −11.001.
+  - **Isolation both directions:** control bbqtonight has **no Point of Sale / no Jewelry** section; SET-ROLE-authenticated as bbq sees **0** legacy `jx_sale`/`jx_gold_ledger` and a direct INSERT of a legacy `jx_sale` is **DENIED by RLS** (so the SECURITY-INVOKER RPC cannot write Legacy rows when called by another tenant). No console errors.
+  - Screenshots: `.tmp_jx/shots/p6-sale1-invoice.png`, `p6-sale2-invoice.png`, `p6-control-bbq.png` (not committed).
+- **Cleanup confirmed:** all test sales/items/old_gold/ledger/stones deleted (legacy jx_sale=0, jx_gold_ledger=0, jx_item=0); 22K rate restored to placeholder; `onboarding_completed`→false. The `jx_create_sale` function remains live (additive, reversible, no prod caller until P4–P6 deploy).
 
 ## Phase 0 discovery checklist (VERIFIED vs OPEN)
 | Item | Status | Where |
