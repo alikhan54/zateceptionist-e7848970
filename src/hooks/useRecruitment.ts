@@ -28,7 +28,7 @@ export interface JobRequisition {
   location_city: string | null;
   location_country: string;
   number_of_openings: number;
-  status: 'draft' | 'open' | 'active' | 'on_hold' | 'closed' | 'filled';
+  status: 'draft' | 'pending_approval' | 'approved' | 'open' | 'active' | 'on_hold' | 'closed' | 'filled' | 'cancelled';
   priority: string;
   published_at: string | null;
   closed_at: string | null;
@@ -69,6 +69,19 @@ export interface JobApplication {
   ai_interview_score: number | null;
   ai_interview_summary: string | null;
   ai_interview_recommendation: string | null;
+  // AI screening (Claude/Gemini) — the explainable-score source. ai_screening_result is the
+  // JSON {score, skill_match_pct, experience_match, location_match, strengths[], red_flags[], reasoning}.
+  ai_screening_score: number | null;
+  ai_screening_result: {
+    score?: number;
+    skill_match_pct?: number | string;
+    experience_match?: string;
+    location_match?: string;
+    strengths?: string[];
+    red_flags?: string[];
+    recommended_action?: string;
+    reasoning?: string;
+  } | null;
   outreach_status: string;
   outreach_channel: string | null;
   offer_salary: number | null;
@@ -78,7 +91,7 @@ export interface JobApplication {
   updated_at: string;
   // Joined fields
   candidate?: Candidate;
-  requisition?: Pick<JobRequisition, 'id' | 'job_title' | 'department_id' | 'location_city' | 'employment_type'>;
+  requisition?: Pick<JobRequisition, 'id' | 'job_title' | 'department_id' | 'location_city' | 'employment_type' | 'status' | 'created_at'>;
 }
 
 export interface Candidate {
@@ -101,6 +114,8 @@ export interface Candidate {
   match_score: number | null;
   contact_strategy: string | null;
   status: string;
+  job_id: string | null;
+  experience_years: number | null;
   created_at: string;
 }
 
@@ -227,7 +242,7 @@ export function useJobApplications(jobRequisitionId?: string) {
             source, enrichment_status, match_score, contact_strategy, status
           ),
           requisition:hr_job_requisitions(
-            id, job_title, department_id, location_city, employment_type
+            id, job_title, department_id, location_city, employment_type, status, created_at
           )
         `)
         .eq('tenant_id', tenantUuid)
@@ -921,5 +936,32 @@ export function useRejectOffer() {
       toast.success('Offer rejected');
     },
     onError: () => toast.error('Failed to reject offer'),
+  });
+}
+
+// Archive / restore a candidate — soft state via hr_candidates.status ('archived' is an
+// already-supported value; nothing wrote it before). Additive, recoverable, tenant-scoped.
+export function useArchiveCandidate() {
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ candidateId, archive }: { candidateId: string; archive: boolean }) => {
+      if (!tenantUuid) throw new Error('No tenant');
+      const { error } = await supabase
+        .from('hr_candidates')
+        .update({ status: archive ? 'archived' : 'active' })
+        .eq('id', candidateId)
+        .eq('tenant_id', tenantUuid);
+      if (error) throw error;
+    },
+    onSuccess: (_d, { archive }) => {
+      queryClient.invalidateQueries({ queryKey: ['hr_candidates'] });
+      queryClient.invalidateQueries({ queryKey: ['hr_job_applications'] });
+      queryClient.invalidateQueries({ queryKey: ['recruitment_stats'] });
+      toast.success(archive ? 'Candidate archived' : 'Candidate restored');
+    },
+    onError: () => toast.error('Failed to update candidate'),
   });
 }
