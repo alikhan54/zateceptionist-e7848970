@@ -596,6 +596,7 @@ export function NavigationSidebar() {
       { title: "Orders", url: "/jewelry/orders", icon: ClipboardList },
       { title: "Inventory", url: "/jewelry/inventory", icon: Package },
       { title: "Gold Rate", url: "/jewelry/gold-rate", icon: Banknote },
+      { title: "Reports", url: "/jewelry/reports", icon: BookOpen },
     ],
   };
 

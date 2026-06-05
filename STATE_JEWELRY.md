@@ -24,7 +24,8 @@
 | 5 | **Inventory/Stock page** — item entry + live calc valuation + stone sub-grid + tag/barcode + list/search/edit → `jx_item`/`jx_stone` (LOCAL; **NOT deployed**) | ✅ VERIFIED (local) | 2026-06-04 |
 | 6 | **Point of Sale** — atomic sale via `jx_create_sale` RPC + live calc + old-gold (no double-count) + mixed tender + itemized invoice → `jx_sale`/`jx_sale_item`/`jx_old_gold`/`jx_gold_ledger` + mark sold (RPC LIVE in DB; FE LOCAL, **NOT deployed**) | ✅ VERIFIED (local) | 2026-06-04 |
 | 7 | **Orders/Custom** — bespoke spec + FIX-RATE lock + advance + status pipeline via `jx_create_order` RPC → `jx_order`/`jx_order_item` (RPC LIVE in DB; FE LOCAL, **NOT deployed**) | ✅ VERIFIED (local) | 2026-06-04 |
-| (later) | **Phase 8 = PKR double-entry GL + order→sale finalization** (`jx_account`/`jx_voucher`/`jx_voucher_line` + gold posting); remaining pages (Customers/Workers/Repairs); **deploy P4–P7** (merge→main / Lovable publish) | NOT STARTED | — |
+| 8a | **PKR double-entry GL** — `jx_account`/`jx_voucher`/`jx_voucher_line` + COA + `jx_create_sale` posts a BALANCED voucher atomically + Gold Position/Trial Balance/Cash Book reports (GL tables + v2 RPC LIVE in DB; FE LOCAL, **NOT deployed**) | ✅ VERIFIED (local) | 2026-06-05 |
+| (later) | **Phase 8b** (advance application / order→sale finalization — `p_prepaid_from_advance` already wired); perpetual COGS/inventory valuation (deferred); remaining pages (Customers/Workers/Repairs); **deploy P4–P8a** | NOT STARTED | — |
 
 ## Phase 1 — provisioning (VERIFIED 2026-06-04)
 **New tenant (LIVE in production):**
@@ -123,6 +124,20 @@ Bespoke orders: spec lines → calc.ts estimate at **fixed_rate** (when locked) 
   - **Isolation both ways:** control bbqtonight has no Orders/Jewelry; SET-ROLE-authenticated as bbq sees **0** legacy `jx_order` and a direct legacy INSERT is **DENIED by RLS**. No console errors.
   - Screenshots: `.tmp_jx/shots/p7-order-booked.png`, `p7-fixrate-lock.png`, `p7-pipeline.png`, `p7-control-bbq.png` (not committed).
 - **Cleanup confirmed:** test order+items deleted (legacy jx_order=0, jx_order_item=0); **all 4 gold rates restored to placeholder** (the Gold Rate UI save upserts every karat, so 24/21/18 had flipped to manual@1 — all reset to placeholder@1); `onboarding_completed`→false. `jx_create_order` remains live (additive, no prod caller until deploy).
+
+## Phase 8a — PKR double-entry GL (VERIFIED on LOCAL preview 2026-06-05 — GL+RPC live in DB; FE NOT deployed)
+Fresh double-entry General Ledger; `jx_create_sale` extended to post a **balanced voucher in the same transaction** as the sale; Gold Position + Trial Balance + Cash Book reports. MVP = cash/revenue/tax flows + grams ledger (jx_gold_ledger). **No perpetual COGS/inventory valuation yet** (deferred).
+
+- **DDL (LIVE in DB via direct 5432):** `jx-005-ledger.sql` — `jx_account` (code/name/type/parent), `jx_voucher` (type/date/narration/ref), `jx_voucher_line` (debit/credit) + RLS 5-policy each + **Legacy COA seed (16 accounts — REAL config, kept)**. Rollback `jx-005-rollback.sql`.
+- **RPC replace:** `jx-006-create-sale-rpc-v2.sql` — `jx_create_sale(p_payload jsonb, p_prepaid_from_advance numeric DEFAULT 0)`. All Phase-6 steps UNCHANGED; ADDS jx_voucher + balanced jx_voucher_line with **Σdr=Σcr enforced (RAISE EXCEPTION → whole sale rolls back)**. Prior def backed up `.tmp_jx/jx_create_sale_p6.bak.sql`; rollback = drop 2-arg + recreate 1-arg. Voucher rule: Dr Cash (= net_bill − card − cheque − prepaid; underpay → Dr Receivables) + Bank + Advances + Old-Gold-Inventory + Discounts; Cr Gold Sales (Σmetal) + Making + Polish + Stone + Tax.
+- **New FE:** `src/pages/jewelry/Reports.tsx`, `src/hooks/useJewelryLedger.ts`. **Edits:** `NavigationSidebar.tsx` (+Reports), `App.tsx` (+`/jewelry/reports`), `Dashboard.tsx` (+Reports link). No package.json/lockfile change.
+- **PROOF (executed, local preview + DB) — vouchers BALANCE with exact lines:**
+  - **Sale 1** net_bill **260,600**, balance **0** (UNCHANGED from P6). Voucher INV-00001: **Dr Cash 260,600 = Cr Gold Sales 237,600 + Making 8,000 + Stone 15,000** (Σdr=Σcr=260,600).
+  - **Sale 2** (cash 110k, old gold 8g 22K zero-ded @21,500, tax-making 3%, discount 600) net_bill **102,573.33**, balance **7,426.67** (UNCHANGED). Voucher INV-00002: **Dr Cash 102,573.33 + Old-Gold-Inv 157,666.67 + Discounts 600 = 260,840 = Cr Gold Sales 237,600 + Making 8,000 + Stone 15,000 + Tax 240** (Σdr=Σcr).
+  - **Reports reconcile:** Gold Position 22K net **−11.001 g** (2 sale-OUT −9.167 + 1 old-gold-IN +7.333); **Trial Balance Balanced — Total Dr 521,440 = Cr 521,440**; Cash Book entries 260,600 + 102,573.33 → running **363,173.33**.
+  - **Isolation both ways:** control bbqtonight has no Reports/Jewelry; SET-ROLE-authenticated as bbq sees **0** legacy `jx_account`/`jx_voucher`/`jx_voucher_line` and a direct legacy `jx_voucher` INSERT is **DENIED by RLS** (so the SECURITY-INVOKER RPC can't post cross-tenant). No console errors.
+  - Screenshot `.tmp_jx/shots/p8-reports.png` (not committed).
+- **Cleanup confirmed:** all test sales/items/gold_ledger/vouchers/voucher_lines deleted (legacy jx_sale=0, jx_voucher=0, jx_gold_ledger=0); **COA kept (jx_account=16)**; rates→placeholder; onboarding→false. GL tables + v2 RPC remain live (additive; no prod caller until deploy).
 
 ## Phase 0 discovery checklist (VERIFIED vs OPEN)
 | Item | Status | Where |

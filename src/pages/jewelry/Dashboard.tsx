@@ -34,9 +34,10 @@ export default function JewelryDashboard() {
           </h1>
           <p className="text-muted-foreground">Legacy Jewellers — live shop overview</p>
         </div>
-        <Button asChild variant="outline">
-          <Link to="/jewelry/gold-rate">Set Gold Rate</Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline"><Link to="/jewelry/reports">Reports</Link></Button>
+          <Button asChild variant="outline"><Link to="/jewelry/gold-rate">Set Gold Rate</Link></Button>
+        </div>
       </div>
 
       {/* Placeholder-rate banner: never present a placeholder as a real rate */}
