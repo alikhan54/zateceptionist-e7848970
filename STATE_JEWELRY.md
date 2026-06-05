@@ -26,7 +26,8 @@
 | 7 | **Orders/Custom** — bespoke spec + FIX-RATE lock + advance + status pipeline via `jx_create_order` RPC → `jx_order`/`jx_order_item` (RPC LIVE in DB; FE LOCAL, **NOT deployed**) | ✅ VERIFIED (local) | 2026-06-04 |
 | 8a | **PKR double-entry GL** — `jx_account`/`jx_voucher`/`jx_voucher_line` + COA + `jx_create_sale` posts a BALANCED voucher atomically + Gold Position/Trial Balance/Cash Book reports (GL tables + v2 RPC LIVE in DB; FE LOCAL, **NOT deployed**) | ✅ VERIFIED (local) | 2026-06-05 |
 | 8b | **Orders→GL** — advance voucher at booking (`jx_create_order` replace) + `jx_finalize_order` (order→sale, clears advance, `jx_create_sale` reused unchanged) + `jx_order.finalized_sale_id` (DDL+RPC LIVE in DB; FE LOCAL, **NOT deployed**) | ✅ VERIFIED (local) | 2026-06-05 |
-| (later) | Order-cancel refund voucher (Dr Advances/Cr Cash — **stubbed/not built**, small follow-up); perpetual COGS/inventory valuation (deferred); remaining pages (Customers/Workers/Repairs); **deploy P4–P8b** | NOT STARTED | — |
+| 9 | **Workshop/Karigar + Repairs + Loose Stones** — `jx_record_worker_txn` RPC (issue/receive/making-payment, cash-basis) + karigar gold balance + wastage anomaly flag + balanced making-payment voucher; lighter Repairs (status pipeline) + Loose Stones CRUD (RPC LIVE in DB; FE LOCAL, **NOT deployed**) | ✅ VERIFIED (local) | 2026-06-05 |
+| (later) | Order-cancel refund voucher (Dr Advances/Cr Cash — **stubbed/not built**, small follow-up); perpetual COGS/inventory valuation (deferred); Karigar Payable 2200 accrual (deferred — cash-basis shipped); remaining pages (Customers); **deploy P4–P9** | NOT STARTED | — |
 
 ## Phase 1 — provisioning (VERIFIED 2026-06-04)
 **New tenant (LIVE in production):**
@@ -154,6 +155,27 @@ Advance receipt posts a voucher at booking; finalizing a delivered order creates
   - Screenshot `.tmp_jx/shots/p8b-finalized.png` (not committed).
 - **Cleanup confirmed:** all test order/items/sale/vouchers/voucher_lines/gold_ledger + finalize-created `jx_item` deleted (legacy jx_order=0, jx_sale=0, jx_voucher=0, jx_gold_ledger=0, jx_item=0); **COA kept (16)**; rates→placeholder; onboarding→false.
 - **Deferred:** order-cancel refund voucher (Dr Customer Advances / Cr Cash) is NOT built — small follow-up; the 'cancelled' status button currently only sets status (no refund posting).
+
+## Phase 9 — Workshop/Karigar + Repairs + Loose Stones (VERIFIED on LOCAL preview 2026-06-05 — RPC live in DB; FE NOT deployed)
+Karigar (workshop) gold issue/receive with per-karigar **gold balance** + **wastage anomaly flag**, a balanced **making-payment voucher**; plus lighter **Repairs** (status pipeline) and **Loose Stones** CRUD. **Karigar accounting is CASH-BASIS** (locked decision): issue/receive move only physical gold (jx_gold_ledger); making is recorded as *owed* on receive and **expensed only when paid** (Dr Making Paid 5100 = Cr Cash 1000). `jx_create_sale`/`jx_create_order`/`jx_finalize_order` were **NOT modified**.
+
+- **RPC (additive, LIVE in DB via direct 5432):** `public.jx_record_worker_txn(p_payload jsonb)` — `SECURITY INVOKER`, one txn, `tenant_id=get_user_tenant_id()`. 3 types:
+  - `issue_gold` → `jx_worker_txn(type='issue')` + `jx_gold_ledger` OUT `reason='issue_karigar'` (no PKR voucher).
+  - `receive_item` → `jx_worker_txn(type='receive', making_amount=owed)` + `jx_gold_ledger` IN `reason='receive_karigar'` (no PKR voucher).
+  - `making_payment` → `jx_worker_txn(type='payment')` + `jx_voucher(type='making_payment')` with **Dr 5100 Making Paid = Cr 1000 Cash**, Σdr=Σcr enforced by summing the actually-inserted lines (missing COA code → unbalanced → RAISE → rollback). Defensive `fine_grams` fallback = `round(net*karat/24,3)` (matches calc.ts). File `repo/supabase/migrations/jx-008-worker-txn.sql` (rollback `DROP FUNCTION public.jx_record_worker_txn(jsonb)`).
+- **New FE files:** `src/pages/jewelry/Karigars.tsx` (Workshop), `src/pages/jewelry/Repairs.tsx`, `src/pages/jewelry/LooseStones.tsx`; hooks `src/hooks/{useJewelryWorkshop,useJewelryRepairs,useJewelryLooseStones}.ts`. **Edits:** `NavigationSidebar.tsx` (+Workshop/Repairs/Loose Stones in Jewelry section; +`Hammer`,`Gem` icon imports), `App.tsx` (+`/jewelry/workshop`, `/jewelry/repairs`, `/jewelry/loose-stones`). No package.json/lockfile change.
+- **Computed-not-stored (in `useJewelryWorkshop`, reusing calc.ts `pureWeight`):** gold balance = Σ issued fine − Σ received fine; making payable = Σ receive making − Σ payments; wastage% = (Σ issued net − Σ received net)/Σ issued net; **anomaly when wastage% > `WASTAGE_ANOMALY_PCT` (default 3%)**.
+- **PROOF — (1) DB smoke test rolled-back, then (2) full UI on local preview, then (3) authoritative DB assertions:**
+  - **Issue 100g 22K** → `jx_worker_txn(issue)` + ledger OUT `issue_karigar` **fine 91.667**; balance **91.667 g** out.
+  - **Receive 95g 22K making 76,000** → `jx_worker_txn(receive)` + ledger IN `receive_karigar` **fine 87.083**; balance **4.584 g** (UI shows 4.583 from calc.ts pure, DB ledger sums 4.584 — both ≈4.58, consistent); making payable **PKR 76,000**.
+  - **Wastage (100−95)/100 = 5% > 3%** → **ANOMALY BADGE fired** ("Wastage anomaly: 5% > 3%").
+  - **Pay making 76,000** → `jx_worker_txn(payment)` + voucher **Dr Making Paid 5100 = Cr Cash 1000 = 76,000** (Σdr=Σcr); payable → **PKR 0**.
+  - **Repairs:** booked (charge 2,000, promised date) → advance booked→in_progress→**ready**; status persisted; per-status customer notification **displayed only** (Phase-13 sends).
+  - **Loose Stones:** added Diamond "Round Brilliant" 0.5ct qty 1 → row `is_loose=true`, `item_id` NULL.
+  - **Isolation both ways:** control bbqtonight sidebar has **no Workshop/Repairs/Loose Stones/Jewelry**; bbq cannot see "Test Karigar" (RLS, 0 rows in jx_worker/jx_worker_txn/jx_repair/loose stones); and **`jx_record_worker_txn` called as bbq (even fed a Legacy worker_id) cannot create a Legacy-tenant row** (RPC stamps `get_user_tenant_id()`=bbqtonight). No console errors.
+  - Negative guards proven: unknown type + missing worker_id → RAISE. Screenshots `.tmp_jx/shots/p9-karigar-anomaly.png`, `p9-karigar-paid.png`, `p9-repairs.png`, `p9-loose-stones.png`, `p9-bbq-isolation.png` (not committed).
+- **Cleanup confirmed:** all test worker/txns/gold_ledger(issue_karigar+receive_karigar)/making_payment vouchers+lines/repair/loose stone deleted (legacy counts all 0); **COA kept (jx_account=16)**; `onboarding_completed`→false. RPC remains live (additive; no prod caller until deploy).
+- **Deferred:** accrual via **Karigar Payable 2200** (cash-basis shipped instead — making expensed on payment); per-karigar statement currently lists txns (running-balance column is a small follow-up).
 
 ## Phase 0 discovery checklist (VERIFIED vs OPEN)
 | Item | Status | Where |

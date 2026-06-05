@@ -163,6 +163,9 @@ const JewelryInventory = lazy(() => import("./pages/jewelry/Inventory"));
 const JewelryPOS = lazy(() => import("./pages/jewelry/PointOfSale"));
 const JewelryOrders = lazy(() => import("./pages/jewelry/Orders"));
 const JewelryReports = lazy(() => import("./pages/jewelry/Reports"));
+const JewelryWorkshop = lazy(() => import("./pages/jewelry/Karigars"));
+const JewelryRepairs = lazy(() => import("./pages/jewelry/Repairs"));
+const JewelryLooseStones = lazy(() => import("./pages/jewelry/LooseStones"));
 
 // Real Estate Module
 const RealEstateDashboard = lazy(() => import("./pages/realestate/RealEstateDashboard"));
@@ -1318,6 +1321,30 @@ const App = () => (
                     element={
                       <LazyPage>
                         <JewelryReports />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/jewelry/workshop"
+                    element={
+                      <LazyPage>
+                        <JewelryWorkshop />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/jewelry/repairs"
+                    element={
+                      <LazyPage>
+                        <JewelryRepairs />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/jewelry/loose-stones"
+                    element={
+                      <LazyPage>
+                        <JewelryLooseStones />
                       </LazyPage>
                     }
                   />
