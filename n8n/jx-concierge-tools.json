@@ -1,0 +1,518 @@
+{
+  "name": "420 Jewellery - Concierge Tools v1.0",
+  "nodes": [
+    {
+      "id": "GR Webhook",
+      "name": "GR Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "jewellery-get-gold-rate",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "jewellery/get-gold-rate",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "GR Parse",
+      "name": "GR Parse",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const b=$json.body||{},q=$json.query||{};\nconst tc=(b.message&&b.message.toolCalls&&b.message.toolCalls[0])||null;\nlet a={}; if(tc&&tc.function){try{a=typeof tc.function.arguments==='string'?JSON.parse(tc.function.arguments):(tc.function.arguments||{});}catch(e){a={};}}\nconst g=(k)=>String(q[k]!=null?q[k]:(b[k]!=null?b[k]:(a[k]!=null?a[k]:''))).trim();\nconst toolCallId=(tc&&tc.id)||b.toolCallId||'test';\nreturn [{json:{tenant:g('tenant'),karat:g('karat'),toolCallId}}];"
+      }
+    },
+    {
+      "id": "GR Fetch",
+      "name": "GR Fetch",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/jx_gold_rate?tenant_id=eq.{{ $json.tenant }}{{ $json.karat ? '&karat=eq.'+$json.karat : '' }}&select=karat,rate_per_gram,rate_per_tola,source&order=karat.asc",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {}
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "gQE27pII1aZEzHbn",
+          "name": "ZATECEPTIONIST-V2"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "GR Format",
+      "name": "GR Format",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const p=$('GR Parse').item.json;\nlet rows=$input.all().map(i=>i.json); rows=(rows.length===1&&Array.isArray(rows[0]))?rows[0]:rows;\nrows=rows.filter(r=>r&&r.karat!=null);\nlet result; if(!rows.length){result=\"I don't have a current gold rate on file to share right now.\";}\nelse{result=\"Today's gold rate \u2014 \"+rows.map(r=>r.karat+\"K: PKR \"+r.rate_per_gram+\"/g (PKR \"+r.rate_per_tola+\"/tola)\").join('; ')+\".\";}\nreturn [{json:{results:[{toolCallId:p.toolCallId,result}],tenant:p.tenant,rates:rows}}];"
+      }
+    },
+    {
+      "id": "GR Respond",
+      "name": "GR Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        880,
+        0
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "OS Webhook",
+      "name": "OS Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        240
+      ],
+      "webhookId": "jewellery-order-status",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "jewellery/order-status",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "OS Parse",
+      "name": "OS Parse",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        240
+      ],
+      "parameters": {
+        "jsCode": "const b=$json.body||{},q=$json.query||{};\nconst tc=(b.message&&b.message.toolCalls&&b.message.toolCalls[0])||null;\nlet a={}; if(tc&&tc.function){try{a=typeof tc.function.arguments==='string'?JSON.parse(tc.function.arguments):(tc.function.arguments||{});}catch(e){a={};}}\nconst g=(k)=>String(q[k]!=null?q[k]:(b[k]!=null?b[k]:(a[k]!=null?a[k]:''))).trim();\nconst toolCallId=(tc&&tc.id)||b.toolCallId||'test';\nreturn [{json:{tenant:g('tenant'),order_no:g('order_no'),phone:g('phone'),toolCallId}}];"
+      }
+    },
+    {
+      "id": "OS Fetch",
+      "name": "OS Fetch",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        240
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/jx_order?tenant_id=eq.{{ $json.tenant }}{{ $json.order_no ? '&order_no=eq.'+$json.order_no : '' }}&select=order_no,status,delivery_date,net_amount,balance&order=created_at.desc&limit=5",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {}
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "gQE27pII1aZEzHbn",
+          "name": "ZATECEPTIONIST-V2"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "OS Format",
+      "name": "OS Format",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        240
+      ],
+      "parameters": {
+        "jsCode": "const p=$('OS Parse').item.json;\nlet rows=$input.all().map(i=>i.json); rows=(rows.length===1&&Array.isArray(rows[0]))?rows[0]:rows;\nrows=rows.filter(r=>r&&r.order_no);\nlet result; if(!rows.length){result=\"I couldn't find an order with those details \u2014 please check the order number.\";}\nelse{const o=rows[0];const dd=o.delivery_date?(\" Expected delivery: \"+String(o.delivery_date).slice(0,10)+\".\"):\"\";result=\"Order \"+o.order_no+\" status: \"+o.status+\".\"+dd+(o.balance!=null?(\" Balance: PKR \"+o.balance+\".\"):\"\");}\nreturn [{json:{results:[{toolCallId:p.toolCallId,result}],tenant:p.tenant,orders:rows}}];"
+      }
+    },
+    {
+      "id": "OS Respond",
+      "name": "OS Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        880,
+        240
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "BA Webhook",
+      "name": "BA Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        480
+      ],
+      "webhookId": "jewellery-book-appointment",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "jewellery/book-appointment",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "BA Parse",
+      "name": "BA Parse",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        480
+      ],
+      "parameters": {
+        "jsCode": "const b=$json.body||{},q=$json.query||{};\nconst tc=(b.message&&b.message.toolCalls&&b.message.toolCalls[0])||null;\nlet a={}; if(tc&&tc.function){try{a=typeof tc.function.arguments==='string'?JSON.parse(tc.function.arguments):(tc.function.arguments||{});}catch(e){a={};}}\nconst g=(k)=>String(q[k]!=null?q[k]:(b[k]!=null?b[k]:(a[k]!=null?a[k]:''))).trim();\nconst toolCallId=(tc&&tc.id)||b.toolCallId||'test';\nconst purpose=g('purpose'),preferred=g('preferred_time');\nconst notes=[purpose,preferred?('Preferred: '+preferred):''].filter(Boolean).join(' | ');\nreturn [{json:{tenant:g('tenant'),name:g('name'),phone:g('phone'),purpose,preferred,notes,toolCallId,tags:['lead','appointment']}}];"
+      }
+    },
+    {
+      "id": "BA Validate",
+      "name": "BA Validate",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        480
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/tenant_config?tenant_id=eq.{{ $json.tenant }}&industry=eq.jewellery&select=tenant_id,industry&limit=1",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {}
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "gQE27pII1aZEzHbn",
+          "name": "ZATECEPTIONIST-V2"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "BA Gate",
+      "name": "BA Gate",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        660,
+        480
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ Array.isArray($json) ? ($json[0] ? $json[0].industry : '') : ($json.industry || '') }}",
+              "rightValue": "jewellery",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "BA Insert",
+      "name": "BA Insert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        420
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/jx_customer",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ tenant_id: $('BA Parse').item.json.tenant, name: $('BA Parse').item.json.name, phone: $('BA Parse').item.json.phone, notes: $('BA Parse').item.json.notes, lifecycle_stage: 'lead', tags: $('BA Parse').item.json.tags }) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "gQE27pII1aZEzHbn",
+          "name": "ZATECEPTIONIST-V2"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "BA Format OK",
+      "name": "BA Format OK",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        420
+      ],
+      "parameters": {
+        "jsCode": "const p=$('BA Parse').item.json;\nlet rows=$input.all().map(i=>i.json); rows=(rows.length===1&&Array.isArray(rows[0]))?rows[0]:rows;\nconst id=(rows[0]&&rows[0].id)||null;\nconst result=\"Thank you, \"+(p.name||'there')+\"! I've noted your request\"+(p.preferred?(\" for \"+p.preferred):\"\")+\" and our team at Legacy Jewellers will contact you on \"+(p.phone||'your number')+\" to confirm.\";\nreturn [{json:{results:[{toolCallId:p.toolCallId,result}],tenant:p.tenant,customer_id:id,booked:true}}];"
+      }
+    },
+    {
+      "id": "BA Format Err",
+      "name": "BA Format Err",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        570
+      ],
+      "parameters": {
+        "jsCode": "const p=$('BA Parse').item.json;\nreturn [{json:{results:[{toolCallId:p.toolCallId,result:\"I'm sorry, I can't book that on this account right now.\"}],booked:false}}];"
+      }
+    },
+    {
+      "id": "BA Respond",
+      "name": "BA Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1320,
+        480
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "GR Webhook": {
+      "main": [
+        [
+          {
+            "node": "GR Parse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GR Parse": {
+      "main": [
+        [
+          {
+            "node": "GR Fetch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GR Fetch": {
+      "main": [
+        [
+          {
+            "node": "GR Format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GR Format": {
+      "main": [
+        [
+          {
+            "node": "GR Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OS Webhook": {
+      "main": [
+        [
+          {
+            "node": "OS Parse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OS Parse": {
+      "main": [
+        [
+          {
+            "node": "OS Fetch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OS Fetch": {
+      "main": [
+        [
+          {
+            "node": "OS Format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OS Format": {
+      "main": [
+        [
+          {
+            "node": "OS Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BA Webhook": {
+      "main": [
+        [
+          {
+            "node": "BA Parse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BA Parse": {
+      "main": [
+        [
+          {
+            "node": "BA Validate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BA Validate": {
+      "main": [
+        [
+          {
+            "node": "BA Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BA Gate": {
+      "main": [
+        [
+          {
+            "node": "BA Insert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "BA Format Err",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BA Insert": {
+      "main": [
+        [
+          {
+            "node": "BA Format OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BA Format OK": {
+      "main": [
+        [
+          {
+            "node": "BA Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BA Format Err": {
+      "main": [
+        [
+          {
+            "node": "BA Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
