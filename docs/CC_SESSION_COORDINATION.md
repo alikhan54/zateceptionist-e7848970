@@ -768,3 +768,63 @@ This pass debugs through actual chunk inspection + DB schema reality.
 - **Known MINORS (pre-existing, NOT HR V5 regressions, NOT blocking):** (1) the onboarding modal re-shows for established admins on fresh login (platform-wide, real users dismiss once via Skip/X); (2) a recurring unattributed HTTP 400 on a REST query seen on dashboard/attendance — pages render fine, NOT RLS-related (RLS returns empty-200, not 400) — worth a devtools network check.
 - **QA artifacts:** `tests/hr-prod-qa.spec.ts` (10-test prod walkthrough), `tests/screenshots/prod/*.png`, `playwright.config.ts` (`hr-prod-qa` project).
 - **VERDICT: SHIP-OK-WITH-MINORS.** HR V5 session PARKED; `main` clean; no critical bugs.
+
+---
+
+## 🧭 PLATFORM COMPLETION — PHASE 0 FOUNDATION (registered 2026-06-05)
+
+Foundation for a 4-feature roadmap: **Master Admin Dashboard · White-Label/Agency Mode ·
+Lifecycle Messaging · Feedback Board.** Full plan: `frontend/docs/420-PLATFORM-COMPLETION-ROADMAP.md`
+(read before starting any phase). Phase 0 was auth-fix + read-only discovery; artifacts in
+`D:/420-system/.tmp_phase0/` (gitignored).
+
+### Locked decisions (do NOT re-litigate)
+- **Pricing:** $1,999/mo Enterprise = up to **10** white-label sub-tenants; **11+ = contact sales**
+  (custom). Hard cap → `tenant_config.white_label_tenant_cap` (default 10 enterprise, NULL otherwise).
+- **Roles:** `master_admin` (Adeel only) > `agency_admin` (NEW, sees own agency's sub-tenants) >
+  `admin` (one tenant) > `manager` > `staff`.
+- **Repo/worktrees:** canonical repo `D:/420-system/frontend`; worktrees `D:/420-system/frontend-<name>`,
+  created **lazily at each phase start** (see `.tmp_phase0/0d_worktree_plan.md`).
+
+### Upcoming phases (PENDING — each starts in its own worktree off latest `origin/main`)
+| Phase | Worktree / branch | Scope (additive) |
+|---|---|---|
+| 1A Branding | `frontend-branding` / `wt/branding` | "Brand Your Platform" onboarding step (enterprise-only) + Settings→Branding; extend existing brand cols + add 5 |
+| 1B Lifecycle signals | `frontend-events` / `wt/events` | **DERIVE lifecycle signals from existing tables** (read-only RPCs/views) — NOT event emission |
+| 2 Master Admin | `frontend-admin` / `wt/admin` | wire `/admin/*` to cross-tenant RPCs; NEW `/admin/tenants/:id` + `/admin/time-to-purchase`; agency mgmt |
+| 3 Lifecycle Messaging | `frontend-lifecycle` / `wt/lifecycle` | **3.0 reconciliation FIRST**, then sequences + AI per-message + NEW n8n trigger wf |
+| 4 Feedback Board | `frontend-feedback` / `wt/feedback` | NEW tables (feedback_requests/votes/comments) + `/feedback` + `/admin/feedback` |
+| 5 Polish/Hardening | TBD | AI insights, color extraction, impersonate audit, load test, docs |
+
+Dependency order: 1A ∥ 1B → **2 needs 1B** → **3 needs 1B + 3.0** → 4 independent.
+
+### 🔒 Phase 0 DISCOVERIES — do NOT re-investigate
+
+**AUTH (resolved + deferred):**
+- **master_admin is now `zatesystems7@gmail.com` ONLY** (user `750c2f0a`, tenant `master-zate`). `axeclaim@gmail.com` demoted master_admin→admin (was on `bobadook`; reversible).
+- **`auth_id` is the canonical join key (NOT `id`)** — F2-N-5: `users.auth_id = auth.uid()`, then `user_roles.user_id = users.id`. AuthContext uses `.maybeSingle()` (breaks on 2 role rows → never add a 2nd; UPDATE the existing).
+- **PHANTOM-USER BUG** — duplicate `public.users` rows (auth UUID mis-used as PK, `auth_id` NULL, no role): `zatesystems7` (`a9639bed`, confirmed this session), `orphan master_admin user_roles` (`7b33fce7`, no users row), `adeel` (`4c60c257`, carried from prior context — confirm). **→ Dedicated cleanup session pending; MUST also find ROOT CAUSE — is signup STILL minting phantoms?** (No DELETEs were done in Phase 0.)
+
+**WHITE-LABEL (Phase 1A reference) — `tenant_config` = 430 cols:**
+- **6 brand cols ALREADY exist:** `primary_color`, `secondary_color`, `website_chat_widget_color` (all populated for the 4 enterprise tenants), `logo_url` (empty), `brand_voice`, `smtp_from_name`.
+- **`features.white_label` JSONB flag exists = the gating mechanism.**
+- **27 AI-personality cols populated** (`ai_name`, `ai_role`, `ai_tone`, `ai_personality`, `voice_name`, …) → each tenant's AI already speaks as its brand; reuse, don't rebuild.
+- **Only 5 NET-NEW cols needed:** `brand_name`, `brand_favicon_url`, `white_label_tenant_cap` (DEFAULT 10 enterprise), `parent_agency_tenant_id` (sub-tenant link), `custom_domain`.
+
+**LIFECYCLE (Phase 1B + 3 reference):**
+- **`system_events` is the AI brain's execution log, NOT a lifecycle stream** (11.7k rows; 0 signup/login/purchase/trial/churn events; `event_category` all NULL). → **Phase 1B DERIVES** lifecycle from `tenant_config.created_at`, `onboarding_*`, `auth.users.last_sign_in_at`, `subscriptions`, `lead_engagement_events`.
+- **18 overlapping sequence tables** (marketing_sequence_*, email_sequence_*, sequences, sequence_templates, customer_lifecycle_*…) → **Phase 3.0 reconciliation REQUIRED** before any sequence build (`customer_lifecycle_stages`/`_enrollment` exist but EMPTY).
+- **AI Sequence Generator `UjBu1DnjeTo4qWkw` already exists** (+ sacred Part-23 sequencers) → inspect before building "AI per-message crafting".
+- **9 sequences across 6 industries exist** (general/healthcare/real_estate/restaurant/salon/technology); **~9 industries missing** (construction, collections, youtube, accounting, forex, roofing, lab, hospital, telehealth) + **6 sequence types missing** (win-back, milestone, inspire, upsell, trial-ending, dunning).
+
+**THE 4 ENTERPRISE TENANTS (white-label eligible, all 0 sub-tenants today, cap=10):**
+`master-zate` (Zate Systems Master), `moiz-hira-45284b09` (Zate Systems), `youtube-agency-demo`
+(YouTube Agency Pro), `acsfx`. Colors + AI identity already populated → ready QA/seed data for Phase 1A.
+
+### 🛑 SACRED ZONES (unchanged — additive touches only, pre-approved per phase)
+- n8n: 9 sacred workflows (Marketing 552 / communication 378 / main 514 / sales 407 / Video Orch 16 /
+  Estimation 3 / OMEGA Campaign 5 / OMEGA Briefing 3 / OMEGA LeadGen 5) — **0 modified**; Phase 3 creates NEW workflows only.
+- LangGraph: `langgraph-agents/agents/*.py` (`graph.py`/`server.py`/`definitions.py`) — untouched.
+- Frontend sacred: `Layout.tsx`, `OmegaFloatingChat.tsx`, `NavigationSidebar.tsx`, `supabase.ts` —
+  Phases 1A/2 may add 1–3 additive lines to Layout/NavigationSidebar (logo render / nav entry), explicitly approved.
+- DB: no DDL except gated, additive migrations per phase (white-label cols 1A; RPCs 1B/2; feedback tables 4).
