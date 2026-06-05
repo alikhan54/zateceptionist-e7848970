@@ -1,6 +1,24 @@
 # CC Multi-Session Coordination
 
-**Last updated:** 2026-06-02 (Smart Ledger Wave 1 B/C/E/F SHIPPED + live on Lovable — bundle `index-B6Klg84b.js` at origin/main `e1c9545`; Phase D HELD pending Video park; prior: HR course-gen + Zate real-team SHIPPED+PARKED, BSH-HMS PARKED+COMPLETE, Smart Ledger Phase 1 PARKED, Recruitment E2E PARKED)
+**Last updated:** 2026-06-05 (HR Recruitment UI Overhaul SHIPPED `c79058e` — awaiting Lovable Publish; prior: HR Video Stack `8c7ce4e` + HR Recruitment Sourcing `86805bb` SHIPPED, Smart Ledger Wave 1 `e1c9545` live, clinic Phase-2 SHIPPED)
+
+---
+
+## 🚢 HR Recruitment UI Overhaul — SHIPPED 2026-06-05
+
+**Session:** Recruitment-Frontend-Batch. **SHIPPED to `origin/main`** commit **`c79058e`** (FF from `6b99557`, **no force**; selective-add 4 files only; `tsc --noEmit` clean; secret-scan clean; dry-run-merge N/A — changes were uncommitted on a 0-ahead branch, carried onto fresh main + committed there). **UI live after Adeel clicks Lovable Publish.** HR-recruitment domain only.
+
+**Shipped (4 files):** `src/components/hr/CandidateBoard.tsx` (NEW), `src/hooks/useRecruitment.ts`, `src/pages/hr/Recruitment.tsx`, `src/components/hr/PipelineFunnel.tsx`.
+- **Candidate board (Candidates tab):** per-opening sections ranked by AI score, band-colored explainable score rings (**×100 fix** — was rendering `0.82%`), "Why {score}" + skill/experience chips, screened-out + archived drawers. Archive/restore via NEW `useArchiveCandidate` (recoverable `status='archived'`).
+- **Pipeline tab:** per-opening selector filters funnel + kanban to one requisition.
+- **Jobs tab:** Active/Filled/Archived lifecycle sub-tabs + per-opening Mark Filled / Close / Archive / Reopen via `useUpdateJob`. `JobRequisition.status` union widened to the DB CHECK set (+`pending_approval`/`approved`/`cancelled`); "archive"→DB `cancelled`.
+- All queries tenant-scoped; cosmique isolation verified (0 leak); CandidateBoard/lifecycle degrade gracefully on a no-data tenant.
+
+**Owns (coordinate):** `src/hooks/useRecruitment.ts`, `src/pages/hr/Recruitment.tsx` — also owned by HR Recruitment Sourcing (`86805bb`). My changes are **additive on top** of that ship (built on `6b99557`, which includes `86805bb`).
+
+**Backend (live, NOT git):** NEW n8n `420 HR Self-Fill Completed Openings v1.0` (`FVMWYcDeQ0NzBt2d`) — **INACTIVE, DRY_RUN=true**, pending Adeel activation. `hired_count>=number_of_openings`→`status='filled'`; fill-only / idempotent / per-row tenant-safe. Logic verified vs live REST API (exactly 1 qualifying tenant-wide: Zate DevOps 1/1).
+
+**⚠ Flag (pre-existing, not from this work):** cosmique's authenticated session sees 0 recruitment rows although bypassrls DB shows it HAS 1 job / 5 candidates → an RLS / tenant-mapping gap for cosmique's user. Out of scope here; for a future HR session.
 
 ---
 
