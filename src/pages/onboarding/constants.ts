@@ -17,6 +17,7 @@ export const INDUSTRIES = [
   { value: "professional", label: "Professional Services", icon: "💼" },
   { value: "retail", label: "Retail & E-commerce", icon: "🛍️" },
   { value: "forex_trading", label: "Forex Trading / FX Brokerage", icon: "📈" },
+  { value: "jewellery", label: "Jewellery & Gold", icon: "💍" },
   { value: "general", label: "Other", icon: "🏢" },
 ];
 
@@ -38,6 +39,7 @@ export const AI_NAME_SUGGESTIONS: Record<string, string[]> = {
   construction_estimation: ["Cal", "Foreman", "Zate"],
   technology: ["Alex", "Nova", "Zate"],
   forex_trading: ["Aria", "Nova", "Alex"],
+  jewellery: ["Legacy Concierge", "Noor", "Sona"],
   general: ["Zate", "Luna", "Max"],
 };
 
@@ -227,6 +229,14 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   saas: "technology",
   software: "technology",
   it: "technology",
+  jewelry: "jewellery",
+  jeweller: "jewellery",
+  jewellers: "jewellery",
+  jewelery: "jewellery",
+  goldsmith: "jewellery",
+  "gold jewelry": "jewellery",
+  "gold jewellery": "jewellery",
+  "jewelry store": "jewellery",
 };
 
 const KNOWN_INDUSTRY_VALUES = INDUSTRIES.map(i => i.value);
