@@ -13,12 +13,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, ClipboardList, Lock, Bell } from "lucide-react";
-import { useGoldRates, useJewelrySetting } from "@/hooks/useJewelry";
+import { useGoldRates, useJewelrySetting, JX_KARATS } from "@/hooks/useJewelry";
 import { useJewelryCustomers, useJewelryTaxRules } from "@/hooks/useJewelrySales";
 import { useJewelryOrders, ORDER_STATUSES, orderStatusMessage, type JxOrder, type JxOrderItem, type OrderStatus } from "@/hooks/useJewelryOrders";
-import { saleLineTotal, saleTotal, round2, round3, type TaxBasis } from "@/lib/jewelry/calc";
+import { saleLineTotal, saleTotal, pureWeight, goldLedgerFineGrams, round2, round3, type TaxBasis } from "@/lib/jewelry/calc";
 
 const GOLD = "#C9A227";
 const METALS = ["Gold", "Diamond", "Silver", "Platinum", "Palladium"];
@@ -31,7 +32,7 @@ export default function Orders() {
   const { currency } = useJewelrySetting();
   const { customers, createCustomer } = useJewelryCustomers();
   const { taxRules } = useJewelryTaxRules();
-  const { orders, isLoading, createOrder, updateStatus, fetchOrderItems } = useJewelryOrders();
+  const { orders, isLoading, createOrder, updateStatus, fetchOrderItems, finalizeOrder } = useJewelryOrders();
 
   const [customerId, setCustomerId] = useState("");
   const [quickName, setQuickName] = useState(""); const [quickPhone, setQuickPhone] = useState("");
@@ -47,6 +48,11 @@ export default function Orders() {
   const [delivery, setDelivery] = useState("");
   const [sel, setSel] = useState<JxOrder | null>(null);
   const [selItems, setSelItems] = useState<JxOrderItem[]>([]);
+  // Phase 8b — finalize (deliver & invoice)
+  const [finOpen, setFinOpen] = useState(false);
+  const [finW, setFinW] = useState<Record<string, string>>({});
+  const [finT, setFinT] = useState({ cash: "", card: "", cheque: "" });
+  const [finInvoice, setFinInvoice] = useState<any>(null);
 
   const money = (v: number) => `${currency} ${v.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
   const liveRate = (k: number) => n(latestByKarat[k]?.rate_per_gram);
@@ -109,6 +115,39 @@ export default function Orders() {
   const advanceStatus = async (o: JxOrder, status: OrderStatus) => {
     try { await updateStatus.mutateAsync({ id: o.id, status }); setSel({ ...o, status }); toast({ title: `Order ${o.order_no} → ${status}`, description: orderStatusMessage(status) }); }
     catch (e: any) { toast({ title: "Status update failed", description: e?.message, variant: "destructive" }); }
+  };
+
+  const openFinalize = () => {
+    if (!sel) return;
+    setFinW(Object.fromEntries(selItems.map((it) => [it.id, String(it.net_weight ?? "")])));
+    setFinT({ cash: String(Number(sel.balance ?? 0)), card: "", cheque: "" });
+    setFinOpen(true);
+  };
+
+  const doFinalize = async () => {
+    if (!sel) return;
+    try {
+      const rate = (kt: number) => (sel.is_fix_rate && sel.fixed_rate != null ? Number(sel.fixed_rate) : liveRate(kt));
+      const items: any[] = []; const lines: any[] = [];
+      selItems.forEach((it, i) => {
+        const actNet = n(finW[it.id]); const kt = n(it.karat);
+        const lc = saleLineTotal({ netGrams: actNet, karat: kt, wastePct: n(it.waste_pct), ratePerGram: rate(kt), making: { type: "fixed", value: n(it.making) }, polish: { type: "fixed", value: n(it.polish) }, stones: [{ price: n(it.stone_value) }] });
+        const tag = `${sel.order_no}-${i + 1}`;
+        const metal = (it.tag_number || "Gold").split(" ")[0] || "Gold";
+        items.push({ metal, karat: kt, tag_number: tag, net_weight: actNet, gross_weight: round3(actNet + lc.wastageGrams), stone_weight: 0, pure_weight: round3(pureWeight(actNet, kt)), waste_pct: n(it.waste_pct), making_type: "fixed", making_value: n(it.making) });
+        lines.push({ tag_number: tag, karat: kt, net_weight: actNet, waste_pct: n(it.waste_pct), total_weight: round3(actNet + lc.wastageGrams), making: lc.making, polish: lc.polish, stone_value: lc.stoneValue, line_total: lc.lineSubtotal, fine_grams: goldLedgerFineGrams(actNet, kt, "out") });
+      });
+      const subtotal = round2(lines.reduce((s, l) => s + l.line_total, 0));
+      const discount = n(sel.discount); const net_bill = round2(subtotal - discount);
+      const cash = n(finT.cash), card = n(finT.card), cheque = n(finT.cheque), advance = n(sel.advance_amount);
+      const cash_balance = round2(cash + card + cheque + advance - net_bill);
+      const snapshot: Record<number, number> = {}; JX_KARATS.forEach((kk) => { if (latestByKarat[kk]?.rate_per_gram != null) snapshot[kk] = Number(latestByKarat[kk].rate_per_gram); });
+      const sale = { customer_id: sel.customer_id || null, sale_date: new Date().toISOString(), gold_rate_snapshot: snapshot, subtotal, discount, tax: 0, old_gold_credit: 0, net_bill, paid_cash: cash, paid_card: card, paid_cheque: cheque, paid_used_gold_value: 0, cash_balance, status: "completed" };
+      const res = await finalizeOrder.mutateAsync({ orderId: sel.id, payload: { items, sale, lines, old_gold: null } });
+      setFinInvoice({ sale_no: (res as any).sale_no, order_no: (res as any).order_no, lines: selItems.map((it, i) => ({ tag: `${sel.order_no}-${i + 1}`, karat: it.karat, net: n(finW[it.id]), line_total: lines[i].line_total })), subtotal, discount, net_bill, advance, cash, card, cheque, cash_balance });
+      toast({ title: `Order ${(res as any).order_no} delivered`, description: `Invoice ${(res as any).sale_no} · advance ${money(advance)} cleared` });
+      setFinOpen(false); setSel({ ...sel, status: "delivered", finalized_sale_id: (res as any).sale_id } as any);
+    } catch (e: any) { toast({ title: "Finalize failed", description: e?.message || "Unknown", variant: "destructive" }); }
   };
 
   return (
@@ -242,7 +281,13 @@ export default function Orders() {
           <CardHeader className="flex flex-row items-center justify-between">
             <div><CardTitle>{sel.order_no}</CardTitle>
               <p className="text-xs text-muted-foreground">{sel.is_fix_rate ? <span data-testid="ord-locked-rate"><Lock className="inline h-3 w-3" /> Rate locked @ {money(Number(sel.fixed_rate))}/g</span> : "Live rate"}</p></div>
-            <Button variant="ghost" size="sm" onClick={() => setSel(null)}>Close</Button>
+            <div className="flex items-center gap-2">
+              {sel.status !== "cancelled" && !sel.finalized_sale_id && (
+                <Button size="sm" onClick={openFinalize} style={{ backgroundColor: GOLD }} className="text-black hover:opacity-90" data-testid="ord-finalize-open">Deliver &amp; Invoice</Button>
+              )}
+              {sel.finalized_sale_id && <Badge variant="outline" style={{ borderColor: "#16a34a", color: "#16a34a" }}>finalized</Badge>}
+              <Button variant="ghost" size="sm" onClick={() => setSel(null)}>Close</Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             {selItems.map((it) => {
@@ -270,6 +315,47 @@ export default function Orders() {
                 <span><strong>Customer message (prepared, not sent — Phase 13):</strong> {orderStatusMessage(sel.status || "booked")}</span>
               </div>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Finalize (deliver & invoice) dialog */}
+      <Dialog open={finOpen} onOpenChange={setFinOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Deliver &amp; Invoice — {sel?.order_no}</DialogTitle></DialogHeader>
+          <div className="space-y-3 py-2">
+            {selItems.map((it, i) => (
+              <div key={it.id} className="grid grid-cols-2 gap-2 items-end">
+                <span className="text-sm">{it.tag_number} · {it.karat}K <span className="text-muted-foreground">(est {it.net_weight}g)</span></span>
+                <div className="grid gap-1"><Label className="text-xs">Actual net (g)</Label><Input type="number" value={finW[it.id] ?? ""} onChange={(e) => setFinW({ ...finW, [it.id]: e.target.value })} data-testid={`ord-fin-weight-${i}`} /></div>
+              </div>
+            ))}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="grid gap-1"><Label className="text-xs">Balance cash</Label><Input type="number" value={finT.cash} onChange={(e) => setFinT({ ...finT, cash: e.target.value })} data-testid="ord-fin-cash" /></div>
+              <div className="grid gap-1"><Label className="text-xs">card</Label><Input type="number" value={finT.card} onChange={(e) => setFinT({ ...finT, card: e.target.value })} /></div>
+              <div className="grid gap-1"><Label className="text-xs">cheque</Label><Input type="number" value={finT.cheque} onChange={(e) => setFinT({ ...finT, cheque: e.target.value })} /></div>
+            </div>
+            <p className="text-xs text-muted-foreground">Advance {money(n(sel?.advance_amount))} is applied automatically (clears Customer Advances).</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFinOpen(false)}>Cancel</Button>
+            <Button onClick={doFinalize} disabled={finalizeOrder.isPending} style={{ backgroundColor: GOLD }} className="text-black" data-testid="ord-fin-confirm">{finalizeOrder.isPending ? "Finalizing…" : "Confirm Delivery"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Finalized invoice */}
+      {finInvoice && (
+        <Card data-testid="ord-fin-invoice">
+          <CardHeader><CardTitle>Invoice {finInvoice.sale_no} · Order {finInvoice.order_no}</CardTitle></CardHeader>
+          <CardContent className="space-y-1 text-sm">
+            {finInvoice.lines.map((l: any, i: number) => (<div key={i} className="flex justify-between border-b pb-1"><span>{l.tag} · {l.karat}K · net {l.net}g</span><span>{money(l.line_total)}</span></div>))}
+            <div className="flex justify-between"><span>Subtotal</span><span>{money(finInvoice.subtotal)}</span></div>
+            <div className="flex justify-between"><span>Discount</span><span>− {money(finInvoice.discount)}</span></div>
+            <div className="flex justify-between font-bold text-base border-t pt-1"><span>Net Bill</span><span data-testid="ord-fin-netbill">{money(finInvoice.net_bill)}</span></div>
+            <div className="flex justify-between"><span>Advance applied</span><span data-testid="ord-fin-advance">− {money(finInvoice.advance)}</span></div>
+            <div className="flex justify-between"><span>Balance collected (cash {money(finInvoice.cash)} · card {money(finInvoice.card)} · cheque {money(finInvoice.cheque)})</span><span>{money(finInvoice.cash + finInvoice.card + finInvoice.cheque)}</span></div>
+            <div className="flex justify-between font-semibold"><span>Change / balance</span><span data-testid="ord-fin-balance">{money(finInvoice.cash_balance)}</span></div>
           </CardContent>
         </Card>
       )}

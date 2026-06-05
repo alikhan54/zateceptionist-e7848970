@@ -67,7 +67,21 @@ export function useJewelryOrders() {
     return (data || []) as unknown as JxOrderItem[];
   };
 
-  return { orders, isLoading, refetch, createOrder, updateStatus, fetchOrderItems };
+  // Phase 8b: finalize a delivered order into a sale (clears the advance) via the RPC.
+  const finalizeOrder = useMutation({
+    mutationFn: async ({ orderId, payload }: { orderId: string; payload: Record<string, unknown> }) => {
+      const { data, error } = await supabase.rpc("jx_finalize_order" as any, { p_order_id: orderId, p_payload: payload as any });
+      if (error) throw error;
+      return data as unknown as { sale_id: string; sale_no: string; order_id: string; order_no: string };
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["jx_order", tenantId] });
+      qc.invalidateQueries({ queryKey: ["jx_item", tenantId] });
+      qc.invalidateQueries({ queryKey: ["jx_sale", tenantId] });
+    },
+  });
+
+  return { orders, isLoading, refetch, createOrder, updateStatus, fetchOrderItems, finalizeOrder };
 }
 
 /** Customer-facing message the Phase-13 lifecycle agent WILL send (displayed only here). */

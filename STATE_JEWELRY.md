@@ -25,7 +25,8 @@
 | 6 | **Point of Sale** — atomic sale via `jx_create_sale` RPC + live calc + old-gold (no double-count) + mixed tender + itemized invoice → `jx_sale`/`jx_sale_item`/`jx_old_gold`/`jx_gold_ledger` + mark sold (RPC LIVE in DB; FE LOCAL, **NOT deployed**) | ✅ VERIFIED (local) | 2026-06-04 |
 | 7 | **Orders/Custom** — bespoke spec + FIX-RATE lock + advance + status pipeline via `jx_create_order` RPC → `jx_order`/`jx_order_item` (RPC LIVE in DB; FE LOCAL, **NOT deployed**) | ✅ VERIFIED (local) | 2026-06-04 |
 | 8a | **PKR double-entry GL** — `jx_account`/`jx_voucher`/`jx_voucher_line` + COA + `jx_create_sale` posts a BALANCED voucher atomically + Gold Position/Trial Balance/Cash Book reports (GL tables + v2 RPC LIVE in DB; FE LOCAL, **NOT deployed**) | ✅ VERIFIED (local) | 2026-06-05 |
-| (later) | **Phase 8b** (advance application / order→sale finalization — `p_prepaid_from_advance` already wired); perpetual COGS/inventory valuation (deferred); remaining pages (Customers/Workers/Repairs); **deploy P4–P8a** | NOT STARTED | — |
+| 8b | **Orders→GL** — advance voucher at booking (`jx_create_order` replace) + `jx_finalize_order` (order→sale, clears advance, `jx_create_sale` reused unchanged) + `jx_order.finalized_sale_id` (DDL+RPC LIVE in DB; FE LOCAL, **NOT deployed**) | ✅ VERIFIED (local) | 2026-06-05 |
+| (later) | Order-cancel refund voucher (Dr Advances/Cr Cash — **stubbed/not built**, small follow-up); perpetual COGS/inventory valuation (deferred); remaining pages (Customers/Workers/Repairs); **deploy P4–P8b** | NOT STARTED | — |
 
 ## Phase 1 — provisioning (VERIFIED 2026-06-04)
 **New tenant (LIVE in production):**
@@ -138,6 +139,21 @@ Fresh double-entry General Ledger; `jx_create_sale` extended to post a **balance
   - **Isolation both ways:** control bbqtonight has no Reports/Jewelry; SET-ROLE-authenticated as bbq sees **0** legacy `jx_account`/`jx_voucher`/`jx_voucher_line` and a direct legacy `jx_voucher` INSERT is **DENIED by RLS** (so the SECURITY-INVOKER RPC can't post cross-tenant). No console errors.
   - Screenshot `.tmp_jx/shots/p8-reports.png` (not committed).
 - **Cleanup confirmed:** all test sales/items/gold_ledger/vouchers/voucher_lines deleted (legacy jx_sale=0, jx_voucher=0, jx_gold_ledger=0); **COA kept (jx_account=16)**; rates→placeholder; onboarding→false. GL tables + v2 RPC remain live (additive; no prod caller until deploy).
+
+## Phase 8b — Orders wired into the GL (VERIFIED on LOCAL preview 2026-06-05 — DDL+RPC live; FE NOT deployed)
+Advance receipt posts a voucher at booking; finalizing a delivered order creates real `jx_item`(s), reuses the **unchanged** `jx_create_sale` (with the advance as prepaid) to post the balance + clear the advance, and links the sale. **`jx_create_sale` NOT modified.**
+
+- **DDL (LIVE in DB via direct 5432):** `jx-007-order-finalize.sql` — `ALTER jx_order ADD finalized_sale_id` (additive, FK→jx_sale, SET NULL); REPLACE `jx_create_order` (Phase-7 behavior UNCHANGED + advance voucher when advance>0); new `jx_finalize_order(p_order_id uuid, p_payload jsonb)` (SECURITY INVOKER, one txn). Prior `jx_create_order` backed up `.tmp_jx/jx_create_order_p7.bak.sql`. Rollback: DROP `jx_finalize_order` + restore `jx_create_order`; column may stay.
+- **FE edits (jewelry-owned, no shared files):** `src/pages/jewelry/Orders.tsx` (+"Deliver & Invoice" action + finalize dialog + finalized invoice) and `src/hooks/useJewelryOrders.ts` (+finalize). **NavigationSidebar/App.tsx untouched**; no package.json/lockfile change.
+- **Voucher rules:** booking advance → Dr Cash + Dr Bank = Cr Customer Advances (2000). Finalization (via `jx_create_sale`, prepaid=advance) → Dr Cash (balance) + Dr Customer Advances (2000) = Cr Gold Sales + Making + Polish + Stone (+Tax). Each enforced Σdr=Σcr.
+- **PROOF (executed, local preview + DB — Customer Advances NETS TO ZERO):**
+  - Booking (fix-rate @22,000, advance 50,000 cash): net_amount **260,600**, balance **210,600** (Phase-7 UNCHANGED). Advance voucher **Dr Cash 50,000 = Cr Customer Advances 50,000** (balanced).
+  - Finalize (actual 10g, balance 210,600 cash): final invoice net **260,600**, **advance applied −50,000**, change **0**. Finalization voucher **Dr Cash 210,600 + Dr Customer Advances 50,000 = Cr Gold Sales 237,600 + Making 8,000 + Stone 15,000** (Σdr=Σcr=260,600).
+  - **Customer Advances (2000) account NET = 0** (50,000 Cr at booking − 50,000 Dr at finalization). Trial balance balanced (310,600=310,600). `jx_item` ORD-00001-1 created → **sold**; gold-OUT **−9.167**; order **delivered** + `finalized_sale_id` set. `jx_create_sale` md5 UNCHANGED before/after.
+  - **Isolation:** control bbqtonight sees **0** legacy `jx_order`/`jx_voucher`; `jx_finalize_order`/advance voucher can't touch Legacy when called as another tenant (RLS, SECURITY INVOKER). No console errors.
+  - Screenshot `.tmp_jx/shots/p8b-finalized.png` (not committed).
+- **Cleanup confirmed:** all test order/items/sale/vouchers/voucher_lines/gold_ledger + finalize-created `jx_item` deleted (legacy jx_order=0, jx_sale=0, jx_voucher=0, jx_gold_ledger=0, jx_item=0); **COA kept (16)**; rates→placeholder; onboarding→false.
+- **Deferred:** order-cancel refund voucher (Dr Customer Advances / Cr Cash) is NOT built — small follow-up; the 'cancelled' status button currently only sets status (no refund posting).
 
 ## Phase 0 discovery checklist (VERIFIED vs OPEN)
 | Item | Status | Where |
