@@ -105,6 +105,12 @@ export interface TenantConfig {
   services_description?: string | null;
   target_audience?: string | null;
   value_proposition?: string | null;
+  // Phase 1A white-label branding (net-new columns)
+  brand_name?: string | null;
+  brand_favicon_url?: string | null;
+  white_label_tenant_cap?: number | null;
+  parent_agency_tenant_id?: string | null;
+  custom_domain?: string | null;
 }
 
 // Industry-specific vocabulary translations

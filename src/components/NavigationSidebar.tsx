@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
+import { BrandedLogo } from "@/components/branding/BrandedLogo";
 import {
   Sidebar,
   SidebarContent,
@@ -958,28 +959,7 @@ export function NavigationSidebar() {
     <Sidebar collapsible="icon" className="border-r" style={accentStyle}>
       {/* Header */}
       <SidebarHeader className="p-4 border-b">
-        <div className={cn("flex items-center gap-3", collapsed && "justify-center")}>
-          {tenantConfig?.logo_url ? (
-            <Avatar className="h-9 w-9 shrink-0">
-              <AvatarImage src={tenantConfig.logo_url} alt={tenantConfig.company_name || "Company"} />
-              <AvatarFallback className="bg-primary text-primary-foreground">
-                {tenantConfig.company_name?.charAt(0) || "Z"}
-              </AvatarFallback>
-            </Avatar>
-          ) : (
-            <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center shrink-0">
-              <Zap className="h-5 w-5 text-primary-foreground" />
-            </div>
-          )}
-          {!collapsed && (
-            <div className="flex flex-col overflow-hidden">
-              <span className="font-semibold text-sm truncate">{tenantConfig?.company_name || "Zateceptionist"}</span>
-              <span className="text-xs text-muted-foreground truncate">
-                {tenantConfig?.industry ? tenantConfig.industry.replace(/_/g, " ") : "Business Hub"}
-              </span>
-            </div>
-          )}
-        </div>
+        <BrandedLogo collapsed={collapsed} />
       </SidebarHeader>
 
       {/* User Context Banner */}

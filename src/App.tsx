@@ -274,6 +274,7 @@ const KnowledgeBaseSettings = lazy(() => import("./pages/settings/KnowledgeBase"
 const CompanyInfoSettings = lazy(() => import("./pages/settings/CompanyInfo"));
 const AITrainingSettings = lazy(() => import("./pages/settings/AITraining"));
 const OutreachSettings = lazy(() => import("./pages/settings/OutreachSettings"));
+const BrandingPage = lazy(() => import("./pages/settings/branding/BrandingPage"));
 // PhoneNumberSettings removed — now part of VoiceAIHub
 
 // Admin Module
@@ -1759,6 +1760,14 @@ const App = () => (
                     element={
                       <LazyPage>
                         <OutreachSettings />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/settings/branding"
+                    element={
+                      <LazyPage>
+                        <BrandingPage />
                       </LazyPage>
                     }
                   />

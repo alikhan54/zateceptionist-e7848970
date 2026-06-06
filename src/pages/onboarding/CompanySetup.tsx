@@ -14,6 +14,8 @@ import ReadyStep from '@/components/onboarding/steps/ReadyStep';
 import {
   OnboardingData, DEFAULT_ONBOARDING_DATA, ONBOARDING_STEPS,
 } from '@/pages/onboarding/constants';
+import { BrandYourPlatformStep } from '@/components/onboarding/BrandYourPlatformStep';
+import { isWhiteLabelEnabled } from '@/lib/branding';
 
 const STEP_COMPONENTS = [
   DiscoveryStep,
@@ -57,6 +59,16 @@ export default function CompanySetup() {
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
 
   const currentStep = data.currentStep;
+
+  // White-label only: "Brand Your Platform" interstitial (additive — step array & indices untouched).
+  const [showBranding, setShowBranding] = useState(false);
+  const [brandingDone, setBrandingDone] = useState(false);
+  const whiteLabel = isWhiteLabelEnabled(tenantConfig);
+  useEffect(() => {
+    if (currentStep === 4 && whiteLabel && !brandingDone) {
+      setShowBranding(true);
+    }
+  }, [currentStep, whiteLabel, brandingDone]);
 
   // Handle payment return URL params
   useEffect(() => {
@@ -142,6 +154,15 @@ export default function CompanySetup() {
 
     return <StepComponent {...stepProps} />;
   };
+
+  if (showBranding) {
+    return (
+      <BrandYourPlatformStep
+        onContinue={() => { setBrandingDone(true); setShowBranding(false); }}
+        onSkip={() => { setBrandingDone(true); setShowBranding(false); }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
