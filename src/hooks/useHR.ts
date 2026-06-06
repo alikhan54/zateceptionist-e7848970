@@ -905,20 +905,26 @@ export function useTraining() {
 
   // V6: AI course generator — Claude/Gemini writes lesson + slides + quiz + objectives
   // into a new hr_training_programs row (n8n HTuKFLf8uiDnzPJA). Backend was unwired from UI.
+  // Generate AI lesson/slides/quiz/objectives (n8n HTuKFLf8uiDnzPJA). Two modes:
+  //  • new course → pass {topic} only → INSERTs a new row.
+  //  • existing   → pass {training_program_id, topic} → writes content INTO that
+  //    course (UPDATE, no duplicate; preserves its name + any prior avatar/doc URL).
   const generateCourse = useMutation({
-    mutationFn: async (data: { topic: string; category?: string; duration_minutes?: number }) => {
+    mutationFn: async (data: { topic: string; category?: string; duration_minutes?: number; training_program_id?: string }) => {
       if (!tenantUuid) throw new Error('No tenant');
-      return callWebhookOrThrow(WEBHOOKS.HR_TRAINING_GENERATE, {
+      const payload: any = {
         topic: data.topic,
         category: data.category || 'general',
         duration_minutes: data.duration_minutes ?? 30,
-      }, tenantUuid);
+      };
+      if (data.training_program_id) payload.training_program_id = data.training_program_id;
+      return callWebhookOrThrow(WEBHOOKS.HR_TRAINING_GENERATE, payload, tenantUuid);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["training-programs", tenantUuid] });
-      toast.success("AI course generated");
+      toast.success("AI content generated");
     },
-    onError: (e: any) => toast.error(`AI course generation failed: ${e?.message || 'unknown'}`),
+    onError: (e: any) => toast.error(`AI generation failed: ${e?.message || 'unknown'}`),
   });
 
   // V6: HeyGen avatar video for a generated course (n8n 4u2H6AwbDnYcGQW5, premium only).
@@ -991,7 +997,52 @@ export function useTraining() {
     onError: (e: any) => toast.error(e?.message || "Failed to add content"),
   });
 
-  return { programs, enrollments, enroll, createProgram, generateCourse, generateAvatarVideo, updateCourse, deleteCourse, addCourseMedia };
+  // Chaptered training videos — async HeyGen (n8n cMU1weyCZFP3kVrw). Completion via the
+  // HeyGen webhook → receiver KyIF7qhdTZR3o9E5, or the poll-once fallback NaVWUiV5oXsFZXDH.
+  const generateChapters = useMutation({
+    mutationFn: async (data: { training_program_id: string; max_chapters?: number; avatar_mode?: string }) => {
+      if (!tenantUuid) throw new Error('No tenant');
+      return callWebhookOrThrow(WEBHOOKS.HR_CHAPTER_GENERATE, { training_program_id: data.training_program_id, max_chapters: data.max_chapters, avatar_mode: data.avatar_mode }, tenantUuid);
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["course-chapters", tenantUuid] }); toast.success("Chapter video generation started"); },
+    onError: (e: any) => toast.error(`Chapter generation failed: ${e?.message || 'unknown'}`),
+  });
+  const refreshChapters = useMutation({
+    mutationFn: async (data: { training_program_id: string }) => {
+      if (!tenantUuid) throw new Error('No tenant');
+      return callWebhookOrThrow(WEBHOOKS.HR_CHAPTER_POLL, { training_program_id: data.training_program_id }, tenantUuid);
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["course-chapters", tenantUuid] }); },
+    onError: () => { /* poll is best-effort */ },
+  });
+
+  return { programs, enrollments, enroll, createProgram, generateCourse, generateAvatarVideo, updateCourse, deleteCourse, addCourseMedia, generateChapters, refreshChapters };
+}
+
+// Chapters for a course (hr_course_chapters). Auto-polls every 8s while any chapter is
+// still generating, so completed videos appear without a manual refresh.
+export function useCourseChapters(programId?: string) {
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
+  return useQuery({
+    queryKey: ["course-chapters", tenantUuid, programId],
+    queryFn: async () => {
+      if (!tenantUuid || !programId) return [] as any[];
+      const { data, error } = await supabase
+        .from('hr_course_chapters')
+        .select('*')
+        .eq('tenant_id', tenantUuid)
+        .eq('training_program_id', programId)
+        .order('chapter_order', { ascending: true });
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+    enabled: !!tenantUuid && !!programId,
+    refetchInterval: (q: any) => {
+      const rows = (q?.state?.data as any[]) || [];
+      return rows.some((r) => r.status === 'generating' || r.status === 'queued') ? 8000 : false;
+    },
+  });
 }
 
 // ═══════════════════════════════════════════════════════════

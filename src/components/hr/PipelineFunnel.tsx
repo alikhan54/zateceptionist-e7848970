@@ -56,12 +56,12 @@ function prettyStage(stage: string): string {
     .join(" ");
 }
 
-export function PipelineFunnel() {
+export function PipelineFunnel({ jobRequisitionId }: { jobRequisitionId?: string } = {}) {
   const { tenantConfig } = useTenant();
   const tenantUuid = tenantConfig?.id;
 
   const { data: stages = [], isLoading } = useQuery({
-    queryKey: ["hr-pipeline-summary", tenantUuid],
+    queryKey: ["hr-pipeline-summary", tenantUuid, jobRequisitionId ?? "all"],
     queryFn: async () => {
       if (!tenantUuid) return [] as StageAgg[];
       const { data, error } = await supabase
@@ -70,7 +70,11 @@ export function PipelineFunnel() {
         .eq("tenant_id", tenantUuid);
       if (error) return [] as StageAgg[]; // view may be unavailable; degrade quietly
 
-      const rows = (data || []) as PipelineRow[];
+      const allRows = (data || []) as PipelineRow[];
+      // Scope to one opening when a requisition is selected; otherwise aggregate all.
+      const rows = jobRequisitionId
+        ? allRows.filter((r) => r.job_requisition_id === jobRequisitionId)
+        : allRows;
       const byStage = new Map<string, { count: number; scoreSum: number; scoreWeight: number }>();
       for (const r of rows) {
         const stage = r.stage || "unknown";

@@ -183,7 +183,7 @@ function PulseCard({ section, index, cathedralOpen, onClick }: PulseCardProps) {
     <button
       ref={cardRef}
       type="button"
-      className={`pulse-card ${section.enabled ? "" : "disabled"}`}
+      className={`pulse-card ${section.enabled ? "" : "disabled"} ${section.moduleReady ? "module-ready" : ""}`}
       style={cardStyle}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
@@ -249,6 +249,12 @@ function PulseCard({ section, index, cathedralOpen, onClick }: PulseCardProps) {
           );
         })}
       </ul>
+      {section.agentLine ? (
+        <span className="pulse-card-agentline" aria-label="agent activity">
+          <span className="pulse-card-agentline-dot" aria-hidden />
+          {section.agentLine}
+        </span>
+      ) : null}
       <Sparkline color={sparkColor} />
       <span className={`pulse-card-pill pulse-pill-${section.pillType}`}>{section.pillText}</span>
     </button>

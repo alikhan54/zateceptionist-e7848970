@@ -25,6 +25,13 @@ export interface AccountingInvoice {
   due_at: string | null;
   paid_at: string | null;
   pdf_url: string | null;
+  /**
+   * Wave 1 Phase E (migration 38): FK to accounting_jobs.id. Populated when a
+   * draft invoice is auto-created on job-create-with-owner-and-fee. NULL for
+   * legacy invoices + standalone (manually-created) invoices. Enforced as one
+   * draft per (tenant_id, job_id) by a partial UNIQUE index.
+   */
+  job_id: string | null;
   created_by: string | null;
   updated_by: string | null;
   created_at: string;
@@ -94,7 +101,7 @@ export function useAccountingInvoices(filters: UseAccountingInvoicesFilters = {}
       const { data: sessionData } = await supabase.auth.getSession();
       const userId = sessionData.session?.user?.id ?? null;
 
-      const payload = {
+      const payload: Record<string, unknown> = {
         tenant_id: tenantId,
         client_id: inv.client_id,
         invoice_no: inv.invoice_no,
@@ -106,6 +113,12 @@ export function useAccountingInvoices(filters: UseAccountingInvoicesFilters = {}
         created_by: userId,
         updated_by: userId,
       };
+      // Wave 1 Phase E (migration 38): write job_id when provided so the partial
+      // UNIQUE index on (tenant_id, job_id) enforces one draft per job. Omitted
+      // for standalone invoices — they remain unconstrained.
+      if (inv.job_id !== undefined && inv.job_id !== null) {
+        payload.job_id = inv.job_id;
+      }
 
       const { data, error: insErr } = await supabase
         .from("accounting_invoices")

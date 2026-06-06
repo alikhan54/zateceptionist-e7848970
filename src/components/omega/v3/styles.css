@@ -1282,6 +1282,32 @@ body.cathedral-open .omega-shell-v3 .v3-wordmark {
   color: var(--pulse-red);
 }
 
+/* Agent activity line (Batch 1) — "what your agents did".
+   Soft serif-italic + a small accent dot in the card's color; matches the
+   pastel card aesthetic (not a flat box). Rendered only when agentLine != null. */
+.pulse-cathedral .pulse-card-agentline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  font-family: "Instrument Serif", "DM Serif Display", Georgia, serif;
+  font-style: italic;
+  font-size: 11px;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+  color: var(--pulse-ink-2);
+  position: relative;
+  z-index: 1;
+}
+.pulse-cathedral .pulse-card-agentline-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--card-color, #6366f1);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--card-color, #6366f1) 60%, transparent);
+}
+
 /* Sparkline */
 .pulse-cathedral .pulse-card-spark {
   position: relative;
@@ -1323,6 +1349,22 @@ body.cathedral-open .omega-shell-v3 .v3-wordmark {
 .pulse-cathedral .pulse-card.disabled .pulse-card-pill {
   background: rgba(15, 23, 42, 0.05);
   color: var(--pulse-ink-3);
+}
+
+/* Batch 3 — module-ready cards read as an elegant INVITATION (not empty/broken).
+   Keeps the pastel gradient card; the headline goes soft-accent italic and the
+   pill becomes a dashed CTA chip with a gentle arrow. */
+.pulse-cathedral .pulse-card.module-ready .pulse-card-meta {
+  color: color-mix(in srgb, var(--card-color, #6366f1) 70%, var(--pulse-ink-2));
+  font-style: italic;
+}
+.pulse-cathedral .pulse-card.module-ready .pulse-card-pill {
+  background: transparent;
+  border: 1px dashed color-mix(in srgb, var(--card-color, #6366f1) 45%, transparent);
+  color: var(--card-color, #6366f1);
+}
+.pulse-cathedral .pulse-card.module-ready .pulse-card-pill::after {
+  content: " →";
 }
 
 

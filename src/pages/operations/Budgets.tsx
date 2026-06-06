@@ -1,10 +1,21 @@
-import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 import {
   DollarSign,
   TrendingDown,
@@ -17,6 +28,16 @@ import {
   Lightbulb,
   ArrowDownRight,
   BarChart3,
+  Flame,
+  TrendingUp,
+  ShieldCheck,
+  AlertTriangle,
+  Bot,
+  Sparkles,
+  Plus,
+  Pencil,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { useCurrencyFormatter } from "@/lib/formatCurrency";
@@ -28,10 +49,26 @@ const SAVINGS_STATUS_BADGE: Record<string, string> = {
   rejected: "bg-red-500/10 text-red-600 border-red-500/30",
 };
 
+const NOW = new Date();
+const BLANK_BUDGET = {
+  category: "",
+  budgeted_amount: "",
+  spent_amount: "",
+  period_year: String(NOW.getFullYear()),
+  period_month: String(NOW.getMonth() + 1),
+  currency: "AED",
+};
+
 export default function Budgets() {
   const { tenantConfig } = useTenant();
   const tenantSlug = tenantConfig?.tenant_id ?? "";
   const formatCurrency = useCurrencyFormatter();
+  const queryClient = useQueryClient();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [bForm, setBForm] = useState({ ...BLANK_BUDGET });
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
+  const [saving, setSaving] = useState(false);
 
   // Budgets
   const { data: budgets = [], isLoading: loadingBudgets } = useQuery({
@@ -47,6 +84,88 @@ export default function Budgets() {
     enabled: !!tenantConfig,
   });
 
+  const budgetDefaults = useMemo(() => ({
+    industry: budgets[0]?.industry || tenantConfig?.industry || "general",
+    currency: budgets[0]?.currency || "AED",
+  }), [budgets, tenantConfig]);
+
+  const invalidateBudgets = () => queryClient.invalidateQueries({ queryKey: ["ops_budgets", tenantSlug] });
+
+  const buildBudget = () => ({
+    category: bForm.category.trim(),
+    budgeted_amount: bForm.budgeted_amount === "" ? 0 : Number(bForm.budgeted_amount),
+    spent_amount: bForm.spent_amount === "" ? 0 : Number(bForm.spent_amount),
+    period_year: Number(bForm.period_year),
+    period_month: Number(bForm.period_month),
+    currency: bForm.currency.trim() || budgetDefaults.currency,
+  });
+
+  const addBudget = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("ops_budgets").insert({
+        tenant_id: tenantSlug,
+        industry: budgetDefaults.industry,
+        ...buildBudget(),
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => { invalidateBudgets(); toast.success("Budget line added"); closeBudgetDialog(); },
+    onError: (e: any) => toast.error("Failed to add budget: " + (e?.message || "error")),
+  });
+
+  const updateBudget = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("ops_budgets")
+        .update({ ...buildBudget(), updated_at: new Date().toISOString() })
+        .eq("id", editingId)
+        .eq("tenant_id", tenantSlug);
+      if (error) throw error;
+    },
+    onSuccess: () => { invalidateBudgets(); toast.success("Budget updated"); closeBudgetDialog(); },
+    onError: (e: any) => toast.error("Failed to update budget: " + (e?.message || "error")),
+  });
+
+  const deleteBudget = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("ops_budgets")
+        .delete()
+        .eq("id", id)
+        .eq("tenant_id", tenantSlug);
+      if (error) throw error;
+    },
+    onSuccess: () => { invalidateBudgets(); toast.success("Budget deleted"); setDeleteTarget(null); },
+    onError: (e: any) => toast.error("Failed to delete budget: " + (e?.message || "error")),
+  });
+
+  const openAddBudget = () => {
+    setEditingId(null);
+    setBForm({ ...BLANK_BUDGET, currency: budgetDefaults.currency });
+    setDialogOpen(true);
+  };
+  const openEditBudget = (b: any) => {
+    setEditingId(b.id);
+    setBForm({
+      category: b.category || "",
+      budgeted_amount: b.budgeted_amount == null ? "" : String(b.budgeted_amount),
+      spent_amount: b.spent_amount == null ? "" : String(b.spent_amount),
+      period_year: String(b.period_year ?? NOW.getFullYear()),
+      period_month: String(b.period_month ?? NOW.getMonth() + 1),
+      currency: b.currency || budgetDefaults.currency,
+    });
+    setDialogOpen(true);
+  };
+  const closeBudgetDialog = () => { setDialogOpen(false); setEditingId(null); setSaving(false); };
+  const handleSaveBudget = async () => {
+    if (!bForm.category.trim()) { toast.error("Category is required"); return; }
+    setSaving(true);
+    try {
+      if (editingId) await updateBudget.mutateAsync();
+      else await addBudget.mutateAsync();
+    } finally { setSaving(false); }
+  };
+
   // Cost savings
   const { data: savings = [], isLoading: loadingSavings } = useQuery({
     queryKey: ["ops_cost_savings", tenantSlug],
@@ -55,7 +174,37 @@ export default function Budgets() {
         .from("ops_cost_savings")
         .select("*")
         .eq("tenant_id", tenantSlug)
-        .order("created_at", { ascending: false });
+        .order("identified_at", { ascending: false });
+      return data || [];
+    },
+    enabled: !!tenantConfig,
+  });
+
+  // Tier 2 — revenue forecast (surfacing; graceful when a tenant has none)
+  const { data: revForecasts = [] } = useQuery({
+    queryKey: ["revenue_forecasts_budgets", tenantSlug],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("revenue_forecasts")
+        .select("period_type,period_start,period_end,forecast_revenue,confidence")
+        .eq("tenant_id", tenantSlug)
+        .order("period_start", { ascending: true });
+      return data || [];
+    },
+    enabled: !!tenantConfig,
+  });
+
+  // Tier 2 — recent TREASURER/OPTIMIZER tasks for real agent-outcome narratives
+  const { data: finTasks = [] } = useQuery({
+    queryKey: ["ops_agent_tasks_fin", tenantSlug],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("ops_agent_tasks")
+        .select("agent_name,status,result,created_at")
+        .eq("tenant_id", tenantSlug)
+        .in("agent_name", ["TREASURER", "OPTIMIZER"])
+        .order("created_at", { ascending: false })
+        .limit(20);
       return data || [];
     },
     enabled: !!tenantConfig,
@@ -78,20 +227,99 @@ export default function Budgets() {
     return { totalBudgeted, totalSpent, remaining, utilization, totalPotentialSavings };
   }, [budgets, savings]);
 
+  // Current-month burn/projection (TREASURER-style), computed from real current-month rows only.
+  const finance = useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth() + 1;
+    const dayOfMonth = now.getDate();
+    const daysInMonth = new Date(y, m, 0).getDate();
+    const cur = budgets.filter((b: any) => Number(b.period_year) === y && Number(b.period_month) === m);
+    const curBudgeted = cur.reduce((s: number, b: any) => s + (b.budgeted_amount || 0), 0);
+    const curSpent = cur.reduce((s: number, b: any) => s + (b.spent_amount || 0), 0);
+    const hasCurrent = cur.length > 0 && dayOfMonth > 0;
+    const dailyBurn = hasCurrent ? curSpent / dayOfMonth : null;
+    const projectedMonthEnd = dailyBurn !== null ? dailyBurn * daysInMonth : null;
+    const variance = projectedMonthEnd !== null ? curBudgeted - projectedMonthEnd : null; // +under / -over
+    const variancePct = (variance !== null && curBudgeted > 0) ? Math.round((variance / curBudgeted) * 1000) / 10 : null;
+
+    // Savings captured vs identified
+    const captured = savings
+      .filter((s: any) => ["approved", "implemented"].includes(s.status))
+      .reduce((sum: number, s: any) => sum + (s.estimated_saving || 0), 0);
+    const identifiedTotal = savings
+      .filter((s: any) => s.status !== "rejected")
+      .reduce((sum: number, s: any) => sum + (s.estimated_saving || 0), 0);
+
+    // Projected revenue — latest monthly forecast if present
+    const monthly = revForecasts.filter((r: any) => r.period_type === "monthly");
+    const projectedRevenue = monthly.length ? monthly[monthly.length - 1].forecast_revenue : null;
+
+    return { curBudgeted, curSpent, hasCurrent, dailyBurn, projectedMonthEnd, variance, variancePct, captured, identifiedTotal, projectedRevenue };
+  }, [budgets, savings, revForecasts]);
+
+  const treasurerNarrative = useMemo(() => {
+    const t = finTasks.find((x: any) => x.agent_name === "TREASURER" && x.result && x.result.narrative);
+    return t?.result?.narrative || null;
+  }, [finTasks]);
+
   if (!tenantConfig) return <PageLoading />;
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <Wallet className="h-8 w-8 text-emerald-500" />
-          Budgets & Cost Optimization
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          TREASURER and OPTIMIZER agents manage finances and find savings
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <Wallet className="h-8 w-8 text-emerald-500" />
+            Budgets & Cost Optimization
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            TREASURER and OPTIMIZER agents manage finances — or set budgets manually
+          </p>
+        </div>
+        <Button variant="outline" onClick={openAddBudget}>
+          <Plus className="h-4 w-4 mr-2" /> Add Budget
+        </Button>
       </div>
+
+      {/* Headline insight — honest verdict from real numbers */}
+      {(() => {
+        const over = finance.variance !== null && finance.variance < 0;
+        const tight = overview.utilization > 90;
+        const attention = over || tight;
+        return (
+          <Card className={attention ? "border-amber-500/40 bg-amber-500/5" : "border-emerald-500/40 bg-emerald-500/5"}>
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-3">
+                {attention ? (
+                  <AlertTriangle className="h-6 w-6 text-amber-500 flex-shrink-0 mt-0.5" />
+                ) : (
+                  <ShieldCheck className="h-6 w-6 text-emerald-500 flex-shrink-0 mt-0.5" />
+                )}
+                <div>
+                  <p className="font-semibold text-lg leading-snug">
+                    {budgets.length === 0
+                      ? "Finance module ready — no budgets configured yet"
+                      : finance.variance !== null
+                        ? over
+                          ? `Finance needs attention — projected ${finance.variancePct !== null ? `${Math.abs(finance.variancePct)}% ` : ""}over budget this month`
+                          : `Finance on track — projected ${finance.variancePct !== null ? `${finance.variancePct}% ` : ""}under budget this month`
+                        : `Finance — ${overview.utilization}% of budget used`}
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {budgets.length > 0 && <>{overview.utilization}% of budget used. </>}
+                    {finance.dailyBurn !== null && <>{formatCurrency(finance.dailyBurn)}/day burn. </>}
+                    {finance.captured > 0 || finance.identifiedTotal > 0
+                      ? <>{formatCurrency(finance.captured)} of {formatCurrency(finance.identifiedTotal)} savings captured.</>
+                      : null}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -174,6 +402,116 @@ export default function Budgets() {
         </CardContent>
       </Card>
 
+      {/* Finance success metrics — TREASURER projection + OPTIMIZER capture (real data; — when absent) */}
+      <div>
+        <h3 className="font-semibold text-lg mb-3">Finance Performance (this month)</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Daily Burn</p>
+                  <p className="text-2xl font-bold">
+                    {finance.dailyBurn === null ? "—" : formatCurrency(finance.dailyBurn)}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">spend pace</p>
+                </div>
+                <Flame className="h-8 w-8 text-orange-500 opacity-60" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Projected Month-End</p>
+                  <p className="text-2xl font-bold">
+                    {finance.projectedMonthEnd === null ? "—" : formatCurrency(finance.projectedMonthEnd)}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">at current pace</p>
+                </div>
+                <TrendingUp className="h-8 w-8 text-blue-500 opacity-60" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Budget Variance</p>
+                  <p className={`text-2xl font-bold ${finance.variance === null ? "" : finance.variance >= 0 ? "text-green-500" : "text-red-500"}`}>
+                    {finance.variance === null ? "—" : `${finance.variance >= 0 ? "" : "-"}${formatCurrency(Math.abs(finance.variance))}`}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {finance.variancePct === null ? "vs budget" : finance.variance >= 0 ? `${finance.variancePct}% under` : `${Math.abs(finance.variancePct)}% over`}
+                  </p>
+                </div>
+                <Target className="h-8 w-8 text-muted-foreground opacity-60" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Savings Captured</p>
+                  <p className="text-2xl font-bold text-emerald-500">
+                    {finance.identifiedTotal > 0 ? formatCurrency(finance.captured) : "—"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {finance.identifiedTotal > 0 ? `of ${formatCurrency(finance.identifiedTotal)} identified` : "OPTIMIZER"}
+                  </p>
+                </div>
+                <PiggyBank className="h-8 w-8 text-emerald-500 opacity-60" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+        {finance.projectedRevenue !== null && (
+          <p className="text-xs text-muted-foreground mt-2">
+            Projected revenue (forecast): <span className="font-medium text-foreground">{formatCurrency(finance.projectedRevenue)}</span> this month
+          </p>
+        )}
+      </div>
+
+      {/* Agent Outcomes — TREASURER + OPTIMIZER, REAL data, graceful when empty */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Bot className="h-5 w-5 text-purple-500" />
+            What Your Finance Agents Did
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <div className="flex items-start gap-3 border-b border-border/50 pb-3">
+              <Wallet className="h-4 w-4 mt-0.5 flex-shrink-0 text-blue-500" />
+              <div className="min-w-0 flex-1">
+                <span className="text-xs font-semibold tracking-wide">TREASURER</span>
+                <p className="text-sm mt-0.5">
+                  {treasurerNarrative
+                    ? treasurerNarrative
+                    : finance.projectedMonthEnd !== null
+                      ? `Projected month-end ${formatCurrency(finance.projectedMonthEnd)} vs ${formatCurrency(finance.curBudgeted)} budget — ${finance.variance !== null && finance.variance >= 0 ? "on track" : "over budget"}.`
+                      : budgets.length === 0 ? "No budgets to monitor yet" : "Monitoring spend."}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <Sparkles className="h-4 w-4 mt-0.5 flex-shrink-0 text-emerald-500" />
+              <div className="min-w-0 flex-1">
+                <span className="text-xs font-semibold tracking-wide">OPTIMIZER</span>
+                <p className="text-sm mt-0.5">
+                  {savings.length === 0
+                    ? "No savings identified yet"
+                    : `Identified ${formatCurrency(finance.identifiedTotal)} across ${savings.length} opportunit${savings.length > 1 ? "ies" : "y"}${finance.captured > 0 ? `; ${formatCurrency(finance.captured)} captured so far` : ""}.`}
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Budget by Category */}
         <Card>
@@ -195,14 +533,27 @@ export default function Budgets() {
                   const spent = b.spent_amount || 0;
                   const pct = budgeted > 0 ? Math.round((spent / budgeted) * 100) : 0;
                   return (
-                    <div key={b.id} className="space-y-2">
+                    <div key={b.id} className="space-y-2 group">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium capitalize">
                           {(b.category || "Uncategorized").replace(/_/g, " ")}
+                          <span className="text-xs text-muted-foreground/70 ml-2 font-normal">
+                            {b.period_year}-{String(b.period_month).padStart(2, "0")}
+                          </span>
                         </span>
-                        <span className="text-xs text-muted-foreground">
-                          {formatCurrency(spent)} / {formatCurrency(budgeted)}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">
+                            {formatCurrency(spent)} / {formatCurrency(budgeted)}
+                          </span>
+                          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button size="sm" variant="ghost" className="h-6 px-1.5" aria-label="Edit budget" title="Edit budget" onClick={() => openEditBudget(b)}>
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                            <Button size="sm" variant="ghost" className="h-6 px-1.5 text-red-500 hover:text-red-600" aria-label="Delete budget" title="Delete budget" onClick={() => setDeleteTarget(b)}>
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
                       </div>
                       <div className="flex items-center gap-3">
                         <Progress
@@ -279,6 +630,72 @@ export default function Budgets() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Add / Edit budget dialog */}
+      <Dialog open={dialogOpen} onOpenChange={(o) => (o ? setDialogOpen(true) : closeBudgetDialog())}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingId ? "Edit Budget Line" : "Add Budget Line"}</DialogTitle>
+            <DialogDescription>
+              {editingId ? "Update this budget category. You can override TREASURER-set budgets." : "Manually set a budget for a category and period."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-2">
+            <div className="col-span-2 space-y-1.5">
+              <Label htmlFor="b-cat">Category *</Label>
+              <Input id="b-cat" value={bForm.category} onChange={(e) => setBForm({ ...bForm, category: e.target.value })} placeholder="e.g. Medical Supplies" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="b-budgeted">Budgeted Amount</Label>
+              <Input id="b-budgeted" type="number" value={bForm.budgeted_amount} onChange={(e) => setBForm({ ...bForm, budgeted_amount: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="b-spent">Spent Amount</Label>
+              <Input id="b-spent" type="number" value={bForm.spent_amount} onChange={(e) => setBForm({ ...bForm, spent_amount: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="b-year">Period Year</Label>
+              <Input id="b-year" type="number" value={bForm.period_year} onChange={(e) => setBForm({ ...bForm, period_year: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="b-month">Period Month</Label>
+              <Input id="b-month" type="number" min="1" max="12" value={bForm.period_month} onChange={(e) => setBForm({ ...bForm, period_month: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="b-currency">Currency</Label>
+              <Input id="b-currency" value={bForm.currency} onChange={(e) => setBForm({ ...bForm, currency: e.target.value })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeBudgetDialog} disabled={saving}>Cancel</Button>
+            <Button onClick={handleSaveBudget} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              {editingId ? "Save changes" : "Add budget"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirm */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete budget line?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the <span className="font-semibold capitalize">{(deleteTarget?.category || "").replace(/_/g, " ")}</span> budget for {deleteTarget?.period_year}-{String(deleteTarget?.period_month).padStart(2, "0")}. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              onClick={() => deleteTarget && deleteBudget.mutate(deleteTarget.id)}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

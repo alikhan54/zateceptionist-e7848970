@@ -1,4 +1,7 @@
 import { useMemo, useState } from "react";
+// Phase 4 (2026-06-02): per-client tasking — clicking a row navigates to Jobs
+// filtered by client_id; "New job for this client" goes through the same URL with new=1.
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +43,11 @@ interface AccountingClient {
   status: string | null;
   accounting_period_end: string | null;
   contact_email: string | null;
+  // Wave 2a Phase 1: surface CH company status + next accounts due in the list.
+  company_status: string | null;
+  accounts_next_due: string | null;
+  // Wave 2b Phase C: drive the "fetching from CH" spinner.
+  companies_house_sync_status: string | null;
 }
 
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -68,6 +76,8 @@ export default function AccountingClients() {
 
   const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
+  // Wave 2b Phase C: id of a just-added client awaiting CH sync → row shows a spinner.
+  const [syncingId, setSyncingId] = useState<string | null>(null);
   const [editTarget, setEditTarget] = useState<AccountingClientFull | null>(null);
 
   const clients: AccountingClient[] = useMemo(
@@ -80,6 +90,9 @@ export default function AccountingClients() {
         status: c.status,
         accounting_period_end: c.accounting_period_end,
         contact_email: c.contact_email,
+        company_status: c.company_status,
+        accounts_next_due: c.accounts_next_due,
+        companies_house_sync_status: c.companies_house_sync_status,
       })),
     [fullClients],
   );
@@ -87,21 +100,30 @@ export default function AccountingClients() {
   const error = clientsError ? (clientsError as Error).message : null;
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const raw = search.trim();
+    const q = raw.toLowerCase();
     if (!q) return clients;
-    return clients.filter(
-      (c) =>
-        c.name?.toLowerCase().includes(q) ||
-        c.company_no?.toLowerCase().includes(q) ||
-        c.vat_number?.toLowerCase().includes(q),
-    );
+    // Wave 2a Phase 5: a numeric (or CRN-shaped, e.g. SC123456) query targets the
+    // company number; otherwise match by name. CRN match is a normalized
+    // startsWith so "12345678" or "SC1234" both resolve precisely (not a fuzzy
+    // both-field contains).
+    const looksLikeCrn = /^[0-9]+$/.test(raw) || /^[a-z]{1,2}[0-9]{4,}$/i.test(raw);
+    if (looksLikeCrn) {
+      const qn = q.replace(/\s+/g, "");
+      return clients.filter((c) => (c.company_no ?? "").toLowerCase().replace(/\s+/g, "").startsWith(qn));
+    }
+    return clients.filter((c) => c.name?.toLowerCase().includes(q));
   }, [clients, search]);
 
-  const handleRowClick = () => {
-    toast({
-      title: "Per-client detail view",
-      description: "Jobs / invoices / payments / communication for a single client — coming in Phase 2.",
-    });
+  const navigate = useNavigate();
+  // Phase 4: row click → Jobs filtered by this client.
+  // Full 360-view (invoices/payments/comms in one panel) stays Phase 2; this unblocks tasking now.
+  const handleRowClick = (clientId: string) => {
+    navigate(`/accounting/jobs?client=${encodeURIComponent(clientId)}`);
+  };
+
+  const handleNewJobForClient = (clientId: string) => {
+    navigate(`/accounting/jobs?client=${encodeURIComponent(clientId)}&new=1`);
   };
 
   const handleEditClient = (id: string) => {
@@ -123,7 +145,7 @@ export default function AccountingClients() {
           <div className="relative w-full md:w-72">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search by name, CRN, or VAT…"
+              placeholder="Search: number → CRN, text → name"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
@@ -147,6 +169,8 @@ export default function AccountingClients() {
                 <TableHead>Company No.</TableHead>
                 <TableHead>VAT Number</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>CH Status</TableHead>
+                <TableHead>Accounts Due</TableHead>
                 <TableHead>Period End</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead className="w-12 text-right" />
@@ -156,7 +180,7 @@ export default function AccountingClients() {
               {isLoading ? (
                 Array.from({ length: 6 }).map((_, i) => (
                   <TableRow key={`skel-${i}`}>
-                    {Array.from({ length: 6 }).map((__, j) => (
+                    {Array.from({ length: 9 }).map((__, j) => (
                       <TableCell key={`skel-${i}-${j}`}>
                         <Skeleton className="h-4 w-full" />
                       </TableCell>
@@ -165,13 +189,13 @@ export default function AccountingClients() {
                 ))
               ) : error ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-sm text-destructive py-8">
+                  <TableCell colSpan={9} className="text-center text-sm text-destructive py-8">
                     Couldn't load clients: {error}
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-12">
+                  <TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-12">
                     {clients.length === 0 ? (
                       <div className="flex flex-col items-center gap-2">
                         <Users className="h-8 w-8 text-muted-foreground/50" />
@@ -190,7 +214,8 @@ export default function AccountingClients() {
                     <TableRow
                       key={c.id}
                       className="cursor-pointer transition-colors hover:bg-muted/50"
-                      onClick={handleRowClick}
+                      onClick={() => handleRowClick(c.id)}
+                      data-testid={`client-row-${c.id}`}
                     >
                       <TableCell className="font-medium">{c.name}</TableCell>
                       <TableCell className="font-mono text-xs">{c.company_no || "—"}</TableCell>
@@ -200,6 +225,24 @@ export default function AccountingClients() {
                           {c.status ?? "active"}
                         </Badge>
                       </TableCell>
+                      <TableCell>
+                        {c.id === syncingId && c.companies_house_sync_status !== "synced" ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground" data-testid={`ch-fetching-${c.id}`}>
+                            <RefreshCw className="h-3 w-3 animate-spin" />
+                            Fetching from Companies House…
+                          </span>
+                        ) : c.company_status ? (
+                          <Badge
+                            variant={c.company_status.toLowerCase() === "active" ? "default" : "secondary"}
+                            className="capitalize text-[10px]"
+                          >
+                            {c.company_status}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs">{formatPeriodEnd(c.accounts_next_due)}</TableCell>
                       <TableCell>{formatPeriodEnd(c.accounting_period_end)}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {c.contact_email || "—"}
@@ -246,10 +289,20 @@ export default function AccountingClients() {
                             <DropdownMenuItem
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleRowClick();
+                                handleRowClick(c.id);
                               }}
+                              data-testid={`client-row-view-jobs-${c.id}`}
                             >
-                              View details (Phase 2)
+                              View jobs for this client
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleNewJobForClient(c.id);
+                              }}
+                              data-testid={`client-row-new-job-${c.id}`}
+                            >
+                              New job for this client
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -275,7 +328,17 @@ export default function AccountingClients() {
           </DialogHeader>
           <AddClientForm
             mode="create"
-            onSuccess={() => setAddOpen(false)}
+            onSuccess={(created) => {
+              setAddOpen(false);
+              // Phase C: if the new client has a CRN, the on-save CH sync is now
+              // running (~10-15s). Flag the row so it shows a "Fetching…" spinner
+              // until its sync_status flips to 'synced' (auto-cleared by the
+              // realtime-refreshed list, or after a 25s safety timeout).
+              if (created?.company_no) {
+                setSyncingId(created.id);
+                setTimeout(() => setSyncingId((cur) => (cur === created.id ? null : cur)), 25000);
+              }
+            }}
             onCancel={() => setAddOpen(false)}
           />
         </DialogContent>

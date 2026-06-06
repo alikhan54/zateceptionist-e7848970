@@ -155,6 +155,8 @@ const ClinicProducts = lazy(() => import("./pages/clinic/Products"));
 const ConsultationNotes = lazy(() => import("./pages/clinic/ConsultationNotes"));
 const HealthReports = lazy(() => import("./pages/clinic/HealthReports"));
 const DoctorReviewQueue = lazy(() => import("./pages/clinic/DoctorReviewQueue"));
+const ClinicWaitingArea = lazy(() => import("./pages/clinic/WaitingArea"));
+const ClinicPackages = lazy(() => import("./pages/clinic/ClinicPackages"));
 
 // Jewelry Module (Project JX)
 const JewelryDashboard = lazy(() => import("./pages/jewelry/Dashboard"));
@@ -1351,6 +1353,22 @@ const App = () => (
 
                   {/* Clinic Module */}
                   <Route path="/clinic" element={<Navigate to="/clinic/dashboard" replace />} />
+                  <Route
+                    path="/clinic/waiting"
+                    element={
+                      <LazyPage>
+                        <ClinicWaitingArea />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/clinic/packages"
+                    element={
+                      <LazyPage>
+                        <ClinicPackages />
+                      </LazyPage>
+                    }
+                  />
                   <Route
                     path="/clinic/dashboard"
                     element={

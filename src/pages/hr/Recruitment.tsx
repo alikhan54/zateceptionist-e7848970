@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTenant } from "@/contexts/TenantContext";
@@ -7,9 +7,12 @@ import { SourceBadge } from "@/components/hr/SourceBadge";
 import AIInterviewsTab from "@/components/hr/AIInterviewsTab";
 import { OutreachFeed, CandidateActivity } from "@/components/hr/OutreachActivity";
 import { PipelineFunnel } from "@/components/hr/PipelineFunnel";
+import { CandidateBoard } from "@/components/hr/CandidateBoard";
 import { useAutoMode } from "@/hooks/useAutoMode";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Bot } from "lucide-react";
+// NOTE: `Bot` is imported from lucide-react in the consolidated block below — a
+// duplicate standalone `import { Bot }` here caused "Identifier 'Bot' has already
+// been declared" and broke the whole Recruitment page render. Removed (pre-existing).
 import { formatDistanceToNow } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -82,6 +85,7 @@ import {
   RefreshCw,
   Globe,
   FormInput,
+  Archive,
 } from "lucide-react";
 import { useDepartments } from "@/hooks/useHR";
 import {
@@ -99,6 +103,7 @@ import {
   useJobRequisitions,
   useJobApplications,
   useCandidates,
+  useArchiveCandidate,
   useAIInterviews,
   useSourcingRuns,
   useInterviewSchedules,
@@ -168,7 +173,16 @@ const statusColors: Record<string, string> = {
   closed: "bg-muted text-muted-foreground",
   filled: "bg-primary/10 text-primary",
   draft: "bg-muted text-muted-foreground",
+  cancelled: "bg-muted text-muted-foreground",
 };
+
+// Opening lifecycle buckets. DB status CHECK allows: draft/pending_approval/approved/
+// open/active/on_hold/closed/filled/cancelled. "Archived" maps to the DB-supported
+// terminal states (closed + cancelled) since there is no literal 'archived' status.
+type JobLifecycle = "active" | "filled" | "archived";
+const lifecycleOf = (status: string): JobLifecycle =>
+  status === "filled" ? "filled" : status === "closed" || status === "cancelled" ? "archived" : "active";
+const lifecycleLabels: Record<JobLifecycle, string> = { active: "Active", filled: "Filled", archived: "Archived" };
 
 const getScoreColor = (score: number) => {
   if (score >= 80) return "text-chart-2";
@@ -335,6 +349,7 @@ export default function RecruitmentPage() {
   const triggerSourcing = useTriggerSourcing();
   const triggerAIInterview = useTriggerAIInterview();
   const addCandidate = useAddCandidate();
+  const archiveCandidate = useArchiveCandidate();
   const scheduleInterview = useScheduleInterview();
   const applyToJob = useApplyToJob();
   const makeOffer = useMakeOffer();
@@ -350,13 +365,54 @@ export default function RecruitmentPage() {
       (j.location_city || "").toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
+  // Opening lifecycle tab (Jobs tab): which status bucket to show.
+  const [jobLifecycle, setJobLifecycle] = useState<JobLifecycle>("active");
+  // Split the (search-filtered) openings by lifecycle bucket for the Jobs sub-tabs.
+  const lifecycleCounts: Record<JobLifecycle, number> = { active: 0, filled: 0, archived: 0 };
+  for (const j of filteredJobs) lifecycleCounts[lifecycleOf(j.status)]++;
+  const lifecycleJobs = filteredJobs.filter((j) => lifecycleOf(j.status) === jobLifecycle);
+
   const filteredCandidates = candidates.filter(
     (c) =>
       (c.full_name || `${c.first_name} ${c.last_name}`).toLowerCase().includes(searchQuery.toLowerCase()) ||
       (c.current_position || "").toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  const getApplicationsByStage = (stage: string) => applications.filter((a) => a.stage === stage);
+  // Pipeline per-opening filter: "all" or a specific requisition id. Derives from the
+  // already-loaded (tenant-scoped) applications, so switching openings is instant and
+  // never crosses tenants.
+  const [pipelineJobId, setPipelineJobId] = useState<string>("all");
+  const pipelineApps = useMemo(
+    () => (pipelineJobId === "all" ? applications : applications.filter((a) => a.job_requisition_id === pipelineJobId)),
+    [applications, pipelineJobId],
+  );
+  const getApplicationsByStage = (stage: string) => pipelineApps.filter((a) => a.stage === stage);
+
+  // Candidate board data: applications carry the AI score + screening "why". Candidates with no
+  // application are folded in as light rows under their job_id (or "Unassigned") so nothing is hidden.
+  const boardApps = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    const appCandIds = new Set(applications.map((a) => a.candidate_id));
+    const orphans = candidates
+      .filter((c) => !appCandIds.has(c.id))
+      .map((c) => ({
+        id: "orphan-" + c.id, tenant_id: c.tenant_id, job_requisition_id: c.job_id || "unassigned",
+        candidate_id: c.id, source: c.source, stage: c.status === "hired" ? "hired" : "applied",
+        stage_updated_at: c.created_at,
+        ai_match_score: c.match_score != null ? Math.round(c.match_score * 100) : null,
+        ai_screening_score: null, ai_screening_result: null, outreach_status: "pending",
+        created_at: c.created_at, updated_at: c.created_at, candidate: c,
+      } as unknown as JobApplication));
+    const all = [...applications, ...orphans];
+    if (!q) return all;
+    return all.filter((a) => {
+      const c = a.candidate;
+      const name = (c?.full_name || `${c?.first_name || ""} ${c?.last_name || ""}`).toLowerCase();
+      return name.includes(q) ||
+        (c?.current_title || c?.current_position || "").toLowerCase().includes(q) ||
+        (a.requisition?.job_title || "").toLowerCase().includes(q);
+    });
+  }, [applications, candidates, searchQuery]);
 
   const getCandidateName = (app: JobApplication) => {
     if (app.candidate?.full_name) return app.candidate.full_name;
@@ -536,6 +592,17 @@ export default function RecruitmentPage() {
       // Invalidate queries to refresh job list
       queryClient.invalidateQueries({ queryKey: ['hr_job_requisitions'] });
       queryClient.invalidateQueries({ queryKey: ['recruitment_stats'] });
+
+      // Auto-source on post: when the toggle is on, actually start Sourcing v2 for the
+      // new job. This toggle was previously decorative — the /hr/job/ai-create webhook
+      // does NOT start sourcing. The entry workflow enforces the guardrails (premium+Apify
+      // tenants only, idempotent per job), so this fire-and-forget is safe; the Sourcing
+      // tab + watchdog are the fallbacks if it ever drops.
+      if (inputMode === 'manual' && jobForm.auto_source_enabled && newJobId && tenantUuid) {
+        callWebhook('/hr/job/trigger-sourcing-v2', { job_requisition_id: newJobId, trigger_type: 'auto' }, tenantUuid)
+          .then(() => queryClient.invalidateQueries({ queryKey: ['hr_sourcing_runs'] }))
+          .catch(() => { /* non-blocking — manual Sourcing button + watchdog remain */ });
+      }
     } catch (error: any) {
       // Fallback: if webhook fails for manual mode, insert directly
       if (inputMode === 'manual') {
@@ -1118,8 +1185,8 @@ export default function RecruitmentPage() {
                     <div className="flex items-center gap-2">
                       <Zap className="h-5 w-5 text-primary" />
                       <div>
-                        <p className="text-sm font-medium">Auto-source candidates</p>
-                        <p className="text-xs text-muted-foreground">AI will find matching candidates automatically</p>
+                        <p className="text-sm font-medium">Auto-source candidates on post</p>
+                        <p className="text-xs text-muted-foreground">AI starts sourcing matching candidates the moment you post this job (premium tenants)</p>
                       </div>
                     </div>
                     <Switch checked={jobForm.auto_source_enabled} onCheckedChange={(v) => setJobForm((f) => ({ ...f, auto_source_enabled: v }))} />
@@ -1244,21 +1311,51 @@ export default function RecruitmentPage() {
               </div>
             </CardHeader>
             <CardContent>
+              {/* Opening lifecycle sub-tabs — Active / Filled / Archived */}
+              <div className="flex items-center gap-1 mb-4 border-b">
+                {(["active", "filled", "archived"] as JobLifecycle[]).map((k) => (
+                  <button
+                    key={k}
+                    onClick={() => setJobLifecycle(k)}
+                    className={cn(
+                      "px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
+                      jobLifecycle === k
+                        ? "border-primary text-foreground"
+                        : "border-transparent text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {lifecycleLabels[k]}
+                    <span className="ml-1.5 text-xs text-muted-foreground">({lifecycleCounts[k]})</span>
+                  </button>
+                ))}
+              </div>
               {jobsLoading ? (
                 <TableLoading />
-              ) : filteredJobs.length === 0 ? (
+              ) : lifecycleJobs.length === 0 ? (
                 <div className="text-center py-16">
                   <Briefcase className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-1">No job postings yet</h3>
-                  <p className="text-muted-foreground mb-4">Post your first job to start the AI hiring pipeline</p>
-                  <Button onClick={() => setIsAddJobOpen(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Post Job
-                  </Button>
+                  <h3 className="text-lg font-semibold mb-1">
+                    {jobLifecycle === "active" && jobs.length === 0
+                      ? "No job postings yet"
+                      : `No ${lifecycleLabels[jobLifecycle].toLowerCase()} openings`}
+                  </h3>
+                  <p className="text-muted-foreground mb-4">
+                    {jobLifecycle === "active" && jobs.length === 0
+                      ? "Post your first job to start the AI hiring pipeline"
+                      : jobLifecycle === "active"
+                        ? "Every opening is filled or archived — check the other tabs"
+                        : `Openings you ${jobLifecycle === "filled" ? "mark filled" : "close or archive"} will appear here, recoverable anytime`}
+                  </p>
+                  {jobLifecycle === "active" && jobs.length === 0 && (
+                    <Button onClick={() => setIsAddJobOpen(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Post Job
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {filteredJobs.map((job) => (
+                  {lifecycleJobs.map((job) => (
                     <div
                       key={job.id}
                       className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
@@ -1361,6 +1458,36 @@ export default function RecruitmentPage() {
                               Edit
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
+                            {lifecycleOf(job.status) === "active" ? (
+                              <>
+                                <DropdownMenuItem
+                                  onClick={() => updateJob.mutate({ id: job.id, status: "filled", closed_at: new Date().toISOString() })}
+                                >
+                                  <CheckCircle2 className="h-4 w-4 mr-2 text-chart-2" />
+                                  Mark as Filled
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => updateJob.mutate({ id: job.id, status: "closed", closed_at: new Date().toISOString() })}
+                                >
+                                  <XCircle className="h-4 w-4 mr-2" />
+                                  Close Opening
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => updateJob.mutate({ id: job.id, status: "cancelled", closed_at: new Date().toISOString() })}
+                                >
+                                  <Archive className="h-4 w-4 mr-2" />
+                                  Archive
+                                </DropdownMenuItem>
+                              </>
+                            ) : (
+                              <DropdownMenuItem
+                                onClick={() => updateJob.mutate({ id: job.id, status: "open", closed_at: null })}
+                              >
+                                <RefreshCw className="h-4 w-4 mr-2 text-primary" />
+                                Reopen Opening
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="text-destructive focus:text-destructive"
                               onClick={() => { setSelectedJob(job); setIsDeleteConfirmOpen(true); }}
@@ -1408,117 +1535,14 @@ export default function RecruitmentPage() {
             <CardContent>
               {candidatesLoading ? (
                 <TableLoading rows={6} />
-              ) : filteredCandidates.length === 0 ? (
-                <div className="text-center py-16">
-                  <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-1">No candidates yet</h3>
-                  <p className="text-muted-foreground">Post a job and trigger AI sourcing to find candidates</p>
-                </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Candidate</TableHead>
-                      <TableHead>Position</TableHead>
-                      <TableHead>Experience</TableHead>
-                      <TableHead>Match Score</TableHead>
-                      <TableHead>Enrichment</TableHead>
-                      <TableHead>Source</TableHead>
-                      <TableHead></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredCandidates.map((candidate) => {
-                      const name = candidate.full_name || `${candidate.first_name} ${candidate.last_name}`;
-                      const initials = `${candidate.first_name?.[0] || ""}${candidate.last_name?.[0] || ""}`;
-                      return (
-                        <TableRow key={candidate.id}>
-                          <TableCell>
-                            <div className="flex items-center gap-3">
-                              <Avatar className="h-9 w-9">
-                                <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                                  {initials}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <p className="font-medium">{name}</p>
-                                <p className="text-xs text-muted-foreground">{candidate.email || "No email"}</p>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div>
-                              <p className="text-sm">{candidate.current_position || "—"}</p>
-                              {candidate.current_company && (
-                                <p className="text-xs text-muted-foreground">{candidate.current_company}</p>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {candidate.total_experience_years != null ? `${candidate.total_experience_years} yrs` : "—"}
-                          </TableCell>
-                          <TableCell>
-                            {candidate.match_score != null ? (
-                              <div className="flex items-center gap-2 w-24">
-                                <Progress value={candidate.match_score} className="h-2" />
-                                <span className={cn("text-xs font-medium", getScoreColor(candidate.match_score))}>
-                                  {candidate.match_score}%
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                "text-xs",
-                                candidate.enrichment_status === "completed" && "bg-chart-2/10 text-chart-2",
-                                candidate.enrichment_status === "pending" && "bg-chart-4/10 text-chart-4",
-                              )}
-                            >
-                              {candidate.enrichment_status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell><SourceBadge source={candidate.source} /></TableCell>
-                          <TableCell>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => { setSelectedCandidate(candidate); setIsViewCandidateOpen(true); }}>
-                                  <Eye className="h-4 w-4 mr-2" />
-                                  View Profile
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => { setApplyToJobCandidateId(candidate.id); setApplyToJobReqId(""); setIsApplyToJobOpen(true); }}>
-                                  <Send className="h-4 w-4 mr-2" />
-                                  Apply to Job
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                {candidate.linkedin_url && (
-                                  <DropdownMenuItem onClick={() => window.open(candidate.linkedin_url!, "_blank")}>
-                                    <ExternalLink className="h-4 w-4 mr-2" />
-                                    LinkedIn
-                                  </DropdownMenuItem>
-                                )}
-                                {candidate.email && (
-                                  <DropdownMenuItem onClick={() => window.open(`mailto:${candidate.email}`, "_blank")}>
-                                    <Mail className="h-4 w-4 mr-2" />
-                                    Send Email
-                                  </DropdownMenuItem>
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+                <CandidateBoard
+                  applications={boardApps}
+                  jobs={jobs}
+                  onView={(app) => { if (app.candidate) { setSelectedCandidate(app.candidate); setIsViewCandidateOpen(true); } }}
+                  onContact={(app) => { if (app.candidate) { setSelectedCandidate(app.candidate); setIsViewCandidateOpen(true); } }}
+                  onArchive={(app) => { if (app.candidate) archiveCandidate.mutate({ candidateId: app.candidate.id, archive: app.candidate.status !== "archived" }); }}
+                />
               )}
             </CardContent>
           </Card>
@@ -1526,7 +1550,34 @@ export default function RecruitmentPage() {
 
         {/* ===== PIPELINE TAB ===== */}
         <TabsContent value="pipeline" className="space-y-4">
-          <PipelineFunnel />
+          {/* Per-opening filter — focus the funnel + board on one requisition at a time */}
+          <div className="flex items-end justify-between gap-3 flex-wrap">
+            <div>
+              <h2 className="text-lg font-semibold">Pipeline</h2>
+              <p className="text-sm text-muted-foreground">
+                {pipelineJobId === "all"
+                  ? "All openings — every candidate across every requisition"
+                  : `${jobs.find((j) => j.id === pipelineJobId)?.job_title || "Opening"} — this requisition only`}
+              </p>
+            </div>
+            <Select value={pipelineJobId} onValueChange={setPipelineJobId}>
+              <SelectTrigger className="w-[280px]">
+                <SelectValue placeholder="Filter by opening" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All openings ({applications.length})</SelectItem>
+                {jobs.map((j) => {
+                  const n = applications.filter((a) => a.job_requisition_id === j.id).length;
+                  return (
+                    <SelectItem key={j.id} value={j.id}>
+                      {j.job_title}{j.location_city ? ` · ${j.location_city}` : ""} ({n})
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+          <PipelineFunnel jobRequisitionId={pipelineJobId === "all" ? undefined : pipelineJobId} />
           <Card>
             <CardHeader>
               <CardTitle>Candidate Pipeline</CardTitle>
@@ -1535,11 +1586,17 @@ export default function RecruitmentPage() {
             <CardContent>
               {appsLoading ? (
                 <TableLoading rows={4} />
-              ) : applications.length === 0 ? (
+              ) : pipelineApps.length === 0 ? (
                 <div className="text-center py-16">
                   <TrendingUp className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-1">No applications yet</h3>
-                  <p className="text-muted-foreground">Post a job and trigger AI sourcing to find candidates</p>
+                  <h3 className="text-lg font-semibold mb-1">
+                    {pipelineJobId === "all" ? "No applications yet" : "No candidates for this opening"}
+                  </h3>
+                  <p className="text-muted-foreground">
+                    {pipelineJobId === "all"
+                      ? "Post a job and trigger AI sourcing to find candidates"
+                      : "Pick another opening, or trigger AI sourcing for this one"}
+                  </p>
                 </div>
               ) : (
                 <div className="flex gap-4 overflow-x-auto pb-4">
@@ -2227,9 +2284,9 @@ export default function RecruitmentPage() {
                 <div>
                   <p className="text-sm text-muted-foreground mb-2">Match Score</p>
                   <div className="flex items-center gap-3">
-                    <Progress value={selectedCandidate.match_score} className="h-3 flex-1" />
-                    <span className={cn("text-lg font-bold", getScoreColor(selectedCandidate.match_score))}>
-                      {selectedCandidate.match_score}%
+                    <Progress value={Math.round(selectedCandidate.match_score * 100)} className="h-3 flex-1" />
+                    <span className={cn("text-lg font-bold", getScoreColor(Math.round(selectedCandidate.match_score * 100)))}>
+                      {Math.round(selectedCandidate.match_score * 100)}%
                     </span>
                   </div>
                 </div>

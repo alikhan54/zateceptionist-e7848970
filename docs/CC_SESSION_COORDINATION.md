@@ -1,8 +1,81 @@
 # CC Multi-Session Coordination
 
-**Last updated:** 2026-05-30 (Session BSH-HMS PARKED+COMPLETE — backend live, releases main; Session C — Smart Ledger SHIPPED+PARKED; Recruitment E2E SHIPPED+PARKED — UI on main, awaiting Publish, other sessions clear)
+**Last updated:** 2026-06-05 (HR Recruitment UI Overhaul SHIPPED `c79058e` — awaiting Lovable Publish; prior: HR Video Stack `8c7ce4e` + HR Recruitment Sourcing `86805bb` SHIPPED, Smart Ledger Wave 1 `e1c9545` live, clinic Phase-2 SHIPPED)
 
-> **🅿️ SESSION C — SMART LEDGER: PARKED + SHIPPED 2026-05-30.** All work is on `origin/main` and live on Lovable; working tree clean (no uncommitted tracked changes). **HR / other sessions are clear to push to main.** Commits (in order):
+---
+
+## 🚢 HR Recruitment UI Overhaul — SHIPPED 2026-06-05
+
+**Session:** Recruitment-Frontend-Batch. **SHIPPED to `origin/main`** commit **`c79058e`** (FF from `6b99557`, **no force**; selective-add 4 files only; `tsc --noEmit` clean; secret-scan clean; dry-run-merge N/A — changes were uncommitted on a 0-ahead branch, carried onto fresh main + committed there). **UI live after Adeel clicks Lovable Publish.** HR-recruitment domain only.
+
+**Shipped (4 files):** `src/components/hr/CandidateBoard.tsx` (NEW), `src/hooks/useRecruitment.ts`, `src/pages/hr/Recruitment.tsx`, `src/components/hr/PipelineFunnel.tsx`.
+- **Candidate board (Candidates tab):** per-opening sections ranked by AI score, band-colored explainable score rings (**×100 fix** — was rendering `0.82%`), "Why {score}" + skill/experience chips, screened-out + archived drawers. Archive/restore via NEW `useArchiveCandidate` (recoverable `status='archived'`).
+- **Pipeline tab:** per-opening selector filters funnel + kanban to one requisition.
+- **Jobs tab:** Active/Filled/Archived lifecycle sub-tabs + per-opening Mark Filled / Close / Archive / Reopen via `useUpdateJob`. `JobRequisition.status` union widened to the DB CHECK set (+`pending_approval`/`approved`/`cancelled`); "archive"→DB `cancelled`.
+- All queries tenant-scoped; cosmique isolation verified (0 leak); CandidateBoard/lifecycle degrade gracefully on a no-data tenant.
+
+**Owns (coordinate):** `src/hooks/useRecruitment.ts`, `src/pages/hr/Recruitment.tsx` — also owned by HR Recruitment Sourcing (`86805bb`). My changes are **additive on top** of that ship (built on `6b99557`, which includes `86805bb`).
+
+**Backend (live, NOT git):** NEW n8n `420 HR Self-Fill Completed Openings v1.0` (`FVMWYcDeQ0NzBt2d`) — **INACTIVE, DRY_RUN=true**, pending Adeel activation. `hired_count>=number_of_openings`→`status='filled'`; fill-only / idempotent / per-row tenant-safe. Logic verified vs live REST API (exactly 1 qualifying tenant-wide: Zate DevOps 1/1).
+
+**⚠ Flag (pre-existing, not from this work):** cosmique's authenticated session sees 0 recruitment rows although bypassrls DB shows it HAS 1 job / 5 candidates → an RLS / tenant-mapping gap for cosmique's user. Out of scope here; for a future HR session.
+
+---
+
+## 🚢 HR Video Stack — SHIPPED 2026-06-04
+
+**SHIPPED to `origin/main`** via merge-with-gates (merge commit `8c7ce4e`, base `ee9c73b`; **dry-run CLEAN — zero conflicts**, no force; tsc clean; **UI live after Adeel clicks Publish**). Branch `feature/hr-rehost-videos` was the tip of the stack (`c9d4bbb` chaptered → `27e02bb` custom-avatar → `2a8aed6` rehost), so this ships all three:
+- **Chaptered training videos** — async HeyGen video per course section, `CourseChapters.tsx` player, `hr_course_chapters` table.
+- **Custom lecturer avatar** — Adeel HeyGen Talking-Photo + voice + picker.
+- **Permanent Supabase storage** — videos re-hosted from HeyGen temp URLs into the `training-videos` bucket (the temp-URL re-host), via the receiver/poll n8n workflows.
+
+**Backend already live (not git):** HeyGen workflows, `training-videos` storage bucket, `hr_course_chapters` table. Frontend touched `useHR.ts`, `Training.tsx`, `webhooks.ts`, new `components/hr/CourseChapters.tsx`, tests + screenshots.
+
+**⚠️ Secret hygiene:** the 2 n8n Code-node exports `docs/n8n-rehost/{receiver,poll}-*.js` inline the Supabase **service_role key** — they were **EXCLUDED from the ship + `docs/n8n-rehost/` gitignored** (kept untracked at `D:/420-system/.n8n-ref/` for reference; the live n8n workflows are unaffected). **Note for Adeel:** that service_role key is *already* committed repo-wide in 9 `tests/*.spec.ts` files on main — **it should be rotated.**
+
+---
+
+## 🚢 HR Recruitment Sourcing — FIX SHIPPED 2026-06-04
+
+**Session:** HR-Recruitment-Sourcing. **SHIPPED to `origin/main`** via merge-with-gates (merge commit `86805bb`, base `6ea6097` clinic; dry-run clean, no force; tsc clean on merged tree). Branch `fix/hr-recruitment-sourcing-chain` (deb30a4 + dc3ff55 + 98d4fea). **UI goes live after Adeel clicks Publish in Lovable.** HR-recruitment domain only. **This un-breaks the Recruitment page** (the duplicate `Bot` import crash). n8n backend (5 hardened Sourcing v2 workflows + watchdog `k99volCaSogFb6un`) already live in Supabase n8n schema; auto-source-on-post live (premium+Apify, idempotent), proven post-reboot (auto run created + idempotency skip + visible in UI Sourcing tab).
+
+**Root cause found + fixed (the sourcing stall, all tenants):** the Sourcing v2 chain handed control between phases via n8n's *own internal webhooks* (`callNext`, 5s timeout, swallowed errors, no retry). A dropped internal hop stranded a run at `status=running` forever with no `error_log` (data writes go to Supabase REST = reliable; the control hop rode the fragile n8n webhook layer). Confirmed on the stuck Video-Editor run (job `d44b7ac3`, run `3fe73504`): `entry→phase2` skip-branch handoff dropped → phase2 never started.
+
+**Shipped:**
+- **n8n (live, persisted in Supabase n8n schema — NOT git):** hardened all 4 handoffs in the Sourcing v2 chain (`YsOhnEct1zWljE3L` TS, `l1RMxMScCbvXOqmm` P1, `XjSilVmjJeRIwNMF` P2, `PWb5cPBpK4FTgwwW` P3, `0Z1A7e5Cp8LraOnL` P4) with **deliver-and-verify retry** (fire → confirm next phase `*_started_at` → retry → mark `failed`+`error_log` on exhaustion). Added entry auto-guard (trigger_type=`auto` → premium+Apify only + idempotent skip-if-run-exists). P4 got richer app-insert error capture. **NEW watchdog cron `k99volCaSogFb6un`** (every 2 min) — marks stuck runs failed past 15 min; already auto-unstuck the real stale run.
+- **Frontend (on branch):** `useRecruitment.ts` (useCreateJob auto-fires sourcing on post) + `Recruitment.tsx` (auto-fire on the primary ai-create path + toggle relabel "Auto-source candidates on post" + **fixed a pre-existing duplicate `Bot` import that was crashing the ENTIRE Recruitment page render** — was on main since `2abb4f7`).
+
+**Proven:** full chain ran → Apify returned 15 real LinkedIn profiles → 10 saved to `hr_candidates`+`hr_job_applications` (Zate) → **shown in the Recruitment UI** (Candidates tab, LinkedIn badges; Jobs card "10 applicants/10 AI found/completed"). Auto-source frontend fire proven via console (no manual click).
+
+**Owns (coordinate — HR V3 + Recruitment-E2E parked own these too):** `src/hooks/useRecruitment.ts`, `src/pages/hr/Recruitment.tsx`, the 5 Sourcing v2 workflows + new watchdog `k99volCaSogFb6un`.
+
+**⚠️ Infra note:** Docker Desktop engine crashed mid-session (~2026-06-03 22:25 UTC, independent of these changes) and was force-restarted (user-approved). Left a test job `f61f8ba9` "QA AutoSource Test - Graphic Designer" (Zate) for the auto-source proof — safe to delete.
+
+---
+
+## 🚢 Smart Ledger Wave 1 — B/C/E/F SHIPPED 2026-06-02 (D HELD)
+
+**Live on Lovable**: bundle `index-B6Klg84b.js`. origin/main tip `e1c9545`. Plain FF push, no force. HR's 3 prior commits + all Video/Pulse/Omega commits preserved as ancestors. Sentinel partial-green (Wave-1 DB gates GREEN; sacred-9 inspection BLOCKED by simultaneous T20 Supabase pooler distress on n8n — **independent of Wave 1, no n8n writes this ship**).
+
+Commits (rebased onto current main pre-push, in order):
+- `483f129` — **Phase B**: `accounting_job_types` foundation table (20 cols, 5 RLS policies, 14-row seed for smart-ledger), drop `acc_jobs_category_check`, add `accounting_jobs.{job_type_id, period_end, staff_notes}`, add `accounting_invoices.job_id` + partial UNIQUE `uq_acc_inv_tenant_job (tenant_id, job_id) WHERE job_id IS NOT NULL`, rename PSC Update→Company Secretarial Services, DB-driven `useAccountingJobTypes` picker with legacy fallback. Migration: `tenants/smart-ledger/deployment/38-wave1-job-types-and-job-fields.sql`.
+- `2eb2628` — **Phase C**: pure-fn `src/lib/job-date-engine.ts` (`computeJobDates` + `formatCompanyType`, 14/14 Node unit tests pass). On job-type select → auto-fill Period End + Deadline from `ch_accounts` / `ch_confstmt` / `fixed_date` / `manual` / `none` anchors; fields stay editable. Period End date input + Notes for staff textarea + read-only Client Type chip. Extended `useAccountingClientsList` to return `company_type` + 4 CH date fields.
+- `b7ee5c6` — **Phase E**: auto-draft invoice on job create when `owner_user_id && client_id && default_fee > 0` (decision #6: no £0 junk drafts). Idempotency proven via rolled-back DB probe — partial UNIQUE rejects dup `job_id` with SQLSTATE 23505 on `uq_acc_inv_tenant_job`, NULL `job_id` rows coexist. 23505 caught as silent skip; other errors surface non-blocking toast, job still saved.
+- `e1c9545` — **Phase F**: `src/lib/reminder-cadence.ts` (pure fn, 19/19 Node tests pass) — T-30 / every-4d to T-7 / every-2d in final week / T-0 cadence at 09:00 UTC. New `useScheduleJobReminders` hook bulk-INSERTs into `accounting_reminders` with `target_type='job'`, `status='pending'`, idempotent precheck. **Reminders Engine `iuCAelOlyPluKdHg` reads rows AS-IS** — REM.7 already has `target_type='job'` branch — **no n8n edit needed**. Server-side enrollment proof: 5/5 rolled-back tests confirm row shape + REM.4 filter match + tenant qualification + idempotency precheck + REM.7 target-fetch.
+
+**Cross-tenant safety verified post-ship**: cosmique/zate/aamerah unaffected. `accounting_job_types` only seeded for smart-ledger; picker falls back to legacy `FILING_CATEGORIES` for non-accounting tenants. accounting_clients still 445 / accounting_jobs 5 / accounting_invoices 5 / accounting_reminders 1 — zero deltas from pre-B baseline.
+
+**Phase D HELD** — requires editing n8n CH workflow `RCLewTLovTg1GxV4` (write `name` + formatted `address` to `accounting_clients` from CH `company_name`/`registered_office_address`) + Add Client form CH-lookup-on-CRN-blur. Waiting for "Video parked, go Phase D".
+
+**Worktree**: `D:/420-system/frontend-smart-ledger-wave1` (smart-ledger-wave1 branch). Other sessions clear to push to main. Wave 1 surface = `src/lib/job-date-engine.ts`, `src/lib/reminder-cadence.ts`, `src/lib/uk-filing-categories.ts` (label only), `src/hooks/useAccounting{Clients,Invoices,Jobs}*.ts`, `src/hooks/useAccountingJobTypes.ts`, `src/hooks/useScheduleJobReminders.ts`, `src/pages/accounting/Jobs.tsx`, `tests/wave1-phase-b-picker.spec.ts`, `playwright.config.ts` (additive entry). Migration SQL outside `frontend/`: `tenants/smart-ledger/deployment/38-wave1-job-types-and-job-fields.sql`.
+
+**Audit artefacts (local, not committed)**: `D:/420-system/.tmp_wave1_audit/PHASE_A_REPORT.md`, `PHASE_B_REPORT.md`, snapshots, idempotency + enrollment test scripts.
+
+**⚠️ INFRASTRUCTURE NOTE 2026-06-02 12:25Z**: n8n API throwing HTTP 503 for all `/api/v1/workflows/*` GETs at ship time (`Database connection timed out` / `Failed to hard-delete executions` in container logs). Container itself running OK (RestartCount=0). This is documented T20 Supabase pooler degradation, **NOT caused by Wave 1** (zero n8n writes this round). Wave-1 DB layer is fully verified (all reads work via direct pooler), and Lovable bundle deployed cleanly. Frontend operational; sacred-9 sentinel BLOCKED on inspection until pooler self-recovers (T18 says 1-5 min normally; may need `docker restart n8n` if sustained — held off because Video is reportedly still active).
+
+---
+
+> **🅿️ SESSION C — SMART LEDGER PHASE 1: PARKED + SHIPPED 2026-05-30.** All work is on `origin/main` and live on Lovable; working tree clean (no uncommitted tracked changes). **HR / other sessions are clear to push to main.** Commits (in order):
 > - `40c38eb` — Phase 1 ship: D7-C Invoices + parity F1-F4 (un-revert of `39c1234`), D7-D Reminders, F5/F6 Calendar+Workload, D7-E ACCOUNTANT chat widget, D7-F Add Client, E2E spec. Shipped via `git rebase --onto` that **preserved all 17 other-session commits** (video/HR/MP-S1) — no force-push, plain FF.
 > - `e0647cf` — hide generic MAIN sidebar section for accounting tenants (gated on `isAccountingPracticeUK`; other tenants unchanged).
 > - `4d00056` — remove stale "coming May 25" banners for shipped features + soften Finance dates to "Phase 2".
@@ -12,6 +85,18 @@
 > - Recovery anchor: local branch `session-c-backup-pre-rebase-20260530` (retain ~48h).
 
 **Prior "Last updated":** 2026-05-26 (HR V3 Decade-Ahead PARKED + Session A Cosmique PARKED)
+
+---
+
+## 🏁 HR course-gen + Zate real-team — SHIPPED + PARKED 2026-06-02
+
+**SHIPPED to `origin/main`** (tip `b353837`; merge-with-gates — dry-run clean, no force; base `24eeeb0` preserved). **UI live after Adeel clicks Publish.** Other sessions clear.
+- Commits: `9dd12ea` feat — Generate AI Content for an EXISTING course (no duplicate); `b353837` test+docs — course-gen UI verification + Zate team-cleanup record.
+- **Live in n8n (not git):** Training Generator `HTuKFLf8uiDnzPJA` patched → **existing-course mode** (pass `training_program_id` ⇒ writes content INTO that course, no duplicate; new-course path unchanged). Backup in `.tmp_diag`.
+- **Live in DB (not git):** Zate `hr_employees` cleaned — deleted 20 fakes (+ orphan attendance/leave/reviews/etc.), kept PHASE5-TestBot AI agent, added Adeel (CEO & CTO) / Moiz Hira (GM Sales) / Zaid (GM Marketing) + Executive/Sales/Marketing depts. Roster = 4; tenant-isolated (other tenants unchanged 41→24).
+- **NOT built (separate follow-up):** chaptered / longer training videos.
+- **Open flags for Adeel:** PHASE5-TestBot has a test-y display name (rename?); Zaid + Adeel have no surname.
+- Touched `hooks/useHR.ts`, `pages/hr/Training.tsx` (HR V3 parked owns these) + new `tests/hr-course-gen-verify.spec.ts` + `playwright.config.ts` entry.
 
 ---
 
@@ -683,3 +768,63 @@ This pass debugs through actual chunk inspection + DB schema reality.
 - **Known MINORS (pre-existing, NOT HR V5 regressions, NOT blocking):** (1) the onboarding modal re-shows for established admins on fresh login (platform-wide, real users dismiss once via Skip/X); (2) a recurring unattributed HTTP 400 on a REST query seen on dashboard/attendance — pages render fine, NOT RLS-related (RLS returns empty-200, not 400) — worth a devtools network check.
 - **QA artifacts:** `tests/hr-prod-qa.spec.ts` (10-test prod walkthrough), `tests/screenshots/prod/*.png`, `playwright.config.ts` (`hr-prod-qa` project).
 - **VERDICT: SHIP-OK-WITH-MINORS.** HR V5 session PARKED; `main` clean; no critical bugs.
+
+---
+
+## 🧭 PLATFORM COMPLETION — PHASE 0 FOUNDATION (registered 2026-06-05)
+
+Foundation for a 4-feature roadmap: **Master Admin Dashboard · White-Label/Agency Mode ·
+Lifecycle Messaging · Feedback Board.** Full plan: `frontend/docs/420-PLATFORM-COMPLETION-ROADMAP.md`
+(read before starting any phase). Phase 0 was auth-fix + read-only discovery; artifacts in
+`D:/420-system/.tmp_phase0/` (gitignored).
+
+### Locked decisions (do NOT re-litigate)
+- **Pricing:** $1,999/mo Enterprise = up to **10** white-label sub-tenants; **11+ = contact sales**
+  (custom). Hard cap → `tenant_config.white_label_tenant_cap` (default 10 enterprise, NULL otherwise).
+- **Roles:** `master_admin` (Adeel only) > `agency_admin` (NEW, sees own agency's sub-tenants) >
+  `admin` (one tenant) > `manager` > `staff`.
+- **Repo/worktrees:** canonical repo `D:/420-system/frontend`; worktrees `D:/420-system/frontend-<name>`,
+  created **lazily at each phase start** (see `.tmp_phase0/0d_worktree_plan.md`).
+
+### Upcoming phases (PENDING — each starts in its own worktree off latest `origin/main`)
+| Phase | Worktree / branch | Scope (additive) |
+|---|---|---|
+| 1A Branding | `frontend-branding` / `wt/branding` | "Brand Your Platform" onboarding step (enterprise-only) + Settings→Branding; extend existing brand cols + add 5 |
+| 1B Lifecycle signals | `frontend-events` / `wt/events` | **DERIVE lifecycle signals from existing tables** (read-only RPCs/views) — NOT event emission |
+| 2 Master Admin | `frontend-admin` / `wt/admin` | wire `/admin/*` to cross-tenant RPCs; NEW `/admin/tenants/:id` + `/admin/time-to-purchase`; agency mgmt |
+| 3 Lifecycle Messaging | `frontend-lifecycle` / `wt/lifecycle` | **3.0 reconciliation FIRST**, then sequences + AI per-message + NEW n8n trigger wf |
+| 4 Feedback Board | `frontend-feedback` / `wt/feedback` | NEW tables (feedback_requests/votes/comments) + `/feedback` + `/admin/feedback` |
+| 5 Polish/Hardening | TBD | AI insights, color extraction, impersonate audit, load test, docs |
+
+Dependency order: 1A ∥ 1B → **2 needs 1B** → **3 needs 1B + 3.0** → 4 independent.
+
+### 🔒 Phase 0 DISCOVERIES — do NOT re-investigate
+
+**AUTH (resolved + deferred):**
+- **master_admin is now `zatesystems7@gmail.com` ONLY** (user `750c2f0a`, tenant `master-zate`). `axeclaim@gmail.com` demoted master_admin→admin (was on `bobadook`; reversible).
+- **`auth_id` is the canonical join key (NOT `id`)** — F2-N-5: `users.auth_id = auth.uid()`, then `user_roles.user_id = users.id`. AuthContext uses `.maybeSingle()` (breaks on 2 role rows → never add a 2nd; UPDATE the existing).
+- **PHANTOM-USER BUG** — duplicate `public.users` rows (auth UUID mis-used as PK, `auth_id` NULL, no role): `zatesystems7` (`a9639bed`, confirmed this session), `orphan master_admin user_roles` (`7b33fce7`, no users row), `adeel` (`4c60c257`, carried from prior context — confirm). **→ Dedicated cleanup session pending; MUST also find ROOT CAUSE — is signup STILL minting phantoms?** (No DELETEs were done in Phase 0.)
+
+**WHITE-LABEL (Phase 1A reference) — `tenant_config` = 430 cols:**
+- **6 brand cols ALREADY exist:** `primary_color`, `secondary_color`, `website_chat_widget_color` (all populated for the 4 enterprise tenants), `logo_url` (empty), `brand_voice`, `smtp_from_name`.
+- **`features.white_label` JSONB flag exists = the gating mechanism.**
+- **27 AI-personality cols populated** (`ai_name`, `ai_role`, `ai_tone`, `ai_personality`, `voice_name`, …) → each tenant's AI already speaks as its brand; reuse, don't rebuild.
+- **Only 5 NET-NEW cols needed:** `brand_name`, `brand_favicon_url`, `white_label_tenant_cap` (DEFAULT 10 enterprise), `parent_agency_tenant_id` (sub-tenant link), `custom_domain`.
+
+**LIFECYCLE (Phase 1B + 3 reference):**
+- **`system_events` is the AI brain's execution log, NOT a lifecycle stream** (11.7k rows; 0 signup/login/purchase/trial/churn events; `event_category` all NULL). → **Phase 1B DERIVES** lifecycle from `tenant_config.created_at`, `onboarding_*`, `auth.users.last_sign_in_at`, `subscriptions`, `lead_engagement_events`.
+- **18 overlapping sequence tables** (marketing_sequence_*, email_sequence_*, sequences, sequence_templates, customer_lifecycle_*…) → **Phase 3.0 reconciliation REQUIRED** before any sequence build (`customer_lifecycle_stages`/`_enrollment` exist but EMPTY).
+- **AI Sequence Generator `UjBu1DnjeTo4qWkw` already exists** (+ sacred Part-23 sequencers) → inspect before building "AI per-message crafting".
+- **9 sequences across 6 industries exist** (general/healthcare/real_estate/restaurant/salon/technology); **~9 industries missing** (construction, collections, youtube, accounting, forex, roofing, lab, hospital, telehealth) + **6 sequence types missing** (win-back, milestone, inspire, upsell, trial-ending, dunning).
+
+**THE 4 ENTERPRISE TENANTS (white-label eligible, all 0 sub-tenants today, cap=10):**
+`master-zate` (Zate Systems Master), `moiz-hira-45284b09` (Zate Systems), `youtube-agency-demo`
+(YouTube Agency Pro), `acsfx`. Colors + AI identity already populated → ready QA/seed data for Phase 1A.
+
+### 🛑 SACRED ZONES (unchanged — additive touches only, pre-approved per phase)
+- n8n: 9 sacred workflows (Marketing 552 / communication 378 / main 514 / sales 407 / Video Orch 16 /
+  Estimation 3 / OMEGA Campaign 5 / OMEGA Briefing 3 / OMEGA LeadGen 5) — **0 modified**; Phase 3 creates NEW workflows only.
+- LangGraph: `langgraph-agents/agents/*.py` (`graph.py`/`server.py`/`definitions.py`) — untouched.
+- Frontend sacred: `Layout.tsx`, `OmegaFloatingChat.tsx`, `NavigationSidebar.tsx`, `supabase.ts` —
+  Phases 1A/2 may add 1–3 additive lines to Layout/NavigationSidebar (logo render / nav entry), explicitly approved.
+- DB: no DDL except gated, additive migrations per phase (white-label cols 1A; RPCs 1B/2; feedback tables 4).

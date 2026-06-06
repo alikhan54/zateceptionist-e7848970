@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Mic } from "lucide-react";
+import { Mic, MicOff, Volume2, VolumeX } from "lucide-react";
 import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useOmegaVoice } from "@/hooks/useOmegaVoice";
 import { callWebhook, WEBHOOKS } from "@/lib/api/webhooks";
 import { sanitizeResponse } from "@/lib/security/sanitizeResponse";
 import { ParticleSphere, type OmegaState } from "./ParticleSphere";
@@ -25,6 +26,26 @@ const STATE_LABEL: Record<OmegaState, string> = {
 const INTRO_TRANSCRIPT =
   "Ask me anything about your business — I have full access to your data, workflows, and AI agents.";
 
+// Holding phrases — spoken INSTANTLY (browser TTS) the moment a query is
+// submitted, so there's no dead air while the brain thinks. Rotated without an
+// immediate repeat. (Editable; user can tune the set later.)
+const HOLDING_PHRASES = [
+  "Let me pull that together for you.",
+  "One moment — gathering the details.",
+  "Looking into that now.",
+  "Give me a breath while I check the numbers.",
+  "On it — fetching the latest for you.",
+  "Let me dig into that.",
+  "Checking across your data now.",
+  "A moment while I bring this together.",
+];
+
+// Optional soft nudge if the brain reply takes longer than NUDGE_DELAY_MS.
+// Toggle with NUDGE_ENABLED.
+const NUDGE_ENABLED = true;
+const NUDGE_DELAY_MS = 7000;
+const NUDGE_PHRASES = ["Still on it…", "Almost there…", "Just a moment more…"];
+
 export function ParticleSphereShell() {
   const [state, setState] = useState<OmegaState>("idle");
   const [transcript, setTranscript] = useState("");
@@ -35,6 +56,17 @@ export function ParticleSphereShell() {
   // Phase 2B.1 — top bar reads from useTenant() instead of hardcoded text.
   const { tenantId, tenantConfig } = useTenant();
   const { user, isAdmin } = useAuth();
+  // Mic-fix: reuse the existing voice hook (Web Speech in + Edge/browser TTS out).
+  const voice = useOmegaVoice();
+  const prevListening = useRef(false);
+  // Rotating-phrase picker (no immediate repeat) for holding + nudge sets.
+  const lastPhraseRef = useRef<Record<string, number>>({ hold: -1, nudge: -1 });
+  const pickPhrase = (list: string[], key: string) => {
+    let i = Math.floor(Math.random() * list.length);
+    if (list.length > 1 && i === lastPhraseRef.current[key]) i = (i + 1) % list.length;
+    lastPhraseRef.current[key] = i;
+    return list[i];
+  };
   const tenantUuid = tenantConfig?.id;
   const businessName =
     tenantConfig?.company_name ??
@@ -98,9 +130,21 @@ export function ParticleSphereShell() {
     setInputValue("");
     setState("listening");
     setTranscript(message);
+    // HOLDING PHRASE — spoken INSTANTLY (browser TTS, no network) the moment the
+    // query is submitted, so there's no dead air while the brain thinks.
+    voice.speakFiller(pickPhrase(HOLDING_PHRASES, "hold"));
     // brief listening pulse so the state pill reads naturally
     await new Promise((r) => setTimeout(r, 350));
     setState("thinking");
+    // Optional soft nudge if the brain takes a while — cleared the instant the
+    // reply arrives so it never talks over the answer.
+    let replied = false;
+    const nudgeTimer = NUDGE_ENABLED
+      ? window.setTimeout(() => {
+          if (!replied) voice.speakFiller(pickPhrase(NUDGE_PHRASES, "nudge"));
+        }, NUDGE_DELAY_MS)
+      : 0;
+    if (nudgeTimer) demoTimers.current.push(nudgeTimer as unknown as number);
     try {
       const res = await callWebhook(
         WEBHOOKS.OMEGA_CHAT,
@@ -113,15 +157,63 @@ export function ParticleSphereShell() {
         },
         tenantId,
       );
+      replied = true;
+      if (nudgeTimer) clearTimeout(nudgeTimer);
       const data = (res?.data ?? {}) as any;
       const reply =
         data.response ||
         data.message ||
         data.error ||
         (res?.success ? "OMEGA returned an empty response." : "OMEGA is temporarily unavailable.");
-      typeTranscript(sanitizeResponse(reply));
+      const clean = sanitizeResponse(reply);
+      // Clean hand-off: cut any holding phrase still playing, then WRITE + SPEAK
+      // the answer CONCURRENTLY (typewriter + TTS start together — not voice-last).
+      voice.stopSpeaking();
+      typeTranscript(clean);
+      voice.speakText(clean);
     } catch {
+      replied = true;
+      if (nudgeTimer) clearTimeout(nudgeTimer);
+      voice.stopSpeaking();
       typeTranscript("OMEGA is temporarily unavailable. Try again in a moment.");
+    }
+  };
+
+  // ---- Mic (voice) wiring — reuse useOmegaVoice; turn-based, no barge-in. ----
+  // Reflect the REAL SpeechRecognition flag in the sphere + show live transcript.
+  useEffect(() => {
+    if (voice.isListening) {
+      setState("listening");
+      if (voice.transcript) setTranscript(voice.transcript);
+    }
+  }, [voice.isListening, voice.transcript]);
+
+  // When a listening turn ENDS (final result or manual stop): submit the
+  // transcript through the SAME path as typed input; if empty, return to idle.
+  useEffect(() => {
+    if (prevListening.current && !voice.isListening) {
+      const t = voice.transcript.trim();
+      if (t) sendQuery(t);
+      else setState("idle");
+    }
+    prevListening.current = voice.isListening;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [voice.isListening]);
+
+  // Mic button → toggle listening. Graceful when Web Speech is unsupported.
+  const handleMic = () => {
+    if (!voice.speechSupported) {
+      if (inputValue.trim()) sendQuery(inputValue);
+      else runIntroCycle();
+      return;
+    }
+    if (voice.isListening) {
+      voice.stopListening();
+    } else {
+      demoTimers.current.forEach((id) => clearTimeout(id));
+      demoTimers.current = [];
+      setTranscript("");
+      voice.startListening();
     }
   };
 
@@ -211,9 +303,8 @@ export function ParticleSphereShell() {
         </div>
       )}
 
-      {/* Minimal command bar — Enter submits a real OMEGA query.
-          The mic button replays the intro teaser; speech recognition lives in
-          OmegaFloatingChat for now. */}
+      {/* Minimal command bar — Enter submits a typed query; the mic toggles
+          live voice (Web Speech via useOmegaVoice); the speaker mutes voice-out. */}
       <div className="v3-commandbar">
         <input
           className="v3-input-pill"
@@ -226,11 +317,23 @@ export function ParticleSphereShell() {
           disabled={state === "thinking" || state === "speaking"}
         />
         <button
-          className={`v3-mic-btn ${state === "listening" ? "listening" : ""}`}
-          onClick={() => (inputValue.trim() ? sendQuery(inputValue) : runIntroCycle())}
-          aria-label="Submit query or replay intro"
+          className={`v3-mic-btn ${voice.isListening ? "listening" : ""}`}
+          onClick={handleMic}
+          aria-label={voice.isListening ? "Stop listening" : "Talk to OMEGA"}
+          title={voice.isListening ? "Stop listening" : "Talk to OMEGA"}
         >
-          <Mic size={22} strokeWidth={2.2} />
+          {voice.isListening ? <MicOff size={22} strokeWidth={2.2} /> : <Mic size={22} strokeWidth={2.2} />}
+        </button>
+        <button
+          className="v3-mic-btn"
+          onClick={() => {
+            if (voice.isSpeaking) voice.stopSpeaking();
+            voice.setVoiceEnabled(!voice.voiceEnabled);
+          }}
+          aria-label={voice.voiceEnabled ? "Mute OMEGA voice" : "Unmute OMEGA voice"}
+          title={voice.isSpeaking ? "Stop speaking" : voice.voiceEnabled ? "Mute voice" : "Unmute voice"}
+        >
+          {voice.voiceEnabled ? <Volume2 size={20} strokeWidth={2.2} /> : <VolumeX size={20} strokeWidth={2.2} />}
         </button>
       </div>
 

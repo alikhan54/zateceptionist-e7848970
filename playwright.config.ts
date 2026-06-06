@@ -176,6 +176,16 @@ export default defineConfig({
       use: { browserName: 'chromium' }, // no setup dep — fresh login as Smart Ledger user; D7-A CRUD verification
     },
     {
+      name: 'wave1-phase-b-picker',
+      testMatch: /wave1-phase-b-picker\.spec\.ts/,
+      use: { browserName: 'chromium' }, // Wave 1 Phase B — Create Job picker reads accounting_job_types
+    },
+    {
+      name: 'wave1-prod-e2e',
+      testMatch: /wave1-prod-e2e\.spec\.ts/,
+      use: { browserName: 'chromium' }, // Wave 1 ship — PROD E2E + pixel proof
+    },
+    {
       name: 'smart-ledger-finance',
       testMatch: /smart-ledger-finance\.spec\.ts/,
       use: { browserName: 'chromium' }, // no setup dep — fresh login as Smart Ledger user; D7-B Finance verification
@@ -509,6 +519,26 @@ export default defineConfig({
       name: 'recruitment-outreach-verify',
       testMatch: /recruitment-outreach-verify\.spec\.ts/,
       use: { browserName: 'chromium' }, // no setup dep — fresh login; Outreach Activity UI vs local preview (RO_BASE/HR_V6_BASE)
+    },
+    {
+      name: 'hr-course-gen-verify',
+      testMatch: /hr-course-gen-verify\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — fresh login; existing-course AI-content gen vs local preview (CG_BASE/HR_V6_BASE)
+    },
+    {
+      name: 'chaptered-video-verify',
+      testMatch: /chaptered-video-verify\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — fresh login; chaptered HeyGen player vs local preview (CV_BASE/HR_V6_BASE)
+    },
+    {
+      name: 'chaptered-custom-avatar-verify',
+      testMatch: /chaptered-custom-avatar-verify\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — fresh login; custom-avatar chaptered player vs local preview (CA_BASE/HR_V6_BASE)
+    },
+    {
+      name: 'rehost-permanent-verify',
+      testMatch: /rehost-permanent-verify\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — fresh login; re-host permanence (Supabase storage) vs local preview (RH_BASE/HR_V6_BASE)
     },
   ],
 });

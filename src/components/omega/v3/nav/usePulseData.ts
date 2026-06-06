@@ -25,6 +25,8 @@ import {
   SECTIONS as FALLBACK_SECTIONS,
   type CathedralStat,
   type PulseSection,
+  type SectionVital,
+  type Vital,
 } from "./sectionsRegistry";
 
 export interface PulseData {
@@ -133,6 +135,394 @@ async function countQuery(
   }
 }
 
+/** Batch-1 helper: fetch a few rows (not just a count) for headline/agentLine/
+ *  savings logic. Same fail-safe contract as countQuery — returns null on any
+ *  error so the caller falls back gracefully. */
+async function rowsQuery(
+  table: string,
+  eqFilters: Record<string, unknown>,
+  select: string,
+  opts: { orderCol?: string; ascending?: boolean; limit?: number } = {},
+): Promise<Record<string, unknown>[] | null> {
+  try {
+    let q = supabase.from(table).select(select);
+    for (const [k, v] of Object.entries(eqFilters)) {
+      q = q.eq(k, v as never);
+    }
+    if (opts.orderCol) {
+      q = q.order(opts.orderCol, { ascending: opts.ascending ?? false });
+    }
+    if (opts.limit) q = q.limit(opts.limit);
+    const { data, error } = await q;
+    if (error) {
+      console.warn(`[Pulse] ${table} rows query failed:`, error.message);
+      return null;
+    }
+    return (data as Record<string, unknown>[]) ?? [];
+  } catch (e) {
+    console.warn(
+      `[Pulse] ${table} rows threw:`,
+      e instanceof Error ? e.message : String(e),
+    );
+    return null;
+  }
+}
+
+// ---------- Batch 1 — SectionVital resolvers (operations/omega/analytics) ----
+
+function asNum(v: unknown): number | null {
+  if (v === null || v === undefined) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** "AED 22,432" — thousands-separated, currency-prefixed. */
+function fmtMoney(currency: string, n: number): string {
+  return `${currency} ${Math.round(n).toLocaleString("en-US")}`;
+}
+
+// ---- Batch 2 polish: human-readable agent activity --------------------------
+
+/** Map a raw tool_name/action_type to plain English (polish b). */
+const ACTION_PHRASES: Record<string, string> = {
+  ops_vendor_create: "registered a new vendor",
+  ops_po_create: "raised a purchase order",
+  ops_shipment_create: "logged a shipment",
+  ops_budget_create: "set a budget",
+  ops_inventory_status: "reviewed inventory",
+  ops_budget_status: "checked the budget",
+  ops_dispatch: "ran an operations task",
+  lead_create: "added a lead",
+  lead_update: "updated a lead",
+  lead_search: "searched leads",
+  sequence_enroll: "enrolled a lead in a sequence",
+  send_message: "sent a message",
+  channel_response: "replied on a channel",
+};
+
+/** Agent codenames (single lowercase word) → UPPERCASE; else Title Case. */
+function prettyAgent(name: unknown): string {
+  const n = (typeof name === "string" ? name : "").trim();
+  if (!n) return "OMEGA";
+  if (/^[a-z]+$/.test(n)) return n.toUpperCase(); // omega → OMEGA, medica → MEDICA
+  return n.charAt(0).toUpperCase() + n.slice(1);
+}
+
+/** Plain-English phrase for what an agent did — never a raw tool name. */
+function humanAction(toolName: unknown, actionType: unknown): string {
+  const t = (typeof toolName === "string" ? toolName : "").trim();
+  if (t && ACTION_PHRASES[t]) return ACTION_PHRASES[t];
+  if (t) return t.replace(/_/g, " ");
+  const a = (typeof actionType === "string" ? actionType : "").trim();
+  if (a === "respond") return "handled a conversation";
+  if (a && a !== "tool_call") return a.replace(/_/g, " ");
+  return "took an action";
+}
+
+/** Success-rate label that never shows 100% when a real failure exists (polish c):
+ *  1-decimal, capped at 99.9% whenever success < total. */
+function successLabel(success: number, total: number): { text: string; tone: Vital["tone"] } {
+  const raw = (success / total) * 100;
+  let r = Math.round(raw * 10) / 10;
+  if (success < total && r >= 100) r = 99.9;
+  const text = `${Number.isInteger(r) ? r : r.toFixed(1)}%`;
+  return { text, tone: r >= 95 ? "good" : "warn" };
+}
+
+interface Batch1Reads {
+  aaTotal: number | string | null;
+  aaWeek: number | string | null;
+  aaSuccess: number | string | null;
+  aaConvos: number | string | null;
+  aaLatest: Record<string, unknown>[] | null;
+  invRows: Record<string, unknown>[] | null;
+  vendors: number | string | null;
+  savingsRows: Record<string, unknown>[] | null;
+  opsTasks: Record<string, unknown>[] | null;
+}
+
+/** Build the 3 Batch-1 SectionVitals from the consolidated reads. Honesty-first:
+ *  null (failed) → graceful neutral; 0 (real empty) → module-ready, never faked. */
+function buildBatch1Vitals(b: Batch1Reads, currency: string): SectionVital[] {
+  const out: SectionVital[] = [];
+
+  // ----- OMEGA (P2: real agent activity, kills 81/12/99.9%) -----
+  {
+    const total = asNum(b.aaTotal);
+    const week = asNum(b.aaWeek);
+    const success = asNum(b.aaSuccess);
+    const convos = asNum(b.aaConvos);
+    const latest = Array.isArray(b.aaLatest) && b.aaLatest.length ? b.aaLatest[0] : null;
+    const hasData = total !== null || convos !== null;
+    const vitals: Vital[] = [];
+    if (total !== null) vitals.push({ label: "actions", value: String(total), tone: "good" });
+    if (week !== null) vitals.push({ label: "this week", value: String(week), tone: "neutral" });
+    if (convos !== null) vitals.push({ label: "conversations", value: String(convos), tone: "neutral" });
+    if (total && total > 0 && success !== null) {
+      const sl = successLabel(success, total); // polish c: never fake 100% on a real failure
+      vitals.push({ label: "success", value: sl.text, tone: sl.tone });
+    }
+    // polish b: human-readable — "OMEGA registered a new vendor" (no raw tool names)
+    const agentLine = latest
+      ? `${prettyAgent(latest.agent_name)} ${humanAction(latest.tool_name, latest.action_type)}`
+      : null;
+    out.push({
+      id: "omega",
+      state: hasData ? "active" : "module-ready",
+      headline: hasData ? `${total ?? 0} actions · ${convos ?? 0} conversations` : null,
+      vitals,
+      agentLine,
+    });
+  }
+
+  // ----- OPERATIONS (P1: ops_* universal supply chain, industry-aware) -----
+  {
+    const invRows = Array.isArray(b.invRows) ? b.invRows : null;
+    const invTotal = invRows ? invRows.length : null;
+    const low = invRows
+      ? invRows.filter((r) => {
+          const cs = asNum(r.current_stock);
+          const rp = asNum(r.reorder_point);
+          return cs !== null && rp !== null && cs <= rp;
+        }).length
+      : null;
+    const vendors = asNum(b.vendors);
+    const savingsRows = Array.isArray(b.savingsRows) ? b.savingsRows : null;
+    const savings = savingsRows
+      ? savingsRows
+          .filter((r) => r.status !== "rejected")
+          .reduce((s, r) => s + (asNum(r.estimated_saving) ?? 0), 0)
+      : null;
+    const hasOps = (invTotal ?? 0) > 0 || (vendors ?? 0) > 0 || (savings ?? 0) > 0;
+
+    if (!hasOps) {
+      out.push({ id: "operations", state: "module-ready", headline: null, vitals: [], agentLine: null });
+    } else {
+      // polish a: owner-confident, threshold-based. Lead with the win at low
+      // severity; escalate wording only when low-stock is genuinely high (>=20%).
+      const totalN = invTotal ?? 0;
+      const lowN = low ?? 0;
+      const lowRatio = totalN > 0 ? lowN / totalN : 0;
+      const escalate = lowN > 0 && lowRatio >= 0.2;
+      const savedStr = savings && savings > 0 ? `; ${fmtMoney(currency, savings)} saved` : "";
+      let headline: string;
+      if (lowN === 0) headline = `Operations healthy — ${totalN} stocked${savedStr}`;
+      else if (!escalate) headline = `Running smooth — ${totalN} stocked${savedStr}`;
+      else headline = `Operations need attention — ${totalN} stocked, ${lowN} low${savedStr}`;
+      const vitals: Vital[] = [{ label: "stocked", value: String(totalN), tone: "good" }];
+      // low-stock stays a vital, but only RED (warn) when genuinely high — so the
+      // pill stays confident ("all healthy") at low severity.
+      if (lowN > 0)
+        vitals.push({ label: "low stock", value: String(lowN), tone: escalate ? "warn" : "neutral" });
+      if (vendors !== null) vitals.push({ label: "vendors", value: String(vendors), tone: "neutral" });
+      if (savings && savings > 0)
+        vitals.push({ label: "saved", value: fmtMoney(currency, savings), tone: "good" });
+      // agentLine conveys it's HANDLED (polish a) + human (polish b).
+      const parts: string[] = [];
+      if (lowN > 0) parts.push(`STOCKMASTER is tracking ${lowN} low-stock item${lowN > 1 ? "s" : ""}`);
+      if (savings && savings > 0) parts.push(`OPTIMIZER found ${fmtMoney(currency, savings)} in savings`);
+      const agentLine = parts.length ? parts.join(" · ") : null;
+      out.push({ id: "operations", state: "active", headline, vitals: vitals.slice(0, 4), agentLine });
+    }
+  }
+
+  // ----- ANALYTICS (P2: no per-tenant events table populated → module-ready,
+  //        never the fabricated 14/522/18M) -----
+  out.push({
+    id: "analytics",
+    state: "module-ready",
+    headline: "Live dashboards",
+    vitals: [],
+    agentLine: null,
+  });
+
+  return out;
+}
+
+// ---------- Batch 3 — remaining cards (real data OR elegant module-ready CTA) --
+
+interface Batch3Reads {
+  salesLeads: number | null; salesHot: number | null; sequencesActive: number | null;
+  novaLatest: Record<string, unknown>[] | null;
+  socialTotal: number | null; socialPublished: number | null; blogTotal: number | null; campaignsActive: number | null;
+  agentMemory: number | null;
+  competitors: number | null; compMoves: number | null;
+  hrCandidates: number | null; hrReviews: number | null;
+  convOpen: number | null; convTotal: number | null;
+  integrations: number | null;
+  channelsCount: number;
+}
+
+const plural = (n: number, s: string) => `${n} ${s}${n === 1 ? "" : "s"}`;
+
+/** Resolve the 8 remaining sections. Honesty-first: real data → active win;
+ *  relevant-but-empty → module-ready invitation; never a fabricated number. */
+function buildBatch3Vitals(b: Batch3Reads): SectionVital[] {
+  const out: SectionVital[] = [];
+
+  // ----- SALES -----
+  {
+    const leads = asNum(b.salesLeads), seq = asNum(b.sequencesActive), hot = asNum(b.salesHot);
+    const latest = Array.isArray(b.novaLatest) && b.novaLatest.length ? b.novaLatest[0] : null;
+    if ((leads ?? 0) <= 0 && (seq ?? 0) <= 0) {
+      out.push({ id: "sales", state: "module-ready", headline: "Start generating leads", vitals: [], agentLine: null, pill: "set up" });
+    } else {
+      const parts: string[] = [];
+      if ((leads ?? 0) > 0) parts.push(plural(leads as number, "in pipeline").replace("in pipelines", "in pipeline"));
+      if ((seq ?? 0) > 0) parts.push(`${seq} sequences live`);
+      const vitals: Vital[] = [];
+      if ((leads ?? 0) > 0) vitals.push({ label: "in pipeline", value: String(leads), tone: "good" });
+      if ((seq ?? 0) > 0) vitals.push({ label: "sequences", value: String(seq), tone: "neutral" });
+      if ((hot ?? 0) > 0) vitals.push({ label: "hot leads", value: String(hot), tone: "good" }); // dropped when 0
+      out.push({
+        id: "sales", state: "active",
+        headline: parts.join(" · "),
+        vitals: vitals.slice(0, 4),
+        agentLine: latest ? `NOVA ${humanAction(latest.tool_name, latest.action_type)}` : null,
+      });
+    }
+  }
+
+  // ----- MARKETING (honest draft/published split) -----
+  {
+    const social = asNum(b.socialTotal), pub = asNum(b.socialPublished), blog = asNum(b.blogTotal), camp = asNum(b.campaignsActive);
+    if ((social ?? 0) <= 0 && (blog ?? 0) <= 0 && (camp ?? 0) <= 0) {
+      out.push({ id: "marketing", state: "module-ready", headline: "Create your first campaign", vitals: [], agentLine: null, pill: "set up" });
+    } else {
+      const draft = Math.max(0, (social ?? 0) - (pub ?? 0));
+      const parts: string[] = [];
+      if ((social ?? 0) > 0) parts.push(`${draft} drafted`);
+      if ((blog ?? 0) > 0) parts.push(plural(blog as number, "blog"));
+      if ((camp ?? 0) > 0) parts.push(`${camp} live`);
+      const vitals: Vital[] = [];
+      if ((social ?? 0) > 0) vitals.push({ label: "drafted", value: String(draft), tone: "neutral" });
+      if (pub !== null && (social ?? 0) > 0) vitals.push({ label: "published", value: String(pub ?? 0), tone: (pub ?? 0) > 0 ? "good" : "neutral" });
+      if ((blog ?? 0) > 0) vitals.push({ label: "blog posts", value: String(blog), tone: "good" });
+      if ((camp ?? 0) > 0) vitals.push({ label: "campaigns", value: String(camp), tone: "good" });
+      out.push({ id: "marketing", state: "active", headline: parts.join(" · "), vitals: vitals.slice(0, 4), agentLine: null });
+    }
+  }
+
+  // ----- INTELLIGENCE (real agent_memory; sourceless placeholders dropped) -----
+  {
+    const mem = asNum(b.agentMemory);
+    if ((mem ?? 0) > 0) {
+      out.push({ id: "intel", state: "active", headline: `OMEGA remembers ${plural(mem as number, "returning contact")}`, vitals: [{ label: "memories", value: String(mem), tone: "good" }], agentLine: null });
+    } else {
+      out.push({ id: "intel", state: "module-ready", headline: "Learning as you go", vitals: [], agentLine: null, pill: "building" });
+    }
+  }
+
+  // ----- INDUSTRY VERTICALS (competitor intel) -----
+  {
+    const comp = asNum(b.competitors), moves = asNum(b.compMoves);
+    if ((comp ?? 0) > 0) {
+      const headline = (moves ?? 0) > 0 ? `${plural(moves as number, "competitor move")} this week` : `${plural(comp as number, "competitor")} tracked`;
+      const vitals: Vital[] = [{ label: "tracked", value: String(comp), tone: "neutral" }];
+      if ((moves ?? 0) > 0) vitals.push({ label: "moves this week", value: String(moves), tone: "warn" });
+      out.push({ id: "industry", state: "active", headline, vitals, agentLine: null });
+    } else {
+      out.push({ id: "industry", state: "module-ready", headline: "Track your competitors", vitals: [], agentLine: null, pill: "set up" });
+    }
+  }
+
+  // ----- HR (active when staffed/hiring; module-ready CTA otherwise) -----
+  {
+    const cand = asNum(b.hrCandidates), rev = asNum(b.hrReviews);
+    if ((cand ?? 0) > 0 || (rev ?? 0) > 0) {
+      const parts: string[] = [];
+      if ((cand ?? 0) > 0) parts.push(plural(cand as number, "candidate"));
+      if ((rev ?? 0) > 0) parts.push(`${rev} review${(rev as number) === 1 ? "" : "s"} pending`);
+      const vitals: Vital[] = [];
+      if ((cand ?? 0) > 0) vitals.push({ label: "candidates", value: String(cand), tone: "good" });
+      if ((rev ?? 0) > 0) vitals.push({ label: "reviews", value: String(rev), tone: "neutral" });
+      out.push({ id: "hr", state: "active", headline: parts.join(" · "), vitals, agentLine: null });
+    } else {
+      out.push({ id: "hr", state: "module-ready", headline: "Set up your team", vitals: [], agentLine: null, pill: "set up" });
+    }
+  }
+
+  // ----- COMMUNICATIONS (module-ready CTA when no channel enabled) -----
+  {
+    if (b.channelsCount > 0) {
+      out.push({ id: "comms", state: "active", headline: `${plural(b.channelsCount, "channel")} connected`, vitals: [{ label: "channels", value: String(b.channelsCount), tone: "good" }], agentLine: null });
+    } else {
+      out.push({ id: "comms", state: "module-ready", headline: "Connect a channel to handle chats automatically", vitals: [], agentLine: null, pill: "connect" });
+    }
+  }
+
+  // ----- UNIFIED INBOX (module-ready CTA when no conversations) -----
+  {
+    const open = asNum(b.convOpen), total = asNum(b.convTotal);
+    if ((open ?? 0) > 0) {
+      const vitals: Vital[] = [{ label: "open", value: String(open), tone: "good" }];
+      if (total !== null) vitals.push({ label: "total", value: String(total), tone: "neutral" });
+      out.push({ id: "inbox", state: "active", headline: `${plural(open as number, "open conversation")}`, vitals, agentLine: null });
+    } else {
+      out.push({ id: "inbox", state: "module-ready", headline: "Connect a channel to unify messages", vitals: [], agentLine: null, pill: "connect" });
+    }
+  }
+
+  // ----- SETTINGS (real integration count or module-ready CTA) -----
+  {
+    const integ = asNum(b.integrations);
+    if ((integ ?? 0) > 0) {
+      out.push({ id: "settings", state: "active", headline: `${plural(integ as number, "integration")} connected`, vitals: [{ label: "connected", value: String(integ), tone: "good" }], agentLine: null });
+    } else {
+      out.push({ id: "settings", state: "module-ready", headline: "Connect integrations & wire email", vitals: [], agentLine: null, pill: "set up" });
+    }
+  }
+
+  return out;
+}
+
+/** Map Batch-1 SectionVitals onto the existing PulseSection shape. hidden →
+ *  section omitted; module-ready → keep registry pill; active → pill reflects
+ *  warn tone. headline→meta, vitals→metrics, agentLine→the new span. */
+function applyBatch1(base: PulseSection[], vitals: SectionVital[]): PulseSection[] {
+  if (vitals.length === 0) return base;
+  const map = new Map(vitals.map((v) => [v.id, v]));
+  return base.flatMap((s) => {
+    const sv = map.get(s.id);
+    if (!sv) return [s];
+    if (sv.state === "hidden") return [];
+    const metrics = sv.vitals.map((v) => ({
+      value: `${v.value}${v.unit ?? ""}`,
+      label: v.label,
+      isWarning: v.tone === "warn",
+      notConfigured: v.tone === "empty",
+    }));
+    let pillType = s.pillType;
+    let pillText = s.pillText;
+    if (sv.state === "active") {
+      const warnCount = sv.vitals.filter((v) => v.tone === "warn").length;
+      if (warnCount > 0) {
+        pillType = "warning";
+        pillText = `${warnCount} need attention`;
+      } else if (sv.pill) {
+        pillText = sv.pill;
+      }
+      // else healthy path keeps the loved registry pill ("live" / "all healthy")
+    } else if (sv.state === "module-ready" && sv.pill) {
+      pillType = "normal";
+      pillText = sv.pill;
+    }
+    // module-ready w/o override keeps the registry pill (e.g. "open analytics")
+    return [
+      {
+        ...s,
+        name: sv.name ?? s.name,
+        meta: sv.headline ?? s.meta,
+        metrics: metrics.length ? metrics : s.metrics,
+        agentLine: sv.agentLine ?? null,
+        moduleReady: sv.state === "module-ready",
+        pillType,
+        pillText,
+      },
+    ];
+  });
+}
+
 // ---------- the fetch ------------------------------------------------------
 
 interface FetchInputs {
@@ -142,6 +532,8 @@ interface FetchInputs {
   /** Phase 2B.1 — channel-flag bag from tenantConfig, used for the
    *  derived "channels active" metric (no Supabase query). */
   channelsCount: number;
+  /** Batch 1 — tenant currency (for the Operations savings vital). Default AED. */
+  currency: string;
 }
 
 interface MetricUpdate {
@@ -183,8 +575,8 @@ function deriveChannelsActive(
 
 async function fetchAllMetrics(
   inputs: FetchInputs,
-): Promise<{ updates: MetricUpdate[]; heroStats: CathedralStat[] }> {
-  const { tenantSlug, tenantUuid, tenantIndustry, channelsCount } = inputs;
+): Promise<{ updates: MetricUpdate[]; heroStats: CathedralStat[]; batch1: SectionVital[] }> {
+  const { tenantSlug, tenantUuid, tenantIndustry, channelsCount, currency } = inputs;
   const conv_id = tenantUuid || tenantSlug; // conversations supports either; UUID preferred
   const dayAgoISO = timeAgo("24h");
   const weekAgoISO = timeAgo("7d");
@@ -192,183 +584,15 @@ async function fetchAllMetrics(
 
   /** Each entry: a key (sectionId|metricLabel) + a result promise.
    *  Phase 2B.1 widens the result type to allow string (e.g. ARR formatted as $1.2M). */
+  // Batch 1-3 replaced EVERY per-section count overlay with a SectionVital
+  // resolver (operations=B1, clients=B2, sales/marketing/hr/comms/intel/industry/
+  // inbox/settings=B3). queryDefs is now empty — the resolver batches (b1/b2/b3)
+  // below own all 13 cards. Kept as [] so the settled-index math is unchanged and
+  // so a future single-metric overlay can slot back in here if ever needed.
   const queryDefs: Array<{
     key: string;
     promise: Promise<number | string | null>;
-  }> = [
-    // ===== Sales AI =====
-    {
-      key: "sales|in pipeline",
-      promise: countQuery("sales_leads", { tenant_id: tenantSlug }),
-    },
-    // Phase 2B.1: sequences (SLUG, status='active')
-    {
-      key: "sales|sequences active",
-      promise: countQuery("sequences", {
-        tenant_id: tenantSlug,
-        status: "active",
-      }),
-    },
-    // ARR metric dropped — ltv_cac_snapshots has no `arr` column. Registry
-    // already marks this notConfigured; we no longer push an update for it.
-    // TODO: when deals start closing, compute ARR from
-    //   SUM(deals.value) WHERE stage='closed_won' AND tenant_id=slug
-    {
-      key: "sales|hot leads",
-      promise: countQuery(
-        "sales_leads",
-        { tenant_id: tenantSlug },
-        { gte: { lead_score: "75" } },
-      ),
-    },
-    {
-      key: "sales|contacted today",
-      promise: countQuery(
-        "sales_leads",
-        { tenant_id: tenantSlug },
-        { gte: { last_contact_at: dayAgoISO } },
-      ),
-    },
-
-    // ===== Marketing AI =====
-    {
-      key: "marketing|campaigns live",
-      promise: tenantUuid
-        ? countQuery(
-            "marketing_campaigns",
-            { tenant_id: tenantUuid },
-            { in: { status: ["active", "sending", "scheduled"] } },
-          )
-        : Promise.resolve(null),
-    },
-    {
-      key: "marketing|posts this week",
-      promise: tenantUuid
-        ? countQuery(
-            "social_posts",
-            { tenant_id: tenantUuid },
-            { gte: { created_at: weekAgoISO } },
-          )
-        : Promise.resolve(null),
-    },
-
-    // ===== Operations =====
-    {
-      key: "operations|active projects",
-      promise: countQuery(
-        "estimation_projects",
-        { tenant_id: tenantSlug },
-        { in: { status: ["active", "in-progress", "in_progress"] } },
-      ),
-    },
-    {
-      key: "operations|estimates pending",
-      promise: countQuery("estimation_projects", {
-        tenant_id: tenantSlug,
-        status: "estimating",
-      }),
-    },
-
-    // ===== Communications =====
-    // Phase 2B.1: calls today via voice_usage (SLUG)
-    {
-      key: "comms|calls today",
-      promise: countQuery(
-        "voice_usage",
-        { tenant_id: tenantSlug },
-        { gte: { created_at: dayAgoISO } },
-      ),
-    },
-    // Phase 2B.1: HR onboarding (UUID, speculative status='onboarding')
-    {
-      key: "hr|onboarding",
-      promise: tenantUuid
-        ? countQuery("hr_candidates", {
-            tenant_id: tenantUuid,
-            status: "onboarding",
-          })
-        : Promise.resolve(null),
-    },
-    // Phase 2B.1: HR reviews due (UUID, speculative status='pending')
-    {
-      key: "hr|reviews due",
-      promise: tenantUuid
-        ? countQuery("hr_performance_reviews", {
-            tenant_id: tenantUuid,
-            status: "pending",
-          })
-        : Promise.resolve(null),
-    },
-    {
-      key: "comms|WhatsApp chats",
-      promise: countQuery(
-        "conversations",
-        { tenant_id: conv_id, channel: "whatsapp" },
-        { gte: { last_message_at: dayAgoISO } },
-      ),
-    },
-    {
-      key: "comms|emails sent",
-      promise: countQuery(
-        "outbound_messages",
-        { tenant_id: tenantSlug, channel: "email" },
-        { gte: { created_at: dayAgoISO } },
-      ),
-    },
-
-    // ===== Industry Verticals =====
-    {
-      key: "industry|competitors tracked",
-      promise: tenantUuid
-        ? countQuery("competitor_tracking", { tenant_id: tenantUuid })
-        : Promise.resolve(null),
-    },
-    {
-      key: "industry|moves this week",
-      promise: tenantUuid
-        ? countQuery(
-            "competitor_tracking",
-            { tenant_id: tenantUuid },
-            { gte: { last_analyzed_at: weekAgoISO } },
-          )
-        : Promise.resolve(null),
-    },
-
-    // ===== Unified Inbox =====
-    {
-      key: "inbox|conversations",
-      promise: countQuery(
-        "conversations",
-        { tenant_id: conv_id },
-        { in: { status: ["open", "active"] } },
-      ),
-    },
-
-    // ===== Clients =====
-    {
-      key: "clients|total clients",
-      promise: countQuery("customers", { tenant_id: tenantSlug }),
-    },
-    {
-      key: "clients|today",
-      promise: countQuery(
-        "customers",
-        { tenant_id: tenantSlug },
-        { gte: { created_at: todayISO } },
-      ),
-    },
-
-    // ===== Settings =====
-    // tenant_integrations has no `status` column — `is_active` (boolean) is the
-    // closest available signal for a connected provider.
-    {
-      key: "settings|integrations connected",
-      promise: countQuery("tenant_integrations", {
-        tenant_id: tenantSlug,
-        is_active: true,
-      }),
-    },
-  ];
+  }> = [];
 
   // Hero stats run in the same batch
   const heroDefs: Array<{ label: string; promise: Promise<number | null> }> = [
@@ -380,19 +604,86 @@ async function fetchAllMetrics(
       label: "Conversations",
       promise: countQuery("conversations", { tenant_id: conv_id }),
     },
-    {
-      label: "Booked appointments",
-      // appointments.start_time is `time without time zone` (HH:MM:SS only) —
-      // it can't be compared to an ISO timestamp. Use scheduled_at (timestamptz).
-      promise: countQuery(
-        "appointments",
-        { tenant_id: tenantSlug },
-        {
-          in: { status: ["scheduled", "confirmed", "pending"] },
-          gte: { scheduled_at: todayISO },
-        },
-      ),
-    },
+    // "Booked appointments" hero moved to the Batch-2 block below (P4) — the old
+    // scheduled_at>=today filter showed 0 despite real appointments. Now upcoming + total.
+  ];
+
+  // Batch-1 consolidated reads (operations/omega) — run in the SAME batch.
+  // Analytics needs no read (module-ready). All SLUG [VERIFIED-DB 2026-06-01].
+  const b1Promises: Promise<unknown>[] = [
+    countQuery("agent_actions", { tenant_id: tenantSlug }), // 0 aaTotal
+    countQuery("agent_actions", { tenant_id: tenantSlug }, { gte: { created_at: weekAgoISO } }), // 1 aaWeek
+    countQuery("agent_actions", { tenant_id: tenantSlug, success: true }), // 2 aaSuccess
+    countQuery("agent_conversations", { tenant_id: tenantSlug }), // 3 aaConvos
+    rowsQuery("agent_actions", { tenant_id: tenantSlug }, "agent_name,tool_name,action_type", { orderCol: "created_at", ascending: false, limit: 1 }), // 4 aaLatest
+    rowsQuery("ops_inventory_items", { tenant_id: tenantSlug }, "current_stock,reorder_point", { limit: 2000 }), // 5 invRows
+    countQuery("ops_vendors", { tenant_id: tenantSlug }), // 6 vendors
+    rowsQuery("ops_cost_savings", { tenant_id: tenantSlug }, "estimated_saving,status", { limit: 1000 }), // 7 savingsRows
+    rowsQuery("ops_agent_tasks", { tenant_id: tenantSlug }, "agent_name,status", { orderCol: "created_at", ascending: false, limit: 20 }), // 8 opsTasks
+  ];
+
+  // ---- Batch 2: industry-routed Clients plan + appointments hero (all SLUG
+  //      [VERIFIED-DB 2026-06-01]). One card; the source/labels resolve by industry.
+  type ClientsPlan = { name: string; reads: { label: string; tone: Vital["tone"]; table: string }[] };
+  const clientsPlan: ClientsPlan =
+    tenantIndustry === "healthcare_clinic" || tenantIndustry === "healthcare"
+      ? {
+          name: "Patients",
+          reads: [
+            { label: "patients", tone: "good", table: "clinic_patients" },
+            { label: "consultations", tone: "neutral", table: "clinic_consultations" },
+            { label: "in post-care", tone: "neutral", table: "clinic_post_care_schedule" },
+          ],
+        }
+      : tenantIndustry === "real_estate"
+      ? {
+          name: "Clients",
+          reads: [
+            { label: "clients", tone: "good", table: "re_clients" },
+            { label: "listings", tone: "neutral", table: "re_listings" },
+            { label: "deals", tone: "good", table: "re_deals" },
+            { label: "viewings", tone: "neutral", table: "re_viewings" },
+          ],
+        }
+      : tenantIndustry === "banking_collections"
+      ? {
+          name: "Accounts",
+          reads: [
+            { label: "accounts", tone: "good", table: "collections_accounts" },
+            { label: "promises-to-pay", tone: "neutral", table: "collections_ptp" },
+          ],
+        }
+      : {
+          name: "Customers",
+          reads: [{ label: "customers", tone: "good", table: "customers" }],
+        };
+  const b2Promises: Promise<unknown>[] = [
+    ...clientsPlan.reads.map((r) => countQuery(r.table, { tenant_id: tenantSlug })),
+    countQuery("appointments", { tenant_id: tenantSlug }, { in: { status: ["scheduled", "confirmed"] } }), // upcoming
+    countQuery("appointments", { tenant_id: tenantSlug }), // total
+  ];
+
+  // ---- Batch 3: the remaining 8 cards (formats [VERIFIED-DB 2026-06-01]:
+  //      SLUG = sales_leads/sequences/agent_memory/tenant_integrations;
+  //      UUID = social_posts/blog_posts/marketing_campaigns/competitor_tracking;
+  //      hr_*/conversations = TEXT holding UUID values → query with tenantUuid/conv_id).
+  const b3Promises: Promise<unknown>[] = [
+    countQuery("sales_leads", { tenant_id: tenantSlug }), // 0 salesLeads
+    countQuery("sales_leads", { tenant_id: tenantSlug }, { gte: { lead_score: "75" } }), // 1 salesHot
+    countQuery("sequences", { tenant_id: tenantSlug, status: "active" }), // 2 sequencesActive
+    rowsQuery("agent_actions", { tenant_id: tenantSlug, agent_name: "nova" }, "tool_name,action_type", { orderCol: "created_at", ascending: false, limit: 1 }), // 3 novaLatest
+    tenantUuid ? countQuery("social_posts", { tenant_id: tenantUuid }) : Promise.resolve(null), // 4 socialTotal
+    tenantUuid ? countQuery("social_posts", { tenant_id: tenantUuid, status: "published" }) : Promise.resolve(null), // 5 socialPublished
+    tenantUuid ? countQuery("blog_posts", { tenant_id: tenantUuid }) : Promise.resolve(null), // 6 blogTotal
+    tenantUuid ? countQuery("marketing_campaigns", { tenant_id: tenantUuid }, { in: { status: ["active", "sending", "scheduled"] } }) : Promise.resolve(null), // 7 campaignsActive
+    countQuery("agent_memory", { tenant_id: tenantSlug, memory_type: "user_summary" }), // 8 agentMemory
+    tenantUuid ? countQuery("competitor_tracking", { tenant_id: tenantUuid }) : Promise.resolve(null), // 9 competitors
+    tenantUuid ? countQuery("competitor_tracking", { tenant_id: tenantUuid }, { gte: { last_analyzed_at: weekAgoISO } }) : Promise.resolve(null), // 10 compMoves
+    tenantUuid ? countQuery("hr_candidates", { tenant_id: tenantUuid }) : Promise.resolve(null), // 11 hrCandidates
+    tenantUuid ? countQuery("hr_performance_reviews", { tenant_id: tenantUuid }) : Promise.resolve(null), // 12 hrReviews
+    countQuery("conversations", { tenant_id: conv_id }, { in: { status: ["open", "active"] } }), // 13 convOpen
+    countQuery("conversations", { tenant_id: conv_id }), // 14 convTotal
+    countQuery("tenant_integrations", { tenant_id: tenantSlug, is_active: true }), // 15 integrations
   ];
 
   // Single batch with global 5s timeout. Promise.allSettled never throws,
@@ -400,11 +691,103 @@ async function fetchAllMetrics(
   const allPromises = [
     ...queryDefs.map((d) => d.promise),
     ...heroDefs.map((d) => d.promise),
+    ...b1Promises,
+    ...b2Promises,
+    ...b3Promises,
   ];
 
   const settled = await withTimeout(
     Promise.allSettled(allPromises),
     TIMEOUT_MS,
+  );
+
+  // Extract Batch-1 results (after queryDefs + heroDefs in the settled array).
+  const b1Base = queryDefs.length + heroDefs.length;
+  const b1val = (i: number): unknown => {
+    const r = settled[b1Base + i];
+    return r && r.status === "fulfilled" ? r.value : null;
+  };
+  const batch1 = buildBatch1Vitals(
+    {
+      aaTotal: b1val(0) as number | null,
+      aaWeek: b1val(1) as number | null,
+      aaSuccess: b1val(2) as number | null,
+      aaConvos: b1val(3) as number | null,
+      aaLatest: b1val(4) as Record<string, unknown>[] | null,
+      invRows: b1val(5) as Record<string, unknown>[] | null,
+      vendors: b1val(6) as number | null,
+      savingsRows: b1val(7) as Record<string, unknown>[] | null,
+      opsTasks: b1val(8) as Record<string, unknown>[] | null,
+    },
+    currency,
+  );
+
+  // ---- Batch 2: extract reads → industry-routed Clients vital + appts hero values
+  const b2Base = b1Base + b1Promises.length;
+  const b2val = (i: number): unknown => {
+    const r = settled[b2Base + i];
+    return r && r.status === "fulfilled" ? r.value : null;
+  };
+  const clientCounts = clientsPlan.reads.map((_, i) => asNum(b2val(i)));
+  const apptUpcoming = asNum(b2val(clientsPlan.reads.length));
+  const apptTotal = asNum(b2val(clientsPlan.reads.length + 1));
+
+  const primaryCount = clientCounts[0];
+  if (primaryCount === null || primaryCount === 0) {
+    // relevant-but-empty → module-ready CTA, never a fake count
+    batch1.push({
+      id: "clients",
+      state: "module-ready",
+      name: clientsPlan.name,
+      headline: `No ${clientsPlan.reads[0].label} yet`,
+      vitals: [],
+      agentLine: null,
+      pill: "set up",
+    });
+  } else {
+    const cVitals: Vital[] = clientsPlan.reads
+      .map((r, i) => ({ label: r.label, value: String(clientCounts[i] ?? 0), tone: r.tone }))
+      .filter((_, i) => clientCounts[i] !== null);
+    const headline = clientsPlan.reads
+      .slice(0, 2)
+      .map((r, i) => `${clientCounts[i] ?? 0} ${r.label}`)
+      .join(" · ");
+    batch1.push({
+      id: "clients",
+      state: "active",
+      name: clientsPlan.name,
+      headline,
+      vitals: cVitals.slice(0, 4),
+      agentLine: null,
+    });
+  }
+
+  // ---- Batch 3: extract reads → the remaining 8 SectionVitals
+  const b3Base = b2Base + b2Promises.length;
+  const b3val = (i: number): unknown => {
+    const r = settled[b3Base + i];
+    return r && r.status === "fulfilled" ? r.value : null;
+  };
+  batch1.push(
+    ...buildBatch3Vitals({
+      salesLeads: b3val(0) as number | null,
+      salesHot: b3val(1) as number | null,
+      sequencesActive: b3val(2) as number | null,
+      novaLatest: b3val(3) as Record<string, unknown>[] | null,
+      socialTotal: b3val(4) as number | null,
+      socialPublished: b3val(5) as number | null,
+      blogTotal: b3val(6) as number | null,
+      campaignsActive: b3val(7) as number | null,
+      agentMemory: b3val(8) as number | null,
+      competitors: b3val(9) as number | null,
+      compMoves: b3val(10) as number | null,
+      hrCandidates: b3val(11) as number | null,
+      hrReviews: b3val(12) as number | null,
+      convOpen: b3val(13) as number | null,
+      convTotal: b3val(14) as number | null,
+      integrations: b3val(15) as number | null,
+      channelsCount,
+    }),
   );
 
   // ---- Process metric results
@@ -439,6 +822,15 @@ async function fetchAllMetrics(
 
   // ---- Process hero results
   const heroStats: CathedralStat[] = FALLBACK_STATS.map((stat) => {
+    // P4 — appointments: show upcoming + total. Resilient: never 0 when appts exist.
+    if (stat.label === "Booked appointments") {
+      if (apptTotal === null) return stat; // query failed → keep fallback
+      if (apptTotal === 0) return { ...stat, value: "0", delta: "none yet" };
+      const up = apptUpcoming ?? 0;
+      return up > 0
+        ? { ...stat, value: String(up), delta: `${apptTotal} total` }
+        : { ...stat, value: String(apptTotal), delta: "booked" };
+    }
     const heroIdx = heroDefs.findIndex((h) => h.label === stat.label);
     if (heroIdx === -1) return stat; // Agents healthy — keep fallback
     const r = settled[queryDefs.length + heroIdx];
@@ -448,7 +840,7 @@ async function fetchAllMetrics(
     return stat;
   });
 
-  return { updates, heroStats };
+  return { updates, heroStats, batch1 };
 }
 
 // ---------- merger ---------------------------------------------------------
@@ -506,10 +898,13 @@ export function usePulseData(isOpen: boolean): PulseData {
     const tenantUuid = tenantConfig?.id ?? null; // UUID (may be null mid-bootstrap)
     const tenantIndustry = tenantConfig?.industry ?? null;
     const channelsCount = deriveChannelsActive(tenantConfig); // Phase 2B.1
+    const currency = tenantConfig?.currency || "AED"; // Batch 1 — savings vital
 
-    fetchAllMetrics({ tenantSlug, tenantUuid, tenantIndustry, channelsCount })
-      .then(({ updates, heroStats }) => {
-        const sections = applyUpdates(FALLBACK_SECTIONS, updates);
+    fetchAllMetrics({ tenantSlug, tenantUuid, tenantIndustry, channelsCount, currency })
+      .then(({ updates, heroStats, batch1 }) => {
+        // Batch 1: overlay the count-based metrics, THEN enrich operations/omega/
+        // analytics with their resolved SectionVitals (headline/vitals/agentLine/pill).
+        const sections = applyBatch1(applyUpdates(FALLBACK_SECTIONS, updates), batch1);
         setData({ sections, heroStats, loading: false, error: null });
         console.info(
           `[Pulse] fetched — ${updates.length}/${updates.length + (FALLBACK_SECTIONS.reduce((n, s) => n + s.metrics.length, 0) - updates.length)} metrics overlaid; rest fell back to hardcoded.`,

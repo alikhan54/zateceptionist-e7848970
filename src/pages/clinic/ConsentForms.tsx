@@ -12,8 +12,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { ShieldCheck, Plus, FileSignature, Send, Eye } from "lucide-react";
+import { ShieldCheck, Plus, FileSignature, Send, Eye, PenLine, Download } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { ConsentSignDialog } from "@/components/clinic/ConsentSignDialog";
 
 interface Template {
   id: string;
@@ -33,6 +34,10 @@ interface ConsentForm {
   sent_at: string | null;
   signed_at: string | null;
   created_at: string;
+  signature_url: string | null;
+  pdf_url: string | null;
+  language: string | null;
+  visit_id: string | null;
 }
 interface Signature {
   id: string;
@@ -50,7 +55,7 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 export default function ConsentFormsPage() {
-  const { tenantId } = useTenant();
+  const { tenantId, isHealthcareClinic } = useTenant();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { patients } = useClinicPatients();
@@ -70,8 +75,27 @@ export default function ConsentFormsPage() {
   const [asnTreatment, setAsnTreatment] = useState<string>("");
   const [asnSaving, setAsnSaving] = useState(false);
 
-  // Signature viewer
+  // Signature viewer + sign flow
   const [sigForm, setSigForm] = useState<ConsentForm | null>(null);
+  const [signForm, setSignForm] = useState<ConsentForm | null>(null);
+
+  // Signed PHI lives in the PRIVATE clinic-phi bucket — fetch short-lived signed URLs on demand.
+  const { data: phiUrls } = useQuery<{ pdf: string | null; sig: string | null }>({
+    queryKey: ["consent_phi_urls", sigForm?.id, sigForm?.pdf_url, sigForm?.signature_url],
+    queryFn: async () => {
+      const out: { pdf: string | null; sig: string | null } = { pdf: null, sig: null };
+      if (sigForm?.pdf_url) {
+        const { data } = await supabase.storage.from("clinic-phi").createSignedUrl(sigForm.pdf_url, 300);
+        out.pdf = data?.signedUrl ?? null;
+      }
+      if (sigForm?.signature_url) {
+        const { data } = await supabase.storage.from("clinic-phi").createSignedUrl(sigForm.signature_url, 300);
+        out.sig = data?.signedUrl ?? null;
+      }
+      return out;
+    },
+    enabled: !!sigForm && (!!sigForm.pdf_url || !!sigForm.signature_url),
+  });
 
   const { data: templates = [] } = useQuery<Template[]>({
     queryKey: ["consent_templates", tenantId],
@@ -137,6 +161,19 @@ export default function ConsentFormsPage() {
     } catch (err: any) { toast({ title: "Assign failed", description: err?.message || "Unknown error", variant: "destructive" }); }
     finally { setAsnSaving(false); }
   };
+
+  // MANDATORY industry gate: /clinic routes are URL-reachable by any authed user (no route-level
+  // gate), so non-clinic tenants must NOT see consent UI / PHI here.
+  if (!isHealthcareClinic) {
+    return (
+      <div className="space-y-6 p-6" data-testid="consent-not-available">
+        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2"><ShieldCheck className="h-7 w-7" /> Consent Forms</h1>
+        <Card><CardContent className="py-12 text-center text-muted-foreground">
+          Consent forms are available for healthcare clinic accounts only.
+        </CardContent></Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-6">
@@ -206,6 +243,11 @@ export default function ConsentFormsPage() {
                         </div>
                         <div className="flex items-center gap-2">
                           <Badge className={`text-[10px] ${STATUS_COLOR[f.status] || ""}`}>{f.status}</Badge>
+                          {f.status !== "signed" && (
+                            <Button size="sm" variant="outline" className="h-7" onClick={() => setSignForm(f)} data-testid={`sign-consent-${f.id}`}>
+                              <PenLine className="h-3.5 w-3.5 mr-1" /> Sign
+                            </Button>
+                          )}
                           {f.status === "signed" && (
                             <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setSigForm(f)} data-testid={`view-signature-${f.id}`}>
                               <Eye className="h-3.5 w-3.5" />
@@ -277,14 +319,38 @@ export default function ConsentFormsPage() {
       {/* Signature viewer */}
       <Dialog open={!!sigForm} onOpenChange={(v) => { if (!v) setSigForm(null); }}>
         <DialogContent className="max-w-lg" data-testid="signature-viewer-dialog">
-          <DialogHeader><DialogTitle>Signed consent</DialogTitle><DialogDescription>{sigData?.signed_by_name} · {sigData?.signed_at ? formatDate(sigData.signed_at, "medium") : ""}</DialogDescription></DialogHeader>
-          {sigData?.signature_data ? (
+          <DialogHeader>
+            <DialogTitle>Signed consent</DialogTitle>
+            <DialogDescription>
+              {sigForm?.signed_at ? formatDate(sigForm.signed_at, "medium") : (sigData?.signed_at ? formatDate(sigData.signed_at, "medium") : "")}
+              {sigForm?.language ? ` · ${sigForm.language.toUpperCase()}` : ""}
+            </DialogDescription>
+          </DialogHeader>
+          {phiUrls?.sig ? (
+            <img src={phiUrls.sig} alt="Signature" className="w-full rounded border bg-white" data-testid="consent-sig-image" />
+          ) : sigData?.signature_data ? (
             <img src={sigData.signature_data.startsWith("data:") ? sigData.signature_data : `data:image/png;base64,${sigData.signature_data}`} alt="Signature" className="w-full rounded border bg-white" />
           ) : (
             <p className="text-sm text-muted-foreground py-4 text-center">No signature image stored.</p>
           )}
+          {phiUrls?.pdf && (
+            <a href={phiUrls.pdf} target="_blank" rel="noopener noreferrer" data-testid="consent-pdf-link">
+              <Button variant="outline" className="w-full mt-2"><Download className="h-4 w-4 mr-1" /> Download signed PDF</Button>
+            </a>
+          )}
         </DialogContent>
       </Dialog>
+
+      {/* Sign flow (Phase 2d) — render template → signature pad → PDF → clinic-phi + clinic_consent_forms */}
+      <ConsentSignDialog
+        open={!!signForm}
+        onOpenChange={(v) => { if (!v) setSignForm(null); }}
+        form={signForm}
+        template={(templates.find((t) => t.id === signForm?.template_id) as any) ?? null}
+        patient={(patients.find((p: any) => p.id === signForm?.patient_id) as any) ?? null}
+        treatmentName={treatments.find((t: any) => t.id === signForm?.treatment_id)?.name}
+        onSigned={() => queryClient.invalidateQueries({ queryKey: ["consent_forms", tenantId] })}
+      />
     </div>
   );
 }

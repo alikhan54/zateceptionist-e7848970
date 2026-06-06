@@ -521,6 +521,19 @@ export function NavigationSidebar() {
     ],
   };
 
+  // Production planning is meaningful only for manufacturing / kitchen-production
+  // verticals. Mirror Production.tsx's NON_PRODUCTION_INDUSTRIES deny-list so the
+  // sidebar item and the page agree: hidden here == "not applicable" there.
+  const PRODUCTION_HIDDEN_INDUSTRIES = [
+    "healthcare_clinic", "aesthetics", "healthcare", "healthcare_hospital",
+    "real_estate", "real_estate_dubai", "banking_collections",
+    "accounting_practice_uk", "youtube_agency", "forex_trading",
+    "digital_signage", "automotive",
+  ];
+  const showProduction = !PRODUCTION_HIDDEN_INDUSTRIES.includes(
+    (tenantConfig?.industry || "").toLowerCase()
+  );
+
   const operationsSection: NavSection = {
     label: "Operations",
     collapsible: true,
@@ -533,7 +546,9 @@ export function NavigationSidebar() {
         { title: "Purchase Orders", url: "/operations/purchase-orders", icon: FileText },
         { title: "Shipments", url: "/operations/shipments", icon: Truck },
       ]},
-      { title: "Production", url: "/operations/production", icon: Factory },
+      ...(showProduction
+        ? [{ title: "Production", url: "/operations/production", icon: Factory }]
+        : []),
       { title: "Finance", url: "/operations/budgets", icon: DollarSign, children: [
         { title: "Budgets", url: "/operations/budgets", icon: Wallet },
         // Expenses and Invoices pages are placeholders with no DB backing.
@@ -580,6 +595,8 @@ export function NavigationSidebar() {
     collapsible: true,
     items: [
       { title: "Clinic Dashboard", url: "/clinic/dashboard", icon: Stethoscope },
+      { title: "Visit Board", url: "/clinic/waiting", icon: Activity },
+      { title: "Packages", url: "/clinic/packages", icon: Package },
       { title: "Patients", url: "/clinic/patients", icon: Heart },
       { title: "Treatments", url: "/clinic/treatments", icon: Syringe },
       { title: "Products", url: "/clinic/products", icon: Pill },

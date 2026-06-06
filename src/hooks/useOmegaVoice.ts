@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { toast } from "sonner";
 import { useTenant } from "@/contexts/TenantContext";
 
 const WEBHOOK_BASE = "https://webhooks.zatesystems.com/webhook";
@@ -12,6 +13,11 @@ export function useOmegaVoice() {
   const [transcript, setTranscript] = useState("");
   const recognitionRef = useRef<any>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  // Live mirror of voiceEnabled so speak*/filler read the CURRENT mute state,
+  // not a value captured in a caller's stale closure (a query can resolve
+  // seconds after submit; the user may have muted in between).
+  const voiceEnabledRef = useRef(voiceEnabled);
+  useEffect(() => { voiceEnabledRef.current = voiceEnabled; }, [voiceEnabled]);
 
   // Init speech recognition
   useEffect(() => {
@@ -27,7 +33,16 @@ export function useOmegaVoice() {
         setTranscript(result[0].transcript);
         if (result.isFinal) setIsListening(false);
       };
-      recognition.onerror = () => setIsListening(false);
+      recognition.onerror = (event: any) => {
+        setIsListening(false);
+        // Surface permission failures instead of swallowing them (mic-fix).
+        const err = event?.error;
+        if (err === "not-allowed" || err === "service-not-allowed") {
+          toast.error("Microphone blocked", {
+            description: "Allow microphone access in your browser settings to talk to OMEGA.",
+          });
+        }
+      };
       recognition.onend = () => setIsListening(false);
       recognitionRef.current = recognition;
     }
@@ -48,7 +63,7 @@ export function useOmegaVoice() {
   }, []);
 
   const speakText = useCallback(async (text: string) => {
-    if (!voiceEnabled || !text) return;
+    if (!voiceEnabledRef.current || !text) return;
     if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
     setIsSpeaking(true);
 
@@ -77,7 +92,7 @@ export function useOmegaVoice() {
 
     // Fallback: browser speechSynthesis
     fallbackBrowserTTS(text);
-  }, [voiceEnabled, tenantConfig, tenantId]);
+  }, [tenantConfig, tenantId]);
 
   const fallbackBrowserTTS = (text: string) => {
     if (!window.speechSynthesis) { setIsSpeaking(false); return; }
@@ -95,9 +110,23 @@ export function useOmegaVoice() {
     setIsSpeaking(false);
   }, []);
 
+  // Instant holding/nudge phrase — browser speechSynthesis only (no network),
+  // so there's zero dead air while the brain thinks. Respects mute.
+  const speakFiller = useCallback((text: string) => {
+    if (!voiceEnabledRef.current || !text || !window.speechSynthesis) return;
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+    window.speechSynthesis.cancel();
+    setIsSpeaking(true);
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.0;
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    window.speechSynthesis.speak(utterance);
+  }, []);
+
   return {
     isListening, isSpeaking, voiceEnabled, setVoiceEnabled,
     speechSupported, transcript, startListening, stopListening,
-    speakText, stopSpeaking,
+    speakText, stopSpeaking, speakFiller,
   };
 }

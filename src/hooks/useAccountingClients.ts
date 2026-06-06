@@ -23,6 +23,19 @@ export interface AccountingClientFull {
   notes: string | null;
   status_notes: string | null;
   companies_house_last_synced_at: string | null;
+  // Wave 2a Phase 1: full Companies House field set (already populated by the CH
+  // sync workflow + enrichment; surfaced read-only in the UI).
+  company_status: string | null;
+  company_type: string | null;
+  date_of_incorporation: string | null;
+  accounts_next_due: string | null;
+  accounts_last_made_up: string | null;
+  confirmation_statement_next_due: string | null;
+  confirmation_statement_last_made_up: string | null;
+  sic_codes: string[] | null;
+  registered_office_address: Record<string, unknown> | null;
+  directors: Array<Record<string, unknown>> | null;
+  companies_house_sync_status: string | null;
   created_by: string | null;
   updated_by: string | null;
   created_at: string;
@@ -73,7 +86,7 @@ export function useAccountingClients() {
       const { data, error: qErr } = await supabase
         .from("accounting_clients")
         .select(
-          "id, tenant_id, name, company_no, vat_number, contact_email, contact_phone, address, status, data_status, beneficial_owner, jurisdiction, country_of_director, accounting_period_end, notes, status_notes, companies_house_last_synced_at, created_by, updated_by, created_at, updated_at",
+          "id, tenant_id, name, company_no, vat_number, contact_email, contact_phone, address, status, data_status, beneficial_owner, jurisdiction, country_of_director, accounting_period_end, notes, status_notes, companies_house_last_synced_at, company_status, company_type, date_of_incorporation, accounts_next_due, accounts_last_made_up, confirmation_statement_next_due, confirmation_statement_last_made_up, sic_codes, registered_office_address, directors, companies_house_sync_status, created_by, updated_by, created_at, updated_at",
         )
         .eq("tenant_id", tenantId as string)
         .order("name");

@@ -124,6 +124,51 @@ export default function Production() {
 
   if (!tenantConfig) return <PageLoading />;
 
+  // Industry-aware: production planning is meaningless for service / non-manufacturing
+  // verticals. Show a clean explanatory state instead of an all-zero dashboard.
+  // (Non-sacred, page-level gate — does NOT touch the sidebar.)
+  const NON_PRODUCTION_INDUSTRIES = [
+    "healthcare_clinic", "aesthetics", "healthcare", "healthcare_hospital",
+    "real_estate", "real_estate_dubai", "banking_collections",
+    "accounting_practice_uk", "youtube_agency", "forex_trading",
+    "digital_signage", "automotive",
+  ];
+  if (NON_PRODUCTION_INDUSTRIES.includes((tenantConfig.industry || "").toLowerCase())) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <Factory className="h-8 w-8 text-orange-500" />
+            Production
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Manufacturing & quality-control planning
+          </p>
+        </div>
+        <Card>
+          <CardContent className="py-16 text-center max-w-xl mx-auto">
+            <Factory className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-40" />
+            <p className="text-lg font-semibold">Production planning isn't applicable to your industry</p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Production plans &amp; QC runs are built for manufacturing and kitchen-production
+              businesses. Your operations suite focuses on the modules that matter for you instead:
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
+              <Badge variant="secondary">Inventory</Badge>
+              <Badge variant="secondary">Vendors</Badge>
+              <Badge variant="secondary">Purchase Orders</Badge>
+              <Badge variant="secondary">Shipments</Badge>
+              <Badge variant="secondary">Budgets &amp; Savings</Badge>
+            </div>
+            <p className="text-xs text-muted-foreground mt-4">
+              Your STOCKMASTER, BUYER, DIPLOMAT, COURIER, TREASURER and OPTIMIZER agents are active on those.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}

@@ -57,6 +57,44 @@ export interface PulseSection {
   enabled: boolean;
   /** Keyboard shortcut hint, e.g. "⌘1". Optional. */
   shortcut?: string;
+  /** Pulse Batch 1+ — the "what your agents did" line rendered under the
+   *  metrics. Null/undefined = nothing rendered. Set by usePulseData resolvers. */
+  agentLine?: string | null;
+  /** Batch 3 — true when the card is an elegant module-ready INVITATION
+   *  (relevant-but-unconfigured). Drives a subtle CTA treatment in PulseCard. */
+  moduleReady?: boolean;
+}
+
+// ---- Pulse "speak the win" contract (Batch 1 foundation) ------------------
+// A SectionVital is resolved per-section in usePulseData from real per-tenant
+// data and mapped onto the EXISTING PulseSection shape (headline→meta,
+// vitals→metrics, state→pill/enabled, agentLine→the new span). The high-design
+// render shell (Cathedral/PulseCard/ParticleSphere) is unchanged.
+export type Tone = "good" | "warn" | "neutral" | "empty";
+export interface Vital {
+  label: string;
+  value: string;
+  unit?: string;
+  tone: Tone;
+}
+export type SectionState = "active" | "module-ready" | "hidden";
+export interface SectionVital {
+  id: string;
+  /** active = real data shown; module-ready = relevant-but-unconfigured (CTA);
+   *  hidden = irrelevant to this industry (section omitted from render). */
+  state: SectionState;
+  /** Honest verdict → PulseSection.meta. Null keeps the registry meta. */
+  headline: string | null;
+  /** 2-4 real vitals → PulseSection.metrics. */
+  vitals: Vital[];
+  /** "What your agents did" → PulseSection.agentLine. Null = not rendered. */
+  agentLine: string | null;
+  /** Batch 2 — optional industry-routed card title override (e.g. clinic →
+   *  "Patients", banking → "Accounts"). Undefined keeps the registry name. */
+  name?: string;
+  /** Batch 2 — optional pill text override (e.g. module-ready CTA "set up").
+   *  Undefined keeps the registry/derived pill. */
+  pill?: string;
 }
 
 // ---- Type back-compat for any latent imports (Phase 2A → Phase 2A.5)
@@ -68,7 +106,9 @@ export const SECTIONS: PulseSection[] = [
   {
     id: "omega",
     name: "OMEGA",
-    meta: "12 agents · 81 tools",
+    // Honest neutral fallback (Batch 1, P2) — real agent_actions/conversations
+    // fill this via the resolver. No fabricated 81/12/99.9% even on timeout.
+    meta: "cross-brain agents",
     route: "/dashboard",
     icon: "Home",
     color: "cyan",
@@ -77,73 +117,58 @@ export const SECTIONS: PulseSection[] = [
     enabled: true,
     pillType: "live",
     pillText: "live",
-    metrics: [
-      { value: "81", label: "tools active" },
-      { value: "12", label: "core agents" },
-      { value: "4", label: "LangGraph brains" },
-      { value: "99.9%", label: "uptime" },
-    ],
+    metrics: [],
   },
   {
     id: "sales",
     name: "Sales AI",
-    meta: "10 agents · 32 tools",
+    // Batch 3 — neutral fallback; resolver fills real sales_leads/sequences + NOVA agentLine.
+    meta: "sales pipeline",
     route: "/sales",
     icon: "TrendingUp",
     color: "amber",
     layer: "operations",
     enabled: true,
     pillType: "normal",
-    pillText: "+24% week",
-    metrics: [
-      { value: "0", label: "in pipeline" },
-      { value: "0", label: "sequences active" },
-      { value: "0", label: "contacted today" },
-      { value: "0", label: "hot leads" },
-      { value: "$1.2M", label: "ARR managed", notConfigured: true },
-    ],
+    pillText: "live",
+    metrics: [],
   },
   {
     id: "marketing",
     name: "Marketing AI",
-    meta: "11 agents · 28 tools",
+    // Batch 3 — neutral fallback; resolver fills real social/blog/campaign counts.
+    meta: "campaigns & content",
     route: "/marketing",
     icon: "Megaphone",
     color: "rose",
     layer: "operations",
     enabled: true,
     pillType: "normal",
-    pillText: "8 campaigns",
-    metrics: [
-      { value: "0", label: "campaigns live" },
-      { value: "0", label: "posts this week" },
-      { value: "64", label: "leads from blog", notConfigured: true },
-      { value: "1.2k", label: "IG followers", notConfigured: true },
-      { value: "+12%", label: "engagement", notConfigured: true },
-    ],
+    pillText: "live",
+    metrics: [],
   },
   {
     id: "hr",
     name: "HR AI",
-    meta: "8 agents · 18 tools",
+    // Batch 3 — neutral fallback; resolver = active (candidates/reviews) or
+    // module-ready "set up your team" when empty.
+    meta: "team & hiring",
     route: "/hr",
     icon: "UserPlus",
     color: "emerald",
     layer: "operations",
     enabled: true,
     pillType: "normal",
-    pillText: "7 open",
-    metrics: [
-      { value: "7", label: "open roles", notConfigured: true },
-      { value: "3", label: "onboarding", notConfigured: true },
-      { value: "2", label: "reviews due", notConfigured: true },
-      { value: "94%", label: "team capacity", notConfigured: true },
-    ],
+    pillText: "live",
+    metrics: [],
   },
   {
     id: "operations",
     name: "Operations",
-    meta: "12 agents · 41 tools",
+    // Honest neutral fallback (Batch 1, P1) — real ops_* (inventory/vendors/
+    // savings) fill this via the resolver. estimation_projects is no longer the
+    // source (it's construction-only and 0 for clinics/restaurants).
+    meta: "supply chain",
     route: "/operations",
     icon: "LayoutGrid",
     color: "indigo",
@@ -151,30 +176,22 @@ export const SECTIONS: PulseSection[] = [
     enabled: true,
     pillType: "healthy",
     pillText: "all healthy",
-    metrics: [
-      { value: "0", label: "active projects" },
-      { value: "0", label: "estimates pending" },
-      { value: "22", label: "dispatches today", notConfigured: true },
-      { value: "96%", label: "SLA met", notConfigured: true },
-    ],
+    metrics: [],
   },
   {
     id: "comms",
     name: "Communications",
-    meta: "10 agents · 41 tools",
+    // Batch 3 — neutral fallback; resolver = active (calls/chats/emails) or
+    // module-ready "connect a channel" when none enabled.
+    meta: "channels & messaging",
     route: "/communications",
     icon: "Phone",
     color: "sky",
     layer: "operations",
     enabled: true,
-    pillType: "live",
-    pillText: "12 live now",
-    metrics: [
-      { value: "0", label: "calls today" },
-      { value: "0", label: "WhatsApp chats" },
-      { value: "0", label: "emails sent" },
-      { value: "41", label: "VAPI tools", notConfigured: true },
-    ],
+    pillType: "normal",
+    pillText: "live",
+    metrics: [],
   },
 
   // ===== Layer 2 — INTELLIGENCE (what OMEGA KNOWS) =====
@@ -187,15 +204,10 @@ export const SECTIONS: PulseSection[] = [
     color: "violet",
     layer: "intelligence",
     enabled: true,
-    pillType: "warning",
-    pillText: "3 gaps",
-    metrics: [
-      { value: "4.2k", label: "docs ingested", notConfigured: true },
-      { value: "2.1M", label: "tokens indexed", notConfigured: true },
-      { value: "78%", label: "knowledge confidence", notConfigured: true },
-      { value: "3", label: "knowledge gaps", isWarning: true, notConfigured: true },
-      { value: "80", label: "agents trained", notConfigured: true },
-    ],
+    pillType: "normal",
+    pillText: "live",
+    // Batch 3 — resolver surfaces real agent_memory; sourceless placeholders dropped.
+    metrics: [],
   },
   {
     id: "industry",
@@ -206,15 +218,10 @@ export const SECTIONS: PulseSection[] = [
     color: "coral",
     layer: "intelligence",
     enabled: true,
-    pillType: "warning",
-    pillText: "3 alerts",
-    metrics: [
-      { value: "", label: "tenant industry" },
-      { value: "0", label: "competitors tracked" },
-      { value: "0", label: "moves this week", isWarning: true },
-      { value: "Top 12%", label: "lead velocity", notConfigured: true },
-      { value: "Top 8%", label: "pipeline volume", notConfigured: true },
-    ],
+    pillType: "normal",
+    pillText: "live",
+    // Batch 3 — resolver surfaces real competitor_tracking; placeholders dropped.
+    metrics: [],
   },
 
   // ===== Layer 3 — REACH (who & where) =====
@@ -230,16 +237,15 @@ export const SECTIONS: PulseSection[] = [
     enabled: true,
     pillType: "warning",
     pillText: "3 hot",
-    metrics: [
-      { value: "10", label: "channels active" },
-      { value: "0", label: "conversations" },
-      { value: "3", label: "hot threads", notConfigured: true },
-      { value: "2", label: "awaiting response", notConfigured: true },
-    ],
+    // Batch 3 — resolver = active (open conversations) or module-ready "connect a channel".
+    metrics: [],
   },
   {
     id: "clients",
     name: "Clients",
+    // Honest neutral fallback (Batch 2, P3) — the resolver industry-routes the
+    // source (clinic_patients / re_clients / collections_accounts / customers)
+    // and overrides name + metrics. No fabricated "active accounts / NPS / +2 today".
     meta: "customer 360",
     route: "/customers",
     icon: "Users",
@@ -248,31 +254,24 @@ export const SECTIONS: PulseSection[] = [
     shortcut: "⌘3",
     enabled: true,
     pillType: "normal",
-    pillText: "+2 today",
-    metrics: [
-      { value: "0", label: "total clients" },
-      { value: "+0", label: "today" },
-      { value: "14", label: "active accounts", notConfigured: true },
-      { value: "8.4", label: "avg NPS", notConfigured: true },
-    ],
+    pillText: "live",
+    metrics: [],
   },
   {
     id: "analytics",
     name: "Analytics",
-    meta: "14 dashboards · live",
+    // Honest neutral fallback (Batch 1, P2) — no fabricated 14/522/18M. The
+    // resolver sets module-ready (no per-tenant events table is populated;
+    // daily_analytics does not exist). Real metrics arrive when a source is wired.
+    meta: "dashboards",
     route: "/analytics",
     icon: "BarChart3",
     color: "gold",
     layer: "reach",
     enabled: true,
-    pillType: "live",
-    pillText: "live",
-    metrics: [
-      { value: "14", label: "dashboards" },
-      { value: "522", label: "events / hr", notConfigured: true },
-      { value: "18M", label: "datapoints", notConfigured: true },
-      { value: "live", label: "streaming" },
-    ],
+    pillType: "normal",
+    pillText: "open analytics",
+    metrics: [],
   },
   {
     id: "settings",
@@ -285,12 +284,8 @@ export const SECTIONS: PulseSection[] = [
     enabled: true,
     pillType: "normal",
     pillText: "all connected",
-    metrics: [
-      { value: "0", label: "integrations connected" },
-      { value: "Knowledge base", label: "managed" },
-      { value: "AI training", label: "active" },
-      { value: "Company info", label: "configured" },
-    ],
+    // Batch 3 — resolver = real integration count or module-ready "connect integrations".
+    metrics: [],
   },
 ];
 
