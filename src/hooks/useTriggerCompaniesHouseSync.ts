@@ -55,14 +55,23 @@ export function useTriggerCompaniesHouseSync() {
       const cleaned = companyNos.filter((c) => !!c && c.trim() !== "");
       if (cleaned.length === 0) throw new Error("No company numbers provided");
 
-      const resp = await fetch(CH_WEBHOOK_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tenant_id: tenantId,
-          company_numbers: cleaned,
-        }),
-      });
+      // Wave 2b — retry on HTTP 503 (T18/T20 pooler/n8n "Database is not ready"
+      // transient). Up to 3 attempts total with ~1.5s then ~3s backoff before surfacing.
+      const reqBody = JSON.stringify({ tenant_id: tenantId, company_numbers: cleaned });
+      const backoffs = [1500, 3000];
+      let resp: Response | null = null;
+      for (let attempt = 0; attempt <= backoffs.length; attempt++) {
+        resp = await fetch(CH_WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: reqBody,
+        });
+        if (resp.status !== 503) break;
+        if (attempt < backoffs.length) {
+          await new Promise((r) => setTimeout(r, backoffs[attempt]));
+        }
+      }
+      if (!resp) throw new Error("Companies House sync: no response");
       const json = (await resp.json().catch(() => ({}))) as ChSyncResponse;
       if (!resp.ok || !json.ok) {
         throw new Error(
