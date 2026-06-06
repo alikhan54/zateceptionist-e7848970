@@ -1,6 +1,21 @@
 # CC Multi-Session Coordination
 
-**Last updated:** 2026-06-05 (HR Recruitment UI Overhaul SHIPPED `c79058e` — awaiting Lovable Publish; prior: HR Video Stack `8c7ce4e` + HR Recruitment Sourcing `86805bb` SHIPPED, Smart Ledger Wave 1 `e1c9545` live, clinic Phase-2 SHIPPED)
+**Last updated:** 2026-06-06 (HR Recruitment Quick Wins SHIPPED `417d032`; prior: HR Recruitment UI Overhaul `c79058e`, HR Video Stack `8c7ce4e`, HR Recruitment Sourcing `86805bb`, Smart Ledger Wave 1 `e1c9545`, clinic Phase-2/3 SHIPPED)
+
+---
+
+## 🚢 HR Recruitment Quick Wins (#2 / #4 / #5) — SHIPPED 2026-06-06
+
+**Session:** Recruitment-Quick-Wins. **SHIPPED to `origin/main`** commit **`417d032`** (FF from `713a6d1`, **no force**; selective-add **2 files**; `tsc --noEmit` clean; secret-scan clean). Additive on top of `c79058e`. **UI live after Adeel clicks Lovable Publish.** HR-recruitment domain only.
+
+**Shipped (2 files):** `src/pages/hr/Recruitment.tsx`, `src/components/hr/CandidateBoard.tsx`.
+- **#2 Pipeline score:** kanban card now reads `ai_screening_score ?? ai_match_score` (differentiated 92/78/65 instead of flat `ai_match_score`=60). CandidateBoard untouched (was already correct). Also the per-opening selector's "All openings (N)" count now reflects active-opening apps.
+- **#4 Hide closed-opening candidates:** CandidateBoard partitions opening groups by **parent-job status** — `filled/closed/cancelled` → collapsible **"Archived openings"** section; active board + Pipeline "all" show only `open/active/on_hold`. **Reversible** (reopening the job restores them — pure live-status partition, **no DB write**). Unassigned/general-pool always visible; `candidate.status==='archived'` per-candidate hide preserved.
+- **#5 Tabs:** `lg:grid-cols-6 → lg:grid-cols-7` — all 7 tabs on one row (mobile `grid-cols-3` unchanged).
+
+**Verified (live DOM — Zate + cosmique):** 7 tabs one row (`distinctRows:1`, 7 grid cols); active board = open **Video Editor** only, **5 closed openings** in Archived section (all "closed" badge); Pipeline "all" = **10 differentiated-score** Video-Editor cards (closed-job apps excluded), selector count 10; **cosmique** empty board unaffected (no leak/crash). `tsc` clean pre+post. (`preview_screenshot` tool hung on capture — renderer stalled by background Supabase token-refresh noise — so DOM inspection used, per AGENTS.md "more accurate than screenshots".)
+
+**Owns (coordinate):** `src/pages/hr/Recruitment.tsx`, `src/components/hr/CandidateBoard.tsx`.
 
 ---
 
