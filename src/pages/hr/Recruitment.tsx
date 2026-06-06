@@ -383,7 +383,13 @@ export default function RecruitmentPage() {
   // never crosses tenants.
   const [pipelineJobId, setPipelineJobId] = useState<string>("all");
   const pipelineApps = useMemo(
-    () => (pipelineJobId === "all" ? applications : applications.filter((a) => a.job_requisition_id === pipelineJobId)),
+    () =>
+      pipelineJobId === "all"
+        ? // "All openings" hides candidates whose parent opening is filled/closed/cancelled
+          // (reversible — reopening the job brings them back). Selecting a specific opening
+          // still shows it regardless of its status.
+          applications.filter((a) => lifecycleOf(a.requisition?.status ?? "active") === "active")
+        : applications.filter((a) => a.job_requisition_id === pipelineJobId),
     [applications, pipelineJobId],
   );
   const getApplicationsByStage = (stage: string) => pipelineApps.filter((a) => a.stage === stage);
@@ -1280,7 +1286,7 @@ export default function RecruitmentPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 lg:w-auto lg:inline-grid">
+        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-7 lg:w-auto lg:inline-grid">
           <TabsTrigger value="jobs">Jobs</TabsTrigger>
           <TabsTrigger value="candidates">Candidates</TabsTrigger>
           <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
@@ -1565,7 +1571,9 @@ export default function RecruitmentPage() {
                 <SelectValue placeholder="Filter by opening" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All openings ({applications.length})</SelectItem>
+                <SelectItem value="all">
+                  All openings ({applications.filter((a) => lifecycleOf(a.requisition?.status ?? "active") === "active").length})
+                </SelectItem>
                 {jobs.map((j) => {
                   const n = applications.filter((a) => a.job_requisition_id === j.id).length;
                   return (
@@ -1628,15 +1636,15 @@ export default function RecruitmentPage() {
                                 </p>
                               )}
                               <div className="flex items-center justify-between">
-                                {app.ai_match_score != null ? (
+                                {(app.ai_screening_score ?? app.ai_match_score) != null ? (
                                   <span
                                     className={cn(
                                       "text-xs font-medium flex items-center gap-1",
-                                      getScoreColor(app.ai_match_score),
+                                      getScoreColor(app.ai_screening_score ?? app.ai_match_score),
                                     )}
                                   >
                                     <Star className="h-3 w-3" />
-                                    {app.ai_match_score}%
+                                    {app.ai_screening_score ?? app.ai_match_score}%
                                   </span>
                                 ) : (
                                   <span className="text-xs text-muted-foreground">No score</span>

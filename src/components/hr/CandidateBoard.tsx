@@ -76,6 +76,7 @@ export interface CandidateBoardProps {
 export function CandidateBoard({ applications, jobs, onView, onContact, onArchive }: CandidateBoardProps) {
   const [showRejected, setShowRejected] = useState<Record<string, boolean>>({});
   const [showArchived, setShowArchived] = useState<Record<string, boolean>>({});
+  const [showArchivedOpenings, setShowArchivedOpenings] = useState(false);
   const [whyApp, setWhyApp] = useState<JobApplication | null>(null);
 
   const jobsById = useMemo(() => {
@@ -112,9 +113,17 @@ export function CandidateBoard({ applications, jobs, onView, onContact, onArchiv
     );
   }
 
-  return (
-    <div className="space-y-7">
-      {groups.map(({ jid, job, apps }) => {
+  // An opening whose status is filled/closed/cancelled is "archived": its candidates leave the
+  // active board and move to the collapsible "Archived openings" section below. Reopening the job
+  // (status back to open/active/on_hold) restores them automatically. Unassigned / unknown-status
+  // groups always stay active. Visibility only — no data is mutated.
+  const isArchivedOpening = (s?: string | null) => s === "closed" || s === "filled" || s === "cancelled";
+  const groupStatus = (g: { job?: JobRequisition; apps: JobApplication[] }) =>
+    g.job?.status ?? g.apps[0]?.requisition?.status;
+  const activeGroups = groups.filter((g) => !isArchivedOpening(groupStatus(g)));
+  const archivedGroups = groups.filter((g) => isArchivedOpening(groupStatus(g)));
+
+  const renderGroup = ({ jid, job, apps }: { jid: string; job?: JobRequisition; apps: JobApplication[] }) => {
         const title = job?.job_title || apps[0]?.requisition?.job_title || (jid === "unassigned" ? "Unassigned" : "Opening");
         const loc = job?.location_city || apps[0]?.requisition?.location_city;
         const posted = job?.created_at || apps[0]?.requisition?.created_at;
@@ -185,7 +194,32 @@ export function CandidateBoard({ applications, jobs, onView, onContact, onArchiv
             )}
           </div>
         );
-      })}
+  };
+
+  return (
+    <div className="space-y-7">
+      {activeGroups.map(renderGroup)}
+      {activeGroups.length === 0 && archivedGroups.length > 0 && (
+        <p className="px-1 text-sm text-muted-foreground">
+          Every opening with candidates is filled or closed — see archived openings below.
+        </p>
+      )}
+
+      {archivedGroups.length > 0 && (
+        <div className="overflow-hidden rounded-xl border bg-muted/20">
+          <button
+            className="flex w-full items-center justify-between px-5 py-3 text-sm text-muted-foreground hover:text-foreground"
+            onClick={() => setShowArchivedOpenings((v) => !v)}
+          >
+            <span className="inline-flex items-center gap-2">
+              <Archive className="h-4 w-4" />
+              Archived openings ({archivedGroups.length}) — filled / closed, candidates restored when the job reopens
+            </span>
+            <span className="text-xs">{showArchivedOpenings ? "hide" : "show"}</span>
+          </button>
+          {showArchivedOpenings && <div className="space-y-7 p-3 opacity-70">{archivedGroups.map(renderGroup)}</div>}
+        </div>
+      )}
 
       {/* full "why" dialog */}
       <Dialog open={!!whyApp} onOpenChange={(o) => !o && setWhyApp(null)}>
