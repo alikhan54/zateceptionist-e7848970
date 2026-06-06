@@ -104,6 +104,7 @@ import {
   useJobApplications,
   useCandidates,
   useArchiveCandidate,
+  useOutreachByApplication,
   useAIInterviews,
   useSourcingRuns,
   useInterviewSchedules,
@@ -152,6 +153,42 @@ const stageLabels: Record<string, string> = {
   rejected: "Rejected",
   withdrawn: "Withdrawn",
 };
+
+// Display-only labels for the Pipeline kanban COLUMN HEADERS — makes the agentic funnel
+// legible. Underlying stage strings (pipelineStages / stageLabels / Move actions) are unchanged.
+const kanbanColumnLabels: Record<string, string> = {
+  applied: "Sourced",
+  screening: "AI Screening",
+  phone_screen: "Phone Screen",
+  interview: "Interview",
+  technical: "Technical",
+  final: "Final",
+  offer: "Offer",
+  hired: "Hired",
+  rejected: "Not selected",
+};
+
+// Pipeline-card outreach/reply badge derived from an existing hr_recruitment_outreach row
+// (read-only). Never fabricates reply sentiment — shows plain "Replied" unless a structured
+// reply_sentiment field exists (added when the reply-classify workflow lands).
+function outreachBadge(
+  row?: { status?: string | null; reply_sentiment?: string | null } | null,
+): { label: string; cls: string } | null {
+  if (!row || !row.status) return null;
+  const s = String(row.status).toLowerCase();
+  if (s === "pending" || s === "queued") return { label: "Outreach queued", cls: "bg-muted text-muted-foreground" };
+  if (s === "sent" || s === "delivered") return { label: "Outreached · awaiting reply", cls: "bg-chart-3/10 text-chart-3 border-chart-3/20" };
+  if (s === "opened" || s === "clicked") return { label: "Outreached · opened", cls: "bg-chart-4/10 text-chart-4 border-chart-4/20" };
+  if (s === "replied") {
+    const sent = row.reply_sentiment ? String(row.reply_sentiment).toLowerCase() : null;
+    if (sent === "interested" || sent === "positive") return { label: "Replied: Interested", cls: "bg-chart-2/15 text-chart-2 border-chart-2/30" };
+    if (sent === "not_interested" || sent === "negative") return { label: "Replied: Not interested", cls: "bg-muted text-muted-foreground" };
+    return { label: "Replied", cls: "bg-chart-2/15 text-chart-2 border-chart-2/30" };
+  }
+  if (s === "bounced") return { label: "Email bounced", cls: "bg-destructive/10 text-destructive border-destructive/20" };
+  if (s === "failed") return { label: "Outreach failed", cls: "bg-destructive/10 text-destructive border-destructive/20" };
+  return null;
+}
 
 const stageColors: Record<string, string> = {
   applied: "bg-muted text-muted-foreground",
@@ -350,6 +387,7 @@ export default function RecruitmentPage() {
   const triggerAIInterview = useTriggerAIInterview();
   const addCandidate = useAddCandidate();
   const archiveCandidate = useArchiveCandidate();
+  const outreachByApp = useOutreachByApplication();
   const scheduleInterview = useScheduleInterview();
   const applyToJob = useApplyToJob();
   const makeOffer = useMakeOffer();
@@ -1613,7 +1651,7 @@ export default function RecruitmentPage() {
                     return (
                       <div key={stage} className="flex-shrink-0 w-64">
                         <div className="flex items-center justify-between mb-3">
-                          <span className="font-medium text-sm">{stageLabels[stage]}</span>
+                          <span className="font-medium text-sm">{kanbanColumnLabels[stage] || stageLabels[stage]}</span>
                           <Badge variant="secondary">{stageApps.length}</Badge>
                         </div>
                         <div className="space-y-2 min-h-[400px] p-2 bg-muted/30 rounded-lg">
@@ -1635,6 +1673,33 @@ export default function RecruitmentPage() {
                                   {app.requisition.job_title}
                                 </p>
                               )}
+                              {(() => {
+                                const es = app.candidate?.enrichment_status;
+                                const ob = outreachBadge(outreachByApp.data?.get(app.id));
+                                if (!es && !ob) return null;
+                                return (
+                                  <div className="flex flex-wrap items-center gap-1 mb-2">
+                                    {es && (
+                                      <Badge
+                                        variant="outline"
+                                        className={cn(
+                                          "h-5 px-1.5 text-[10px]",
+                                          es === "failed"
+                                            ? "bg-chart-4/10 text-chart-4 border-chart-4/20"
+                                            : "text-muted-foreground",
+                                        )}
+                                      >
+                                        {es === "completed" ? "Enriched" : es === "failed" ? "Couldn't enrich" : "Enriching…"}
+                                      </Badge>
+                                    )}
+                                    {ob && (
+                                      <Badge variant="outline" className={cn("h-5 px-1.5 text-[10px]", ob.cls)}>
+                                        {ob.label}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                               <div className="flex items-center justify-between">
                                 {(app.ai_screening_score ?? app.ai_match_score) != null ? (
                                   <span

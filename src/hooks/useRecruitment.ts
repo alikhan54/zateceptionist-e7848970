@@ -405,6 +405,36 @@ export function useOutreachFeed(limit = 100) {
   });
 }
 
+// Latest hr_recruitment_outreach row per application_id (tenant-scoped) — powers the
+// pipeline-card outreach/reply badge. Mirrors the useOutreachFeed query; reads existing
+// columns only. Returns a Map<application_id, latest row> (newest by sent_at || created_at).
+export function useOutreachByApplication() {
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
+  return useQuery({
+    queryKey: ['outreach_by_application', tenantUuid],
+    queryFn: async () => {
+      const map = new Map<string, any>();
+      if (!tenantUuid) return map;
+      const { data, error } = await supabase
+        .from('hr_recruitment_outreach')
+        .select('*')
+        .eq('tenant_id', tenantUuid)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      const ts = (r: any) => new Date(r.sent_at || r.created_at || 0).getTime();
+      for (const r of (data || []) as any[]) {
+        const aid = r.application_id;
+        if (!aid) continue;
+        const prev = map.get(aid);
+        if (!prev || ts(r) > ts(prev)) map.set(aid, r);
+      }
+      return map;
+    },
+    enabled: !!tenantUuid,
+  });
+}
+
 export function useSourcingRuns(jobRequisitionId?: string) {
   const { tenantConfig } = useTenant();
   const tenantUuid = tenantConfig?.id;
