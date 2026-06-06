@@ -55,22 +55,49 @@ export function PatientPhotosTab({ patientId, tenantUuid }: Props) {
         .eq("patient_id", patientId)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      const out: PhotoPair[] = [];
+
+      // Photos live in the PRIVATE clinic-phi bucket as PATHS (not public URLs) — PHI.
+      // Collect every path, batch-sign short-lived URLs (RLS lets each tenant sign only
+      // their own folder), and render those. Legacy entries that still carry a public
+      // `url` (pre-migration) fall back to it.
+      const photoRef = (x: any): { path: string | null; legacy: string | null } => {
+        if (!x) return { path: null, legacy: null };
+        if (typeof x === "string") return { path: null, legacy: x };
+        if (x.path) return { path: x.path as string, legacy: null };
+        return { path: null, legacy: x.url || null };
+      };
+      type Raw = { consultation_id: string; date: string; caption: string | null; bPath: string | null; aPath: string | null; bLegacy: string | null; aLegacy: string | null };
+      const raws: Raw[] = [];
+      const paths = new Set<string>();
       for (const c of (data as any[]) || []) {
         const before = Array.isArray(c.before_photos) ? c.before_photos : [];
         const after = Array.isArray(c.after_photos) ? c.after_photos : [];
         const max = Math.max(before.length, after.length);
         for (let i = 0; i < max; i++) {
-          out.push({
+          const b = photoRef(before[i]); const a = photoRef(after[i]);
+          if (b.path) paths.add(b.path);
+          if (a.path) paths.add(a.path);
+          raws.push({
             consultation_id: c.id,
             date: (c.follow_up_date || c.created_at || "").slice(0, 10),
             caption: c.chief_complaint || null,
-            before_url: before[i]?.url || (typeof before[i] === "string" ? before[i] : null),
-            after_url: after[i]?.url || (typeof after[i] === "string" ? after[i] : null),
+            bPath: b.path, aPath: a.path, bLegacy: b.legacy, aLegacy: a.legacy,
           });
         }
       }
-      return out;
+      const signed: Record<string, string> = {};
+      const pathArr = [...paths];
+      if (pathArr.length) {
+        const { data: sd } = await supabase.storage.from("clinic-phi").createSignedUrls(pathArr, 3600);
+        for (const s of sd || []) if (s?.signedUrl && !s.error && s.path) signed[s.path] = s.signedUrl;
+      }
+      return raws.map<PhotoPair>((r) => ({
+        consultation_id: r.consultation_id,
+        date: r.date,
+        caption: r.caption,
+        before_url: r.bPath ? (signed[r.bPath] || null) : r.bLegacy,
+        after_url: r.aPath ? (signed[r.aPath] || null) : r.aLegacy,
+      }));
     },
     enabled: !!tenantId && !!patientId,
   });
@@ -83,24 +110,27 @@ export function PatientPhotosTab({ patientId, tenantUuid }: Props) {
     (slot === "before" ? setBeforeFile : setAfterFile)(f);
   };
 
+  // PHI: upload to the PRIVATE clinic-phi bucket, tenant-slug-prefixed (folder[1]) so the
+  // storage RLS folder check passes — same pattern as consent PDFs (ConsentSignDialog).
+  // Returns the storage PATH (never a public URL); the read path signs it on demand.
   const uploadToBucket = async (file: File, slot: string): Promise<string> => {
     const ts = Date.now();
     const ext = file.name.split(".").pop() || "jpg";
-    const path = `patients/${tenantUuid}/${patientId}/${ts}_${slot}.${ext}`;
-    const { error } = await supabase.storage.from("media").upload(path, file, { upsert: false });
+    const path = `${tenantId}/patients/${patientId}/${ts}_${slot}.${ext}`;
+    const { error } = await supabase.storage.from("clinic-phi").upload(path, file, { upsert: false });
     if (error) throw error;
-    const { data } = supabase.storage.from("media").getPublicUrl(path);
-    return data.publicUrl;
+    return path;
   };
 
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!beforeFile && !afterFile) throw new Error("Pick at least one photo");
-      const beforeUrl = beforeFile ? await uploadToBucket(beforeFile, "before") : null;
-      const afterUrl = afterFile ? await uploadToBucket(afterFile, "after") : null;
+      const beforePath = beforeFile ? await uploadToBucket(beforeFile, "before") : null;
+      const afterPath = afterFile ? await uploadToBucket(afterFile, "after") : null;
 
-      const newBefore = beforeUrl ? [{ url: beforeUrl, uploaded_at: new Date().toISOString(), caption }] : [];
-      const newAfter = afterUrl ? [{ url: afterUrl, uploaded_at: new Date().toISOString(), caption }] : [];
+      // Store the PATH (private clinic-phi), never a public URL — rendered via signed URL.
+      const newBefore = beforePath ? [{ path: beforePath, uploaded_at: new Date().toISOString(), caption }] : [];
+      const newAfter = afterPath ? [{ path: afterPath, uploaded_at: new Date().toISOString(), caption }] : [];
 
       // Create a lightweight consultation row to hold the photo pair so the
       // jsonb arrays are properly linked (additive: no schema change, uses
