@@ -1,6 +1,21 @@
 # CC Multi-Session Coordination
 
-**Last updated:** 2026-06-06 (HR Recruitment Quick Wins SHIPPED `417d032`; prior: HR Recruitment UI Overhaul `c79058e`, HR Video Stack `8c7ce4e`, HR Recruitment Sourcing `86805bb`, Smart Ledger Wave 1 `e1c9545`, clinic Phase-2/3 SHIPPED)
+**Last updated:** 2026-06-06 (HR Recruitment Pipeline Visibility SHIPPED `ceb874a`; prior: Quick Wins `417d032`, UI Overhaul `c79058e`, Video Stack `8c7ce4e`, Sourcing `86805bb`, Smart Ledger Wave 1 `e1c9545`, clinic Phase-2/3)
+
+---
+
+## 🚢 HR Recruitment Pipeline Visibility — SHIPPED 2026-06-06
+
+**Session:** Recruitment-Pipeline-Visibility. **SHIPPED to `origin/main`** commit **`ceb874a`** (FF from `5586586`, **no force**; selective-add **2 files**; `tsc` clean; secret-scan clean). Additive; reads EXISTING columns only; **no DB / n8n / stage-enum change**. **UI live after Adeel clicks Lovable Publish.**
+
+**Shipped (2 files):** `src/pages/hr/Recruitment.tsx`, `src/hooks/useRecruitment.ts`.
+- **Kanban column labels (display-only):** new `kanbanColumnLabels` map used ONLY for the column headers — `applied→Sourced`, `screening→AI Screening`, `rejected→Not selected`, … `pipelineStages` / `stageLabels` / Move-stage actions unchanged.
+- **Enrichment badge per card:** from `candidate.enrichment_status` — `completed→Enriched`, `failed→Couldn't enrich` (amber), `pending/in_progress→Enriching…`.
+- **Outreach/reply badge:** new tenant-scoped `useOutreachByApplication()` (latest `hr_recruitment_outreach` row per `application_id`) → `queued / sent→Outreached·awaiting reply / opened / replied (plain — structured sentiment only if a field exists) / bounced→Email bounced / failed`. No fabricated sentiment.
+
+**Verified (live DOM — Zate + cosmique):** headers Sourced / AI Screening / … / Not selected; 10 Video-Editor cards **"Enriched"**; AI Engineer opening → Test Candidate card **"Outreached · awaiting reply"** (the 1 existing outreach row); **cosmique** empty / no crash / no leak. `tsc` clean.
+
+**Owns (coordinate):** `src/pages/hr/Recruitment.tsx`, `src/hooks/useRecruitment.ts`.
 
 ---
 
