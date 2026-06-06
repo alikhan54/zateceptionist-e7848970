@@ -23,6 +23,7 @@ import {
   Send,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useCurrency } from "@/hooks/useCurrency";
 import { PageLoading } from "@/components/shared/PageLoading";
 
 const AGENTS = [
@@ -78,6 +79,7 @@ export default function AiIntelligence() {
   const [response, setResponse] = useState<Record<string, unknown> | null>(null);
   const { tenantConfig } = useTenant();
   const { toast } = useToast();
+  const { currency, formatPrice } = useCurrency();
 
   const tenantSlug = tenantConfig?.tenant_id ?? "";
   const tenantId = tenantConfig?.id ?? "";
@@ -1124,7 +1126,7 @@ export default function AiIntelligence() {
                     {savings.reduce((sum: number, s: Record<string, unknown>) =>
                       sum + Number(s.estimated_saving || 0), 0).toFixed(0)}
                   </div>
-                  <div className="text-xs text-muted-foreground">Total Identified (AED)</div>
+                  <div className="text-xs text-muted-foreground">Total Identified{currency ? ` (${currency})` : ""}</div>
                 </CardContent>
               </Card>
               <Card>
@@ -1134,7 +1136,7 @@ export default function AiIntelligence() {
                       .reduce((sum: number, s: Record<string, unknown>) =>
                         sum + Number(s.estimated_saving || 0), 0).toFixed(0)}
                   </div>
-                  <div className="text-xs text-muted-foreground">Implemented (AED)</div>
+                  <div className="text-xs text-muted-foreground">Implemented{currency ? ` (${currency})` : ""}</div>
                 </CardContent>
               </Card>
               <Card>
@@ -1225,7 +1227,7 @@ export default function AiIntelligence() {
                   <CardContent className="pt-3 pb-2">
                     <div className="font-medium text-sm capitalize">{(b.category as string)?.replace("_", " ")}</div>
                     <div className="text-lg font-bold mt-1">
-                      AED {spent.toFixed(0)} <span className="text-sm font-normal text-muted-foreground">/ {budgeted.toFixed(0)}</span>
+                      {formatPrice(spent)} <span className="text-sm font-normal text-muted-foreground">/ {budgeted.toFixed(0)}</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded h-2 mt-2">
                       <div className={`h-2 rounded ${barColor}`} style={{ width: `${Math.min(100, pct)}%` }} />

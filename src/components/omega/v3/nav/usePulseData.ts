@@ -176,9 +176,11 @@ function asNum(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/** "AED 22,432" — thousands-separated, currency-prefixed. */
+/** "PKR 22,432" / "AED 22,432" — thousands-separated, currency-prefixed.
+ *  Falls back to bare number when currency is unset (no hardcoded AED). */
 function fmtMoney(currency: string, n: number): string {
-  return `${currency} ${Math.round(n).toLocaleString("en-US")}`;
+  const rounded = Math.round(n).toLocaleString("en-US");
+  return currency ? `${currency} ${rounded}` : rounded;
 }
 
 // ---- Batch 2 polish: human-readable agent activity --------------------------
@@ -532,7 +534,7 @@ interface FetchInputs {
   /** Phase 2B.1 — channel-flag bag from tenantConfig, used for the
    *  derived "channels active" metric (no Supabase query). */
   channelsCount: number;
-  /** Batch 1 — tenant currency (for the Operations savings vital). Default AED. */
+  /** Batch 1 — tenant currency (for the Operations savings vital). Empty when unset → bare number. */
   currency: string;
 }
 
@@ -898,7 +900,7 @@ export function usePulseData(isOpen: boolean): PulseData {
     const tenantUuid = tenantConfig?.id ?? null; // UUID (may be null mid-bootstrap)
     const tenantIndustry = tenantConfig?.industry ?? null;
     const channelsCount = deriveChannelsActive(tenantConfig); // Phase 2B.1
-    const currency = tenantConfig?.currency || "AED"; // Batch 1 — savings vital
+    const currency = tenantConfig?.currency || ""; // Batch 1 — savings vital (no AED fallback; fmtMoney handles empty)
 
     fetchAllMetrics({ tenantSlug, tenantUuid, tenantIndustry, channelsCount, currency })
       .then(({ updates, heroStats, batch1 }) => {
