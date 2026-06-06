@@ -30,7 +30,8 @@
 | 10 | **Agent context + jewellery template** — add `industry_templates['jewellery']` row + populate Legacy's business_profile/personas/services/ai_model_configs/onboarding via `initialize_new_tenant` + direct seed of verified site data; onboarding_completed=true. **REAL CONFIG — KEPT.** n8n OB scrape investigated + intentionally SKIPPED (direct seed). Optional FE: jewellery added to onboarding `constants.ts`. **NOT deployed.** | ✅ VERIFIED | 2026-06-05 |
 | 11 | **First agent: Live Gold-Rate Agent** — NEW scheduled n8n workflow (id **`1dZIeDcSbLafeGMx`**) gated to `industry='jewellery'`: compute 4 karat rates + per-tola (calc.ts factors) → upsert `jx_gold_rate` (source='agent') → build WhatsApp rate-broadcast payload (gated OFF, never sends). NEW workflow only, created in prod n8n **INACTIVE**; JSON MCP-validated (0 errors); logic VERIFIED via local harness vs live DB; isolation confirmed (no existing workflow modified). **NOT deployed / INACTIVE.** | ✅ VERIFIED | 2026-06-05 |
 | 12 | **Voice + WhatsApp Concierge** — NEW jewellery-gated tool-webhooks (n8n `kv6AxISCOoJBvE6X`: get-gold-rate/order-status/book-appointment) + NEW VAPI assistant (`c3b99c01…`) on Legacy's Phase-10 KB, 3 tools attached, `tenant_config.vapi_assistant_id` set. NEW workflow + NEW assistant only; sacred comms + shared assistant untouched. Tools + config tested (tenant-scoped jx_* data + isolation); **live voice/WhatsApp conversation DEFERRED** (no connected channel). **NOT deployed / INACTIVE.** | ✅ VERIFIED (tools+config) | 2026-06-05 |
-| 13 | **BI + Lifecycle agents** — 2 NEW jewellery-gated scheduled n8n workflows: Founder One-Page BI (cash/gold-position/sales/orders-due/low-stock/top+slow/restock) + Lifecycle/Dues (balance + repair-ready reminders → the Phase-7/9 prepared notifications). NEW workflows only; sacred/existing untouched; both **INACTIVE**; payloads built **NOT sent** (no channel). Content VERIFIED via local harness vs live DB; JSON built + committed. **prod POST PARKED** — n8n API down ~2h (T20 pooler); re-run `p13_post_test.py` on recovery. Photo-to-listing + Invoice-PDF = 13b. **NOT deployed / INACTIVE.** | ✅ content VERIFIED; ⏸ prod POST parked (n8n down) | 2026-06-05 |
+| 14 | **Final verification + regression → DEPLOY GATE** — Reports/BI polish (stock valuation, profit/value-add, pipeline, customer dues, karigar ledger, slow movers, sales register) + all 8 jewelry pages render 0 console errors; full cross-vertical regression (6 verticals) + jewelry isolation both ways; sacred 9/9 + shared VAPI assistant UNCHANGED; clean fast-forward onto main. **HARD STOP before merge/publish — awaiting operator go.** | ✅ VERIFIED — awaiting operator merge/deploy | 2026-06-06 |
+| 13 | **BI + Lifecycle agents** — 2 NEW jewellery-gated scheduled n8n workflows: Founder One-Page BI (cash/gold-position/sales/orders-due/low-stock/top+slow/restock) + Lifecycle/Dues (balance + repair-ready reminders → the Phase-7/9 prepared notifications). NEW workflows only; sacred/existing untouched; both **INACTIVE**; payloads built **NOT sent** (no channel). Content VERIFIED via local harness; **prod POST DONE 2026-06-06** (n8n recovered) — founder **`QaXEY7LRsddegm0G`** + lifecycle **`jXTSvkae752Ri6up`**, both **INACTIVE**; live webhook run confirmed (cash 75000, gold 22K=50/24K=20, ORD-P13DUE; balance ORD-P13BAL 210600 + repair-ready; not sent; isolation; 310→312, no existing modified). Photo-to-listing + Invoice-PDF = 13b. **NOT deployed / INACTIVE.** | ✅ VERIFIED (live) | 2026-06-06 |
 | (later) | Order-cancel refund voucher (Dr Advances/Cr Cash — **stubbed/not built**, small follow-up); perpetual COGS/inventory valuation (deferred); Karigar Payable 2200 accrual (deferred — cash-basis shipped); remaining pages (Customers); **deploy P4–P10** | NOT STARTED | — |
 
 ## Phase 1 — provisioning (VERIFIED 2026-06-04)
@@ -234,6 +235,49 @@ Two computable-now jewellery agents (NEW scheduled n8n workflows, **gated `indus
 - **PROD POST + LIVE-RUN — PARKED (n8n down ~2h):** during the session n8n's API was 503 for ~2h ("Database connection timed out" — Supabase pooler 6543 degraded; `read_only=off`, so connection-timeout/saturation **T20**, not the T18 read-only flip). Did NOT restart n8n / switch ports / touch compose / hack the n8n schema. Two ~50-min auto-retry watchers both timed out. **To finish on recovery (one command):** `python D:/420-system/.tmp_jx/p13_post_test.py` — it POSTs both workflows INACTIVE → activates → seeds → invokes each webhook → asserts snapshot/reminders → asserts isolation + no-existing-workflow-modified → deactivates → cleans up. **Workflow IDs + live-run results to be appended then.** The content (the task's core proof) is already VERIFIED above via the local harness; the parked step is only the n8n object creation + the (redundant) live webhook run.
 - **DEFERRED (13b):** Photo-to-listing (image-AI + Instagram); Invoice-PDF generation + WhatsApp-delivery agent. **Also deferred:** actual WhatsApp delivery (Legacy's connected number).
 - **Rollback:** delete the two new workflows (additive, inactive); no existing workflow touched.
+
+## Phase 14 — Final verification + regression, to the DEPLOY GATE (VERIFIED 2026-06-06; NOT merged/published — awaiting operator go)
+Proves nothing broke and prepares deploy. **HARD STOP before any merge-to-main or Lovable publish or channel activation.**
+
+### STEP 1 — Reports/BI polish + jewelry final verification (local preview, all PASS)
+- `Reports.tsx` finalized (additive) + new `useJewelryReports.ts`: Stock Valuation (metal at live rate + making, vs cost), Profit/value-add (making+polish+stone over sold; wastage g), Order/Delivery Pipeline (by status, with outstanding), Customer Dues, Karigar Ledger (reuses useJewelryWorkshop), Slow Movers (60d+), Sales Register — on top of the Phase-8a Gold Position / Trial Balance / Cash Book. Command Center already had 4 live win-cards (gold position, rate, cash today, orders due).
+- **Playwright (Legacy, local preview):** all 8 jewelry pages render with **0 console errors** — Command Center, Inventory, POS, Orders, Reports, Workshop, Repairs, Loose Stones. Reports sections present (trial-balance, cash book, stock, pipeline, karigar, sales). Screenshot `.tmp_jx/shots/p14-reports.png`.
+- **All 4 agents present + jewellery-gated + INACTIVE/inert:** gold-rate `1dZIeDcSbLafeGMx`; concierge tools `kv6AxISCOoJBvE6X` + assistant `c3b99c01-dcfb-4d6c-953e-18b6ca98ea38` (`tenant_config.vapi_assistant_id` set); founder `QaXEY7LRsddegm0G`; lifecycle `jXTSvkae752Ri6up`.
+
+### STEP 2 — REGRESSION REPORT (cross-vertical, all PASS — "nothing broke")
+| Vertical / tenant | Login lands | Own vertical nav | Jewelry leak? | Console errors |
+|---|---|---|---|---|
+| restaurant / bbqtonight | ✅ | ✅ | ❌ none | 0 |
+| healthcare_clinic / cosmique | ✅ | ✅ | ❌ none | 0 |
+| real_estate / aamerah | ✅ | ✅ | ❌ none | 0 |
+| construction_estimation / marhama | ✅ | ✅ | ❌ none | 0 |
+| banking_collections / mnthalan | ✅ | ✅ | ❌ none | 0 |
+| forex_trading / acsfx | ✅ | ✅ | ❌ none | 0 |
+| **jewellery / legacy-jewellers** | ✅ | ✅ Jewelry + horizontals (Sales/etc.) | n/a | 0 |
+- **Jewelry isolation both ways:** non-jewellery tenants see NO jewelry section/0 jx_* (RLS proven across Phases 3-13); Legacy sees the Jewelry vertical + all horizontals + **NO other vertical** (no Clinic/RE/Estimation/Collections/...).
+- **No shared/sacred modified:** 9/9 sacred workflows match CLAUDE.md §16 node-count baselines + active (Marketing 552, communication 378, Video 16, Estimation 3, main 514, sales 407, OMEGA 5/3/5); shared VAPI "Zate AI" assistant `1238736d…` UNCHANGED (updatedAt 2026-03-28, 40 tools). The 4 jewellery workflows are the only additions, all INACTIVE. No existing workflow's `updatedAt` changed across the build.
+
+### STEP 3 — PRE-DEPLOY + DEPLOY PLAN (then STOP)
+- **Other sessions:** `main` HEAD = `62fd32c` "docs: park BSH-HMS session (complete, releases main)" → the other major session (BSH-HMS) is **complete and released main**. The dirty `frontend/` clone is a *separate* working tree (not this `repo/` clone); all JX work is in `repo/` on `feat/jx-*`. ⚠ **Operator must confirm no other CC session pushes to `main` between now and the merge.**
+- **Clean merge:** `feat/jx-p14` ⇒ **fast-forward onto `main`** (main is an ancestor; merge-base == main; `git merge-tree` 0 conflicts). 48 files, +7844/−1, all additive.
+
+**DEPLOY PLAN (operator-driven; nothing below is done yet):**
+1. **Merge → main:** `git checkout main && git merge --ff-only feat/jx-p14` (fast-forward) then `git push origin main`.
+2. **Lovable publish:** the push to `main` (GitHub `alikhan54/zateceptionist-e7848970`) auto-deploys the FE via Lovable. Verify `https://ai.zatesystems.com` builds; smoke-test Legacy login + a jewelry page.
+3. **DB migrations:** `jx-001…010` are **already LIVE** in prod (applied via direct 5432 during the build) — committed for version control; **no DB action on deploy**. (Real config kept: jx_* tables, jewellery `industry_templates` row, Legacy business_profile/ai_model_configs/onboarding, COA.)
+4. **n8n workflows:** the 4 are **already created INACTIVE** in prod n8n — **no re-import**. Activate when ready (post-channel): `1dZIeDcSbLafeGMx` (gold-rate, schedule), `QaXEY7LRsddegm0G` (founder BI, schedule), `jXTSvkae752Ri6up` (lifecycle, schedule), `kv6AxISCOoJBvE6X` (concierge webhooks — activate so VAPI can call them).
+5. **Channel connections (operator account setup, required before agents do anything outward):**
+   - **Meta WhatsApp** number for Legacy → set `tenant_config.whatsapp_phone_id` + `whatsapp_access_token` (+ `has_whatsapp=true`); then flip the agents' `broadcast_enabled` gate → true to actually send (gold-rate broadcast, lifecycle reminders, founder one-pager).
+   - **VAPI phone number** attached to assistant `c3b99c01…` (+ `tenant_config.vapi_phone_number_id`, `voice_provisioning_status=active`, `has_voice=true`) for inbound voice.
+6. **Post-channel activation order:** activate concierge tool-webhooks → attach VAPI number → activate the 3 schedule agents → flip `broadcast_enabled` per agent once a real WhatsApp number is confirmed.
+
+**ROLLBACK PLAN:**
+- **FE/main:** `git revert` the merge (or reset `main` to `62fd32c`) + push → Lovable redeploys the prior FE. (FE is additive + jewellery-gated, so even un-reverted it's inert for non-jewellery tenants.)
+- **n8n:** deactivate (already inactive) and DELETE the 4 workflows (additive, new IDs) — `DELETE /api/v1/workflows/{id}`.
+- **VAPI:** delete assistant `c3b99c01…` + the 3 tools; `UPDATE tenant_config SET vapi_assistant_id=NULL` for Legacy.
+- **DB (only if fully unwinding the tenant):** `jx-001-rollback.sql` (DROP 15 jx_* tables) + `jx-005-rollback.sql` (GL) + `DROP FUNCTION` the 4 RPCs + DELETE the jewellery `industry_templates` row + Legacy onboarding/business_profile/ai_model_configs rows + `tenant_config` row. Each is additive/isolated, so partial rollback is safe.
+
+**STOP — awaiting operator's explicit "merge and deploy."** No merge, publish, or activation performed in this phase.
 
 ## Phase 0 discovery checklist (VERIFIED vs OPEN)
 | Item | Status | Where |
