@@ -158,7 +158,7 @@ export function NavigationSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, isAdmin, isMasterAdmin, authUser, hasPermission } = useAuth();
-  const { tenantConfig, translate, tenantId, setTenantId, isRestaurant, isBankingCollections, isHealthcareClinic, isConstructionEstimation, isRealEstate, isYouTubeAgency, isLaboratoryInstruments, isRoofing, isAccountingPracticeUK, isJewellery } = useTenant();
+  const { tenantConfig, translate, tenantId, setTenantId, isRestaurant, isBankingCollections, isHealthcareClinic, isHospital, isConstructionEstimation, isRealEstate, isYouTubeAgency, isLaboratoryInstruments, isRoofing, isAccountingPracticeUK, isJewellery } = useTenant();
   const { isEnabled } = useFeatureFlags();
   const { toast } = useToast();
 
@@ -603,6 +603,18 @@ export function NavigationSidebar() {
       { title: "Consultation Notes", url: "/clinic/consultations", icon: ClipboardCheck },
       { title: "Health Reports", url: "/clinic/health-reports", icon: FileText },
       { title: "Doctor Reviews", url: "/clinic/review-queue", icon: ClipboardList },
+    ],
+  };
+
+  const hospitalSection: NavSection = {
+    label: "Hospital",
+    collapsible: true,
+    items: [
+      { title: "Patient Journey", url: "/hospital/journey", icon: Activity },
+      { title: "Admissions", url: "/hospital/patients", icon: Stethoscope },
+      { title: "Pharmacy", url: "/hospital/pharmacy", icon: Pill },
+      { title: "Laboratory", url: "/hospital/lab", icon: Syringe },
+      { title: "Diagnostics", url: "/hospital/diagnostics", icon: FileText },
     ],
   };
 
@@ -1071,6 +1083,11 @@ export function NavigationSidebar() {
         {/* Clinic Section — Healthcare/Aesthetics industry only */}
         {isHealthcareClinic && canAccessSection(clinicSection) && (
           <CollapsibleSection section={clinicSection} sectionKey="clinic" />
+        )}
+
+        {/* Hospital Section — hospital industry only (native cardio vertical) */}
+        {isHospital && canAccessSection(hospitalSection) && (
+          <CollapsibleSection section={hospitalSection} sectionKey="hospital" />
         )}
 
         {/* Estimation Section — Construction industry only */}

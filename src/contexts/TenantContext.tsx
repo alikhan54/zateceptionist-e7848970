@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 
-export type IndustryType = "healthcare" | "healthcare_clinic" | "healthcare_staffing" | "real_estate" | "restaurant" | "salon" | "banking_collections" | "construction_estimation" | "youtube_agency" | "technology" | "legal" | "fitness" | "education" | "automotive" | "professional" | "retail" | "laboratory_instruments" | "roofing" | "forex_trading" | "accounting_practice_uk" | "general";
+export type IndustryType = "healthcare" | "healthcare_clinic" | "healthcare_staffing" | "real_estate" | "restaurant" | "salon" | "banking_collections" | "construction_estimation" | "youtube_agency" | "technology" | "legal" | "fitness" | "education" | "automotive" | "professional" | "retail" | "laboratory_instruments" | "roofing" | "forex_trading" | "accounting_practice_uk" | "hospital" | "general";
 
 export interface TenantConfig {
   id: string;
@@ -179,6 +179,20 @@ const industryVocabulary: Partial<Record<IndustryType, Record<string, string>>> 
     lead: "Patient Lead",
     leads: "Patient Leads",
   },
+  hospital: {
+    customer: "Patient",
+    customers: "Patients",
+    appointment: "Encounter",
+    appointments: "Encounters",
+    product: "Order",
+    products: "Orders",
+    staff: "Clinician",
+    staffs: "Clinicians",
+    deal: "Care Pathway",
+    deals: "Care Pathways",
+    lead: "Referral",
+    leads: "Referrals",
+  },
   banking_collections: {
     customer: "Debtor",
     customers: "Debtors",
@@ -343,6 +357,15 @@ const industryDealStages: Partial<Record<IndustryType, string[]>> & { general: s
     "Follow-up Scheduled",
     "Completed",
   ],
+  hospital: [
+    "Registered",
+    "Triaged",
+    "In Consult",
+    "Orders Placed",
+    "In Treatment",
+    "Results Ready",
+    "Discharged",
+  ],
   banking_collections: [
     "New Account",
     "Contact Attempted",
@@ -455,6 +478,7 @@ interface TenantContextType {
   industry: IndustryType;
   isHealthcare: boolean;
   isHealthcareClinic: boolean;
+  isHospital: boolean;
   isRealEstate: boolean;
   isRestaurant: boolean;
   isSalon: boolean;
@@ -662,6 +686,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 
   const isHealthcare = industry === "healthcare";
   const isHealthcareClinic = industry === "healthcare_clinic" || industry === "healthcare";
+  const isHospital = industry === "hospital";
   const isRealEstate = industry === "real_estate";
   const isRestaurant = industry === "restaurant";
   const isSalon = industry === "salon";
@@ -705,6 +730,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         industry,
         isHealthcare,
         isHealthcareClinic,
+        isHospital,
         isRealEstate,
         isRestaurant,
         isSalon,

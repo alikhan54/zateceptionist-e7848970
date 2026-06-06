@@ -158,6 +158,13 @@ const DoctorReviewQueue = lazy(() => import("./pages/clinic/DoctorReviewQueue"))
 const ClinicWaitingArea = lazy(() => import("./pages/clinic/WaitingArea"));
 const ClinicPackages = lazy(() => import("./pages/clinic/ClinicPackages"));
 
+// Hospital Module (native cardio vertical — hospital industry only)
+const HospitalPatientJourney = lazy(() => import("./pages/hospital/PatientJourney"));
+const HospitalPatients = lazy(() => import("./pages/hospital/HospitalPatients"));
+const HospitalPharmacy = lazy(() => import("./pages/hospital/PharmacyQueue"));
+const HospitalLab = lazy(() => import("./pages/hospital/LabQueue"));
+const HospitalDiagnostics = lazy(() => import("./pages/hospital/DiagnosticsQueue"));
+
 // Jewelry Module (Project JX)
 const JewelryDashboard = lazy(() => import("./pages/jewelry/Dashboard"));
 const JewelryGoldRate = lazy(() => import("./pages/jewelry/GoldRate"));
@@ -1475,6 +1482,14 @@ const App = () => (
                       </LazyPage>
                     }
                   />
+
+                  {/* Hospital Module — hospital industry only (per-page !isHospital guard) */}
+                  <Route path="/hospital" element={<Navigate to="/hospital/journey" replace />} />
+                  <Route path="/hospital/journey" element={<LazyPage><HospitalPatientJourney /></LazyPage>} />
+                  <Route path="/hospital/patients" element={<LazyPage><HospitalPatients /></LazyPage>} />
+                  <Route path="/hospital/pharmacy" element={<LazyPage><HospitalPharmacy /></LazyPage>} />
+                  <Route path="/hospital/lab" element={<LazyPage><HospitalLab /></LazyPage>} />
+                  <Route path="/hospital/diagnostics" element={<LazyPage><HospitalDiagnostics /></LazyPage>} />
 
                   {/* Estimation Module */}
                   <Route path="/estimation" element={<Navigate to="/estimation/projects" replace />} />
