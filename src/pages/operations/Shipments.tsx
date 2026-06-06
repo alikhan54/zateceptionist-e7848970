@@ -100,7 +100,8 @@ const BLANK_FORM = {
   status: "pending",
   estimated_delivery: "",
   shipping_cost: "",
-  currency: "AED",
+  // currency filled at form-open from defaults below (existing shipment → tenant)
+  currency: "",
 };
 
 function isManualShipment(s: any) {
@@ -133,8 +134,9 @@ export default function Shipments() {
   });
 
   const defaults = useMemo(() => ({
-    currency: shipments[0]?.currency || "AED",
-  }), [shipments]);
+    // Prefer existing shipment currency → tenant currency → blank. AED fallback removed.
+    currency: shipments[0]?.currency || tenantConfig?.currency || "",
+  }), [shipments, tenantConfig]);
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["ops_shipments", tenantSlug] });
 

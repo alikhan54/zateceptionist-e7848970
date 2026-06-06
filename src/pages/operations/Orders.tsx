@@ -21,6 +21,7 @@ import {
   useRestaurantOrders,
   type RestaurantOrder,
 } from "@/hooks/useRestaurantOrders";
+import { useCurrency } from "@/hooks/useCurrency";
 
 const STATUS_TABS = [
   { key: "all", label: "All" },
@@ -55,6 +56,7 @@ export default function Orders() {
   const { orders, isLoading, stats, updateStatus } = useRestaurantOrders(
     statusFilter === "all" ? undefined : statusFilter
   );
+  const { formatPrice } = useCurrency();
 
   const filteredOrders = searchTerm
     ? orders.filter(
@@ -98,7 +100,7 @@ export default function Orders() {
         <Card>
           <CardContent className="p-4 text-center">
             <p className="text-2xl font-bold text-green-600">
-              {stats.revenueToday.toFixed(0)} AED
+              {formatPrice(stats.revenueToday)}
             </p>
             <p className="text-sm text-muted-foreground">Revenue Today</p>
           </CardContent>
@@ -199,7 +201,7 @@ export default function Orders() {
                         </p>
                         <div className="flex items-center gap-3 mt-1 text-sm">
                           <span className="font-medium">
-                            {order.total} {order.currency || ""}
+                            {formatPrice(order.total)}
                           </span>
                           <span className="text-muted-foreground">
                             {order.payment_method === "cash" ? "Cash" : "Card"}

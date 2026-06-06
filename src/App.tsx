@@ -304,6 +304,7 @@ const Privacy = lazy(() => import("./pages/public/Privacy"));
 const Refund = lazy(() => import("./pages/public/Refund"));
 const Landing = lazy(() => import("./pages/public/Landing"));
 const Demo = lazy(() => import("./pages/public/Demo"));
+const OrderStorefront = lazy(() => import("./pages/public/OrderStorefront"));
 
 // Other
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -412,6 +413,15 @@ const App = () => (
                   element={
                     <LazyPage>
                       <LeadMagnetPage />
+                    </LazyPage>
+                  }
+                />
+                {/* Public consumer ordering PWA — /order/:slug (no auth, mobile-first) */}
+                <Route
+                  path="/order/:slug"
+                  element={
+                    <LazyPage>
+                      <OrderStorefront />
                     </LazyPage>
                   }
                 />

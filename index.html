@@ -15,15 +15,26 @@
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
     <link rel="apple-touch-icon" href="/icons/icon-192.svg">
 
-    <!-- Unregister any leftover service workers and clear caches (PWA removed) -->
+    <!-- Unregister leftover non-storefront service workers + clear caches (PWA removed for staff).
+         The /order/ storefront has its OWN scoped SW (order-sw.js) — keep that one alive. -->
     <script>
       if ('serviceWorker' in navigator) {
+        var inOrder = window.location.pathname.indexOf('/order/') === 0;
         navigator.serviceWorker.getRegistrations().then(function(regs) {
-          regs.forEach(function(reg) { reg.unregister(); });
+          regs.forEach(function(reg) {
+            var scope = reg.scope || '';
+            // Keep our /order/ SW; unregister everything else.
+            if (scope.indexOf('/order/') === -1) {
+              reg.unregister();
+            }
+          });
         });
-        if ('caches' in window) {
+        if ('caches' in window && !inOrder) {
           caches.keys().then(function(names) {
-            names.forEach(function(name) { caches.delete(name); });
+            names.forEach(function(name) {
+              // Keep order storefront caches
+              if (name.indexOf('bbq-order-sw-') !== 0) caches.delete(name);
+            });
           });
         }
       }

@@ -25,11 +25,13 @@ import {
 } from "lucide-react";
 import { useRestaurantMenu, type MenuItem } from "@/hooks/useRestaurantMenu";
 import { useToast } from "@/hooks/use-toast";
+import { useCurrency } from "@/hooks/useCurrency";
 
 export default function MenuEditor() {
   const { menu, categories, items, isLoading, toggleAvailability, addItem, removeItem } =
     useRestaurantMenu();
   const { toast } = useToast();
+  const { currency, formatPrice } = useCurrency();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [newItem, setNewItem] = useState({
@@ -55,7 +57,8 @@ export default function MenuEditor() {
         price: parseFloat(newItem.price),
         description: newItem.description,
         category_id: newItem.category_id,
-        currency: "AED",
+        // Use tenant's currency (set in tenant_config). Empty allowed — DB has no NOT NULL.
+        currency: currency,
         is_available: true,
         prep_time_minutes: newItem.prep_time_minutes
           ? parseInt(newItem.prep_time_minutes)
@@ -140,7 +143,7 @@ export default function MenuEditor() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Price (AED) *</Label>
+                  <Label>Price{currency ? ` (${currency})` : ""} *</Label>
                   <Input
                     type="number"
                     value={newItem.price}
@@ -252,7 +255,7 @@ export default function MenuEditor() {
                     )}
                   </div>
                   <p className="font-bold text-lg whitespace-nowrap ml-2">
-                    {item.price} {item.currency || ""}
+                    {formatPrice(item.price)}
                   </p>
                 </div>
 

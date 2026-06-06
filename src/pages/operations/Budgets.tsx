@@ -50,13 +50,14 @@ const SAVINGS_STATUS_BADGE: Record<string, string> = {
 };
 
 const NOW = new Date();
+// NOTE: currency filled at form-open from budgetDefaults (existing budget → tenant).
 const BLANK_BUDGET = {
   category: "",
   budgeted_amount: "",
   spent_amount: "",
   period_year: String(NOW.getFullYear()),
   period_month: String(NOW.getMonth() + 1),
-  currency: "AED",
+  currency: "",
 };
 
 export default function Budgets() {
@@ -86,7 +87,8 @@ export default function Budgets() {
 
   const budgetDefaults = useMemo(() => ({
     industry: budgets[0]?.industry || tenantConfig?.industry || "general",
-    currency: budgets[0]?.currency || "AED",
+    // Prefer existing budget currency → tenant currency → blank. AED fallback removed.
+    currency: budgets[0]?.currency || tenantConfig?.currency || "",
   }), [budgets, tenantConfig]);
 
   const invalidateBudgets = () => queryClient.invalidateQueries({ queryKey: ["ops_budgets", tenantSlug] });
