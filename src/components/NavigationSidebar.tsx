@@ -517,6 +517,7 @@ export function NavigationSidebar() {
       { title: "Kitchen Display", url: "/operations/kitchen-display", icon: ChefHat },
       { title: "Menu Editor", url: "/operations/menu", icon: UtensilsCrossed },
       { title: "Reservations", url: "/operations/reservations", icon: CalendarCheck },
+      { title: "Loyalty Club", url: "/operations/loyalty", icon: Award },
       // Inventory removed: lives under Operations > Supply Chain to avoid duplication.
     ],
   };

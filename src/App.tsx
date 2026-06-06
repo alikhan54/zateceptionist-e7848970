@@ -119,6 +119,7 @@ const Expenses = lazy(() => import("./pages/operations/Expenses"));
 const Invoices = lazy(() => import("./pages/operations/Invoices"));
 const KitchenDisplay = lazy(() => import("./pages/operations/KitchenDisplay"));
 const MenuEditor = lazy(() => import("./pages/operations/MenuEditor"));
+const LoyaltyClub = lazy(() => import("./pages/operations/LoyaltyClub"));
 const Reservations = lazy(() => import("./pages/operations/Reservations"));
 const AiIntelligence = lazy(() => import("./pages/operations/AiIntelligence"));
 const OpsCommandCenter = lazy(() => import("./pages/operations/OpsCommandCenter"));
@@ -1197,6 +1198,14 @@ const App = () => (
                     element={
                       <LazyPage>
                         <MenuEditor />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/operations/loyalty"
+                    element={
+                      <LazyPage>
+                        <LoyaltyClub />
                       </LazyPage>
                     }
                   />
