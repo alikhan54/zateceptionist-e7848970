@@ -2,6 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
+import { useTenantBranding } from "@/hooks/useTenantBranding";
 import { NavigationSidebar } from "@/components/NavigationSidebar";
 import { Header } from "@/components/layout/Header";
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -66,6 +67,7 @@ class MobileErrorBoundary extends Component<
 export default function Layout() {
   const { user, isLoading: authLoading, isMasterAdmin } = useAuth();
   const { isLoading: tenantLoading, tenantConfig, brandBackgroundColor, isAccountingPracticeUK } = useTenant();
+  const branding = useTenantBranding();
   const location = useLocation();
 
   const isLoading = authLoading || tenantLoading;
@@ -110,6 +112,7 @@ export default function Layout() {
       ? ({ "--primary": tenantConfig.primary_color } as React.CSSProperties)
       : {}),
     ...(brandBackgroundColor ? { backgroundColor: brandBackgroundColor } : {}),
+    ...branding.cssVars,
   };
 
   return (
