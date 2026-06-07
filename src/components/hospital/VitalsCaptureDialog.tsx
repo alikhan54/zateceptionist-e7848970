@@ -76,7 +76,7 @@ export function VitalsCaptureDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onOpenChange(false); }}>
-      <DialogContent className="max-w-xl border p-0" style={{ background: "#0b1322", borderColor: "rgba(56,189,248,0.22)", color: "#e6edf6" }}>
+      <DialogContent className="hx-dialog max-w-xl border p-0" style={{ background: "var(--hx-dialog-bg)", borderColor: "var(--hx-dialog-border)", color: "var(--hx-text)" }}>
         <div className="hx" style={{ margin: 0, minHeight: 0, padding: "1.4rem 1.5rem 1.6rem", background: "transparent" }} data-testid="hx-vitals-dialog">
           <div className="flex items-center gap-3 mb-1">
             <HeartPulse className="h-5 w-5" style={{ color: "var(--hx-accent2)" }} />

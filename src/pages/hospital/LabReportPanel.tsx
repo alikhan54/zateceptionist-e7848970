@@ -148,7 +148,7 @@ export function LabReportPanel({ patientId, patientName, labOrders = [] }: Props
                 {inspecting && (
                   <div className="hx-analysing hx-panel" style={{ padding: "1rem" }} data-testid="hx-lab-analysing">
                     <div className="flex items-center gap-2.5 mb-3"><span className="hx-pulse-dot" /><span className="hx-dim text-sm">MEDICA is reading the report and flagging abnormal values…</span></div>
-                    <div className="space-y-2">{[90, 76, 84, 60].map((w, i) => <div key={i} style={{ height: 10, width: `${w}%`, borderRadius: 6, background: "rgba(255,255,255,0.06)" }} />)}</div>
+                    <div className="space-y-2">{[90, 76, 84, 60].map((w, i) => <div key={i} style={{ height: 10, width: `${w}%`, borderRadius: 6, background: "var(--hx-skeleton)" }} />)}</div>
                   </div>
                 )}
 
@@ -156,7 +156,7 @@ export function LabReportPanel({ patientId, patientName, labOrders = [] }: Props
                 {!inspecting && takeaway && (
                   <div className="hx-panel hx-panel--accent" style={{ padding: "1rem 1.1rem" }} data-testid="hx-lab-takeaway">
                     <div className="hx-eyebrow mb-1 flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> MEDICA clinical takeaway</div>
-                    <p style={{ fontSize: "1.02rem", lineHeight: 1.5, color: "#fff" }}>{takeaway}</p>
+                    <p style={{ fontSize: "1.02rem", lineHeight: 1.5, color: "var(--hx-strong)" }}>{takeaway}</p>
                   </div>
                 )}
                 {!inspecting && briefErr && (
@@ -194,7 +194,7 @@ export function LabReportPanel({ patientId, patientName, labOrders = [] }: Props
                     </div>
                   </div>
                 ) : !inspecting && (
-                  <p className="hx-dim text-sm">No findings extracted yet — click <strong style={{ color: "#fff" }}>MEDICA: inspect</strong> to read this report.</p>
+                  <p className="hx-dim text-sm">No findings extracted yet — click <strong style={{ color: "var(--hx-strong)" }}>MEDICA: inspect</strong> to read this report.</p>
                 )}
               </div>
             )}

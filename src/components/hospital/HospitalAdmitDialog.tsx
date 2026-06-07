@@ -90,8 +90,8 @@ export function HospitalAdmitDialog({
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onOpenChange(false); }}>
       <DialogContent
-        className="max-w-3xl max-h-[92vh] overflow-y-auto border p-0"
-        style={{ background: "#0b1322", borderColor: "rgba(56,189,248,0.22)", color: "#e6edf6" }}
+        className="hx-dialog max-w-3xl max-h-[92vh] overflow-y-auto border p-0"
+        style={{ background: "var(--hx-dialog-bg)", borderColor: "var(--hx-dialog-border)", color: "var(--hx-text)" }}
       >
         <div className="hx" style={{ margin: 0, minHeight: 0, padding: "1.4rem 1.5rem 1.6rem", background: "transparent" }} data-testid="hx-admit-dialog">
           {/* header */}

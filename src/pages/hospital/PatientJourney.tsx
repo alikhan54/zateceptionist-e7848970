@@ -45,7 +45,7 @@ function renderBrief(text: string) {
     const line = raw.trimEnd();
     if (!line.trim()) return <div key={i} style={{ height: 6 }} />;
     const h = line.match(/^#{1,3}\s+(.*)$/);
-    if (h) return <div key={i} style={{ fontWeight: 650, color: "#fff", marginTop: i ? 10 : 0 }}>{inline(h[1])}</div>;
+    if (h) return <div key={i} style={{ fontWeight: 650, color: "var(--hx-strong)", marginTop: i ? 10 : 0 }}>{inline(h[1])}</div>;
     const b = line.match(/^\s*[-*•]\s+(.*)$/);
     if (b) return <div key={i} style={{ display: "flex", gap: 8, paddingLeft: 2 }}><span style={{ color: "var(--hx-accent)" }}>•</span><span>{inline(b[1])}</span></div>;
     return <div key={i}>{inline(line)}</div>;
@@ -371,13 +371,13 @@ function PatientJourneyInner() {
             </div>
             <div className="hx-panel-b">
               {briefState === "idle" && (
-                <p className="hx-dim text-sm">Ask MEDICA for a grounded pre-visit briefing on <strong style={{ color: "#fff" }}>{patient.full_name}</strong> — it reads the live patient record (history, vitals, orders) and flags what matters before the encounter.</p>
+                <p className="hx-dim text-sm">Ask MEDICA for a grounded pre-visit briefing on <strong style={{ color: "var(--hx-strong)" }}>{patient.full_name}</strong> — it reads the live patient record (history, vitals, orders) and flags what matters before the encounter.</p>
               )}
               {briefState === "loading" && (
                 <div className="hx-analysing" data-testid="hx-brief-loading">
                   <div className="flex items-center gap-2.5 mb-3"><span className="hx-pulse-dot" /><span className="hx-dim text-sm">MEDICA is reading the chart and reasoning over the record…</span></div>
                   <div className="space-y-2">
-                    {[92, 78, 85, 64].map((w, i) => <div key={i} style={{ height: 10, width: `${w}%`, borderRadius: 6, background: "rgba(255,255,255,0.06)" }} />)}
+                    {[92, 78, 85, 64].map((w, i) => <div key={i} style={{ height: 10, width: `${w}%`, borderRadius: 6, background: "var(--hx-skeleton)" }} />)}
                   </div>
                 </div>
               )}
