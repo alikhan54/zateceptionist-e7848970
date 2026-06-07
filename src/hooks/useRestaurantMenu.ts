@@ -130,6 +130,23 @@ export function useRestaurantMenu() {
     },
   });
 
+  // Edit item (update an existing item in place; reuses the same update path as add/remove)
+  const editItem = useMutation({
+    mutationFn: async (updated: MenuItem) => {
+      if (!menu) throw new Error("No menu found");
+      const updatedItems = menu.items.map((i) => (i.id === updated.id ? { ...i, ...updated } : i));
+      const { error } = await supabase
+        .from("restaurant_menus")
+        .update({ items: updatedItems, updated_at: new Date().toISOString() })
+        .eq("id", menu.id)
+        .eq("tenant_id", tenantId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["restaurant-menu", tenantId] });
+    },
+  });
+
   // Remove item
   const removeItem = useMutation({
     mutationFn: async (itemId: string) => {
@@ -164,6 +181,7 @@ export function useRestaurantMenu() {
     updateMenu,
     toggleAvailability,
     addItem,
+    editItem,
     removeItem,
     getItemsByCategory,
   };

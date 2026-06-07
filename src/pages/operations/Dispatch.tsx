@@ -98,7 +98,7 @@ export default function Dispatch() {
         .select("id, order_number, customer_name, customer_phone, status, total, delivery_rider_id, delivery_address")
         .eq("tenant_id", tenantId)
         .eq("order_type", "delivery")
-        .eq("status", "ready")
+        .in("status", ["ready", "dispatched"])
         .order("order_number");
       return (data || [])
         .map((o: any) => {
@@ -170,7 +170,7 @@ export default function Dispatch() {
     if (!riderId || !grp?.length || !tenantId) { toast.error("Pick a rider first"); return; }
     setBusy(true);
     const ids = grp.map((o) => o.id);
-    const { error: e1 } = await supabase.from("restaurant_orders").update({ delivery_rider_id: riderId }).in("id", ids).eq("tenant_id", tenantId);
+    const { error: e1 } = await supabase.from("restaurant_orders").update({ delivery_rider_id: riderId, status: "dispatched" }).in("id", ids).eq("tenant_id", tenantId);
     const { error: e2 } = await supabase.from("restaurant_riders").update({ status: "on-delivery" }).eq("id", riderId).eq("tenant_id", tenantId);
     setBusy(false);
     if (e1 || e2) { toast.error("Assignment failed"); return; }
