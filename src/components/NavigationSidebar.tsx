@@ -514,6 +514,7 @@ export function NavigationSidebar() {
     label: "Restaurant",
     collapsible: true,
     items: [
+      { title: "POS", url: "/operations/pos", icon: Calculator },
       { title: "Orders", url: "/operations/orders", icon: ShoppingCart },
       { title: "Kitchen Display", url: "/operations/kitchen-display", icon: ChefHat },
       { title: "Menu Editor", url: "/operations/menu", icon: UtensilsCrossed },
