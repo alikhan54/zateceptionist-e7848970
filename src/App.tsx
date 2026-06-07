@@ -121,6 +121,7 @@ const KitchenDisplay = lazy(() => import("./pages/operations/KitchenDisplay"));
 const MenuEditor = lazy(() => import("./pages/operations/MenuEditor"));
 const LoyaltyClub = lazy(() => import("./pages/operations/LoyaltyClub"));
 const Dispatch = lazy(() => import("./pages/operations/Dispatch"));
+const POS = lazy(() => import("./pages/operations/POS"));
 const Reservations = lazy(() => import("./pages/operations/Reservations"));
 const AiIntelligence = lazy(() => import("./pages/operations/AiIntelligence"));
 const OpsCommandCenter = lazy(() => import("./pages/operations/OpsCommandCenter"));
@@ -1216,6 +1217,14 @@ const App = () => (
                     element={
                       <LazyPage>
                         <Dispatch />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/operations/pos"
+                    element={
+                      <LazyPage>
+                        <POS />
                       </LazyPage>
                     }
                   />
