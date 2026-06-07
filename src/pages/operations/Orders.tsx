@@ -346,7 +346,7 @@ export default function Orders() {
                           }
                         >
                           {order.order_type === "delivery"
-                            ? (<><Truck className="h-4 w-4 mr-1" /> Out for Delivery</>)
+                            ? (<><Truck className="h-4 w-4 mr-1" /> Dispatch &rarr;</>)
                             : (<><CheckCircle className="h-4 w-4 mr-1" /> Complete</>)}
                         </Button>
                       )}
@@ -356,7 +356,7 @@ export default function Orders() {
                           data-testid={`order-advance-${order.order_number}`}
                           onClick={() => handleStatusUpdate(order.id, "delivered")}
                         >
-                          <CheckCircle className="h-4 w-4 mr-1" /> Delivered
+                          <CheckCircle className="h-4 w-4 mr-1" /> Mark Delivered
                         </Button>
                       )}
                       {(order.status === "pending" || order.status === "confirmed") && (

@@ -17,7 +17,7 @@ export interface KitchenOrder {
   station: string;
   items: KitchenItem[];
   priority: number;
-  status: "pending" | "preparing" | "ready";
+  status: "new" | "pending" | "preparing" | "ready";
   started_at: string | null;
   completed_at: string | null;
   created_at: string;
@@ -46,7 +46,7 @@ export function useKitchenDisplay() {
         .from("restaurant_kitchen_display")
         .select("*")
         .eq("tenant_id", tenantId)
-        .in("status", ["pending", "preparing"])
+        .in("status", ["new", "pending", "preparing"])
         .order("priority", { ascending: false })
         .order("created_at", { ascending: true });
 
@@ -165,12 +165,14 @@ export function useKitchenDisplay() {
     },
   });
 
-  // Group by status for kanban
-  const pending = (kitchenOrders || []).filter((o) => o.status === "pending");
+  // Group by status for kanban ('new' tickets are freshly placed — treat as the queued lane)
+  const queued = (kitchenOrders || []).filter((o) => o.status === "new" || o.status === "pending");
+  const pending = queued;
   const preparing = (kitchenOrders || []).filter((o) => o.status === "preparing");
 
   return {
     kitchenOrders: kitchenOrders || [],
+    queued,
     pending,
     preparing,
     isLoading,
