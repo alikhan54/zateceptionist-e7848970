@@ -163,7 +163,7 @@ const ClinicPackages = lazy(() => import("./pages/clinic/ClinicPackages"));
 const HospitalPatientJourney = lazy(() => import("./pages/hospital/PatientJourney"));
 const HospitalPatients = lazy(() => import("./pages/hospital/HospitalPatients"));
 const HospitalPharmacy = lazy(() => import("./pages/hospital/PharmacyQueue"));
-const HospitalLab = lazy(() => import("./pages/hospital/LabQueue"));
+const HospitalLab = lazy(() => import("./pages/hospital/Laboratory"));
 const HospitalDiagnostics = lazy(() => import("./pages/hospital/DiagnosticsQueue"));
 
 // Jewelry Module (Project JX)

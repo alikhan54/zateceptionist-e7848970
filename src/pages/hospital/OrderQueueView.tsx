@@ -15,9 +15,10 @@ interface Props {
   eyebrow: string;
   icon: any;
   actionLabel: string; // e.g. "Dispense" / "Mark resulted"
+  embedded?: boolean;  // hide the big hero header when embedded under another page (e.g. Laboratory)
 }
 
-function OrderQueueInner({ type, title, eyebrow, icon: Icon, actionLabel }: Props) {
+export function OrderQueueInner({ type, title, eyebrow, icon: Icon, actionLabel, embedded }: Props) {
   const { orders, updateOrderStatus } = useHospitalOrders({ orderType: type });
   const { patients } = useClinicPatients();
   const nameById = useMemo(() => {
@@ -49,22 +50,31 @@ function OrderQueueInner({ type, title, eyebrow, icon: Icon, actionLabel }: Prop
 
   return (
     <div data-testid={`hx-queue-page-${type}`}>
-      <div className="hx-panel hx-panel--accent hx-rise">
-        <div className="hx-panel-b">
-          <div className="flex items-center gap-3">
-            <Icon className="h-6 w-6" style={{ color: "var(--hx-accent)" }} />
-            <div>
-              <div className="hx-eyebrow">{eyebrow}</div>
-              <h1 className="hx-h1">{title}</h1>
-            </div>
-            <div className="ml-auto flex items-center gap-2">
-              <span className="hx-chip hx-chip--warn" data-testid="hx-queue-pending-count">{pending.length} pending</span>
-              <span className="hx-chip hx-chip--ok">{fulfilled.length} done</span>
-            </div>
-          </div>
-          <EcgLine className="mt-3" />
+      {embedded ? (
+        <div className="flex items-center gap-2 mb-3">
+          <Icon className="h-4 w-4" style={{ color: "var(--hx-accent)" }} />
+          <span className="font-semibold">{title}</span>
+          <span className="hx-chip hx-chip--warn ml-auto" data-testid="hx-queue-pending-count">{pending.length} pending</span>
+          <span className="hx-chip hx-chip--ok">{fulfilled.length} done</span>
         </div>
-      </div>
+      ) : (
+        <div className="hx-panel hx-panel--accent hx-rise">
+          <div className="hx-panel-b">
+            <div className="flex items-center gap-3">
+              <Icon className="h-6 w-6" style={{ color: "var(--hx-accent)" }} />
+              <div>
+                <div className="hx-eyebrow">{eyebrow}</div>
+                <h1 className="hx-h1">{title}</h1>
+              </div>
+              <div className="ml-auto flex items-center gap-2">
+                <span className="hx-chip hx-chip--warn" data-testid="hx-queue-pending-count">{pending.length} pending</span>
+                <span className="hx-chip hx-chip--ok">{fulfilled.length} done</span>
+              </div>
+            </div>
+            <EcgLine className="mt-3" />
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
         <div className="hx-panel hx-rise" style={{ animationDelay: "80ms" }}>

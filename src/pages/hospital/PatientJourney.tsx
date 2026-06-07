@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import {
   Activity, HeartPulse, Stethoscope, FlaskConical, Pill, ScanLine, Sparkles, Plus,
   ClipboardList, CheckCircle2, Clock, Loader2, UserPlus, AlertTriangle,
@@ -347,7 +347,7 @@ function PatientJourneyInner() {
                 <div key={q.type} className="hx-panel hx-rise" style={{ animationDelay: `${240 + qi * 60}ms` }} data-testid={`hx-queue-${q.type}`}>
                   <div className="hx-panel-h" style={{ padding: "0.7rem 0.85rem" }}>
                     <Icon className="h-4 w-4" style={{ color: "var(--hx-accent)" }} />
-                    <span className="font-semibold text-sm">{q.title}</span>
+                    <Link to={q.type === "medication" ? "/hospital/pharmacy" : q.type === "lab" ? "/hospital/lab" : "/hospital/diagnostics"} className="font-semibold text-sm hover:underline" style={{ color: "var(--hx-text)" }}>{q.title}</Link>
                     <span className="hx-chip hx-chip--accent ml-auto" style={{ padding: "0.1rem 0.45rem" }}>{items.length}</span>
                   </div>
                   <div className="hx-panel-b" style={{ padding: "0.7rem", minHeight: 96 }}>

@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { useTenant } from '@/contexts/TenantContext';
 import {
   Sparkles,
   Users,
@@ -115,6 +116,7 @@ const initialChecklist: ChecklistItem[] = [
 ];
 
 export function OnboardingFlow() {
+  const { tenantConfig } = useTenant();
   const [showTutorial, setShowTutorial] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [checklist, setChecklist] = useState<ChecklistItem[]>(initialChecklist);
@@ -123,7 +125,9 @@ export function OnboardingFlow() {
   // Check if first time user
   useEffect(() => {
     const completed = localStorage.getItem(ONBOARDING_KEY);
-    if (!completed) {
+    // P5.1: also skip for a PROVISIONED tenant (tenant_config.onboarding_completed=true) so the
+    // demo / onboarded tenants land straight on the app — no popup. Still shown mid-onboarding.
+    if (!completed && tenantConfig && !(tenantConfig as any).onboarding_completed) {
       setShowTutorial(true);
     }
 
@@ -136,7 +140,7 @@ export function OnboardingFlow() {
         setChecklist(initialChecklist);
       }
     }
-  }, []);
+  }, [tenantConfig]);
 
   const handleComplete = () => {
     localStorage.setItem(ONBOARDING_KEY, 'true');
