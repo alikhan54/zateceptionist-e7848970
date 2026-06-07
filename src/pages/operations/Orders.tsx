@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
+import { useTenant } from "@/contexts/TenantContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,12 +19,20 @@ import {
   Truck,
   UtensilsCrossed,
   Phone,
+  Timer,
+  AlertTriangle,
+  ChefHat,
 } from "lucide-react";
 import {
   useRestaurantOrders,
   type RestaurantOrder,
 } from "@/hooks/useRestaurantOrders";
 import { useCurrency } from "@/hooks/useCurrency";
+
+// Active states where a prep timer / "ready by" estimate is meaningful.
+const ACTIVE_PREP_STATES = new Set(["pending", "confirmed", "preparing", "ready"]);
+const DEFAULT_PREP_MIN = 15;     // fallback when an item has no recipe prep time
+const PLATING_BUFFER_MIN = 5;    // plating + handoff after the longest item
 
 const STATUS_TABS = [
   { key: "all", label: "All" },
@@ -57,6 +68,56 @@ export default function Orders() {
     statusFilter === "all" ? undefined : statusFilter
   );
   const { formatPrice } = useCurrency();
+  const { tenantId } = useTenant();
+
+  // Live ticking clock so elapsed/overdue update without a refresh (every 20s).
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 20_000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Per-item prep minutes from the active menu (defensive: read both prep_time_min
+  // [seed key] and prep_time_minutes [hook key]). Map keyed by menu item id.
+  const { data: prepByItemId = {} } = useQuery({
+    queryKey: ["menu-prep-times", tenantId],
+    queryFn: async (): Promise<Record<string, number>> => {
+      if (!tenantId) return {};
+      const { data } = await supabase
+        .from("restaurant_menus")
+        .select("items")
+        .eq("tenant_id", tenantId)
+        .eq("is_active", true)
+        .limit(1);
+      const items = (data && data[0]?.items) || [];
+      const m: Record<string, number> = {};
+      for (const it of items as any[]) {
+        const p = Number(it.prep_time_min ?? it.prep_time_minutes ?? 0);
+        if (it.id && p > 0) m[it.id] = p;
+      }
+      return m;
+    },
+    enabled: !!tenantId,
+  });
+
+  // Estimated kitchen-ready minutes for an order: longest item (stations run in
+  // parallel) + plating buffer. Falls back to DEFAULT_PREP_MIN per unknown item.
+  const estPrepMinutes = (order: RestaurantOrder): number => {
+    const items = order.items || [];
+    if (!items.length) return DEFAULT_PREP_MIN;
+    const longest = Math.max(
+      ...items.map((i) => prepByItemId[i.item_id || ""] ?? DEFAULT_PREP_MIN)
+    );
+    return longest + PLATING_BUFFER_MIN;
+  };
+  const readyAt = (order: RestaurantOrder): number =>
+    new Date(order.created_at).getTime() + estPrepMinutes(order) * 60_000;
+  const elapsedMin = (order: RestaurantOrder): number =>
+    Math.max(0, Math.round((now - new Date(order.created_at).getTime()) / 60_000));
+  const overdueMin = (order: RestaurantOrder): number =>
+    Math.max(0, Math.round((now - readyAt(order)) / 60_000));
+  const isOverdue = (order: RestaurantOrder): boolean =>
+    ACTIVE_PREP_STATES.has(order.status) && order.status !== "ready" && now > readyAt(order);
 
   const filteredOrders = searchTerm
     ? orders.filter(
@@ -71,6 +132,8 @@ export default function Orders() {
     const d = new Date(dateStr);
     return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
   };
+  const fmtClock = (ms: number) =>
+    new Date(ms).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
 
   const handleStatusUpdate = async (orderId: string, newStatus: string) => {
     try {
@@ -217,6 +280,28 @@ export default function Orders() {
                             {order.payment_status}
                           </Badge>
                         </div>
+                        {/* Prep timer / estimated-ready / overdue (active orders only) */}
+                        {ACTIVE_PREP_STATES.has(order.status) && (
+                          <div className="flex items-center gap-3 mt-2 text-xs" data-testid={`order-timer-${order.order_number}`}>
+                            <span className="flex items-center gap-1 text-muted-foreground">
+                              <ChefHat className="h-3 w-3" />
+                              ~{estPrepMinutes(order)}m prep
+                            </span>
+                            <span className="flex items-center gap-1 text-muted-foreground">
+                              <Clock className="h-3 w-3" />
+                              Ready ~{fmtClock(readyAt(order))}
+                            </span>
+                            <span className="flex items-center gap-1 text-muted-foreground">
+                              <Timer className="h-3 w-3" />
+                              {elapsedMin(order)}m elapsed
+                            </span>
+                            {isOverdue(order) && (
+                              <Badge variant="destructive" className="text-[10px] flex items-center gap-1" data-testid={`order-overdue-${order.order_number}`}>
+                                <AlertTriangle className="h-3 w-3" /> Overdue {overdueMin(order)}m
+                              </Badge>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -225,6 +310,7 @@ export default function Orders() {
                       {order.status === "pending" && (
                         <Button
                           size="sm"
+                          data-testid={`order-advance-${order.order_number}`}
                           onClick={() => handleStatusUpdate(order.id, "confirmed")}
                         >
                           <CheckCircle className="h-4 w-4 mr-1" /> Confirm
@@ -233,14 +319,25 @@ export default function Orders() {
                       {order.status === "confirmed" && (
                         <Button
                           size="sm"
+                          data-testid={`order-advance-${order.order_number}`}
                           onClick={() => handleStatusUpdate(order.id, "preparing")}
                         >
-                          Start Prep
+                          <ChefHat className="h-4 w-4 mr-1" /> Start Prep
+                        </Button>
+                      )}
+                      {order.status === "preparing" && (
+                        <Button
+                          size="sm"
+                          data-testid={`order-advance-${order.order_number}`}
+                          onClick={() => handleStatusUpdate(order.id, "ready")}
+                        >
+                          <CheckCircle className="h-4 w-4 mr-1" /> Mark Ready
                         </Button>
                       )}
                       {order.status === "ready" && (
                         <Button
                           size="sm"
+                          data-testid={`order-advance-${order.order_number}`}
                           onClick={() =>
                             handleStatusUpdate(
                               order.id,
@@ -248,15 +345,18 @@ export default function Orders() {
                             )
                           }
                         >
-                          {order.order_type === "delivery" ? "Dispatch" : "Complete"}
+                          {order.order_type === "delivery"
+                            ? (<><Truck className="h-4 w-4 mr-1" /> Out for Delivery</>)
+                            : (<><CheckCircle className="h-4 w-4 mr-1" /> Complete</>)}
                         </Button>
                       )}
                       {order.status === "dispatched" && (
                         <Button
                           size="sm"
+                          data-testid={`order-advance-${order.order_number}`}
                           onClick={() => handleStatusUpdate(order.id, "delivered")}
                         >
-                          Delivered
+                          <CheckCircle className="h-4 w-4 mr-1" /> Delivered
                         </Button>
                       )}
                       {(order.status === "pending" || order.status === "confirmed") && (
