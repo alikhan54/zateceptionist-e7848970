@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { UserPlus, ArrowRight, Search, Stethoscope } from "lucide-react";
 import { useClinicPatients } from "@/hooks/useClinicPatients";
-import { PatientRegistrationDialog } from "@/components/clinic/PatientRegistrationDialog";
+import { HospitalAdmitDialog } from "@/components/hospital/HospitalAdmitDialog";
 import { HospitalGate } from "./hospitalShared";
 
 function ageFrom(dob?: string) {
@@ -15,7 +15,7 @@ function HospitalPatientsInner() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [admitOpen, setAdmitOpen] = useState(false);
-  const { patients, isLoading, createPatient } = useClinicPatients(search);
+  const { patients, isLoading } = useClinicPatients(search);
 
   return (
     <div data-testid="hx-patients">
@@ -73,7 +73,7 @@ function HospitalPatientsInner() {
         </div>
       </div>
 
-      <PatientRegistrationDialog open={admitOpen} onOpenChange={setAdmitOpen} onCreate={(p) => createPatient.mutateAsync(p as any)} />
+      <HospitalAdmitDialog open={admitOpen} onOpenChange={setAdmitOpen} onAdmitted={(r) => navigate(`/hospital/journey?patient=${r.patient_id}`)} />
     </div>
   );
 }

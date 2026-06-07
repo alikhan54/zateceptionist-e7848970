@@ -1,0 +1,228 @@
+// HospitalAdmitDialog — the REAL hospital intake (replaces the cosmique aesthetics
+// form on the hospital surface only). Additive; the clinic's PatientRegistrationDialog
+// is untouched. Dark-themed via a layout-neutralised `.hx` wrapper so all hx-* classes
+// + CSS vars resolve inside the portal.
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import {
+  UserPlus, Stethoscope, ShieldCheck, Phone, CreditCard, IdCard, HeartPulse, Loader2, RefreshCw, AlertTriangle,
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useHospitalDepartments } from "@/hooks/useHospitalOrders";
+import { useHospitalStaff } from "@/hooks/useHospitalStaff";
+import { useHospitalAdmissions, type AdmitInput } from "@/hooks/useHospitalAdmissions";
+
+type F = AdmitInput & { existing_patient_id?: string | null };
+
+const EMPTY: F = {
+  full_name: "", phone: "", email: "", date_of_birth: "", gender: "male",
+  nationality: "", address: "", id_doc_type: "national_id", id_doc_number: "",
+  admission_type: "opd", admitting_complaint: "", department_id: "", ward: "",
+  attending_staff_id: "", insurance_status: "self_pay", insurance_provider: "", insurance_number: "",
+  next_of_kin_name: "", next_of_kin_phone: "", next_of_kin_relationship: "",
+  payment_amount: undefined, payment_currency: "BDT", payment_method: "cash", payment_status: "pending",
+  notes: "", existing_patient_id: null,
+};
+
+export function HospitalAdmitDialog({
+  open, onOpenChange, onAdmitted,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onAdmitted?: (r: { patient_id: string; visit_id: string; mrn: string }) => void;
+}) {
+  const { toast } = useToast();
+  const { data: departments = [] } = useHospitalDepartments();
+  const { doctors } = useHospitalStaff();
+  const { admit, findByPhone } = useHospitalAdmissions();
+  const [f, setF] = useState<F>(EMPTY);
+  const [returning, setReturning] = useState<{ id: string; full_name: string; date_of_birth: string | null; gender: string | null } | null>(null);
+  const set = (patch: Partial<F>) => setF((s) => ({ ...s, ...patch }));
+  const debounce = useRef<any>(null);
+
+  useEffect(() => { if (open) { setF(EMPTY); setReturning(null); } }, [open]);
+
+  // returning-patient routing [14]: debounced phone lookup → offer the existing record
+  useEffect(() => {
+    if (f.existing_patient_id) return;
+    if (debounce.current) clearTimeout(debounce.current);
+    const phone = f.phone;
+    debounce.current = setTimeout(async () => {
+      const hit = phone && phone.replace(/\D/g, "").length >= 6 ? await findByPhone(phone) : null;
+      setReturning(hit && hit.id !== f.existing_patient_id ? hit : null);
+    }, 500);
+    return () => debounce.current && clearTimeout(debounce.current);
+  }, [f.phone, f.existing_patient_id]);
+
+  const useReturning = () => {
+    if (!returning) return;
+    set({ existing_patient_id: returning.id, full_name: returning.full_name,
+          date_of_birth: returning.date_of_birth || "", gender: returning.gender || f.gender });
+    setReturning(null);
+  };
+  const clearReturning = () => set({ existing_patient_id: null });
+
+  const deptName = useMemo(() => departments.find((d) => d.id === f.department_id)?.name, [departments, f.department_id]);
+  const attName = useMemo(() => doctors.find((d) => d.id === f.attending_staff_id)?.name, [doctors, f.attending_staff_id]);
+  const insured = f.insurance_status === "insured" || f.insurance_status === "corporate";
+
+  async function submit() {
+    if (!f.full_name.trim()) { toast({ title: "Patient name is required", variant: "destructive" }); return; }
+    if (!f.phone.trim()) { toast({ title: "Phone is required", variant: "destructive" }); return; }
+    if (!f.admitting_complaint.trim()) { toast({ title: "Admitting complaint is required", variant: "destructive" }); return; }
+    try {
+      const r = await admit.mutateAsync({
+        ...f,
+        department_name: deptName, attending_name: attName,
+        payment_amount: f.payment_amount === undefined || (f.payment_amount as any) === "" ? null : Number(f.payment_amount),
+      });
+      toast({ title: f.existing_patient_id ? "Patient re-admitted" : "Patient admitted",
+              description: `${f.full_name.trim()} · MRN ${r.mrn}${attName ? ` · ${attName}` : ""}` });
+      onAdmitted?.({ patient_id: r.patient_id, visit_id: r.visit_id, mrn: r.mrn });
+      onOpenChange(false);
+    } catch (e: any) {
+      toast({ title: "Could not admit patient", description: e?.message || "Please try again.", variant: "destructive" });
+    }
+  }
+
+  const L = ({ children }: { children: any }) => <label className="hx-label">{children}</label>;
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onOpenChange(false); }}>
+      <DialogContent
+        className="max-w-3xl max-h-[92vh] overflow-y-auto border p-0"
+        style={{ background: "#0b1322", borderColor: "rgba(56,189,248,0.22)", color: "#e6edf6" }}
+      >
+        <div className="hx" style={{ margin: 0, minHeight: 0, padding: "1.4rem 1.5rem 1.6rem", background: "transparent" }} data-testid="hx-admit-dialog">
+          {/* header */}
+          <div className="flex items-center gap-3 mb-1">
+            <UserPlus className="h-5 w-5" style={{ color: "var(--hx-accent)" }} />
+            <div>
+              <div className="hx-eyebrow">Hospital · Admissions</div>
+              <div className="hx-h1" style={{ fontSize: "1.25rem" }}>Admit a Patient</div>
+            </div>
+          </div>
+          <p className="hx-dim text-sm mb-4">Register the patient, route them to a department &amp; attending clinician, and record insurance / payment.</p>
+
+          {/* returning-patient banner [14] */}
+          {returning && !f.existing_patient_id && (
+            <div className="hx-panel hx-panel--accent mb-4" style={{ padding: "0.7rem 0.9rem" }} data-testid="hx-admit-returning">
+              <div className="flex items-center gap-2 flex-wrap">
+                <RefreshCw className="h-4 w-4" style={{ color: "var(--hx-accent)" }} />
+                <span className="text-sm">Returning patient — <strong>{returning.full_name}</strong> is already on record at this number.</span>
+                <button type="button" className="hx-btn hx-btn--primary ml-auto" style={{ padding: "0.3rem 0.7rem" }} onClick={useReturning} data-testid="hx-admit-use-returning">Use their record</button>
+              </div>
+            </div>
+          )}
+          {f.existing_patient_id && (
+            <div className="hx-chip hx-chip--ok mb-4" data-testid="hx-admit-isreturning"><RefreshCw className="h-3 w-3" /> Re-admitting an existing patient · identity locked
+              <button type="button" className="underline ml-2" style={{ color: "var(--hx-accent)" }} onClick={clearReturning}>new patient instead</button>
+            </div>
+          )}
+
+          {/* Identity */}
+          <Section icon={IdCard} title="Identity">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="sm:col-span-2"><L>Full name *</L>
+                <input className="hx-input" value={f.full_name} disabled={!!f.existing_patient_id} onChange={(e) => set({ full_name: e.target.value })} placeholder="e.g. Rahim Uddin" data-testid="hx-admit-name" /></div>
+              <div><L>Phone *</L>
+                <input className="hx-input" value={f.phone} onChange={(e) => set({ phone: e.target.value })} placeholder="+8801XXXXXXXXX" data-testid="hx-admit-phone" /></div>
+              <div><L>Email</L>
+                <input className="hx-input" value={f.email} onChange={(e) => set({ email: e.target.value })} placeholder="optional" /></div>
+              <div><L>Date of birth</L>
+                <input type="date" className="hx-input" value={f.date_of_birth} disabled={!!f.existing_patient_id} onChange={(e) => set({ date_of_birth: e.target.value })} data-testid="hx-admit-dob" /></div>
+              <div><L>Sex</L>
+                <select className="hx-select" value={f.gender} onChange={(e) => set({ gender: e.target.value })} data-testid="hx-admit-gender">
+                  <option value="male">Male</option><option value="female">Female</option><option value="other">Other</option></select></div>
+              <div><L>ID document</L>
+                <select className="hx-select" value={f.id_doc_type} onChange={(e) => set({ id_doc_type: e.target.value })} data-testid="hx-admit-idtype">
+                  <option value="national_id">National ID (NID)</option><option value="passport">Passport</option>
+                  <option value="birth_certificate">Birth certificate</option><option value="other">Other</option></select></div>
+              <div><L>ID number</L>
+                <input className="hx-input" value={f.id_doc_number} onChange={(e) => set({ id_doc_number: e.target.value })} placeholder="any card / passport no." data-testid="hx-admit-idnum" /></div>
+            </div>
+          </Section>
+
+          {/* Admission */}
+          <Section icon={Stethoscope} title="Admission">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div><L>Admission type</L>
+                <select className="hx-select" value={f.admission_type} onChange={(e) => set({ admission_type: e.target.value })} data-testid="hx-admit-type">
+                  <option value="opd">OPD (outpatient)</option><option value="emergency">Emergency</option>
+                  <option value="inpatient">Inpatient</option><option value="daycare">Day-care</option></select></div>
+              <div><L>Ward / bed</L>
+                <input className="hx-input" value={f.ward} onChange={(e) => set({ ward: e.target.value })} placeholder="e.g. CCU-3" /></div>
+              <div className="sm:col-span-2"><L>Admitting complaint *</L>
+                <textarea className="hx-input" rows={2} value={f.admitting_complaint} onChange={(e) => set({ admitting_complaint: e.target.value })} placeholder="e.g. chest pain on exertion, breathlessness" data-testid="hx-admit-complaint" /></div>
+              <div><L>Department</L>
+                <select className="hx-select" value={f.department_id} onChange={(e) => set({ department_id: e.target.value })} data-testid="hx-admit-dept">
+                  <option value="">— select —</option>
+                  {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
+              <div><L>Attending clinician</L>
+                <select className="hx-select" value={f.attending_staff_id} onChange={(e) => set({ attending_staff_id: e.target.value })} data-testid="hx-admit-attending">
+                  <option value="">— select —</option>
+                  {doctors.map((d) => <option key={d.id} value={d.id}>{d.name}{d.job_title ? ` · ${d.job_title}` : ""}</option>)}</select></div>
+            </div>
+          </Section>
+
+          {/* Insurance + Next of kin */}
+          <Section icon={ShieldCheck} title="Insurance & next of kin">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div><L>Payer</L>
+                <select className="hx-select" value={f.insurance_status} onChange={(e) => set({ insurance_status: e.target.value })} data-testid="hx-admit-payer">
+                  <option value="self_pay">Self-pay</option><option value="insured">Insured</option><option value="corporate">Corporate</option></select></div>
+              {insured ? (<>
+                <div><L>Insurer</L><input className="hx-input" value={f.insurance_provider} onChange={(e) => set({ insurance_provider: e.target.value })} placeholder="e.g. MetLife BD" /></div>
+                <div><L>Policy / member no.</L><input className="hx-input" value={f.insurance_number} onChange={(e) => set({ insurance_number: e.target.value })} /></div>
+              </>) : <div className="hidden sm:block" />}
+              <div><L>Next-of-kin name</L><input className="hx-input" value={f.next_of_kin_name} onChange={(e) => set({ next_of_kin_name: e.target.value })} /></div>
+              <div><L>Next-of-kin phone</L><input className="hx-input" value={f.next_of_kin_phone} onChange={(e) => set({ next_of_kin_phone: e.target.value })} placeholder="+8801XXXXXXXXX" /></div>
+              <div><L>Relationship</L>
+                <select className="hx-select" value={f.next_of_kin_relationship} onChange={(e) => set({ next_of_kin_relationship: e.target.value })}>
+                  <option value="">— select —</option>{["Spouse", "Parent", "Sibling", "Child", "Guardian", "Friend", "Other"].map((r) => <option key={r} value={r}>{r}</option>)}</select></div>
+            </div>
+          </Section>
+
+          {/* Payment */}
+          <Section icon={CreditCard} title="Payment collection">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              <div><L>Amount</L>
+                <div className="flex items-center gap-1.5">
+                  <span className="hx-faint text-sm">{f.payment_currency}</span>
+                  <input type="number" className="hx-input" value={f.payment_amount as any ?? ""} onChange={(e) => set({ payment_amount: e.target.value === "" ? undefined : Number(e.target.value) })} placeholder="0" data-testid="hx-admit-amount" /></div></div>
+              <div><L>Method</L>
+                <select className="hx-select" value={f.payment_method} onChange={(e) => set({ payment_method: e.target.value })} data-testid="hx-admit-paymethod">
+                  <option value="cash">Cash</option><option value="card">Card</option><option value="bank_transfer">Bank transfer</option>
+                  <option value="insurance">Insurance</option><option value="waived">Waived</option></select></div>
+              <div><L>Status</L>
+                <select className="hx-select" value={f.payment_status} onChange={(e) => set({ payment_status: e.target.value })} data-testid="hx-admit-paystatus">
+                  <option value="pending">Pending</option><option value="paid">Paid</option><option value="partial">Partial</option><option value="waived">Waived</option></select></div>
+              <div><L>Reference</L><input className="hx-input" value={f.payment_reference} onChange={(e) => set({ payment_reference: e.target.value })} placeholder="receipt #" /></div>
+            </div>
+          </Section>
+
+          {/* footer */}
+          <div className="flex items-center justify-end gap-2 mt-5">
+            <button type="button" className="hx-btn hx-btn--ghost" onClick={() => onOpenChange(false)}>Cancel</button>
+            <button type="button" className="hx-btn hx-btn--primary" onClick={submit} disabled={admit.isPending} data-testid="hx-admit-submit">
+              {admit.isPending ? <><Loader2 className="h-4 w-4 animate-spin" /> Admitting…</> : <><HeartPulse className="h-4 w-4" /> Admit patient</>}
+            </button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function Section({ icon: Icon, title, children }: { icon: any; title: string; children: any }) {
+  return (
+    <div className="mb-4">
+      <div className="flex items-center gap-2 mb-2" style={{ color: "var(--hx-dim)" }}>
+        <Icon className="h-4 w-4" style={{ color: "var(--hx-accent2)" }} />
+        <span className="text-xs font-semibold uppercase" style={{ letterSpacing: "0.06em" }}>{title}</span>
+        <span className="flex-1 h-px" style={{ background: "var(--hx-border)" }} />
+      </div>
+      {children}
+    </div>
+  );
+}

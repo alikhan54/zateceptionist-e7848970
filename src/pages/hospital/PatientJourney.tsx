@@ -12,7 +12,8 @@ import {
   type HospitalOrderType,
 } from "@/hooks/useHospitalOrders";
 import { VITAL_FIELDS, classifyVital, summarizeVitals, DEFAULT_THRESHOLDS, type VitalStatus } from "@/lib/clinic/vitalsThresholds";
-import { PatientRegistrationDialog } from "@/components/clinic/PatientRegistrationDialog";
+import { HospitalAdmitDialog } from "@/components/hospital/HospitalAdmitDialog";
+import { VitalsCaptureDialog } from "@/components/hospital/VitalsCaptureDialog";
 import { useToast } from "@/hooks/use-toast";
 import { HospitalGate, EcgLine, fetchMedicaBrief } from "./hospitalShared";
 
@@ -52,13 +53,14 @@ function renderBrief(text: string) {
 function PatientJourneyInner() {
   const { translate } = useTenant();
   const { toast } = useToast();
-  const { patients, createPatient } = useClinicPatients();
+  const { patients } = useClinicPatients();
   const { visits } = useClinicVisits();
   const { data: departments = [] } = useHospitalDepartments();
 
   const [searchParams] = useSearchParams();
   const [selectedId, setSelectedId] = useState<string>("");
   const [admitOpen, setAdmitOpen] = useState(false);
+  const [vitalsOpen, setVitalsOpen] = useState(false);
 
   useEffect(() => {
     if (selectedId || !patients.length) return;
@@ -150,7 +152,7 @@ function PatientJourneyInner() {
         <button className="hx-btn hx-btn--primary mx-auto" onClick={() => setAdmitOpen(true)} data-testid="hx-admit-empty">
           <UserPlus className="h-4 w-4" /> Admit a Patient
         </button>
-        <PatientRegistrationDialog open={admitOpen} onOpenChange={setAdmitOpen} onCreate={(p) => createPatient.mutateAsync(p as any)} />
+        <HospitalAdmitDialog open={admitOpen} onOpenChange={setAdmitOpen} onAdmitted={(r) => setSelectedId(r.patient_id)} />
       </div>
     );
   }
@@ -239,7 +241,10 @@ function PatientJourneyInner() {
             <div className="hx-panel-h">
               <HeartPulse className="h-4 w-4" style={{ color: "var(--hx-accent2)" }} />
               <span className="font-semibold">Vitals</span>
-              <span className="ml-auto">
+              <button className="hx-btn hx-btn--ghost ml-auto" style={{ padding: "0.25rem 0.6rem" }} onClick={() => setVitalsOpen(true)} data-testid="hx-capture-vitals">
+                <HeartPulse className="h-3.5 w-3.5" /> Capture
+              </button>
+              <span className="ml-2">
                 {vitalsSummary.worst === "critical" && <span className="hx-chip hx-chip--crit" data-testid="hx-vitals-critical"><AlertTriangle className="h-3 w-3" /> Critical</span>}
                 {vitalsSummary.worst === "warning" && <span className="hx-chip hx-chip--warn" data-testid="hx-vitals-warning"><AlertTriangle className="h-3 w-3" /> Watch</span>}
                 {vitalsSummary.worst === "normal" && <span className="hx-chip hx-chip--ok"><CheckCircle2 className="h-3 w-3" /> Stable</span>}
@@ -382,7 +387,8 @@ function PatientJourneyInner() {
         </div>
       </div>
 
-      <PatientRegistrationDialog open={admitOpen} onOpenChange={setAdmitOpen} onCreate={(p) => createPatient.mutateAsync(p as any)} />
+      <HospitalAdmitDialog open={admitOpen} onOpenChange={setAdmitOpen} onAdmitted={(r) => setSelectedId(r.patient_id)} />
+      <VitalsCaptureDialog open={vitalsOpen} onOpenChange={setVitalsOpen} patientId={selectedId} patientName={patient?.full_name} visitId={latestVisit?.id} />
     </div>
   );
 }

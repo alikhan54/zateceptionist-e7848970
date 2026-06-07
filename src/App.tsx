@@ -167,6 +167,7 @@ const HospitalPatients = lazy(() => import("./pages/hospital/HospitalPatients"))
 const HospitalPharmacy = lazy(() => import("./pages/hospital/PharmacyQueue"));
 const HospitalLab = lazy(() => import("./pages/hospital/Laboratory"));
 const HospitalDiagnostics = lazy(() => import("./pages/hospital/DiagnosticsQueue"));
+const HospitalNurse = lazy(() => import("./pages/hospital/NurseStation"));
 
 // Jewelry Module (Project JX)
 const JewelryDashboard = lazy(() => import("./pages/jewelry/Dashboard"));
@@ -1515,6 +1516,7 @@ const App = () => (
                   <Route path="/hospital" element={<Navigate to="/hospital/journey" replace />} />
                   <Route path="/hospital/journey" element={<LazyPage><HospitalPatientJourney /></LazyPage>} />
                   <Route path="/hospital/patients" element={<LazyPage><HospitalPatients /></LazyPage>} />
+                  <Route path="/hospital/nurse" element={<LazyPage><HospitalNurse /></LazyPage>} />
                   <Route path="/hospital/pharmacy" element={<LazyPage><HospitalPharmacy /></LazyPage>} />
                   <Route path="/hospital/lab" element={<LazyPage><HospitalLab /></LazyPage>} />
                   <Route path="/hospital/diagnostics" element={<LazyPage><HospitalDiagnostics /></LazyPage>} />

@@ -616,6 +616,7 @@ export function NavigationSidebar() {
     items: [
       { title: "Patient Journey", url: "/hospital/journey", icon: Activity },
       { title: "Admissions", url: "/hospital/patients", icon: Stethoscope },
+      { title: "Nurse Station", url: "/hospital/nurse", icon: UserPlus },
       { title: "Pharmacy", url: "/hospital/pharmacy", icon: Pill },
       { title: "Laboratory", url: "/hospital/lab", icon: Syringe },
       { title: "Diagnostics", url: "/hospital/diagnostics", icon: FileText },
