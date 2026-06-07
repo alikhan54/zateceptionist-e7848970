@@ -1,6 +1,6 @@
 // Shared hospital-vertical primitives: the industry gate + dark shell, the ECG motif,
 // and the medica-brief Edge Function client. Importing this also loads the scoped theme.
-import React from "react";
+import React, { useEffect } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { useTenant } from "@/contexts/TenantContext";
@@ -14,6 +14,10 @@ import "./hospital.css";
  */
 export function HospitalGate({ children }: { children: React.ReactNode }) {
   const { isHospital, isLoading, tenantConfig } = useTenant();
+  // Apply the persisted ECG-animation preference across every hospital page [FIX2].
+  useEffect(() => {
+    document.documentElement.classList.toggle("hx-ecg-off", localStorage.getItem("hx-ecg-off") === "1");
+  }, []);
   // Do NOT redirect while the tenant/industry is still resolving — otherwise a refresh
   // or direct-nav onto a /hospital/* URL would bounce to /dashboard before industry loads.
   // `tenantConfig` is null until the config fetch completes; `isLoading` starts false, so

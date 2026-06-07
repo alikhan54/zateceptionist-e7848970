@@ -1,6 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { CheckCircle2, Clock, Inbox } from "lucide-react";
 import { useClinicPatients } from "@/hooks/useClinicPatients";
+import { useHospitalStaff } from "@/hooks/useHospitalStaff";
 import {
   useHospitalOrders, STATUS_LABEL, NEXT_STATUS, type HospitalOrderType,
 } from "@/hooks/useHospitalOrders";
@@ -21,6 +22,8 @@ interface Props {
 export function OrderQueueInner({ type, title, eyebrow, icon: Icon, actionLabel, embedded }: Props) {
   const { orders, updateOrderStatus } = useHospitalOrders({ orderType: type });
   const { patients } = useClinicPatients();
+  const { pharmacists } = useHospitalStaff();
+  const [pharmacistId, setPharmacistId] = useState("");
   const nameById = useMemo(() => {
     const m: Record<string, string> = {};
     (patients as any[]).forEach((p) => { m[p.id] = p.full_name; });
@@ -67,6 +70,12 @@ export function OrderQueueInner({ type, title, eyebrow, icon: Icon, actionLabel,
                 <h1 className="hx-h1">{title}</h1>
               </div>
               <div className="ml-auto flex items-center gap-2">
+                {type === "medication" && (
+                  <select className="hx-select" style={{ width: "auto", minWidth: 170 }} value={pharmacistId} onChange={(e) => setPharmacistId(e.target.value)} data-testid="hx-pharmacist-select">
+                    <option value="">Pharmacist on duty…</option>
+                    {pharmacists.map((s) => <option key={s.id} value={s.id}>{s.name}{s.job_title ? ` · ${s.job_title}` : ""}</option>)}
+                  </select>
+                )}
                 <span className="hx-chip hx-chip--warn" data-testid="hx-queue-pending-count">{pending.length} pending</span>
                 <span className="hx-chip hx-chip--ok">{fulfilled.length} done</span>
               </div>

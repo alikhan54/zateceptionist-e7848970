@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Activity, HeartPulse, Stethoscope, FlaskConical, Pill, ScanLine, Sparkles, Plus,
@@ -117,6 +117,28 @@ function PatientJourneyInner() {
   const [briefErr, setBriefErr] = useState<string>("");
   useEffect(() => { setBriefState("idle"); setBrief(""); setBriefErr(""); }, [selectedId]);
 
+  // ---- Doctor's remarks → clinic_visits.doctor_notes [FIX2] ----
+  const qc = useQueryClient();
+  const [remarks, setRemarks] = useState("");
+  const [remarksDirty, setRemarksDirty] = useState(false);
+  const [savingRemarks, setSavingRemarks] = useState(false);
+  useEffect(() => { setRemarks(latestVisit?.doctor_notes || ""); setRemarksDirty(false); }, [latestVisit?.id, latestVisit?.doctor_notes]);
+  async function saveRemarks() {
+    if (!latestVisit?.id) return;
+    setSavingRemarks(true);
+    try {
+      const { error } = await supabase.from("clinic_visits" as any)
+        .update({ doctor_notes: remarks.trim() || null, updated_at: new Date().toISOString() })
+        .eq("id", latestVisit.id).eq("tenant_id", tenantId);
+      if (error) throw error;
+      qc.invalidateQueries({ queryKey: ["clinic_visits", tenantId] });
+      setRemarksDirty(false);
+      toast({ title: "Remarks saved" });
+    } catch (e: any) {
+      toast({ title: "Could not save remarks", description: e?.message || "Try again.", variant: "destructive" });
+    } finally { setSavingRemarks(false); }
+  }
+
   async function askMedica() {
     if (!patient) return;
     setBriefState("loading"); setBriefErr("");
@@ -225,6 +247,7 @@ function PatientJourneyInner() {
                   {patients.map((p: any) => <option key={p.id} value={p.id}>{p.full_name}</option>)}
                 </select>
               )}
+              <EcgToggle />
               <button className="hx-btn hx-btn--ghost" onClick={() => setAdmitOpen(true)} data-testid="hx-admit">
                 <UserPlus className="h-4 w-4" /> Admit
               </button>
@@ -313,8 +336,30 @@ function PatientJourneyInner() {
           </div>
         </div>
 
-        {/* RIGHT: MEDICA brief + order entry + queues */}
+        {/* RIGHT: doctor's remarks + MEDICA brief + order entry + queues */}
         <div className="lg:col-span-7 space-y-4">
+          {/* Doctor's Remarks — ABOVE the MEDICA panel [FIX2] */}
+          <div className="hx-panel hx-rise" style={{ animationDelay: "100ms" }} data-testid="hx-remarks">
+            <div className="hx-panel-h">
+              <ClipboardList className="h-4 w-4" style={{ color: "var(--hx-accent2)" }} />
+              <span className="font-semibold">Doctor's Remarks</span>
+              {latestVisit && (
+                <button className="hx-btn hx-btn--primary ml-auto" style={{ padding: "0.35rem 0.8rem" }} onClick={saveRemarks} disabled={savingRemarks || !remarksDirty} data-testid="hx-remarks-save">
+                  {savingRemarks ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</> : <>Save</>}
+                </button>
+              )}
+            </div>
+            <div className="hx-panel-b">
+              {latestVisit ? (
+                <textarea className="hx-input" rows={3} value={remarks}
+                  onChange={(e) => { setRemarks(e.target.value); setRemarksDirty(true); }}
+                  placeholder="Clinical remarks, assessment & plan, instructions for this encounter…" data-testid="hx-remarks-text" />
+              ) : (
+                <p className="hx-dim text-sm">Open an encounter (capture vitals) to record remarks for this visit.</p>
+              )}
+            </div>
+          </div>
+
           {/* MEDICA brief */}
           <div className="hx-panel hx-panel--accent hx-rise" style={{ animationDelay: "120ms" }}>
             <div className="hx-panel-h">
@@ -454,6 +499,22 @@ function BpCell({ sys, dia, thresholds }: { sys: any; dia: any; thresholds: any 
       <div className="v">{sys ?? "—"}/{dia ?? "—"}<span className="text-xs hx-faint ml-0.5">mmHg</span></div>
       <div className="l">Blood Pressure</div>
     </div>
+  );
+}
+
+/** ECG heartbeat-animation on/off toggle (persisted; default ON) [FIX2]. */
+function EcgToggle() {
+  const [on, setOn] = useState(() => (typeof localStorage !== "undefined" ? localStorage.getItem("hx-ecg-off") !== "1" : true));
+  const toggle = () => {
+    const next = !on;
+    setOn(next);
+    localStorage.setItem("hx-ecg-off", next ? "0" : "1");
+    document.documentElement.classList.toggle("hx-ecg-off", !next);
+  };
+  return (
+    <button type="button" className="hx-btn hx-btn--ghost" style={{ padding: "0.28rem 0.6rem" }} onClick={toggle} data-testid="hx-ecg-toggle" title="Toggle the ECG heartbeat animation">
+      <Activity className="h-3.5 w-3.5" style={{ opacity: on ? 1 : 0.45 }} /> ECG {on ? "On" : "Off"}
+    </button>
   );
 }
 
