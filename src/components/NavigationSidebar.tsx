@@ -519,6 +519,7 @@ export function NavigationSidebar() {
       { title: "Menu Editor", url: "/operations/menu", icon: UtensilsCrossed },
       { title: "Reservations", url: "/operations/reservations", icon: CalendarCheck },
       { title: "Loyalty Club", url: "/operations/loyalty", icon: Award },
+      { title: "Dispatch", url: "/operations/dispatch", icon: Truck },
       // Inventory removed: lives under Operations > Supply Chain to avoid duplication.
     ],
   };
