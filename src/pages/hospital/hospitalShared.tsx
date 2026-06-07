@@ -1,7 +1,8 @@
 // Shared hospital-vertical primitives: the industry gate + dark shell, the ECG motif,
 // and the medica-brief Edge Function client. Importing this also loads the scoped theme.
 import React from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import { useTenant } from "@/contexts/TenantContext";
 import { supabase } from "@/integrations/supabase/client";
 import "./hospital.css";
@@ -28,7 +29,18 @@ export function HospitalGate({ children }: { children: React.ReactNode }) {
     );
   }
   if (!isHospital) return <Navigate to="/dashboard" replace />;
-  return <div className="hx" data-testid="hospital-surface">{children}</div>;
+  return <div className="hx" data-testid="hospital-surface"><HospitalBack />{children}</div>;
+}
+
+/** A small, consistent "Back" control across the hospital flow [15]. */
+function HospitalBack() {
+  const navigate = useNavigate();
+  return (
+    <button type="button" onClick={() => navigate(-1)} className="hx-btn hx-btn--ghost"
+      style={{ padding: "0.28rem 0.65rem", marginBottom: "0.85rem" }} data-testid="hx-back">
+      <ArrowLeft className="h-3.5 w-3.5" /> Back
+    </button>
+  );
 }
 
 /** Animated ECG trace — the clinical heartbeat motif. */
