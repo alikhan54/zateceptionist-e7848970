@@ -294,6 +294,7 @@ const CompanySetup = lazy(() => import("./pages/onboarding/CompanySetup"));
 
 // Auth
 const AuthCallback = lazy(() => import("./pages/auth/Callback"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 
 // Invite
 const Invite = lazy(() => import("./pages/Invite"));
@@ -371,6 +372,14 @@ const App = () => (
               <Routes>
                 {/* Public routes */}
                 <Route path="/login" element={<LoginPage />} />
+                <Route
+                  path="/reset-password"
+                  element={
+                    <LazyPage>
+                      <ResetPassword />
+                    </LazyPage>
+                  }
+                />
                 <Route
                   path="/auth/callback"
                   element={
