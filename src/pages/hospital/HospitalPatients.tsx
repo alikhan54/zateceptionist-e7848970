@@ -55,7 +55,7 @@ function HospitalPatientsInner() {
                   {patients.map((p: any) => (
                     <tr key={p.id} className="border-t" style={{ borderColor: "var(--hx-border)" }} data-testid="hx-patient-row">
                       <td className="py-2.5 font-medium">{p.full_name}</td>
-                      <td className="hx-mono hx-dim">{String(p.id).slice(0, 8).toUpperCase()}</td>
+                      <td className="hx-mono hx-dim" data-testid="hx-patient-mrn">{p.file_number || String(p.id).slice(0, 8).toUpperCase()}</td>
                       <td className="hx-dim">{ageFrom(p.date_of_birth) ?? "—"}{p.gender ? ` · ${p.gender}` : ""}</td>
                       <td className="hx-mono hx-dim">{p.phone || "—"}</td>
                       <td className="text-right">

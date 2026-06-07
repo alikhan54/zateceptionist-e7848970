@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
-import { CheckCircle2, Clock, Inbox } from "lucide-react";
+import { CheckCircle2, Clock, Inbox, CreditCard, Loader2 } from "lucide-react";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
 import { useClinicPatients } from "@/hooks/useClinicPatients";
 import { useHospitalStaff } from "@/hooks/useHospitalStaff";
 import {
@@ -23,7 +25,27 @@ export function OrderQueueInner({ type, title, eyebrow, icon: Icon, actionLabel,
   const { orders, updateOrderStatus } = useHospitalOrders({ orderType: type });
   const { patients } = useClinicPatients();
   const { pharmacists } = useHospitalStaff();
+  const { toast } = useToast();
   const [pharmacistId, setPharmacistId] = useState("");
+  // pharmacy payment-at-dispense [FIX3] — optional record; never blocks dispensing
+  const [payFor, setPayFor] = useState<any | null>(null);
+  const [payAmount, setPayAmount] = useState("");
+  const [payMethod, setPayMethod] = useState("cash");
+  const [payStatus, setPayStatus] = useState("paid");
+  const openPay = (o: any) => { setPayFor(o); setPayAmount(""); setPayMethod("cash"); setPayStatus("paid"); };
+  async function confirmPay() {
+    if (!payFor) return;
+    try {
+      await updateOrderStatus.mutateAsync({
+        id: payFor.id, status: NEXT_STATUS.medication!,
+        payment: { amount: payAmount.trim() === "" ? null : Number(payAmount), currency: "BDT", method: payMethod, status: payStatus },
+      });
+      toast({ title: "Dispensed", description: `Payment: BDT ${payAmount || 0} · ${payMethod} · ${payStatus}` });
+      setPayFor(null);
+    } catch (e: any) {
+      toast({ title: "Could not dispense", description: e?.message || "Try again.", variant: "destructive" });
+    }
+  }
   const nameById = useMemo(() => {
     const m: Record<string, string> = {};
     (patients as any[]).forEach((p) => { m[p.id] = p.full_name; });
@@ -44,7 +66,7 @@ export function OrderQueueInner({ type, title, eyebrow, icon: Icon, actionLabel,
       </div>
       {!done && NEXT_STATUS[type] && (
         <button className="hx-btn hx-btn--ghost" style={{ padding: "0.35rem 0.7rem" }}
-          onClick={() => updateOrderStatus.mutate({ id: o.id, status: NEXT_STATUS[type]! })} data-testid="hx-queue-action">
+          onClick={() => (type === "medication" ? openPay(o) : updateOrderStatus.mutate({ id: o.id, status: NEXT_STATUS[type]! }))} data-testid="hx-queue-action">
           {actionLabel}
         </button>
       )}
@@ -102,6 +124,43 @@ export function OrderQueueInner({ type, title, eyebrow, icon: Icon, actionLabel,
           </div>
         </div>
       </div>
+
+      {/* Pharmacy payment-at-dispense [FIX3] — records amount/method/status, never blocks dispensing */}
+      <Dialog open={!!payFor} onOpenChange={(v) => { if (!v) setPayFor(null); }}>
+        <DialogContent className="hx-dialog max-w-md border p-0" style={{ background: "var(--hx-dialog-bg)", borderColor: "var(--hx-dialog-border)", color: "var(--hx-text)" }}>
+          <DialogTitle className="sr-only">Pharmacy payment</DialogTitle>
+          <div className="hx" style={{ margin: 0, minHeight: 0, padding: "1.3rem 1.4rem 1.5rem", background: "transparent" }} data-testid="hx-pharmacy-pay-dialog">
+            <div className="flex items-center gap-3 mb-1">
+              <CreditCard className="h-5 w-5" style={{ color: "var(--hx-accent)" }} />
+              <div>
+                <div className="hx-eyebrow">Pharmacy · Dispense</div>
+                <div className="hx-h1" style={{ fontSize: "1.15rem" }}>Collect payment</div>
+              </div>
+            </div>
+            <p className="hx-dim text-sm mb-4"><strong style={{ color: "var(--hx-strong)" }}>{(payFor?.details as any)?.item || "Medication"}</strong> — record the payment, then dispense. Payment is optional and never blocks dispensing.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div><label className="hx-label">Amount</label>
+                <div className="flex items-center gap-1.5">
+                  <span className="hx-faint text-sm">BDT</span>
+                  <input type="number" className="hx-input" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} placeholder="0" data-testid="hx-pay-amount" />
+                </div></div>
+              <div><label className="hx-label">Method</label>
+                <select className="hx-select" value={payMethod} onChange={(e) => setPayMethod(e.target.value)} data-testid="hx-pay-method">
+                  <option value="cash">Cash</option><option value="card">Card</option><option value="bank_transfer">Bank transfer</option>
+                  <option value="insurance">Insurance</option><option value="waived">Waived</option></select></div>
+              <div><label className="hx-label">Status</label>
+                <select className="hx-select" value={payStatus} onChange={(e) => setPayStatus(e.target.value)} data-testid="hx-pay-status">
+                  <option value="paid">Paid</option><option value="pending">Pending</option><option value="partial">Partial</option><option value="waived">Waived</option></select></div>
+            </div>
+            <div className="flex items-center justify-end gap-2 mt-5">
+              <button type="button" className="hx-btn hx-btn--ghost" onClick={() => setPayFor(null)}>Cancel</button>
+              <button type="button" className="hx-btn hx-btn--primary" onClick={confirmPay} disabled={updateOrderStatus.isPending} data-testid="hx-pay-confirm">
+                {updateOrderStatus.isPending ? <><Loader2 className="h-4 w-4 animate-spin" /> Dispensing…</> : <><CheckCircle2 className="h-4 w-4" /> Dispense &amp; record</>}
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

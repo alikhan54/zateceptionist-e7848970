@@ -28,7 +28,7 @@ export interface ClinicVisit {
   spo2: number | null; respiratory_rate: number | null;
   height_cm: number | null; weight_kg: number | null; sugar: number | null;
   hip_cm: number | null; waist_cm: number | null; head_circumference_cm: number | null;
-  urinalysis: string | null; lmp: string | null; other_details: string | null; doctor_notes: string | null;
+  urinalysis: string | null; lmp: string | null; other_details: string | null; doctor_notes: string | null; diagnosis: string | null;
   patient?: ClinicVisitPatient | null;
 }
 

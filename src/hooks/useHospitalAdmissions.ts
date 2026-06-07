@@ -30,7 +30,7 @@ export interface AdmitInput {
   id_doc_type?: string; id_doc_number?: string;
   // admission
   admission_type: string; admitting_complaint: string;
-  department_id?: string; department_name?: string; ward?: string;
+  department_id?: string; department_name?: string; department_code?: string; ward?: string;
   attending_staff_id?: string; attending_name?: string; reception_staff_id?: string;
   // insurance
   insurance_status?: string; insurance_provider?: string; insurance_number?: string;
@@ -42,8 +42,12 @@ export interface AdmitInput {
   notes?: string;
 }
 
-export function newMRN() {
-  return `BSH-${Math.floor(Math.random() * 900000) + 100000}`;
+// MRN = <2-digit department code><6-digit running sequence> (e.g. Cardiology 11 → "11000007").
+// Department code comes from hospital_departments.code; falls back to "10" when none is selected.
+export function newMRN(deptCode?: string | null, seq?: number) {
+  const code = (deptCode && String(deptCode).trim()) || "10";
+  const n = Math.max(1, seq ?? 1);
+  return `${code}${String(n).padStart(6, "0")}`;
 }
 
 export function useHospitalAdmissions() {
@@ -85,15 +89,28 @@ export function useHospitalAdmissions() {
     return match ? { id: match.id, full_name: match.full_name, date_of_birth: match.date_of_birth, gender: match.gender } : null;
   }
 
+  // Next per-tenant admission sequence — drives the running digits of a dept-coded MRN.
+  async function nextAdmSeq(): Promise<number> {
+    const { count } = await supabase.from("hospital_admissions" as any)
+      .select("id", { count: "exact", head: true }).eq("tenant_id", tenantId);
+    return (count || 0) + 1;
+  }
+
   const admit = useMutation({
     mutationFn: async (input: AdmitInput) => {
       const { data: auth } = await supabase.auth.getUser();
       const uid = auth?.user?.id ?? null;
-      const mrn = newMRN();
 
-      // 1) patient (reuse existing for a returning admit, else create)
+      // 1) patient + MRN. Returning patients keep their existing file_number (NEVER rewritten);
+      // new patients get a department-coded MRN (<dept code><running seq>) stamped as file_number.
       let patientId = input.existing_patient_id || null;
-      if (!patientId) {
+      let mrn: string;
+      if (patientId) {
+        const { data: ex } = await supabase.from("clinic_patients" as any)
+          .select("file_number").eq("tenant_id", tenantId).eq("id", patientId).maybeSingle();
+        mrn = (ex as any)?.file_number || newMRN(input.department_code, await nextAdmSeq());
+      } else {
+        mrn = newMRN(input.department_code, await nextAdmSeq());
         const { data: p, error: pe } = await supabase.from("clinic_patients" as any).insert({
           tenant_id: tenantId,
           full_name: input.full_name.trim(),

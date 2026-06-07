@@ -117,25 +117,31 @@ function PatientJourneyInner() {
   const [briefErr, setBriefErr] = useState<string>("");
   useEffect(() => { setBriefState("idle"); setBrief(""); setBriefErr(""); }, [selectedId]);
 
-  // ---- Doctor's remarks → clinic_visits.doctor_notes [FIX2] ----
+  // ---- Doctor's diagnosis + remarks → clinic_visits.diagnosis / .doctor_notes [FIX2/FIX3] ----
   const qc = useQueryClient();
   const [remarks, setRemarks] = useState("");
   const [remarksDirty, setRemarksDirty] = useState(false);
+  const [diagnosis, setDiagnosis] = useState("");
+  const [diagnosisDirty, setDiagnosisDirty] = useState(false);
   const [savingRemarks, setSavingRemarks] = useState(false);
-  useEffect(() => { setRemarks(latestVisit?.doctor_notes || ""); setRemarksDirty(false); }, [latestVisit?.id, latestVisit?.doctor_notes]);
+  useEffect(() => {
+    setRemarks(latestVisit?.doctor_notes || "");
+    setDiagnosis(latestVisit?.diagnosis || "");
+    setRemarksDirty(false); setDiagnosisDirty(false);
+  }, [latestVisit?.id, latestVisit?.doctor_notes, latestVisit?.diagnosis]);
   async function saveRemarks() {
     if (!latestVisit?.id) return;
     setSavingRemarks(true);
     try {
       const { error } = await supabase.from("clinic_visits" as any)
-        .update({ doctor_notes: remarks.trim() || null, updated_at: new Date().toISOString() })
+        .update({ diagnosis: diagnosis.trim() || null, doctor_notes: remarks.trim() || null, updated_at: new Date().toISOString() })
         .eq("id", latestVisit.id).eq("tenant_id", tenantId);
       if (error) throw error;
       qc.invalidateQueries({ queryKey: ["clinic_visits", tenantId] });
-      setRemarksDirty(false);
-      toast({ title: "Remarks saved" });
+      setRemarksDirty(false); setDiagnosisDirty(false);
+      toast({ title: "Saved" });
     } catch (e: any) {
-      toast({ title: "Could not save remarks", description: e?.message || "Try again.", variant: "destructive" });
+      toast({ title: "Could not save", description: e?.message || "Try again.", variant: "destructive" });
     } finally { setSavingRemarks(false); }
   }
 
@@ -150,27 +156,50 @@ function PatientJourneyInner() {
     }
   }
 
-  // ---- order entry ----
+  // ---- order entry (medication supports adding several meds in one go [FIX3]) ----
   const [orderType, setOrderType] = useState<HospitalOrderType>("medication");
   const [orderDetail, setOrderDetail] = useState("");
   const [orderDept, setOrderDept] = useState("");
+  const [meds, setMeds] = useState<string[]>([]);   // queued medications (medication type only)
   const deptForType = (t: HospitalOrderType) =>
     departments.find((d) => (t === "medication" ? d.kind === "pharmacy" : t === "lab" ? d.kind === "lab" : d.kind === "radiology"));
   useEffect(() => { setOrderDept(deptForType(orderType)?.id || ""); }, [orderType, departments]);
+  // Never carry a queued-med list across a patient switch or a type change.
+  useEffect(() => { setMeds([]); }, [selectedId, orderType]);
+
+  const routeLabel = (t: HospitalOrderType) => (t === "medication" ? "Pharmacy" : t === "lab" ? "Laboratory" : "Diagnostics");
+
+  // Queue another medication (as a chip) without leaving the form.
+  function addMed() {
+    const v = orderDetail.trim();
+    if (orderType !== "medication" || !v) return;
+    setMeds((prev) => [...prev, v]);
+    setOrderDetail("");
+  }
 
   async function placeOrder() {
-    if (!patient || !orderDetail.trim()) return;
+    if (!patient) return;
+    // medication: queued chips + whatever is still in the box → ONE order each; lab/imaging: single.
+    const items = orderType === "medication"
+      ? [...meds, orderDetail].map((s) => s.trim()).filter(Boolean)
+      : (orderDetail.trim() ? [orderDetail.trim()] : []);
+    if (items.length === 0) return;
     try {
-      await createOrder.mutateAsync({
-        patient_id: patient.id,
-        visit_id: latestVisit?.id ?? null,
-        order_type: orderType,
-        department_id: orderDept || null,
-        status: "ordered",
-        details: { item: orderDetail.trim() },
+      for (const item of items) {
+        await createOrder.mutateAsync({
+          patient_id: patient.id,
+          visit_id: latestVisit?.id ?? null,
+          order_type: orderType,
+          department_id: orderDept || null,
+          status: "ordered",
+          details: { item },
+        });
+      }
+      toast({
+        title: items.length > 1 ? `${items.length} orders placed` : "Order placed",
+        description: `${ORDER_TYPE_LABEL[orderType]} · ${items.join(", ")} routed to ${routeLabel(orderType)}.`,
       });
-      toast({ title: "Order placed", description: `${ORDER_TYPE_LABEL[orderType]} · ${orderDetail.trim()} routed to ${orderType === "medication" ? "Pharmacy" : orderType === "lab" ? "Laboratory" : "Diagnostics"}.` });
-      setOrderDetail("");
+      setOrderDetail(""); setMeds([]);
     } catch (e: any) {
       toast({ title: "Could not place order", description: e?.message || "Please try again.", variant: "destructive" });
     }
@@ -234,7 +263,7 @@ function PatientJourneyInner() {
                 <div className="hx-eyebrow">Hospital · Patient Journey</div>
                 <div className="hx-h1" data-testid="hx-patient-name">{patient.full_name}</div>
                 <div className="flex flex-wrap items-center gap-2 mt-1 text-sm hx-dim">
-                  <span className="hx-mono">MRN {String(patient.id).slice(0, 8).toUpperCase()}</span>
+                  <span className="hx-mono" data-testid="hx-journey-mrn">MRN {patient.file_number || String(patient.id).slice(0, 8).toUpperCase()}</span>
                   {age != null && <><span className="hx-faint">·</span><span>{age}y</span></>}
                   {patient.gender && <><span className="hx-faint">·</span><span className="capitalize">{patient.gender}</span></>}
                   {patient.phone && <><span className="hx-faint">·</span><span className="hx-mono">{patient.phone}</span></>}
@@ -342,20 +371,31 @@ function PatientJourneyInner() {
           <div className="hx-panel hx-rise" style={{ animationDelay: "100ms" }} data-testid="hx-remarks">
             <div className="hx-panel-h">
               <ClipboardList className="h-4 w-4" style={{ color: "var(--hx-accent2)" }} />
-              <span className="font-semibold">Doctor's Remarks</span>
+              <span className="font-semibold">Diagnosis &amp; Remarks</span>
               {latestVisit && (
-                <button className="hx-btn hx-btn--primary ml-auto" style={{ padding: "0.35rem 0.8rem" }} onClick={saveRemarks} disabled={savingRemarks || !remarksDirty} data-testid="hx-remarks-save">
+                <button className="hx-btn hx-btn--primary ml-auto" style={{ padding: "0.35rem 0.8rem" }} onClick={saveRemarks} disabled={savingRemarks || (!remarksDirty && !diagnosisDirty)} data-testid="hx-remarks-save">
                   {savingRemarks ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</> : <>Save</>}
                 </button>
               )}
             </div>
             <div className="hx-panel-b">
               {latestVisit ? (
-                <textarea className="hx-input" rows={3} value={remarks}
-                  onChange={(e) => { setRemarks(e.target.value); setRemarksDirty(true); }}
-                  placeholder="Clinical remarks, assessment & plan, instructions for this encounter…" data-testid="hx-remarks-text" />
+                <div className="space-y-2.5">
+                  <div>
+                    <label className="hx-label">Diagnosis</label>
+                    <input className="hx-input" value={diagnosis}
+                      onChange={(e) => { setDiagnosis(e.target.value); setDiagnosisDirty(true); }}
+                      placeholder="Working / final diagnosis — e.g. Acute coronary syndrome (NSTEMI)" data-testid="hx-diagnosis-text" />
+                  </div>
+                  <div>
+                    <label className="hx-label">Remarks</label>
+                    <textarea className="hx-input" rows={3} value={remarks}
+                      onChange={(e) => { setRemarks(e.target.value); setRemarksDirty(true); }}
+                      placeholder="Clinical remarks, assessment & plan, instructions for this encounter…" data-testid="hx-remarks-text" />
+                  </div>
+                </div>
               ) : (
-                <p className="hx-dim text-sm">Open an encounter (capture vitals) to record remarks for this visit.</p>
+                <p className="hx-dim text-sm">Open an encounter (capture vitals) to record the diagnosis &amp; remarks for this visit.</p>
               )}
             </div>
           </div>
@@ -418,11 +458,27 @@ function PatientJourneyInner() {
                     onKeyDown={(e) => e.key === "Enter" && placeOrder()} data-testid="hx-order-detail" />
                 </div>
                 <div className="sm:col-span-2">
-                  <button className="hx-btn hx-btn--primary w-full" onClick={placeOrder} disabled={!orderDetail.trim() || createOrder.isPending} data-testid="hx-place-order">
-                    {createOrder.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="h-4 w-4" /> Place</>}
+                  <button className="hx-btn hx-btn--primary w-full" onClick={placeOrder} disabled={(orderType === "medication" ? (meds.length === 0 && !orderDetail.trim()) : !orderDetail.trim()) || createOrder.isPending} data-testid="hx-place-order">
+                    {createOrder.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="h-4 w-4" /> Place{orderType === "medication" && (meds.length + (orderDetail.trim() ? 1 : 0)) > 1 ? ` ${meds.length + (orderDetail.trim() ? 1 : 0)}` : ""}</>}
                   </button>
                 </div>
               </div>
+
+              {/* multi-medication queue [FIX3] — add several meds, then Place creates one order each */}
+              {orderType === "medication" && (
+                <div className="mt-2.5 flex items-center gap-2 flex-wrap" data-testid="hx-med-queue">
+                  <button type="button" className="hx-btn hx-btn--ghost" style={{ padding: "0.3rem 0.7rem" }} onClick={addMed} disabled={!orderDetail.trim()} data-testid="hx-order-add-med">
+                    <Plus className="h-3.5 w-3.5" /> Add another med
+                  </button>
+                  {meds.map((m, i) => (
+                    <span key={`${m}-${i}`} className="hx-chip hx-chip--accent" style={{ padding: "0.15rem 0.5rem" }} data-testid="hx-med-chip">
+                      {m}
+                      <button type="button" className="ml-1" style={{ opacity: 0.7 }} onClick={() => setMeds((prev) => prev.filter((_, j) => j !== i))} aria-label={`remove ${m}`}>×</button>
+                    </span>
+                  ))}
+                  {meds.length > 0 && <span className="hx-faint text-xs">{meds.length} queued — “Place” creates one order each, all routed to Pharmacy</span>}
+                </div>
+              )}
             </div>
           </div>
 

@@ -83,7 +83,7 @@ function NurseStationInner() {
                   <div className="grid place-items-center rounded-xl shrink-0" style={{ width: 38, height: 38, background: "rgba(34,211,238,0.1)", border: "1px solid var(--hx-border-strong)", fontWeight: 700, fontSize: 13 }}>{initials(p.full_name)}</div>
                   <div className="min-w-0 flex-1">
                     <div className="font-medium truncate">{p.full_name}</div>
-                    <div className="hx-faint text-xs hx-mono">MRN {String(p.id).slice(0, 8).toUpperCase()}{p.phone ? ` · ${p.phone}` : ""}</div>
+                    <div className="hx-faint text-xs hx-mono">MRN {p.file_number || String(p.id).slice(0, 8).toUpperCase()}{p.phone ? ` · ${p.phone}` : ""}</div>
                   </div>
                   {v && STATUS_CHIP[v.current_status] && <span className={`hx-chip ${STATUS_CHIP[v.current_status].cls}`} style={{ padding: "0.1rem 0.5rem" }}>{v.current_status === "completed" ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}{STATUS_CHIP[v.current_status].label}</span>}
                   {worst === "critical" && <span className="hx-chip hx-chip--crit" style={{ padding: "0.1rem 0.5rem" }} data-testid="hx-nurse-flag-crit"><AlertTriangle className="h-3 w-3" /> Critical</span>}

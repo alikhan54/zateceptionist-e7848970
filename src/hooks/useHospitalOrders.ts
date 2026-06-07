@@ -20,6 +20,11 @@ export interface HospitalOrder {
   status: HospitalOrderStatus;
   details: Record<string, unknown> | null;
   ordered_by: string | null;
+  payment_amount?: number | null;
+  payment_currency?: string | null;
+  payment_method?: string | null;
+  payment_status?: string | null;
+  payment_reference?: string | null;
   created_at: string;
 }
 
@@ -27,6 +32,7 @@ export interface HospitalDepartment {
   id: string;
   tenant_id: string;
   name: string;
+  code: string | null;        // 2-digit dept code → drives the department-coded MRN prefix
   kind: "clinical" | "pharmacy" | "lab" | "radiology" | "admin";
   is_active: boolean;
 }
@@ -105,11 +111,24 @@ export function useHospitalOrders(filter: OrderFilter = {}) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["hospital_orders", tenantId] }),
   });
 
+  // Advance an order's status. Optional `payment` (pharmacy dispense) writes the additive
+  // payment_* columns in the SAME update — callers passing only {id,status} are unchanged.
   const updateOrderStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: HospitalOrderStatus }) => {
+    mutationFn: async ({ id, status, payment }: {
+      id: string; status: HospitalOrderStatus;
+      payment?: { amount?: number | null; currency?: string; method?: string | null; status?: string | null; reference?: string | null };
+    }) => {
+      const patch: Record<string, unknown> = { status };
+      if (payment) {
+        patch.payment_amount = payment.amount ?? null;
+        patch.payment_currency = payment.currency ?? "BDT";
+        patch.payment_method = payment.method ?? null;
+        patch.payment_status = payment.status ?? null;
+        patch.payment_reference = payment.reference ?? null;
+      }
       const { error } = await supabase
         .from("hospital_orders" as any)
-        .update({ status })
+        .update(patch)
         .eq("id", id)
         .eq("tenant_id", tenantId);
       if (error) throw error;

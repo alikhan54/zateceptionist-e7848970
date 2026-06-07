@@ -3,7 +3,7 @@
 // is untouched. Dark-themed via a layout-neutralised `.hx` wrapper so all hx-* classes
 // + CSS vars resolve inside the portal.
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
   UserPlus, Stethoscope, ShieldCheck, Phone, CreditCard, IdCard, HeartPulse, Loader2, RefreshCw, AlertTriangle,
 } from "lucide-react";
@@ -63,6 +63,7 @@ export function HospitalAdmitDialog({
   const clearReturning = () => set({ existing_patient_id: null });
 
   const deptName = useMemo(() => departments.find((d) => d.id === f.department_id)?.name, [departments, f.department_id]);
+  const deptCode = useMemo(() => departments.find((d) => d.id === f.department_id)?.code ?? undefined, [departments, f.department_id]);
   const attName = useMemo(() => doctors.find((d) => d.id === f.attending_staff_id)?.name, [doctors, f.attending_staff_id]);
   const insured = f.insurance_status === "insured" || f.insurance_status === "corporate";
 
@@ -73,7 +74,7 @@ export function HospitalAdmitDialog({
     try {
       const r = await admit.mutateAsync({
         ...f,
-        department_name: deptName, attending_name: attName,
+        department_name: deptName, department_code: deptCode, attending_name: attName,
         payment_amount: f.payment_amount === undefined || (f.payment_amount as any) === "" ? null : Number(f.payment_amount),
       });
       toast({ title: f.existing_patient_id ? "Patient re-admitted" : "Patient admitted",
@@ -93,6 +94,7 @@ export function HospitalAdmitDialog({
         className="hx-dialog max-w-3xl max-h-[92vh] overflow-y-auto border p-0"
         style={{ background: "var(--hx-dialog-bg)", borderColor: "var(--hx-dialog-border)", color: "var(--hx-text)" }}
       >
+        <DialogTitle className="sr-only">Admit a patient</DialogTitle>
         <div className="hx" style={{ margin: 0, minHeight: 0, padding: "1.4rem 1.5rem 1.6rem", background: "transparent" }} data-testid="hx-admit-dialog">
           {/* header */}
           <div className="flex items-center gap-3 mb-1">
