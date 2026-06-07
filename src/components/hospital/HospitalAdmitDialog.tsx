@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useHospitalDepartments } from "@/hooks/useHospitalOrders";
 import { useHospitalStaff } from "@/hooks/useHospitalStaff";
 import { useHospitalAdmissions, type AdmitInput } from "@/hooks/useHospitalAdmissions";
+import { useHospitalT } from "@/pages/hospital/i18n";
 
 type F = AdmitInput & { existing_patient_id?: string | null };
 
@@ -32,6 +33,7 @@ export function HospitalAdmitDialog({
   onAdmitted?: (r: { patient_id: string; visit_id: string; mrn: string }) => void;
 }) {
   const { toast } = useToast();
+  const { t, ti } = useHospitalT();
   const { data: departments = [] } = useHospitalDepartments();
   const { doctors } = useHospitalStaff();
   const { admit, findByPhone } = useHospitalAdmissions();
@@ -68,21 +70,21 @@ export function HospitalAdmitDialog({
   const insured = f.insurance_status === "insured" || f.insurance_status === "corporate";
 
   async function submit() {
-    if (!f.full_name.trim()) { toast({ title: "Patient name is required", variant: "destructive" }); return; }
-    if (!f.phone.trim()) { toast({ title: "Phone is required", variant: "destructive" }); return; }
-    if (!f.admitting_complaint.trim()) { toast({ title: "Admitting complaint is required", variant: "destructive" }); return; }
+    if (!f.full_name.trim()) { toast({ title: t("admit.nameReq"), variant: "destructive" }); return; }
+    if (!f.phone.trim()) { toast({ title: t("admit.phoneReq"), variant: "destructive" }); return; }
+    if (!f.admitting_complaint.trim()) { toast({ title: t("admit.complaintReq"), variant: "destructive" }); return; }
     try {
       const r = await admit.mutateAsync({
         ...f,
         department_name: deptName, department_code: deptCode, attending_name: attName,
         payment_amount: f.payment_amount === undefined || (f.payment_amount as any) === "" ? null : Number(f.payment_amount),
       });
-      toast({ title: f.existing_patient_id ? "Patient re-admitted" : "Patient admitted",
-              description: `${f.full_name.trim()} · MRN ${r.mrn}${attName ? ` · ${attName}` : ""}` });
+      toast({ title: f.existing_patient_id ? t("admit.readmitted") : t("admit.admitted"),
+              description: `${f.full_name.trim()} · ${t("journey.mrn")} ${r.mrn}${attName ? ` · ${attName}` : ""}` });
       onAdmitted?.({ patient_id: r.patient_id, visit_id: r.visit_id, mrn: r.mrn });
       onOpenChange(false);
     } catch (e: any) {
-      toast({ title: "Could not admit patient", description: e?.message || "Please try again.", variant: "destructive" });
+      toast({ title: t("admit.fail"), description: e?.message || t("common.tryAgain"), variant: "destructive" });
     }
   }
 
@@ -94,120 +96,120 @@ export function HospitalAdmitDialog({
         className="hx-dialog max-w-3xl max-h-[92vh] overflow-y-auto border p-0"
         style={{ background: "var(--hx-dialog-bg)", borderColor: "var(--hx-dialog-border)", color: "var(--hx-text)" }}
       >
-        <DialogTitle className="sr-only">Admit a patient</DialogTitle>
+        <DialogTitle className="sr-only">{t("admit.title")}</DialogTitle>
         <div className="hx" style={{ margin: 0, minHeight: 0, padding: "1.4rem 1.5rem 1.6rem", background: "transparent" }} data-testid="hx-admit-dialog">
           {/* header */}
           <div className="flex items-center gap-3 mb-1">
             <UserPlus className="h-5 w-5" style={{ color: "var(--hx-accent)" }} />
             <div>
-              <div className="hx-eyebrow">Hospital · Admissions</div>
-              <div className="hx-h1" style={{ fontSize: "1.25rem" }}>Admit a Patient</div>
+              <div className="hx-eyebrow">{t("admit.eyebrow")}</div>
+              <div className="hx-h1" style={{ fontSize: "1.25rem" }}>{t("admit.title")}</div>
             </div>
           </div>
-          <p className="hx-dim text-sm mb-4">Register the patient, route them to a department &amp; attending clinician, and record insurance / payment.</p>
+          <p className="hx-dim text-sm mb-4">{t("admit.sub")}</p>
 
           {/* returning-patient banner [14] */}
           {returning && !f.existing_patient_id && (
             <div className="hx-panel hx-panel--accent mb-4" style={{ padding: "0.7rem 0.9rem" }} data-testid="hx-admit-returning">
               <div className="flex items-center gap-2 flex-wrap">
                 <RefreshCw className="h-4 w-4" style={{ color: "var(--hx-accent)" }} />
-                <span className="text-sm">Returning patient — <strong>{returning.full_name}</strong> is already on record at this number.</span>
-                <button type="button" className="hx-btn hx-btn--primary ml-auto" style={{ padding: "0.3rem 0.7rem" }} onClick={useReturning} data-testid="hx-admit-use-returning">Use their record</button>
+                <span className="text-sm">{ti("admit.returning", { name: returning.full_name })}</span>
+                <button type="button" className="hx-btn hx-btn--primary ml-auto" style={{ padding: "0.3rem 0.7rem" }} onClick={useReturning} data-testid="hx-admit-use-returning">{t("admit.useRecord")}</button>
               </div>
             </div>
           )}
           {f.existing_patient_id && (
-            <div className="hx-chip hx-chip--ok mb-4" data-testid="hx-admit-isreturning"><RefreshCw className="h-3 w-3" /> Re-admitting an existing patient · identity locked
-              <button type="button" className="underline ml-2" style={{ color: "var(--hx-accent)" }} onClick={clearReturning}>new patient instead</button>
+            <div className="hx-chip hx-chip--ok mb-4" data-testid="hx-admit-isreturning"><RefreshCw className="h-3 w-3" /> {t("admit.readmitting")}
+              <button type="button" className="underline ml-2" style={{ color: "var(--hx-accent)" }} onClick={clearReturning}>{t("admit.newInstead")}</button>
             </div>
           )}
 
           {/* Identity */}
-          <Section icon={IdCard} title="Identity">
+          <Section icon={IdCard} title={t("admit.secIdentity")}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="sm:col-span-2"><L>Full name *</L>
-                <input className="hx-input" value={f.full_name} disabled={!!f.existing_patient_id} onChange={(e) => set({ full_name: e.target.value })} placeholder="e.g. Rahim Uddin" data-testid="hx-admit-name" /></div>
-              <div><L>Phone *</L>
-                <input className="hx-input" value={f.phone} onChange={(e) => set({ phone: e.target.value })} placeholder="+8801XXXXXXXXX" data-testid="hx-admit-phone" /></div>
-              <div><L>Email</L>
-                <input className="hx-input" value={f.email} onChange={(e) => set({ email: e.target.value })} placeholder="optional" /></div>
-              <div><L>Date of birth</L>
+              <div className="sm:col-span-2"><L>{t("admit.fullName")} *</L>
+                <input className="hx-input" value={f.full_name} disabled={!!f.existing_patient_id} onChange={(e) => set({ full_name: e.target.value })} placeholder={t("admit.phName")} data-testid="hx-admit-name" /></div>
+              <div><L>{t("admit.phone")} *</L>
+                <input className="hx-input" value={f.phone} onChange={(e) => set({ phone: e.target.value })} placeholder={t("admit.phPhone")} data-testid="hx-admit-phone" /></div>
+              <div><L>{t("admit.email")}</L>
+                <input className="hx-input" value={f.email} onChange={(e) => set({ email: e.target.value })} placeholder={t("admit.optional")} /></div>
+              <div><L>{t("admit.dob")}</L>
                 <input type="date" className="hx-input" value={f.date_of_birth} disabled={!!f.existing_patient_id} onChange={(e) => set({ date_of_birth: e.target.value })} data-testid="hx-admit-dob" /></div>
-              <div><L>Sex</L>
+              <div><L>{t("admit.sex")}</L>
                 <select className="hx-select" value={f.gender} onChange={(e) => set({ gender: e.target.value })} data-testid="hx-admit-gender">
-                  <option value="male">Male</option><option value="female">Female</option><option value="other">Other</option></select></div>
-              <div><L>ID document</L>
+                  <option value="male">{t("admit.male")}</option><option value="female">{t("admit.female")}</option><option value="other">{t("admit.other")}</option></select></div>
+              <div><L>{t("admit.idDoc")}</L>
                 <select className="hx-select" value={f.id_doc_type} onChange={(e) => set({ id_doc_type: e.target.value })} data-testid="hx-admit-idtype">
-                  <option value="national_id">National ID (NID)</option><option value="passport">Passport</option>
-                  <option value="birth_certificate">Birth certificate</option><option value="other">Other</option></select></div>
-              <div><L>ID number</L>
-                <input className="hx-input" value={f.id_doc_number} onChange={(e) => set({ id_doc_number: e.target.value })} placeholder="any card / passport no." data-testid="hx-admit-idnum" /></div>
+                  <option value="national_id">{t("admit.nid")}</option><option value="passport">{t("admit.passport")}</option>
+                  <option value="birth_certificate">{t("admit.birthCert")}</option><option value="other">{t("admit.other")}</option></select></div>
+              <div><L>{t("admit.idNumber")}</L>
+                <input className="hx-input" value={f.id_doc_number} onChange={(e) => set({ id_doc_number: e.target.value })} placeholder={t("admit.phIdNum")} data-testid="hx-admit-idnum" /></div>
             </div>
           </Section>
 
           {/* Admission */}
-          <Section icon={Stethoscope} title="Admission">
+          <Section icon={Stethoscope} title={t("admit.secAdmission")}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div><L>Admission type</L>
+              <div><L>{t("admit.admissionType")}</L>
                 <select className="hx-select" value={f.admission_type} onChange={(e) => set({ admission_type: e.target.value })} data-testid="hx-admit-type">
-                  <option value="opd">OPD (outpatient)</option><option value="emergency">Emergency</option>
-                  <option value="inpatient">Inpatient</option><option value="daycare">Day-care</option></select></div>
-              <div><L>Ward / bed</L>
-                <input className="hx-input" value={f.ward} onChange={(e) => set({ ward: e.target.value })} placeholder="e.g. CCU-3" /></div>
-              <div className="sm:col-span-2"><L>Admitting complaint *</L>
-                <textarea className="hx-input" rows={2} value={f.admitting_complaint} onChange={(e) => set({ admitting_complaint: e.target.value })} placeholder="e.g. chest pain on exertion, breathlessness" data-testid="hx-admit-complaint" /></div>
-              <div><L>Department</L>
+                  <option value="opd">{t("admit.opd")}</option><option value="emergency">{t("admit.emergency")}</option>
+                  <option value="inpatient">{t("admit.inpatient")}</option><option value="daycare">{t("admit.daycare")}</option></select></div>
+              <div><L>{t("admit.ward")}</L>
+                <input className="hx-input" value={f.ward} onChange={(e) => set({ ward: e.target.value })} placeholder={t("admit.phWard")} /></div>
+              <div className="sm:col-span-2"><L>{t("admit.complaint")} *</L>
+                <textarea className="hx-input" rows={2} value={f.admitting_complaint} onChange={(e) => set({ admitting_complaint: e.target.value })} placeholder={t("admit.phComplaint")} data-testid="hx-admit-complaint" /></div>
+              <div><L>{t("admit.department")}</L>
                 <select className="hx-select" value={f.department_id} onChange={(e) => set({ department_id: e.target.value })} data-testid="hx-admit-dept">
-                  <option value="">— select —</option>
+                  <option value="">{t("admit.select")}</option>
                   {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
-              <div><L>Attending clinician</L>
+              <div><L>{t("admit.attending")}</L>
                 <select className="hx-select" value={f.attending_staff_id} onChange={(e) => set({ attending_staff_id: e.target.value })} data-testid="hx-admit-attending">
-                  <option value="">— select —</option>
+                  <option value="">{t("admit.select")}</option>
                   {doctors.map((d) => <option key={d.id} value={d.id}>{d.name}{d.job_title ? ` · ${d.job_title}` : ""}</option>)}</select></div>
             </div>
           </Section>
 
           {/* Insurance + Next of kin */}
-          <Section icon={ShieldCheck} title="Insurance & next of kin">
+          <Section icon={ShieldCheck} title={t("admit.secInsurance")}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div><L>Payer</L>
+              <div><L>{t("admit.payer")}</L>
                 <select className="hx-select" value={f.insurance_status} onChange={(e) => set({ insurance_status: e.target.value })} data-testid="hx-admit-payer">
-                  <option value="self_pay">Self-pay</option><option value="insured">Insured</option><option value="corporate">Corporate</option></select></div>
+                  <option value="self_pay">{t("admit.selfPay")}</option><option value="insured">{t("admit.insured")}</option><option value="corporate">{t("admit.corporate")}</option></select></div>
               {insured ? (<>
-                <div><L>Insurer</L><input className="hx-input" value={f.insurance_provider} onChange={(e) => set({ insurance_provider: e.target.value })} placeholder="e.g. MetLife BD" /></div>
-                <div><L>Policy / member no.</L><input className="hx-input" value={f.insurance_number} onChange={(e) => set({ insurance_number: e.target.value })} /></div>
+                <div><L>{t("admit.insurer")}</L><input className="hx-input" value={f.insurance_provider} onChange={(e) => set({ insurance_provider: e.target.value })} placeholder={t("admit.phInsurer")} /></div>
+                <div><L>{t("admit.policyNo")}</L><input className="hx-input" value={f.insurance_number} onChange={(e) => set({ insurance_number: e.target.value })} /></div>
               </>) : <div className="hidden sm:block" />}
-              <div><L>Next-of-kin name</L><input className="hx-input" value={f.next_of_kin_name} onChange={(e) => set({ next_of_kin_name: e.target.value })} /></div>
-              <div><L>Next-of-kin phone</L><input className="hx-input" value={f.next_of_kin_phone} onChange={(e) => set({ next_of_kin_phone: e.target.value })} placeholder="+8801XXXXXXXXX" /></div>
-              <div><L>Relationship</L>
+              <div><L>{t("admit.nokName")}</L><input className="hx-input" value={f.next_of_kin_name} onChange={(e) => set({ next_of_kin_name: e.target.value })} /></div>
+              <div><L>{t("admit.nokPhone")}</L><input className="hx-input" value={f.next_of_kin_phone} onChange={(e) => set({ next_of_kin_phone: e.target.value })} placeholder={t("admit.phPhone")} /></div>
+              <div><L>{t("admit.relationship")}</L>
                 <select className="hx-select" value={f.next_of_kin_relationship} onChange={(e) => set({ next_of_kin_relationship: e.target.value })}>
-                  <option value="">— select —</option>{["Spouse", "Parent", "Sibling", "Child", "Guardian", "Friend", "Other"].map((r) => <option key={r} value={r}>{r}</option>)}</select></div>
+                  <option value="">{t("admit.select")}</option>{["Spouse", "Parent", "Sibling", "Child", "Guardian", "Friend", "Other"].map((r) => <option key={r} value={r}>{t(`rel.${r}`, r)}</option>)}</select></div>
             </div>
           </Section>
 
           {/* Payment */}
-          <Section icon={CreditCard} title="Payment collection">
+          <Section icon={CreditCard} title={t("admit.secPayment")}>
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-              <div><L>Amount</L>
+              <div><L>{t("admit.amount")}</L>
                 <div className="flex items-center gap-1.5">
                   <span className="hx-faint text-sm">{f.payment_currency}</span>
                   <input type="number" className="hx-input" value={f.payment_amount as any ?? ""} onChange={(e) => set({ payment_amount: e.target.value === "" ? undefined : Number(e.target.value) })} placeholder="0" data-testid="hx-admit-amount" /></div></div>
-              <div><L>Method</L>
+              <div><L>{t("admit.method")}</L>
                 <select className="hx-select" value={f.payment_method} onChange={(e) => set({ payment_method: e.target.value })} data-testid="hx-admit-paymethod">
-                  <option value="cash">Cash</option><option value="card">Card</option><option value="bank_transfer">Bank transfer</option>
-                  <option value="insurance">Insurance</option><option value="waived">Waived</option></select></div>
-              <div><L>Status</L>
+                  <option value="cash">{t("method.cash")}</option><option value="card">{t("method.card")}</option><option value="bank_transfer">{t("method.bank_transfer")}</option>
+                  <option value="insurance">{t("method.insurance")}</option><option value="waived">{t("method.waived")}</option></select></div>
+              <div><L>{t("admit.statusLabel")}</L>
                 <select className="hx-select" value={f.payment_status} onChange={(e) => set({ payment_status: e.target.value })} data-testid="hx-admit-paystatus">
-                  <option value="pending">Pending</option><option value="paid">Paid</option><option value="partial">Partial</option><option value="waived">Waived</option></select></div>
-              <div><L>Reference</L><input className="hx-input" value={f.payment_reference} onChange={(e) => set({ payment_reference: e.target.value })} placeholder="receipt #" /></div>
+                  <option value="pending">{t("pstatus.pending")}</option><option value="paid">{t("pstatus.paid")}</option><option value="partial">{t("pstatus.partial")}</option><option value="waived">{t("pstatus.waived")}</option></select></div>
+              <div><L>{t("admit.reference")}</L><input className="hx-input" value={f.payment_reference} onChange={(e) => set({ payment_reference: e.target.value })} placeholder={t("admit.receiptNo")} /></div>
             </div>
           </Section>
 
           {/* footer */}
           <div className="flex items-center justify-end gap-2 mt-5">
-            <button type="button" className="hx-btn hx-btn--ghost" onClick={() => onOpenChange(false)}>Cancel</button>
+            <button type="button" className="hx-btn hx-btn--ghost" onClick={() => onOpenChange(false)}>{t("common.cancel")}</button>
             <button type="button" className="hx-btn hx-btn--primary" onClick={submit} disabled={admit.isPending} data-testid="hx-admit-submit">
-              {admit.isPending ? <><Loader2 className="h-4 w-4 animate-spin" /> Admitting…</> : <><HeartPulse className="h-4 w-4" /> Admit patient</>}
+              {admit.isPending ? <><Loader2 className="h-4 w-4 animate-spin" /> {t("admit.admitting")}</> : <><HeartPulse className="h-4 w-4" /> {t("admit.submit")}</>}
             </button>
           </div>
         </div>

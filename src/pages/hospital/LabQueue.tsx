@@ -1,6 +1,8 @@
 import { FlaskConical } from "lucide-react";
 import OrderQueueView from "./OrderQueueView";
+import { useHospitalT } from "./i18n";
 
 export default function LabQueue() {
-  return <OrderQueueView type="lab" title="Laboratory" eyebrow="Hospital · Laboratory" icon={FlaskConical} actionLabel="Mark resulted" />;
+  const { t } = useHospitalT();
+  return <OrderQueueView type="lab" title={t("page.labq.title")} eyebrow={t("page.lab.eyebrow")} icon={FlaskConical} actionLabel={t("page.lab.action")} />;
 }

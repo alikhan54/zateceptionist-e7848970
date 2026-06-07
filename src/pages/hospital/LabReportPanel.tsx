@@ -9,6 +9,7 @@ import {
   type HospitalLabReport, type LabFinding,
 } from "@/hooks/useHospitalLabReports";
 import { EcgLine } from "./hospitalShared";
+import { useHospitalT } from "./i18n";
 
 interface Props {
   patientId?: string;
@@ -18,6 +19,7 @@ interface Props {
 
 export function LabReportPanel({ patientId, patientName, labOrders = [] }: Props) {
   const { toast } = useToast();
+  const { t, ti } = useHospitalT();
   const { reports, upload, signedUrl, refetch } = useHospitalLabReports(patientId);
   const [selectedId, setSelectedId] = useState<string>("");
   const [orderId, setOrderId] = useState<string>("");
@@ -34,14 +36,14 @@ export function LabReportPanel({ patientId, patientName, labOrders = [] }: Props
   useEffect(() => { setTakeaway(""); setBriefErr(""); }, [selectedId]);
 
   async function doUpload(file: File) {
-    if (!/\.pdf$/i.test(file.name)) { toast({ title: "PDF only", description: "Upload a lab-report PDF.", variant: "destructive" }); return; }
+    if (!/\.pdf$/i.test(file.name)) { toast({ title: t("lab.pdfOnly"), description: t("lab.pdfOnlyDesc"), variant: "destructive" }); return; }
     try {
       const row = await upload.mutateAsync({ file, orderId: orderId || undefined, patientId });
       setSelectedId(row.id);
-      toast({ title: "Report uploaded", description: file.name });
+      toast({ title: t("lab.uploaded"), description: file.name });
       await runInspect(row.id);                 // auto-inspect a freshly uploaded report
     } catch (e: any) {
-      toast({ title: "Upload failed", description: e?.message || "Try again.", variant: "destructive" });
+      toast({ title: t("lab.uploadFail"), description: e?.message || t("common.tryAgain"), variant: "destructive" });
     }
   }
 
@@ -52,14 +54,14 @@ export function LabReportPanel({ patientId, patientName, labOrders = [] }: Props
       setTakeaway(r.takeaway);
       await refetch();                            // pull the structured findings the tool just wrote
     } catch (e: any) {
-      setBriefErr(e?.message || "MEDICA is unavailable right now.");
+      setBriefErr(e?.message || t("medica.down"));
     } finally { setInspecting(false); }
   }
 
   async function download(rep: HospitalLabReport) {
     const url = await signedUrl(rep.storage_path);
     if (url) window.open(url, "_blank", "noopener");
-    else toast({ title: "Could not generate download link", variant: "destructive" });
+    else toast({ title: t("lab.dlFail"), variant: "destructive" });
   }
 
   return (
@@ -67,10 +69,10 @@ export function LabReportPanel({ patientId, patientName, labOrders = [] }: Props
       <div className="hx-panel-h">
         <FlaskConical className="h-5 w-5" style={{ color: "var(--hx-accent)" }} />
         <div>
-          <div className="hx-eyebrow">Hospital · Laboratory</div>
-          <span className="font-semibold text-base">Document Intelligence — MEDICA reads the report</span>
+          <div className="hx-eyebrow">{t("lab.eyebrow")}</div>
+          <span className="font-semibold text-base">{t("lab.title")}</span>
         </div>
-        <span className="hx-chip hx-chip--accent ml-auto"><ShieldCheck className="h-3 w-3" /> private · clinic-phi</span>
+        <span className="hx-chip hx-chip--accent ml-auto"><ShieldCheck className="h-3 w-3" /> {t("lab.private")}</span>
       </div>
       <div className="hx-panel-b">
         <EcgLine className="mb-4" />
@@ -79,9 +81,9 @@ export function LabReportPanel({ patientId, patientName, labOrders = [] }: Props
           <div className="lg:col-span-4 space-y-3">
             {labOrders.length > 0 && (
               <div>
-                <label className="hx-label">Attach to lab order</label>
+                <label className="hx-label">{t("lab.attach")}</label>
                 <select className="hx-select" value={orderId} onChange={(e) => setOrderId(e.target.value)} data-testid="hx-lab-order">
-                  <option value="">(none)</option>
+                  <option value="">{t("lab.none")}</option>
                   {labOrders.map((o) => <option key={o.id} value={o.id}>{o.details?.item || o.id.slice(0, 8)}</option>)}
                 </select>
               </div>
@@ -96,13 +98,13 @@ export function LabReportPanel({ patientId, patientName, labOrders = [] }: Props
               data-testid="hx-lab-dropzone"
             >
               {upload.isPending
-                ? <><Loader2 className="h-5 w-5 mx-auto animate-spin mb-1" style={{ color: "var(--hx-accent)" }} /><div className="hx-dim text-xs">Uploading…</div></>
-                : <><Upload className="h-5 w-5 mx-auto mb-1" style={{ color: "var(--hx-accent)" }} /><div className="text-sm">Drop a lab-report PDF</div><div className="hx-faint text-xs mt-0.5">or click to choose</div></>}
+                ? <><Loader2 className="h-5 w-5 mx-auto animate-spin mb-1" style={{ color: "var(--hx-accent)" }} /><div className="hx-dim text-xs">{t("lab.uploading")}</div></>
+                : <><Upload className="h-5 w-5 mx-auto mb-1" style={{ color: "var(--hx-accent)" }} /><div className="text-sm">{t("lab.dropPdf")}</div><div className="hx-faint text-xs mt-0.5">{t("lab.orClick")}</div></>}
               <input ref={fileRef} type="file" accept="application/pdf,.pdf" className="hidden"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) doUpload(f); e.currentTarget.value = ""; }} data-testid="hx-lab-file" />
             </div>
             <div className="space-y-2">
-              {reports.length === 0 && <p className="hx-faint text-xs">No reports yet — upload one to begin.</p>}
+              {reports.length === 0 && <p className="hx-faint text-xs">{t("lab.noReports")}</p>}
               {reports.map((r) => {
                 const isSel = r.id === selectedId;
                 const flagged = (r.findings || []).filter((f) => flagStatus(f.flag) !== "normal").length;
@@ -113,9 +115,9 @@ export function LabReportPanel({ patientId, patientName, labOrders = [] }: Props
                     <div className="flex items-center gap-2">
                       <FileText className="h-3.5 w-3.5 hx-faint shrink-0" />
                       <span className="text-sm truncate flex-1">{r.file_name || "report.pdf"}</span>
-                      {r.status === "inspected" ? <span className="hx-chip hx-chip--ok" style={{ padding: "0.05rem 0.4rem" }}>{flagged} flag{flagged !== 1 ? "s" : ""}</span>
-                        : r.status === "failed" ? <span className="hx-chip hx-chip--warn" style={{ padding: "0.05rem 0.4rem" }}>manual</span>
-                        : <span className="hx-chip" style={{ padding: "0.05rem 0.4rem" }}>new</span>}
+                      {r.status === "inspected" ? <span className="hx-chip hx-chip--ok" style={{ padding: "0.05rem 0.4rem" }}>{flagged === 1 ? t("lab.flag1") : ti("lab.flagsN", { n: flagged })}</span>
+                        : r.status === "failed" ? <span className="hx-chip hx-chip--warn" style={{ padding: "0.05rem 0.4rem" }}>{t("lab.manual")}</span>
+                        : <span className="hx-chip" style={{ padding: "0.05rem 0.4rem" }}>{t("lab.new")}</span>}
                     </div>
                   </button>
                 );
@@ -127,7 +129,7 @@ export function LabReportPanel({ patientId, patientName, labOrders = [] }: Props
           <div className="lg:col-span-8">
             {!selected ? (
               <div className="h-full grid place-items-center text-center py-10">
-                <div><Sparkles className="h-7 w-7 mx-auto mb-2" style={{ color: "var(--hx-accent)" }} /><p className="hx-dim">Upload or select a lab report — MEDICA will read it and flag what matters.</p></div>
+                <div><Sparkles className="h-7 w-7 mx-auto mb-2" style={{ color: "var(--hx-accent)" }} /><p className="hx-dim">{t("lab.heroEmpty")}</p></div>
               </div>
             ) : (
               <div className="space-y-4" data-testid="hx-lab-detail">
@@ -137,9 +139,9 @@ export function LabReportPanel({ patientId, patientName, labOrders = [] }: Props
                     {selected.extracted_via && <span className="hx-chip" style={{ padding: "0.05rem 0.45rem" }}>{selected.extracted_via}</span>}
                   </div>
                   <div className="flex items-center gap-2">
-                    <button className="hx-btn hx-btn--ghost" style={{ padding: "0.4rem 0.7rem" }} onClick={() => download(selected)} data-testid="hx-lab-download"><Download className="h-3.5 w-3.5" /> Original</button>
+                    <button className="hx-btn hx-btn--ghost" style={{ padding: "0.4rem 0.7rem" }} onClick={() => download(selected)} data-testid="hx-lab-download"><Download className="h-3.5 w-3.5" /> {t("lab.original")}</button>
                     <button className="hx-btn hx-btn--primary" style={{ padding: "0.4rem 0.85rem" }} onClick={() => runInspect(selected.id)} disabled={inspecting} data-testid="hx-lab-inspect">
-                      {inspecting ? <><Loader2 className="h-4 w-4 animate-spin" /> Analysing…</> : <><Sparkles className="h-4 w-4" /> MEDICA: inspect</>}
+                      {inspecting ? <><Loader2 className="h-4 w-4 animate-spin" /> {t("lab.analysing")}</> : <><Sparkles className="h-4 w-4" /> {t("lab.inspect")}</>}
                     </button>
                   </div>
                 </div>
@@ -147,7 +149,7 @@ export function LabReportPanel({ patientId, patientName, labOrders = [] }: Props
                 {/* analysing */}
                 {inspecting && (
                   <div className="hx-analysing hx-panel" style={{ padding: "1rem" }} data-testid="hx-lab-analysing">
-                    <div className="flex items-center gap-2.5 mb-3"><span className="hx-pulse-dot" /><span className="hx-dim text-sm">MEDICA is reading the report and flagging abnormal values…</span></div>
+                    <div className="flex items-center gap-2.5 mb-3"><span className="hx-pulse-dot" /><span className="hx-dim text-sm">{t("lab.analysingNote")}</span></div>
                     <div className="space-y-2">{[90, 76, 84, 60].map((w, i) => <div key={i} style={{ height: 10, width: `${w}%`, borderRadius: 6, background: "var(--hx-skeleton)" }} />)}</div>
                   </div>
                 )}
@@ -155,27 +157,27 @@ export function LabReportPanel({ patientId, patientName, labOrders = [] }: Props
                 {/* takeaway — the clinical hero */}
                 {!inspecting && takeaway && (
                   <div className="hx-panel hx-panel--accent" style={{ padding: "1rem 1.1rem" }} data-testid="hx-lab-takeaway">
-                    <div className="hx-eyebrow mb-1 flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> MEDICA clinical takeaway</div>
+                    <div className="hx-eyebrow mb-1 flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> {t("lab.takeaway")}</div>
                     <p style={{ fontSize: "1.02rem", lineHeight: 1.5, color: "var(--hx-strong)" }}>{takeaway}</p>
                   </div>
                 )}
                 {!inspecting && briefErr && (
-                  <div className="text-sm" data-testid="hx-lab-error"><span className="hx-chip hx-chip--warn mb-1"><AlertTriangle className="h-3 w-3" /> Briefing unavailable</span><p className="hx-dim">{briefErr}</p></div>
+                  <div className="text-sm" data-testid="hx-lab-error"><span className="hx-chip hx-chip--warn mb-1"><AlertTriangle className="h-3 w-3" /> {t("lab.unavailable")}</span><p className="hx-dim">{briefErr}</p></div>
                 )}
 
                 {/* flagged findings — two-tier colour */}
                 {selected.status === "failed" ? (
                   <div className="hx-panel" style={{ padding: "1rem" }} data-testid="hx-lab-failclosed">
-                    <span className="hx-chip hx-chip--warn"><AlertTriangle className="h-3 w-3" /> Manual entry needed</span>
-                    <p className="hx-dim text-sm mt-2">This report appears scanned (no text layer) and this tenant is restricted to on-box extraction — cloud OCR was not used. Please enter the values manually.</p>
+                    <span className="hx-chip hx-chip--warn"><AlertTriangle className="h-3 w-3" /> {t("lab.manualNeeded")}</span>
+                    <p className="hx-dim text-sm mt-2">{t("lab.manualNote")}</p>
                   </div>
                 ) : (selected.findings && selected.findings.length > 0) ? (
                   <div data-testid="hx-lab-findings">
-                    <div className="hx-eyebrow mb-2">Flagged findings</div>
+                    <div className="hx-eyebrow mb-2">{t("lab.flagged")}</div>
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead><tr className="text-left hx-faint" style={{ fontSize: "0.66rem", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                          <th className="py-1.5">Test</th><th>Value</th><th>Reference</th><th>Flag</th></tr></thead>
+                          <th className="py-1.5">{t("lab.thTest")}</th><th>{t("lab.thValue")}</th><th>{t("lab.thReference")}</th><th>{t("lab.thFlag")}</th></tr></thead>
                         <tbody>
                           {selected.findings.map((f: LabFinding, i: number) => {
                             const st = flagStatus(f.flag);
@@ -194,7 +196,7 @@ export function LabReportPanel({ patientId, patientName, labOrders = [] }: Props
                     </div>
                   </div>
                 ) : !inspecting && (
-                  <p className="hx-dim text-sm">No findings extracted yet — click <strong style={{ color: "var(--hx-strong)" }}>MEDICA: inspect</strong> to read this report.</p>
+                  <p className="hx-dim text-sm">{t("lab.noFindings")}</p>
                 )}
               </div>
             )}

@@ -5,6 +5,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { useTenant } from "@/contexts/TenantContext";
 import { supabase } from "@/integrations/supabase/client";
+import { useHospitalT, HospitalLangToggle } from "./i18n";
 import "./hospital.css";
 
 /**
@@ -14,6 +15,7 @@ import "./hospital.css";
  */
 export function HospitalGate({ children }: { children: React.ReactNode }) {
   const { isHospital, isLoading, tenantConfig } = useTenant();
+  const { t } = useHospitalT();
   // Apply the persisted ECG-animation preference across every hospital page [FIX2].
   useEffect(() => {
     document.documentElement.classList.toggle("hx-ecg-off", localStorage.getItem("hx-ecg-off") === "1");
@@ -27,7 +29,7 @@ export function HospitalGate({ children }: { children: React.ReactNode }) {
       <div className="hx" data-testid="hospital-surface">
         <div className="hx-rise" style={{ padding: "5rem 1rem", textAlign: "center" }}>
           <span className="hx-pulse-dot" style={{ display: "inline-block", marginBottom: 12 }} />
-          <div className="hx-dim">Loading clinical surface…</div>
+          <div className="hx-dim">{t("surface.loading")}</div>
         </div>
       </div>
     );
@@ -36,14 +38,18 @@ export function HospitalGate({ children }: { children: React.ReactNode }) {
   return <div className="hx" data-testid="hospital-surface"><HospitalBack />{children}</div>;
 }
 
-/** A small, consistent "Back" control across the hospital flow [15]. */
+/** A small, consistent "Back" control + the hospital language toggle, on every page [15]. */
 function HospitalBack() {
   const navigate = useNavigate();
+  const { t } = useHospitalT();
   return (
-    <button type="button" onClick={() => navigate(-1)} className="hx-btn hx-btn--ghost"
-      style={{ padding: "0.28rem 0.65rem", marginBottom: "0.85rem" }} data-testid="hx-back">
-      <ArrowLeft className="h-3.5 w-3.5" /> Back
-    </button>
+    <div className="flex items-center justify-between gap-2" style={{ marginBottom: "0.85rem" }}>
+      <button type="button" onClick={() => navigate(-1)} className="hx-btn hx-btn--ghost"
+        style={{ padding: "0.28rem 0.65rem" }} data-testid="hx-back">
+        <ArrowLeft className="h-3.5 w-3.5" /> {t("common.back")}
+      </button>
+      <HospitalLangToggle />
+    </div>
   );
 }
 

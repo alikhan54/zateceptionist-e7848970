@@ -1,6 +1,8 @@
 import { Pill } from "lucide-react";
 import OrderQueueView from "./OrderQueueView";
+import { useHospitalT } from "./i18n";
 
 export default function PharmacyQueue() {
-  return <OrderQueueView type="medication" title="Pharmacy" eyebrow="Hospital · Pharmacy" icon={Pill} actionLabel="Dispense" />;
+  const { t } = useHospitalT();
+  return <OrderQueueView type="medication" title={t("page.pharmacy.title")} eyebrow={t("page.pharmacy.eyebrow")} icon={Pill} actionLabel={t("page.pharmacy.action")} />;
 }

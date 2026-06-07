@@ -18,8 +18,9 @@ import { HospitalAdmitDialog } from "@/components/hospital/HospitalAdmitDialog";
 import { VitalsCaptureDialog } from "@/components/hospital/VitalsCaptureDialog";
 import { useToast } from "@/hooks/use-toast";
 import { HospitalGate, EcgLine, fetchMedicaBrief } from "./hospitalShared";
+import { useHospitalT } from "./i18n";
 
-const PATHWAY = ["Registered", "Triaged", "In Consult", "Orders Placed", "In Treatment", "Results Ready", "Discharged"];
+const PATHWAY_KEYS = ["pathway.registered", "pathway.triaged", "pathway.inConsult", "pathway.ordersPlaced", "pathway.inTreatment", "pathway.resultsReady", "pathway.discharged"];
 
 // Key vitals to surface on the command surface (subset of the clinic floor vitals).
 const KEY_VITALS = ["temperature", "heart_rate", "spo2", "respiratory_rate", "sugar"] as const;
@@ -53,7 +54,8 @@ function renderBrief(text: string) {
 }
 
 function PatientJourneyInner() {
-  const { translate, tenantId } = useTenant();
+  const { tenantId } = useTenant();
+  const { t, ti } = useHospitalT();
   const { toast } = useToast();
   const { patients, isLoading: patientsLoading } = useClinicPatients();
   const { visits } = useClinicVisits();
@@ -139,9 +141,9 @@ function PatientJourneyInner() {
       if (error) throw error;
       qc.invalidateQueries({ queryKey: ["clinic_visits", tenantId] });
       setRemarksDirty(false); setDiagnosisDirty(false);
-      toast({ title: "Saved" });
+      toast({ title: t("remarks.saved") });
     } catch (e: any) {
-      toast({ title: "Could not save", description: e?.message || "Try again.", variant: "destructive" });
+      toast({ title: t("remarks.saveFail"), description: e?.message || t("common.tryAgain"), variant: "destructive" });
     } finally { setSavingRemarks(false); }
   }
 
@@ -152,7 +154,7 @@ function PatientJourneyInner() {
       const r = await fetchMedicaBrief(patient.full_name, patient.id);
       setBrief(r.response); setBriefState("done");
     } catch (e: any) {
-      setBriefErr(e?.message || "MEDICA is unavailable right now."); setBriefState("error");
+      setBriefErr(e?.message || t("medica.down")); setBriefState("error");
     }
   }
 
@@ -167,7 +169,8 @@ function PatientJourneyInner() {
   // Never carry a queued-med list across a patient switch or a type change.
   useEffect(() => { setMeds([]); }, [selectedId, orderType]);
 
-  const routeLabel = (t: HospitalOrderType) => (t === "medication" ? "Pharmacy" : t === "lab" ? "Laboratory" : "Diagnostics");
+  // localized routing-department label for the order toast
+  const routeKey = (ot: HospitalOrderType) => (ot === "medication" ? "queue.pharmacy" : ot === "lab" ? "queue.laboratory" : "queue.diagnostics");
 
   // Queue another medication (as a chip) without leaving the form.
   function addMed() {
@@ -196,12 +199,12 @@ function PatientJourneyInner() {
         });
       }
       toast({
-        title: items.length > 1 ? `${items.length} orders placed` : "Order placed",
-        description: `${ORDER_TYPE_LABEL[orderType]} · ${items.join(", ")} routed to ${routeLabel(orderType)}.`,
+        title: items.length > 1 ? ti("order.placedN", { n: items.length }) : t("order.placed"),
+        description: ti("order.routedDesc", { type: t(`order.${orderType}`), items: items.join(", "), dept: t(routeKey(orderType)) }),
       });
       setOrderDetail(""); setMeds([]);
     } catch (e: any) {
-      toast({ title: "Could not place order", description: e?.message || "Please try again.", variant: "destructive" });
+      toast({ title: t("order.placeFail"), description: e?.message || t("common.tryAgain"), variant: "destructive" });
     }
   }
 
@@ -215,10 +218,10 @@ function PatientJourneyInner() {
     return 0;
   }, [patient, orders, latestVisit]);
 
-  const queues: { type: HospitalOrderType; title: string; icon: any }[] = [
-    { type: "medication", title: "Pharmacy", icon: Pill },
-    { type: "lab", title: "Laboratory", icon: FlaskConical },
-    { type: "imaging", title: "Diagnostics", icon: ScanLine },
+  const queues: { type: HospitalOrderType; titleKey: string; icon: any }[] = [
+    { type: "medication", titleKey: "queue.pharmacy", icon: Pill },
+    { type: "lab", titleKey: "queue.laboratory", icon: FlaskConical },
+    { type: "imaging", titleKey: "queue.diagnostics", icon: ScanLine },
   ];
 
   if (!patient) {
@@ -229,17 +232,17 @@ function PatientJourneyInner() {
       return (
         <div className="max-w-xl mx-auto pt-24 text-center hx-rise" data-testid="hx-journey-loading">
           <span className="hx-pulse-dot" style={{ display: "inline-block", marginBottom: 12 }} />
-          <div className="hx-dim">Loading patient…</div>
+          <div className="hx-dim">{t("journey.loadingPatient")}</div>
         </div>
       );
     }
     return (
       <div className="max-w-xl mx-auto pt-16 text-center hx-rise">
-        <div className="hx-eyebrow mb-3">Hospital · Patient Journey</div>
-        <h1 className="hx-h1 mb-2">No patients admitted yet</h1>
-        <p className="hx-dim mb-6">Admit the first {translate("customer").toLowerCase()} to begin the cardio pathway.</p>
+        <div className="hx-eyebrow mb-3">{t("journey.eyebrow")}</div>
+        <h1 className="hx-h1 mb-2">{t("journey.emptyTitle")}</h1>
+        <p className="hx-dim mb-6">{t("journey.emptySub")}</p>
         <button className="hx-btn hx-btn--primary mx-auto" onClick={() => setAdmitOpen(true)} data-testid="hx-admit-empty">
-          <UserPlus className="h-4 w-4" /> Admit a Patient
+          <UserPlus className="h-4 w-4" /> {t("journey.admitPatient")}
         </button>
         <HospitalAdmitDialog open={admitOpen} onOpenChange={setAdmitOpen} onAdmitted={(r) => setSelectedId(r.patient_id)} />
       </div>
@@ -260,10 +263,10 @@ function PatientJourneyInner() {
                 {initials(patient.full_name)}
               </div>
               <div>
-                <div className="hx-eyebrow">Hospital · Patient Journey</div>
+                <div className="hx-eyebrow">{t("journey.eyebrow")}</div>
                 <div className="hx-h1" data-testid="hx-patient-name">{patient.full_name}</div>
                 <div className="flex flex-wrap items-center gap-2 mt-1 text-sm hx-dim">
-                  <span className="hx-mono" data-testid="hx-journey-mrn">MRN {patient.file_number || String(patient.id).slice(0, 8).toUpperCase()}</span>
+                  <span className="hx-mono" data-testid="hx-journey-mrn">{t("journey.mrn")} {patient.file_number || String(patient.id).slice(0, 8).toUpperCase()}</span>
                   {age != null && <><span className="hx-faint">·</span><span>{age}y</span></>}
                   {patient.gender && <><span className="hx-faint">·</span><span className="capitalize">{patient.gender}</span></>}
                   {patient.phone && <><span className="hx-faint">·</span><span className="hx-mono">{patient.phone}</span></>}
@@ -278,19 +281,19 @@ function PatientJourneyInner() {
               )}
               <EcgToggle />
               <button className="hx-btn hx-btn--ghost" onClick={() => setAdmitOpen(true)} data-testid="hx-admit">
-                <UserPlus className="h-4 w-4" /> Admit
+                <UserPlus className="h-4 w-4" /> {t("journey.admit")}
               </button>
             </div>
           </div>
 
           {/* pathway stepper */}
           <div className="hx-path mt-5">
-            {PATHWAY.map((s, i) => (
+            {PATHWAY_KEYS.map((s, i) => (
               <span key={s} className="flex items-center gap-2">
                 <span className={`hx-path-step ${i < stageIndex ? "done" : i === stageIndex ? "active" : ""}`}>
-                  <span className="dot" /> {s}
+                  <span className="dot" /> {t(s)}
                 </span>
-                {i < PATHWAY.length - 1 && <span className="hx-path-sep">›</span>}
+                {i < PATHWAY_KEYS.length - 1 && <span className="hx-path-sep">›</span>}
               </span>
             ))}
           </div>
@@ -304,24 +307,24 @@ function PatientJourneyInner() {
         <div className="lg:col-span-5 space-y-4">
           {/* journey spine */}
           <div className="hx-panel hx-rise" style={{ animationDelay: "80ms" }}>
-            <div className="hx-panel-h"><Activity className="h-4 w-4" style={{ color: "var(--hx-accent2)" }} /><span className="font-semibold">Care Pathway</span></div>
+            <div className="hx-panel-h"><Activity className="h-4 w-4" style={{ color: "var(--hx-accent2)" }} /><span className="font-semibold">{t("spine.title")}</span></div>
             <div className="hx-panel-b">
               <div className="hx-spine">
-                <SpineNode done={!!patient} active={false} icon={UserPlus} title="Admitted"
-                  sub={patient.created_at ? new Date(patient.created_at).toLocaleDateString() : "Registered"} />
-                <SpineNode done={!!latestVisit?.vitals_completed} active={stageIndex === 1} icon={HeartPulse} title="Nurse · Vitals"
+                <SpineNode done={!!patient} active={false} icon={UserPlus} title={t("spine.admitted")}
+                  sub={patient.created_at ? new Date(patient.created_at).toLocaleDateString() : t("spine.registered")} />
+                <SpineNode done={!!latestVisit?.vitals_completed} active={stageIndex === 1} icon={HeartPulse} title={t("spine.nurseVitals")}
                   sub={latestVisit?.vitals_completed
-                    ? (vitalsSummary.worst === "critical" ? "Critical flag" : vitalsSummary.worst === "warning" ? "Watch flag" : "Within range")
-                    : "Awaiting vitals"} tone={vitalsSummary.worst} />
-                <SpineNode done={briefState === "done"} active={stageIndex === 2} icon={Stethoscope} title="Cardiologist · Consult"
-                  sub={briefState === "done" ? "MEDICA briefing reviewed" : "Pre-visit briefing"} />
-                <SpineNode done={orders.length > 0} active={stageIndex === 3} icon={ClipboardList} title="Orders"
-                  sub={orders.length ? `${orders.length} order${orders.length > 1 ? "s" : ""} placed` : "No orders yet"} />
+                    ? (vitalsSummary.worst === "critical" ? t("spine.criticalFlag") : vitalsSummary.worst === "warning" ? t("spine.watchFlag") : t("spine.withinRange"))
+                    : t("spine.awaitingVitals")} tone={vitalsSummary.worst} />
+                <SpineNode done={briefState === "done"} active={stageIndex === 2} icon={Stethoscope} title={t("spine.consult")}
+                  sub={briefState === "done" ? t("spine.briefReviewed") : t("spine.previsit")} />
+                <SpineNode done={orders.length > 0} active={stageIndex === 3} icon={ClipboardList} title={t("spine.orders")}
+                  sub={orders.length ? ti("spine.ordersPlaced", { n: orders.length }) : t("spine.noOrders")} />
                 <SpineNode done={orders.some((o) => ["resulted", "dispensed", "reviewed"].includes(o.status))} active={stageIndex >= 4}
-                  icon={Pill} title="Pharmacy & Diagnostics"
+                  icon={Pill} title={t("spine.pharmacyDiag")}
                   sub={orders.filter((o) => ["resulted", "dispensed", "reviewed"].includes(o.status)).length
-                    ? `${orders.filter((o) => ["resulted", "dispensed", "reviewed"].includes(o.status)).length} fulfilled`
-                    : "Routing to departments"} />
+                    ? ti("spine.fulfilled", { n: orders.filter((o) => ["resulted", "dispensed", "reviewed"].includes(o.status)).length })
+                    : t("spine.routing")} />
               </div>
             </div>
           </div>
@@ -330,20 +333,20 @@ function PatientJourneyInner() {
           <div className="hx-panel hx-rise" style={{ animationDelay: "160ms" }}>
             <div className="hx-panel-h">
               <HeartPulse className="h-4 w-4" style={{ color: "var(--hx-accent2)" }} />
-              <span className="font-semibold">Vitals</span>
+              <span className="font-semibold">{t("vitals.title")}</span>
               <button className="hx-btn hx-btn--ghost ml-auto" style={{ padding: "0.25rem 0.6rem" }} onClick={() => setVitalsOpen(true)} data-testid="hx-capture-vitals">
-                <HeartPulse className="h-3.5 w-3.5" /> Capture
+                <HeartPulse className="h-3.5 w-3.5" /> {t("vitals.capture")}
               </button>
               <span className="ml-2">
-                {vitalsSummary.worst === "critical" && <span className="hx-chip hx-chip--crit" data-testid="hx-vitals-critical"><AlertTriangle className="h-3 w-3" /> Critical</span>}
-                {vitalsSummary.worst === "warning" && <span className="hx-chip hx-chip--warn" data-testid="hx-vitals-warning"><AlertTriangle className="h-3 w-3" /> Watch</span>}
-                {vitalsSummary.worst === "normal" && <span className="hx-chip hx-chip--ok"><CheckCircle2 className="h-3 w-3" /> Stable</span>}
-                {vitalsSummary.worst === "empty" && <span className="hx-chip">No data</span>}
+                {vitalsSummary.worst === "critical" && <span className="hx-chip hx-chip--crit" data-testid="hx-vitals-critical"><AlertTriangle className="h-3 w-3" /> {t("vitals.critical")}</span>}
+                {vitalsSummary.worst === "warning" && <span className="hx-chip hx-chip--warn" data-testid="hx-vitals-warning"><AlertTriangle className="h-3 w-3" /> {t("vitals.watch")}</span>}
+                {vitalsSummary.worst === "normal" && <span className="hx-chip hx-chip--ok"><CheckCircle2 className="h-3 w-3" /> {t("vitals.stable")}</span>}
+                {vitalsSummary.worst === "empty" && <span className="hx-chip">{t("vitals.noData")}</span>}
               </span>
             </div>
             <div className="hx-panel-b">
               {!latestVisit ? (
-                <p className="hx-dim text-sm">No vitals captured yet — capture vitals from the nurse station to populate the two-tier flags.</p>
+                <p className="hx-dim text-sm">{t("vitals.empty")}</p>
               ) : (
                 <div className="grid grid-cols-3 gap-2.5">
                   {/* BP combined */}
@@ -355,7 +358,7 @@ function PatientJourneyInner() {
                     return (
                       <div key={k} className={`hx-vital hx-vital--${status}`} data-testid={`hx-vital-${k}`} data-status={status}>
                         <div className="v">{val ?? "—"}<span className="text-xs hx-faint ml-0.5">{f.unit}</span></div>
-                        <div className="l">{f.label}</div>
+                        <div className="l">{t(`vital.${k}`, f.label)}</div>
                       </div>
                     );
                   })}
@@ -371,10 +374,10 @@ function PatientJourneyInner() {
           <div className="hx-panel hx-rise" style={{ animationDelay: "100ms" }} data-testid="hx-remarks">
             <div className="hx-panel-h">
               <ClipboardList className="h-4 w-4" style={{ color: "var(--hx-accent2)" }} />
-              <span className="font-semibold">Diagnosis &amp; Remarks</span>
+              <span className="font-semibold">{t("remarks.title")}</span>
               {latestVisit && (
                 <button className="hx-btn hx-btn--primary ml-auto" style={{ padding: "0.35rem 0.8rem" }} onClick={saveRemarks} disabled={savingRemarks || (!remarksDirty && !diagnosisDirty)} data-testid="hx-remarks-save">
-                  {savingRemarks ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</> : <>Save</>}
+                  {savingRemarks ? <><Loader2 className="h-4 w-4 animate-spin" /> {t("common.saving")}</> : <>{t("common.save")}</>}
                 </button>
               )}
             </div>
@@ -382,20 +385,20 @@ function PatientJourneyInner() {
               {latestVisit ? (
                 <div className="space-y-2.5">
                   <div>
-                    <label className="hx-label">Diagnosis</label>
+                    <label className="hx-label">{t("remarks.diagnosis")}</label>
                     <input className="hx-input" value={diagnosis}
                       onChange={(e) => { setDiagnosis(e.target.value); setDiagnosisDirty(true); }}
-                      placeholder="Working / final diagnosis — e.g. Acute coronary syndrome (NSTEMI)" data-testid="hx-diagnosis-text" />
+                      placeholder={t("remarks.diagnosisPh")} data-testid="hx-diagnosis-text" />
                   </div>
                   <div>
-                    <label className="hx-label">Remarks</label>
+                    <label className="hx-label">{t("remarks.remarks")}</label>
                     <textarea className="hx-input" rows={3} value={remarks}
                       onChange={(e) => { setRemarks(e.target.value); setRemarksDirty(true); }}
-                      placeholder="Clinical remarks, assessment & plan, instructions for this encounter…" data-testid="hx-remarks-text" />
+                      placeholder={t("remarks.remarksPh")} data-testid="hx-remarks-text" />
                   </div>
                 </div>
               ) : (
-                <p className="hx-dim text-sm">Open an encounter (capture vitals) to record the diagnosis &amp; remarks for this visit.</p>
+                <p className="hx-dim text-sm">{t("remarks.empty")}</p>
               )}
             </div>
           </div>
@@ -404,18 +407,18 @@ function PatientJourneyInner() {
           <div className="hx-panel hx-panel--accent hx-rise" style={{ animationDelay: "120ms" }}>
             <div className="hx-panel-h">
               <Sparkles className="h-4 w-4" style={{ color: "var(--hx-accent)" }} />
-              <span className="font-semibold">MEDICA — Pre-visit Briefing</span>
+              <span className="font-semibold">{t("medica.title")}</span>
               <button className="hx-btn hx-btn--primary ml-auto" style={{ padding: "0.4rem 0.85rem" }} onClick={askMedica} disabled={briefState === "loading"} data-testid="hx-ask-medica">
-                {briefState === "loading" ? <><Loader2 className="h-4 w-4 animate-spin" /> Analysing…</> : <><Sparkles className="h-4 w-4" /> Anything I should know?</>}
+                {briefState === "loading" ? <><Loader2 className="h-4 w-4 animate-spin" /> {t("medica.analysing")}</> : <><Sparkles className="h-4 w-4" /> {t("medica.ask")}</>}
               </button>
             </div>
             <div className="hx-panel-b">
               {briefState === "idle" && (
-                <p className="hx-dim text-sm">Ask MEDICA for a grounded pre-visit briefing on <strong style={{ color: "var(--hx-strong)" }}>{patient.full_name}</strong> — it reads the live patient record (history, vitals, orders) and flags what matters before the encounter.</p>
+                <p className="hx-dim text-sm">{ti("medica.idle", { name: patient.full_name })}</p>
               )}
               {briefState === "loading" && (
                 <div className="hx-analysing" data-testid="hx-brief-loading">
-                  <div className="flex items-center gap-2.5 mb-3"><span className="hx-pulse-dot" /><span className="hx-dim text-sm">MEDICA is reading the chart and reasoning over the record…</span></div>
+                  <div className="flex items-center gap-2.5 mb-3"><span className="hx-pulse-dot" /><span className="hx-dim text-sm">{t("medica.loading")}</span></div>
                   <div className="space-y-2">
                     {[92, 78, 85, 64].map((w, i) => <div key={i} style={{ height: 10, width: `${w}%`, borderRadius: 6, background: "var(--hx-skeleton)" }} />)}
                   </div>
@@ -424,8 +427,8 @@ function PatientJourneyInner() {
               {briefState === "done" && <div className="hx-brief" data-testid="hx-brief-result">{renderBrief(brief)}</div>}
               {briefState === "error" && (
                 <div className="text-sm" data-testid="hx-brief-error">
-                  <p className="hx-chip hx-chip--warn mb-2"><AlertTriangle className="h-3 w-3" /> Briefing unavailable</p>
-                  <p className="hx-dim">{briefErr} <button className="underline" style={{ color: "var(--hx-accent)" }} onClick={askMedica}>Retry</button></p>
+                  <p className="hx-chip hx-chip--warn mb-2"><AlertTriangle className="h-3 w-3" /> {t("medica.unavailable")}</p>
+                  <p className="hx-dim">{briefErr} <button className="underline" style={{ color: "var(--hx-accent)" }} onClick={askMedica}>{t("medica.retry")}</button></p>
                 </div>
               )}
             </div>
@@ -433,33 +436,33 @@ function PatientJourneyInner() {
 
           {/* order entry */}
           <div className="hx-panel hx-rise" style={{ animationDelay: "200ms" }}>
-            <div className="hx-panel-h"><Plus className="h-4 w-4" style={{ color: "var(--hx-accent2)" }} /><span className="font-semibold">Order Entry</span><span className="hx-faint text-xs ml-auto">tests + medications</span></div>
+            <div className="hx-panel-h"><Plus className="h-4 w-4" style={{ color: "var(--hx-accent2)" }} /><span className="font-semibold">{t("order.title")}</span><span className="hx-faint text-xs ml-auto">{t("order.subtitle")}</span></div>
             <div className="hx-panel-b">
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
                 <div className="sm:col-span-3">
-                  <label className="hx-label">Type</label>
+                  <label className="hx-label">{t("order.type")}</label>
                   <select className="hx-select" value={orderType} onChange={(e) => setOrderType(e.target.value as HospitalOrderType)} data-testid="hx-order-type">
-                    <option value="medication">Medication</option>
-                    <option value="lab">Lab test</option>
-                    <option value="imaging">Imaging</option>
+                    <option value="medication">{t("order.medication")}</option>
+                    <option value="lab">{t("order.lab")}</option>
+                    <option value="imaging">{t("order.imaging")}</option>
                   </select>
                 </div>
                 <div className="sm:col-span-3">
-                  <label className="hx-label">Department</label>
+                  <label className="hx-label">{t("order.department")}</label>
                   <select className="hx-select" value={orderDept} onChange={(e) => setOrderDept(e.target.value)} data-testid="hx-order-dept">
-                    <option value="">Auto-route</option>
+                    <option value="">{t("order.autoRoute")}</option>
                     {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                   </select>
                 </div>
                 <div className="sm:col-span-4">
-                  <label className="hx-label">{orderType === "medication" ? "Drug & dose" : orderType === "lab" ? "Test" : "Study"}</label>
+                  <label className="hx-label">{orderType === "medication" ? t("order.drugDose") : orderType === "lab" ? t("order.test") : t("order.study")}</label>
                   <input className="hx-input" value={orderDetail} onChange={(e) => setOrderDetail(e.target.value)}
-                    placeholder={orderType === "medication" ? "Aspirin 75mg OD" : orderType === "lab" ? "Troponin I, CBC" : "ECG, Chest X-ray"}
+                    placeholder={orderType === "medication" ? t("order.phMed") : orderType === "lab" ? t("order.phLab") : t("order.phImaging")}
                     onKeyDown={(e) => e.key === "Enter" && placeOrder()} data-testid="hx-order-detail" />
                 </div>
                 <div className="sm:col-span-2">
                   <button className="hx-btn hx-btn--primary w-full" onClick={placeOrder} disabled={(orderType === "medication" ? (meds.length === 0 && !orderDetail.trim()) : !orderDetail.trim()) || createOrder.isPending} data-testid="hx-place-order">
-                    {createOrder.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="h-4 w-4" /> Place{orderType === "medication" && (meds.length + (orderDetail.trim() ? 1 : 0)) > 1 ? ` ${meds.length + (orderDetail.trim() ? 1 : 0)}` : ""}</>}
+                    {createOrder.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="h-4 w-4" /> {t("order.place")}{orderType === "medication" && (meds.length + (orderDetail.trim() ? 1 : 0)) > 1 ? ` ${meds.length + (orderDetail.trim() ? 1 : 0)}` : ""}</>}
                   </button>
                 </div>
               </div>
@@ -468,7 +471,7 @@ function PatientJourneyInner() {
               {orderType === "medication" && (
                 <div className="mt-2.5 flex items-center gap-2 flex-wrap" data-testid="hx-med-queue">
                   <button type="button" className="hx-btn hx-btn--ghost" style={{ padding: "0.3rem 0.7rem" }} onClick={addMed} disabled={!orderDetail.trim()} data-testid="hx-order-add-med">
-                    <Plus className="h-3.5 w-3.5" /> Add another med
+                    <Plus className="h-3.5 w-3.5" /> {t("order.addMed")}
                   </button>
                   {meds.map((m, i) => (
                     <span key={`${m}-${i}`} className="hx-chip hx-chip--accent" style={{ padding: "0.15rem 0.5rem" }} data-testid="hx-med-chip">
@@ -476,7 +479,7 @@ function PatientJourneyInner() {
                       <button type="button" className="ml-1" style={{ opacity: 0.7 }} onClick={() => setMeds((prev) => prev.filter((_, j) => j !== i))} aria-label={`remove ${m}`}>×</button>
                     </span>
                   ))}
-                  {meds.length > 0 && <span className="hx-faint text-xs">{meds.length} queued — “Place” creates one order each, all routed to Pharmacy</span>}
+                  {meds.length > 0 && <span className="hx-faint text-xs">{ti("order.queuedHint", { n: meds.length })}</span>}
                 </div>
               )}
             </div>
@@ -491,12 +494,12 @@ function PatientJourneyInner() {
                 <div key={q.type} className="hx-panel hx-rise" style={{ animationDelay: `${240 + qi * 60}ms` }} data-testid={`hx-queue-${q.type}`}>
                   <div className="hx-panel-h" style={{ padding: "0.7rem 0.85rem" }}>
                     <Icon className="h-4 w-4" style={{ color: "var(--hx-accent)" }} />
-                    <Link to={q.type === "medication" ? "/hospital/pharmacy" : q.type === "lab" ? "/hospital/lab" : "/hospital/diagnostics"} className="font-semibold text-sm hover:underline" style={{ color: "var(--hx-text)" }}>{q.title}</Link>
+                    <Link to={q.type === "medication" ? "/hospital/pharmacy" : q.type === "lab" ? "/hospital/lab" : "/hospital/diagnostics"} className="font-semibold text-sm hover:underline" style={{ color: "var(--hx-text)" }}>{t(q.titleKey)}</Link>
                     <span className="hx-chip hx-chip--accent ml-auto" style={{ padding: "0.1rem 0.45rem" }}>{items.length}</span>
                   </div>
                   <div className="hx-panel-b" style={{ padding: "0.7rem", minHeight: 96 }}>
                     {items.length === 0 ? (
-                      <p className="hx-faint text-xs">No {q.title.toLowerCase()} orders.</p>
+                      <p className="hx-faint text-xs">{ti("queue.noOrdersOf", { q: t(q.titleKey) })}</p>
                     ) : (
                       <ul className="space-y-2">
                         {items.slice(0, 5).map((o) => {
@@ -504,13 +507,13 @@ function PatientJourneyInner() {
                           return (
                             <li key={o.id} className="flex items-center gap-2" data-testid="hx-queue-item">
                               <span className={`hx-chip ${fulfilled ? "hx-chip--ok" : "hx-chip--warn"}`} style={{ padding: "0.05rem 0.4rem" }}>
-                                {fulfilled ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}{STATUS_LABEL[o.status]}
+                                {fulfilled ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}{t(`ostatus.${o.status}`, STATUS_LABEL[o.status])}
                               </span>
                               <span className="text-xs truncate flex-1">{(o.details as any)?.item || "—"}</span>
                               {!fulfilled && NEXT_STATUS[q.type] && (
                                 <button className="text-xs underline hx-faint hover:text-white"
                                   onClick={() => updateOrderStatus.mutate({ id: o.id, status: NEXT_STATUS[q.type]! })}>
-                                  {q.type === "medication" ? "dispense" : "result"}
+                                  {q.type === "medication" ? t("order.dispense") : t("order.result")}
                                 </button>
                               )}
                             </li>
@@ -547,19 +550,21 @@ function SpineNode({ done, active, icon: Icon, title, sub, tone }:
 }
 
 function BpCell({ sys, dia, thresholds }: { sys: any; dia: any; thresholds: any }) {
+  const { t } = useHospitalT();
   const s1 = classifyVital("blood_pressure_systolic", sys, thresholds);
   const s2 = classifyVital("blood_pressure_diastolic", dia, thresholds);
   const worst: VitalStatus = [s1, s2].includes("critical") ? "critical" : [s1, s2].includes("warning") ? "warning" : (sys || dia) ? "normal" : "empty";
   return (
     <div className={`hx-vital hx-vital--${worst}`} data-testid="hx-vital-bp" data-status={worst}>
       <div className="v">{sys ?? "—"}/{dia ?? "—"}<span className="text-xs hx-faint ml-0.5">mmHg</span></div>
-      <div className="l">Blood Pressure</div>
+      <div className="l">{t("vital.blood_pressure")}</div>
     </div>
   );
 }
 
 /** ECG heartbeat-animation on/off toggle (persisted; default ON) [FIX2]. */
 function EcgToggle() {
+  const { t } = useHospitalT();
   const [on, setOn] = useState(() => (typeof localStorage !== "undefined" ? localStorage.getItem("hx-ecg-off") !== "1" : true));
   const toggle = () => {
     const next = !on;
@@ -569,7 +574,7 @@ function EcgToggle() {
   };
   return (
     <button type="button" className="hx-btn hx-btn--ghost" style={{ padding: "0.28rem 0.6rem" }} onClick={toggle} data-testid="hx-ecg-toggle" title="Toggle the ECG heartbeat animation">
-      <Activity className="h-3.5 w-3.5" style={{ opacity: on ? 1 : 0.45 }} /> ECG {on ? "On" : "Off"}
+      <Activity className="h-3.5 w-3.5" style={{ opacity: on ? 1 : 0.45 }} /> {on ? t("ecg.on") : t("ecg.off")}
     </button>
   );
 }

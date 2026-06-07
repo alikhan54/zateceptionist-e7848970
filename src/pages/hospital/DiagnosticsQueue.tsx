@@ -1,6 +1,8 @@
 import { ScanLine } from "lucide-react";
 import OrderQueueView from "./OrderQueueView";
+import { useHospitalT } from "./i18n";
 
 export default function DiagnosticsQueue() {
-  return <OrderQueueView type="imaging" title="Diagnostics & Imaging" eyebrow="Hospital · Radiology" icon={ScanLine} actionLabel="Mark resulted" />;
+  const { t } = useHospitalT();
+  return <OrderQueueView type="imaging" title={t("page.diagnostics.title")} eyebrow={t("page.diagnostics.eyebrow")} icon={ScanLine} actionLabel={t("page.diagnostics.action")} />;
 }

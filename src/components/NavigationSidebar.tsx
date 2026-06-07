@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
+import { useHospitalT } from "@/pages/hospital/i18n";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { BrandedLogo } from "@/components/branding/BrandedLogo";
 import {
@@ -160,6 +161,8 @@ export function NavigationSidebar() {
   const navigate = useNavigate();
   const { signOut, isAdmin, isMasterAdmin, authUser, hasPermission } = useAuth();
   const { tenantConfig, translate, tenantId, setTenantId, isRestaurant, isBankingCollections, isHealthcareClinic, isHospital, isConstructionEstimation, isRealEstate, isYouTubeAgency, isLaboratoryInstruments, isRoofing, isAccountingPracticeUK, isJewellery } = useTenant();
+  // Hospital-scoped i18n — only affects the (isHospital-gated) hospital nav section below.
+  const { t: hospT } = useHospitalT();
   const { isEnabled } = useFeatureFlags();
   const { toast } = useToast();
 
@@ -611,15 +614,15 @@ export function NavigationSidebar() {
   };
 
   const hospitalSection: NavSection = {
-    label: "Hospital",
+    label: hospT("nav.section"),
     collapsible: true,
     items: [
-      { title: "Patient Journey", url: "/hospital/journey", icon: Activity },
-      { title: "Admissions", url: "/hospital/patients", icon: Stethoscope },
-      { title: "Nurse Station", url: "/hospital/nurse", icon: UserPlus },
-      { title: "Pharmacy", url: "/hospital/pharmacy", icon: Pill },
-      { title: "Laboratory", url: "/hospital/lab", icon: Syringe },
-      { title: "Diagnostics", url: "/hospital/diagnostics", icon: FileText },
+      { title: hospT("nav.journey"), url: "/hospital/journey", icon: Activity },
+      { title: hospT("nav.admissions"), url: "/hospital/patients", icon: Stethoscope },
+      { title: hospT("nav.nurse"), url: "/hospital/nurse", icon: UserPlus },
+      { title: hospT("nav.pharmacy"), url: "/hospital/pharmacy", icon: Pill },
+      { title: hospT("nav.laboratory"), url: "/hospital/lab", icon: Syringe },
+      { title: hospT("nav.diagnostics"), url: "/hospital/diagnostics", icon: FileText },
     ],
   };
 

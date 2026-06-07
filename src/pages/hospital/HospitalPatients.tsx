@@ -4,6 +4,7 @@ import { UserPlus, ArrowRight, Search, Stethoscope } from "lucide-react";
 import { useClinicPatients } from "@/hooks/useClinicPatients";
 import { HospitalAdmitDialog } from "@/components/hospital/HospitalAdmitDialog";
 import { HospitalGate } from "./hospitalShared";
+import { useHospitalT } from "./i18n";
 
 function ageFrom(dob?: string) {
   if (!dob) return null;
@@ -13,6 +14,7 @@ function ageFrom(dob?: string) {
 
 function HospitalPatientsInner() {
   const navigate = useNavigate();
+  const { t, ti } = useHospitalT();
   const [search, setSearch] = useState("");
   const [admitOpen, setAdmitOpen] = useState(false);
   const { patients, isLoading } = useClinicPatients(search);
@@ -22,11 +24,11 @@ function HospitalPatientsInner() {
       <div className="hx-panel hx-panel--accent hx-rise">
         <div className="hx-panel-b flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="hx-eyebrow">Hospital · Admissions</div>
-            <h1 className="hx-h1">Admitted Patients</h1>
+            <div className="hx-eyebrow">{t("patients.eyebrow")}</div>
+            <h1 className="hx-h1">{t("patients.title")}</h1>
           </div>
           <button className="hx-btn hx-btn--primary" onClick={() => setAdmitOpen(true)} data-testid="hx-admit-patient">
-            <UserPlus className="h-4 w-4" /> Admit Patient
+            <UserPlus className="h-4 w-4" /> {t("patients.admit")}
           </button>
         </div>
       </div>
@@ -35,20 +37,20 @@ function HospitalPatientsInner() {
         <div className="hx-panel-h">
           <Search className="h-4 w-4 hx-dim" />
           <input className="hx-input" style={{ border: "none", background: "transparent", padding: 0 }}
-            placeholder="Search patients…" value={search} onChange={(e) => setSearch(e.target.value)} data-testid="hx-patient-search" />
-          <span className="ml-auto hx-chip">{patients.length} admitted</span>
+            placeholder={t("patients.searchPh")} value={search} onChange={(e) => setSearch(e.target.value)} data-testid="hx-patient-search" />
+          <span className="ml-auto hx-chip">{ti("patients.count", { n: patients.length })}</span>
         </div>
         <div className="hx-panel-b">
           {isLoading ? (
-            <p className="hx-dim text-sm">Loading…</p>
+            <p className="hx-dim text-sm">{t("common.loading")}</p>
           ) : patients.length === 0 ? (
-            <p className="hx-dim text-sm">No patients yet — admit the first patient to start the cardio pathway.</p>
+            <p className="hx-dim text-sm">{t("patients.empty")}</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left hx-faint" style={{ fontSize: "0.68rem", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                    <th className="py-2">Patient</th><th>MRN</th><th>Age / Sex</th><th>Phone</th><th></th>
+                    <th className="py-2">{t("patients.thPatient")}</th><th>{t("patients.thMrn")}</th><th>{t("patients.thAgeSex")}</th><th>{t("patients.thPhone")}</th><th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -61,7 +63,7 @@ function HospitalPatientsInner() {
                       <td className="text-right">
                         <button className="hx-btn hx-btn--ghost" style={{ padding: "0.35rem 0.7rem" }}
                           onClick={() => navigate(`/hospital/journey?patient=${p.id}`)} data-testid="hx-open-journey">
-                          <Stethoscope className="h-3.5 w-3.5" /> Journey <ArrowRight className="h-3.5 w-3.5" />
+                          <Stethoscope className="h-3.5 w-3.5" /> {t("patients.journey")} <ArrowRight className="h-3.5 w-3.5" />
                         </button>
                       </td>
                     </tr>
