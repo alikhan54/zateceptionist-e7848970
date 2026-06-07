@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Activity, HeartPulse, Stethoscope, FlaskConical, Pill, ScanLine, Sparkles, Plus,
   ClipboardList, CheckCircle2, Clock, Loader2, UserPlus, AlertTriangle,
@@ -51,24 +53,49 @@ function renderBrief(text: string) {
 }
 
 function PatientJourneyInner() {
-  const { translate } = useTenant();
+  const { translate, tenantId } = useTenant();
   const { toast } = useToast();
-  const { patients } = useClinicPatients();
+  const { patients, isLoading: patientsLoading } = useClinicPatients();
   const { visits } = useClinicVisits();
   const { data: departments = [] } = useHospitalDepartments();
 
   const [searchParams] = useSearchParams();
-  const [selectedId, setSelectedId] = useState<string>("");
+  const urlPatientId = searchParams.get("patient");
+  // Honor the ?patient= deep-link as the source of truth from the FIRST render — even before the
+  // patients list has loaded the (possibly JUST-created) patient — so we NEVER fall back to patients[0].
+  const [selectedId, setSelectedId] = useState<string>(urlPatientId || "");
+  const appliedUrlRef = useRef<string | null>(urlPatientId); // last URL id applied; lets the dropdown override without the URL re-forcing
   const [admitOpen, setAdmitOpen] = useState(false);
   const [vitalsOpen, setVitalsOpen] = useState(false);
 
   useEffect(() => {
-    if (selectedId || !patients.length) return;
-    const fromUrl = searchParams.get("patient");
-    setSelectedId(fromUrl && patients.some((p: any) => p.id === fromUrl) ? fromUrl : patients[0].id);
-  }, [patients, selectedId, searchParams]);
+    // A NEW ?patient= (deep-link / in-app nav) wins. This does NOT fire on a manual dropdown switch
+    // (which leaves the URL unchanged), so the patient-switcher is never clobbered.
+    if (urlPatientId && urlPatientId !== appliedUrlRef.current) {
+      appliedUrlRef.current = urlPatientId;
+      setSelectedId(urlPatientId);
+    } else if (!urlPatientId && !selectedId && patients.length) {
+      setSelectedId(patients[0].id); // no deep-link → default to the first patient once the list arrives
+    }
+  }, [urlPatientId, patients, selectedId]);
 
-  const patient = useMemo(() => patients.find((p: any) => p.id === selectedId), [patients, selectedId]);
+  const inList = useMemo(() => patients.some((p: any) => p.id === selectedId), [patients, selectedId]);
+
+  // The selected patient may not be in the list yet (just admitted → list still refreshing). Fetch that
+  // ONE patient directly so the journey shows the RIGHT patient immediately, never patients[0].
+  const { data: directPatient, isFetched: directFetched } = useQuery({
+    queryKey: ["clinic_patient_one", tenantId, selectedId],
+    queryFn: async () => {
+      const { data } = await supabase.from("clinic_patients" as any).select("*").eq("tenant_id", tenantId).eq("id", selectedId).maybeSingle();
+      return (data as any) ?? null;
+    },
+    enabled: !!tenantId && !!selectedId && !inList,
+  });
+
+  const patient = useMemo(
+    () => patients.find((p: any) => p.id === selectedId) || (directPatient && (directPatient as any).id === selectedId ? (directPatient as any) : undefined),
+    [patients, selectedId, directPatient],
+  );
   const { orders, createOrder, updateOrderStatus } = useHospitalOrders({ patientId: selectedId || undefined });
 
   // latest visit (with vitals) for this patient
@@ -144,6 +171,17 @@ function PatientJourneyInner() {
   ];
 
   if (!patient) {
+    // Selected patient still resolving (list refreshing or the direct single-patient fetch in flight)
+    // → brief loading state, NOT the "no patients" admit prompt (which would mis-read a just-admitted
+    // deep-link as an empty register and is exactly how the wrong-patient race used to surface).
+    if (patientsLoading || (!!selectedId && !inList && !directFetched)) {
+      return (
+        <div className="max-w-xl mx-auto pt-24 text-center hx-rise" data-testid="hx-journey-loading">
+          <span className="hx-pulse-dot" style={{ display: "inline-block", marginBottom: 12 }} />
+          <div className="hx-dim">Loading patient…</div>
+        </div>
+      );
+    }
     return (
       <div className="max-w-xl mx-auto pt-16 text-center hx-rise">
         <div className="hx-eyebrow mb-3">Hospital · Patient Journey</div>
