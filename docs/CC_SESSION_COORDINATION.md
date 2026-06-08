@@ -1,6 +1,22 @@
 # CC Multi-Session Coordination
 
-**Last updated:** 2026-06-08 (Master-Admin Phase 2A control-plane MERGED — `c643982` cherry-picked to main; password-reset flow `d7ac59d`; prior: Phase 1A+1B `b0b8e65`+`f501f63` under `09c7110`, HR Recruitment Pipeline Visibility `ceb874a`, Quick Wins `417d032`, UI Overhaul `c79058e`, Video Stack `8c7ce4e`, Sourcing `86805bb`, Smart Ledger Wave 1 `e1c9545`, clinic Phase-2/3)
+**Last updated:** 2026-06-08 (Master-Admin Phase 2B per-tenant control MERGED — `a079a18` cherry-picked to main; Phase 2A control-plane `c643982`; password-reset flow `d7ac59d`; prior: Phase 1A+1B `b0b8e65`+`f501f63` under `09c7110`, HR Recruitment Pipeline Visibility `ceb874a`, Quick Wins `417d032`, UI Overhaul `c79058e`, Video Stack `8c7ce4e`, Sourcing `86805bb`, Smart Ledger Wave 1 `e1c9545`, clinic Phase-2/3)
+
+---
+
+## 🚢 Master-Admin Phase 2B (per-tenant control: module / white-label / plan edits) — MERGED 2026-06-08
+
+**Session:** Master-Admin-2B. Cherry-picked `a079a18` (branch `wt/2b`) onto `origin/main` via an **isolated temp worktree**. **The master admin can now configure any single tenant from the control plane.**
+
+**Shipped (7 files, additive):** new **TenantDetail control panel** at `/admin/tenants/:tenantId` (master-admin-gated route) — Modules / White-label / Plan tabs. **4 RPCs (migration `43-master-admin-write-rpcs.sql`, applied to prod via 5432):** `master_admin_get_tenant_detail` (read; extracts only safe fields — NO secret keys leak), `master_admin_update_tenant_modules` (MERGE into `features`/`ai_modules_enabled` — preserves secret keys), `master_admin_update_white_label`, `master_admin_update_plan` (enum-safe). All **SECURITY DEFINER + `is_master_admin()` guard (RAISE for non-admin), PER-TENANT (explicit `tenant_id`), never bulk**. Hooks in `useAdminData.ts`; `Tenants.tsx` row "Control Panel" action; `tests/tenant-2b.spec.ts` (+ playwright project).
+
+**Tenant-facing read-path UNTOUCHED** — toggles write the SAME fields the tenant reads (`features.<X>_module` via `isEnabled`, `ai_modules_enabled`). Note: `canAccessSection` L285 `if (isAdmin) return true` precedes the featureKey gate → the sidebar toggle affects manager/staff; the role-independent legacy-dashboard AI-agents grid reflects it for admins (used for the E2E proof).
+
+**Evidence 14/14 (disposable test tenant welkin `saif-7b33fce7`, fully restored):** toggle marketing OFF → welkin DB `features.marketing_module=false` → **welkin login E2E: "Marketing AI" shows "disabled"** → aamerah + dscae byte-unchanged → white-label + plan edits work + isolated → **non-admin write RPCs REJECTED** → welkin restored. Merged tree: build clean + tsc 0 + cosmique isolation pass.
+
+**Caveat:** the master-admin *control-UI* E2E (operator clicking toggles) skips — `zatesystems7` creds not in the creds file; the UI is build/tsc-verified and its RPCs are DB-proven. **UI live after Lovable Publish.**
+
+**Owns:** `src/pages/admin/TenantDetail.tsx`, the 4 `master_admin_*` write/detail RPCs (migration 43), the per-tenant control hooks in `useAdminData.ts`. Shared/additive-only: `src/App.tsx` (route), `src/pages/admin/Tenants.tsx` (row action), `playwright.config.ts`.
 
 ---
 
