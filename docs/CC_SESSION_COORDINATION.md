@@ -1,6 +1,22 @@
 # CC Multi-Session Coordination
 
-**Last updated:** 2026-06-08 (Master-Admin Phase 2B per-tenant control MERGED — `a079a18` cherry-picked to main; Phase 2A control-plane `c643982`; password-reset flow `d7ac59d`; prior: Phase 1A+1B `b0b8e65`+`f501f63` under `09c7110`, HR Recruitment Pipeline Visibility `ceb874a`, Quick Wins `417d032`, UI Overhaul `c79058e`, Video Stack `8c7ce4e`, Sourcing `86805bb`, Smart Ledger Wave 1 `e1c9545`, clinic Phase-2/3)
+**Last updated:** 2026-06-08 (Master-Admin Phase 2C full-capability-control option-b MERGED — `c463e32` cherry-picked to main; data-migration Part 2 investigating same session; Phase 2B per-tenant control `a079a18`; Phase 2A control-plane `c643982`; password-reset flow `d7ac59d`; prior: Phase 1A+1B `b0b8e65`+`f501f63` under `09c7110`, HR Recruitment Pipeline Visibility `ceb874a`, Quick Wins `417d032`, UI Overhaul `c79058e`, Video Stack `8c7ce4e`, Sourcing `86805bb`, Smart Ledger Wave 1 `e1c9545`, clinic Phase-2/3)
+
+---
+
+## 🚢 Master-Admin Phase 2C Part 1 (full capability control — option b) — MERGED 2026-06-08
+
+**Session:** Master-Admin-2C. Cherry-picked `c463e32` (branch `wt/2c`) onto `origin/main` via an **isolated temp worktree**. **Tenant admins are now subject to the module gate.**
+
+**Shipped (3 files, additive):** ONE surgical change in `NavigationSidebar.tsx` `canAccessSection` — the featureKey gate (`!isFeatureEnabled(section.featureKey)`) is now evaluated **before** the `if (isAdmin) return true` bypass, so a featureKey-gated module that the master admin disabled (2B) is hidden from the tenant's **admin** too. Only `master_admin` bypasses. Scoped to the 7 featureKey sections; Settings/account/adminSection untouched. **Default-true flags ⇒ zero change for untouched tenants** (no regression). `tests/rbac-2c.spec.ts` (+ playwright project).
+
+**Evidence — matrix 6/6 (welkin `saif-7b33fce7` admin, restored):** default → admin sees Marketing (**NO REGRESSION**); `marketing_module=false` → admin **loses Marketing**, keeps Sales + Settings; reversible round-trip; cosmique byte-unchanged. Merged tree: build clean + tsc 0 + cosmique isolation pass.
+
+**⚠ `.bin` recovery lesson:** an earlier temp-worktree `rm -rf` followed a `node_modules` **junction** and deleted the shared `frontend/node_modules/.bin` (broke builds repo-wide); restored via `npm install` (no lockfile change). **Never `rm -rf` a worktree with a junctioned node_modules — remove the junction (`rmdir node_modules`) first.**
+
+**Part 2 (data migration — same session, NOT a frontend change):** investigating the source writing operational data to master-zate (`lead_interactions` 29,146 + `social_post_queue` 92 + `agent_conversations` 9) → source-fix-first → backup → transactional move to zateceptionist ONLY if clearly safe, else PAUSE. Status in `.tmp_phase2c/.session-state-phase2c.md`.
+
+**UI live after Lovable Publish.** Owns: `NavigationSidebar.tsx` `canAccessSection` (additive).
 
 ---
 
