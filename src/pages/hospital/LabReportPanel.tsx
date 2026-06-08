@@ -19,7 +19,7 @@ interface Props {
 
 export function LabReportPanel({ patientId, patientName, labOrders = [] }: Props) {
   const { toast } = useToast();
-  const { t, ti } = useHospitalT();
+  const { t, ti, lang } = useHospitalT();
   const { reports, upload, signedUrl, refetch } = useHospitalLabReports(patientId);
   const [selectedId, setSelectedId] = useState<string>("");
   const [orderId, setOrderId] = useState<string>("");
@@ -50,7 +50,7 @@ export function LabReportPanel({ patientId, patientName, labOrders = [] }: Props
   async function runInspect(reportId: string) {
     setInspecting(true); setBriefErr(""); setTakeaway("");
     try {
-      const r = await inspectWithMedica(reportId);
+      const r = await inspectWithMedica(reportId, lang);
       setTakeaway(r.takeaway);
       await refetch();                            // pull the structured findings the tool just wrote
     } catch (e: any) {

@@ -9,6 +9,7 @@ import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { sanitizeResponse } from "@/lib/security/sanitizeResponse";
+import { getHospitalLang, withLang } from "@/pages/hospital/i18n";
 
 const AGENT_COLORS: Record<string, string> = {
   OMEGA: "text-violet-400",
@@ -40,7 +41,7 @@ const MEDICA_PROMPTS: { label: string; prompt: string }[] = [
 
 export function OmegaFloatingChat() {
   const { user, authUser, isAdmin } = useAuth();
-  const { tenantId, tenantConfig, isAccountingPracticeUK, isHealthcareClinic } = useTenant();
+  const { tenantId, tenantConfig, isAccountingPracticeUK, isHealthcareClinic, isHospital } = useTenant();
   const tenantUuid = tenantConfig?.id;
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -145,8 +146,13 @@ export function OmegaFloatingChat() {
     setInput("");
     setLoading(true);
     try {
+      // Hospital-scoped Bangla: when the hospital language is Bangla, ask OMEGA to reply in
+      // Bangla via the message itself (no brain change). The on-screen user bubble keeps the
+      // original `msg`; only the outbound message carries the directive. Every other tenant /
+      // path (no hx-lang / not hospital) sends `msg` unchanged → byte-identical.
+      const outMessage = (isHospital && getHospitalLang() === "bn") ? withLang(msg, "bn") : msg;
       const res = await callWebhook(WEBHOOKS.OMEGA_CHAT, {
-        message: msg,
+        message: outMessage,
         channel: "web_chat",
         sender_identifier: user?.email || "",
         sender_type: isAdmin ? "admin" : "team_member",
@@ -180,7 +186,7 @@ export function OmegaFloatingChat() {
     } finally {
       setLoading(false);
     }
-  }, [input, loading, user, tenantId, tenantUuid, toast, speakResponse, isAccountingPracticeUK, isHealthcareClinic]);
+  }, [input, loading, user, tenantId, tenantUuid, toast, speakResponse, isAccountingPracticeUK, isHealthcareClinic, isHospital]);
 
   const send = useCallback(() => sendMessage(), [sendMessage]);
 

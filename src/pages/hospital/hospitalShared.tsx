@@ -5,7 +5,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { useTenant } from "@/contexts/TenantContext";
 import { supabase } from "@/integrations/supabase/client";
-import { useHospitalT, HospitalLangToggle } from "./i18n";
+import { useHospitalT, HospitalLangToggle, withLang } from "./i18n";
 import "./hospital.css";
 
 /**
@@ -78,11 +78,14 @@ export interface MedicaBriefResult {
  * session JWT; tenant_id is derived SERVER-SIDE (never sent). The patient is identified
  * inside the natural-language message so MEDICA can ground in patient_360.
  */
-export async function fetchMedicaBrief(patientName: string, patientId: string): Promise<MedicaBriefResult> {
-  const message =
+export async function fetchMedicaBrief(patientName: string, patientId: string, lang: "en" | "bn" = "en"): Promise<MedicaBriefResult> {
+  // lang rides INSIDE the message the caller already sends — no brain/Edge-Function change.
+  const message = withLang(
     `A clinician is about to see the patient '${patientName}' (patient id ${patientId}). ` +
     `Anything I should know about this patient before the encounter? Give a concise, ` +
-    `point-form pre-visit briefing grounded in the patient's record.`;
+    `point-form pre-visit briefing grounded in the patient's record.`,
+    lang,
+  );
   const { data, error } = await supabase.functions.invoke("medica-brief", { body: { message } });
   if (error) throw error;
   if (!data?.response) throw new Error(data?.error || "No briefing returned");

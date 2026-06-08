@@ -28,6 +28,28 @@ export function setHospitalLang(next: HxLang) {
 function subscribe(cb: () => void) { subs.add(cb); return () => { subs.delete(cb); }; }
 function snapshot(): HxLang { return current; }
 
+/** Non-hook read of the current hospital language — for async callers / event handlers. */
+export function getHospitalLang(): HxLang { return current; }
+
+/**
+ * Response-language directive appended to a brain/agent MESSAGE so the agent (MEDICA/OMEGA)
+ * replies in the chosen language. English → "" (no change → existing callers byte-identical).
+ * Bangla → a compact, model-tested instruction that preserves structure + clinical flags and
+ * keeps test/drug names + units + IDs in standard English. The shared brain core is NOT
+ * modified — this rides inside the message the callers already send (PHASE 0 verified: the
+ * brief stays well-structured + grounded, just in Bangla).
+ */
+export function langDirective(lang: HxLang): string {
+  if (lang !== "bn") return "";
+  return "\n\n[Response language: Bangla (বাংলা). Write your entire response to the user in clear, natural Bangla. " +
+    "Keep the same structure and any clinical flags / severity intact. Medical test names, drug names, units and IDs " +
+    "may stay in standard English. Do not translate proper nouns.]";
+}
+/** Append the response-language directive to a message (English default = unchanged). */
+export function withLang(message: string, lang: HxLang): string {
+  return message + langDirective(lang);
+}
+
 /** Reactive current hospital language (re-renders consumers on change). */
 export function useHospitalLang() {
   const lang = useSyncExternalStore(subscribe, snapshot, snapshot);

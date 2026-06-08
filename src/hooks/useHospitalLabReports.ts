@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
+import { withLang } from "@/pages/hospital/i18n";
 
 export interface LabFinding { test: string; value: string; unit?: string; ref_range?: string; flag?: string; }
 export interface HospitalLabReport {
@@ -73,11 +74,18 @@ export function useHospitalLabReports(patientId?: string) {
  * findings to the row, and returns a one-line clinical takeaway. Returns the takeaway prose;
  * the structured findings are re-read from the row (realtime / refetch).
  */
-export async function inspectWithMedica(reportId: string): Promise<{ takeaway: string; agent_used?: string }> {
-  const message =
+export async function inspectWithMedica(reportId: string, lang: "en" | "bn" = "en"): Promise<{ takeaway: string; agent_used?: string }> {
+  // The takeaway is MEDICA's prose (via medica-brief) → lang rides in the message; the
+  // structured findings (from inspect-lab-report's Gemini) stay standard medical English.
+  // The language is stated INLINE in the takeaway instruction (the trailing directive alone
+  // was not reliably followed after the tool call) AND reinforced by withLang. en = byte-identical.
+  const inBn = lang === "bn" ? " written IN BANGLA (বাংলায়)" : "";
+  const message = withLang(
     `Use your inspect_lab_report tool on lab report id ${reportId}. Then give exactly ONE concise clinical ` +
-    `takeaway sentence highlighting the most important abnormal/critical value(s) for the clinician to act on. ` +
-    `Do not diagnose or prescribe.`;
+    `takeaway sentence${inBn} highlighting the most important abnormal/critical value(s) for the clinician to act on. ` +
+    `Do not diagnose or prescribe.`,
+    lang,
+  );
   const { data, error } = await supabase.functions.invoke("medica-brief", { body: { message } });
   if (error) throw error;
   if (!data?.response) throw new Error(data?.error || "MEDICA returned no response");

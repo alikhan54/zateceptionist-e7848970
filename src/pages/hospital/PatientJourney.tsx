@@ -55,7 +55,7 @@ function renderBrief(text: string) {
 
 function PatientJourneyInner() {
   const { tenantId } = useTenant();
-  const { t, ti } = useHospitalT();
+  const { t, ti, lang } = useHospitalT();
   const { toast } = useToast();
   const { patients, isLoading: patientsLoading } = useClinicPatients();
   const { visits } = useClinicVisits();
@@ -151,7 +151,7 @@ function PatientJourneyInner() {
     if (!patient) return;
     setBriefState("loading"); setBriefErr("");
     try {
-      const r = await fetchMedicaBrief(patient.full_name, patient.id);
+      const r = await fetchMedicaBrief(patient.full_name, patient.id, lang);
       setBrief(r.response); setBriefState("done");
     } catch (e: any) {
       setBriefErr(e?.message || t("medica.down")); setBriefState("error");
