@@ -1,6 +1,20 @@
 # CC Multi-Session Coordination
 
-**Last updated:** 2026-06-07 (Master-Admin Phase 1A white-label + 1B lifecycle/admin RPCs MERGED — `b0b8e65`+`f501f63` under `09c7110`; prior: HR Recruitment Pipeline Visibility `ceb874a`, Quick Wins `417d032`, UI Overhaul `c79058e`, Video Stack `8c7ce4e`, Sourcing `86805bb`, Smart Ledger Wave 1 `e1c9545`, clinic Phase-2/3)
+**Last updated:** 2026-06-08 (Master-Admin Phase 2A control-plane MERGED — `c643982` cherry-picked to main; password-reset flow `d7ac59d`; prior: Phase 1A+1B `b0b8e65`+`f501f63` under `09c7110`, HR Recruitment Pipeline Visibility `ceb874a`, Quick Wins `417d032`, UI Overhaul `c79058e`, Video Stack `8c7ce4e`, Sourcing `86805bb`, Smart Ledger Wave 1 `e1c9545`, clinic Phase-2/3)
+
+---
+
+## 🚢 Master-Admin Phase 2A (control plane: display + strip) — MERGED 2026-06-08
+
+**Session:** Master-Admin-2A. Cherry-picked `c643982` (branch `wt/admin`) onto `origin/main` via an **isolated temp worktree** (no shared-worktree entanglement; another session's unpushed commits not carried). **master-zate is now a pure control plane.**
+
+**Shipped (7 files, additive):** **strip** — `NavigationSidebar.tsx` renders ONLY the Master Admin section for `master_admin` (operational modules hidden; every other role **byte-identical**, mirrors the `renderAccountingMinimal` 3-way pattern). **Wired** `useAdminData.ts` (`useAllTenants`/`useAllUsers`/`useAdminStats`) to the `master_admin_*` RPCs — real **45 tenants + $9,992 MRR** replace the hardcoded 156/$48.5K (fixes the silent-single-tenant RLS bug). **New RPC** `master_admin_all_users()` (migration `42-master-admin-all-users.sql`, STABLE SECURITY DEFINER + `is_master_admin` guard, 0 rows for non-admin) — **already applied to prod** (merge is a DB no-op). `Tenants.tsx` cards + `Panel.tsx` MRR card computed real. `tests/master-admin.spec.ts` (+ playwright `master-admin` project).
+
+**Verified (merged tree):** `vite build` clean + `tsc --noEmit` 0 errors; sacred zones untouched (7 additive files only, no n8n/LangGraph/VAPI/supabase.ts logic); DB cross-check master_admin→45/51/$9,992, non-admin→0/0/$0; cosmique isolation E2E **pass**. **Caveat:** the 3 master-admin *login* E2E tests SKIP — the only master_admin (`zatesystems7@gmail.com`) is NOT in the creds file; the rendered master-admin view is pending a creds-backed run / Adeel's own login. **UI live after Lovable Publish.**
+
+**For 2B/2C (detail in `.tmp_phase2a/.session-state-phase2a.md`):** tenant module gating = `industry` + `features` JSONB + `ai_modules_enabled` JSONB; per-tenant module writes need a **service_role path** (browser cross-tenant writes already throw by RLS). 2C scope = master-zate operational pollution to migrate off the control plane: `lead_interactions` **29,146** + `social_post_queue` 92 + `agent_conversations` 9.
+
+**Owns:** `src/hooks/useAdminData.ts`, `src/pages/admin/{Tenants,Panel,Users}.tsx`, migration `42-*`, `tests/master-admin.spec.ts`. Shared/additive-only: `NavigationSidebar.tsx`, `playwright.config.ts`.
 
 ---
 
