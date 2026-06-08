@@ -168,5 +168,5 @@ export function OrderQueueInner({ type, title, eyebrow, icon: Icon, actionLabel,
 }
 
 export default function OrderQueueView(props: Props) {
-  return <HospitalGate><OrderQueueInner {...props} /></HospitalGate>;
+  return <HospitalGate allow={["doctor", "admin"]}><OrderQueueInner {...props} /></HospitalGate>;
 }

@@ -1,7 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { UserPlus, ArrowRight, Search, Stethoscope } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useTenant } from "@/contexts/TenantContext";
 import { useClinicPatients } from "@/hooks/useClinicPatients";
+import { useHospitalRole } from "@/hooks/useHospitalRole";
 import { HospitalAdmitDialog } from "@/components/hospital/HospitalAdmitDialog";
 import { HospitalGate } from "./hospitalShared";
 import { useHospitalT } from "./i18n";
@@ -18,6 +22,25 @@ function HospitalPatientsInner() {
   const [search, setSearch] = useState("");
   const [admitOpen, setAdmitOpen] = useState(false);
   const { patients, isLoading } = useClinicPatients(search);
+
+  // HOSPITAL-RBAC [8]: a doctor sees ONLY their attending patients; admin sees all. Filtered in the page
+  // (useClinicPatients byte-identical). Shares the react-query key with PatientJourney → one cached fetch.
+  const { tenantId } = useTenant();
+  const { hospitalRole, hrEmployeeId } = useHospitalRole();
+  const doctorScoped = hospitalRole === "doctor" && !!hrEmployeeId;
+  const { data: attendingSet } = useQuery({
+    queryKey: ["hx-doctor-attending", tenantId, hrEmployeeId],
+    queryFn: async () => {
+      const { data } = await supabase.from("hospital_admissions" as any)
+        .select("patient_id").eq("tenant_id", tenantId).eq("attending_staff_id", hrEmployeeId);
+      return new Set(((data as any[]) || []).map((r) => r.patient_id as string));
+    },
+    enabled: doctorScoped && !!tenantId,
+  });
+  const visiblePatients = useMemo(
+    () => (doctorScoped ? (patients as any[]).filter((p) => attendingSet?.has(p.id)) : patients),
+    [patients, doctorScoped, attendingSet],
+  );
 
   return (
     <div data-testid="hx-patients">
@@ -38,12 +61,12 @@ function HospitalPatientsInner() {
           <Search className="h-4 w-4 hx-dim" />
           <input className="hx-input" style={{ border: "none", background: "transparent", padding: 0 }}
             placeholder={t("patients.searchPh")} value={search} onChange={(e) => setSearch(e.target.value)} data-testid="hx-patient-search" />
-          <span className="ml-auto hx-chip">{ti("patients.count", { n: patients.length })}</span>
+          <span className="ml-auto hx-chip">{ti("patients.count", { n: visiblePatients.length })}</span>
         </div>
         <div className="hx-panel-b">
           {isLoading ? (
             <p className="hx-dim text-sm">{t("common.loading")}</p>
-          ) : patients.length === 0 ? (
+          ) : visiblePatients.length === 0 ? (
             <p className="hx-dim text-sm">{t("patients.empty")}</p>
           ) : (
             <div className="overflow-x-auto">
@@ -54,7 +77,7 @@ function HospitalPatientsInner() {
                   </tr>
                 </thead>
                 <tbody>
-                  {patients.map((p: any) => (
+                  {visiblePatients.map((p: any) => (
                     <tr key={p.id} className="border-t" style={{ borderColor: "var(--hx-border)" }} data-testid="hx-patient-row">
                       <td className="py-2.5 font-medium">{p.full_name}</td>
                       <td className="hx-mono hx-dim" data-testid="hx-patient-mrn">{p.file_number || String(p.id).slice(0, 8).toUpperCase()}</td>
@@ -81,5 +104,5 @@ function HospitalPatientsInner() {
 }
 
 export default function HospitalPatients() {
-  return <HospitalGate><HospitalPatientsInner /></HospitalGate>;
+  return <HospitalGate allow={["doctor", "admin"]}><HospitalPatientsInner /></HospitalGate>;
 }

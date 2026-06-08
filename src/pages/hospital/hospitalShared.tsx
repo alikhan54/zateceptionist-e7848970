@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { useTenant } from "@/contexts/TenantContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useHospitalT, HospitalLangToggle, withLang } from "./i18n";
+import { useHospitalRole, HOSPITAL_ROLE_HOME, type HospitalRole } from "@/hooks/useHospitalRole";
 import "./hospital.css";
 
 /**
@@ -13,28 +14,35 @@ import "./hospital.css";
  * route-level guard), so a non-hospital tenant is HARD-REDIRECTED out. A hospital
  * tenant gets the dark `.hx` command surface wrapping the page.
  */
-export function HospitalGate({ children }: { children: React.ReactNode }) {
+export function HospitalGate({ children, allow }: { children: React.ReactNode; allow?: HospitalRole[] }) {
   const { isHospital, isLoading, tenantConfig } = useTenant();
   const { t } = useHospitalT();
+  const { hospitalRole, loading: roleLoading } = useHospitalRole();
   // Apply the persisted ECG-animation preference across every hospital page [FIX2].
   useEffect(() => {
     document.documentElement.classList.toggle("hx-ecg-off", localStorage.getItem("hx-ecg-off") === "1");
   }, []);
+  const loadingShell = (
+    <div className="hx" data-testid="hospital-surface">
+      <div className="hx-rise" style={{ padding: "5rem 1rem", textAlign: "center" }}>
+        <span className="hx-pulse-dot" style={{ display: "inline-block", marginBottom: 12 }} />
+        <div className="hx-dim">{t("surface.loading")}</div>
+      </div>
+    </div>
+  );
   // Do NOT redirect while the tenant/industry is still resolving — otherwise a refresh
   // or direct-nav onto a /hospital/* URL would bounce to /dashboard before industry loads.
   // `tenantConfig` is null until the config fetch completes; `isLoading` starts false, so
   // the null check is what actually covers the first-render window.
-  if (isLoading || !tenantConfig) {
-    return (
-      <div className="hx" data-testid="hospital-surface">
-        <div className="hx-rise" style={{ padding: "5rem 1rem", textAlign: "center" }}>
-          <span className="hx-pulse-dot" style={{ display: "inline-block", marginBottom: 12 }} />
-          <div className="hx-dim">{t("surface.loading")}</div>
-        </div>
-      </div>
-    );
-  }
+  if (isLoading || !tenantConfig) return loadingShell;
   if (!isHospital) return <Navigate to="/dashboard" replace />;
+  // HOSPITAL-RBAC [8]: when a page declares `allow`, a role not in it is redirected to its OWN home
+  // (never a broken page). Pages without `allow` are unchanged. admin/master_admin → 'admin' (in every
+  // page's allow list) → never redirected. Resolve the role first to avoid flashing a disallowed page.
+  if (allow) {
+    if (roleLoading) return loadingShell;
+    if (hospitalRole && !allow.includes(hospitalRole)) return <Navigate to={HOSPITAL_ROLE_HOME[hospitalRole]} replace />;
+  }
   return <div className="hx" data-testid="hospital-surface"><HospitalBack />{children}</div>;
 }
 

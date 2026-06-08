@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
 import { useHospitalT } from "@/pages/hospital/i18n";
+import { useHospitalRole, HOSPITAL_ROLE_PAGES, isRestrictedHospitalRole } from "@/hooks/useHospitalRole";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { BrandedLogo } from "@/components/branding/BrandedLogo";
 import {
@@ -163,6 +164,9 @@ export function NavigationSidebar() {
   const { tenantConfig, translate, tenantId, setTenantId, isRestaurant, isBankingCollections, isHealthcareClinic, isHospital, isConstructionEstimation, isRealEstate, isYouTubeAgency, isLaboratoryInstruments, isRoofing, isAccountingPracticeUK, isJewellery } = useTenant();
   // Hospital-scoped i18n — only affects the (isHospital-gated) hospital nav section below.
   const { t: hospT } = useHospitalT();
+  // HOSPITAL-RBAC [8] — resolves to 'admin' (no query) for non-hospital tenants + platform admins,
+  // so this is a no-op everywhere except a bsh-hospital doctor/nurse/lab login.
+  const { hospitalRole } = useHospitalRole();
   const { isEnabled } = useFeatureFlags();
   const { toast } = useToast();
 
@@ -274,6 +278,13 @@ export function NavigationSidebar() {
 
   // Helper function to check if user can see section
   const canAccessSection = (section: NavSection): boolean => {
+    // HOSPITAL-RBAC [8] — a restricted hospital role (doctor/nurse/lab) sees ONLY the hospital section
+    // (identified by its /hospital/* item urls). Explicit DEFAULT-DENY for every other section
+    // (Sales/Marketing/HR/Operations/Master-Admin/…). No-op for admin/master_admin/non-hospital
+    // (hospitalRole resolves to 'admin' there → not restricted).
+    if (isRestrictedHospitalRole(hospitalRole)) {
+      return !!section.items?.some((it) => it.url?.startsWith("/hospital/"));
+    }
     // Master admin sees EVERYTHING
     if (isMasterAdmin) return true;
 
@@ -623,6 +634,7 @@ export function NavigationSidebar() {
   const hospitalSection: NavSection = {
     label: hospT("nav.section"),
     collapsible: true,
+    // HOSPITAL-RBAC [8]: restrict the sub-items to the role's allowed pages (admin/unrestricted = all).
     items: [
       { title: hospT("nav.journey"), url: "/hospital/journey", icon: Activity },
       { title: hospT("nav.admissions"), url: "/hospital/patients", icon: Stethoscope },
@@ -630,7 +642,7 @@ export function NavigationSidebar() {
       { title: hospT("nav.pharmacy"), url: "/hospital/pharmacy", icon: Pill },
       { title: hospT("nav.laboratory"), url: "/hospital/lab", icon: Syringe },
       { title: hospT("nav.diagnostics"), url: "/hospital/diagnostics", icon: FileText },
-    ],
+    ].filter((it) => !isRestrictedHospitalRole(hospitalRole) || HOSPITAL_ROLE_PAGES[hospitalRole].includes(it.url)),
   };
 
   const jewellerySection: NavSection = {

@@ -9,6 +9,7 @@ import {
 import { useTenant } from "@/contexts/TenantContext";
 import { useClinicPatients } from "@/hooks/useClinicPatients";
 import { useClinicVisits } from "@/hooks/useClinicVisits";
+import { useHospitalRole } from "@/hooks/useHospitalRole";
 import {
   useHospitalOrders, useHospitalDepartments, ORDER_TYPE_LABEL, STATUS_LABEL, NEXT_STATUS,
   type HospitalOrderType,
@@ -61,6 +62,25 @@ function PatientJourneyInner() {
   const { visits } = useClinicVisits();
   const { data: departments = [] } = useHospitalDepartments();
 
+  // HOSPITAL-RBAC [8]: a doctor sees ONLY patients where they are the attending clinician; admin sees all.
+  // Filtered HERE in the page — useClinicPatients stays byte-identical (shared with the clinic floor).
+  const { hospitalRole, hrEmployeeId } = useHospitalRole();
+  const doctorScoped = hospitalRole === "doctor" && !!hrEmployeeId;
+  const { data: attendingSet } = useQuery({
+    queryKey: ["hx-doctor-attending", tenantId, hrEmployeeId],
+    queryFn: async () => {
+      const { data } = await supabase.from("hospital_admissions" as any)
+        .select("patient_id").eq("tenant_id", tenantId).eq("attending_staff_id", hrEmployeeId);
+      return new Set(((data as any[]) || []).map((r) => r.patient_id as string));
+    },
+    enabled: doctorScoped && !!tenantId,
+  });
+  const allowPatient = (id?: string | null) => !doctorScoped || (!!id && (attendingSet?.has(id) ?? false));
+  const visiblePatients = useMemo(
+    () => (doctorScoped ? (patients as any[]).filter((p) => attendingSet?.has(p.id)) : patients),
+    [patients, doctorScoped, attendingSet],
+  );
+
   const [searchParams] = useSearchParams();
   const urlPatientId = searchParams.get("patient");
   // Honor the ?patient= deep-link as the source of truth from the FIRST render — even before the
@@ -76,12 +96,19 @@ function PatientJourneyInner() {
     if (urlPatientId && urlPatientId !== appliedUrlRef.current) {
       appliedUrlRef.current = urlPatientId;
       setSelectedId(urlPatientId);
-    } else if (!urlPatientId && !selectedId && patients.length) {
-      setSelectedId(patients[0].id); // no deep-link → default to the first patient once the list arrives
+    } else if (!urlPatientId && !selectedId && visiblePatients.length) {
+      setSelectedId(visiblePatients[0].id); // no deep-link → default to the first (visible) patient once the list arrives
     }
-  }, [urlPatientId, patients, selectedId]);
+  }, [urlPatientId, visiblePatients, selectedId]);
 
-  const inList = useMemo(() => patients.some((p: any) => p.id === selectedId), [patients, selectedId]);
+  // RBAC guard: if a doctor's selected patient isn't one of theirs (e.g. a stale deep-link), fall back to their first.
+  useEffect(() => {
+    if (doctorScoped && attendingSet && selectedId && !attendingSet.has(selectedId)) {
+      setSelectedId(visiblePatients[0]?.id || "");
+    }
+  }, [doctorScoped, attendingSet, selectedId, visiblePatients]);
+
+  const inList = useMemo(() => visiblePatients.some((p: any) => p.id === selectedId), [visiblePatients, selectedId]);
 
   // The selected patient may not be in the list yet (just admitted → list still refreshing). Fetch that
   // ONE patient directly so the journey shows the RIGHT patient immediately, never patients[0].
@@ -95,8 +122,9 @@ function PatientJourneyInner() {
   });
 
   const patient = useMemo(
-    () => patients.find((p: any) => p.id === selectedId) || (directPatient && (directPatient as any).id === selectedId ? (directPatient as any) : undefined),
-    [patients, selectedId, directPatient],
+    () => (!allowPatient(selectedId) ? undefined
+      : (visiblePatients as any[]).find((p: any) => p.id === selectedId) || (directPatient && (directPatient as any).id === selectedId ? (directPatient as any) : undefined)),
+    [visiblePatients, selectedId, directPatient, doctorScoped, attendingSet],
   );
   const { orders, createOrder, updateOrderStatus } = useHospitalOrders({ patientId: selectedId || undefined });
 
@@ -299,9 +327,9 @@ function PatientJourneyInner() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {patients.length > 1 && (
+              {visiblePatients.length > 1 && (
                 <select className="hx-select" style={{ width: "auto", minWidth: 180 }} value={selectedId} onChange={(e) => setSelectedId(e.target.value)} data-testid="hx-patient-select">
-                  {patients.map((p: any) => <option key={p.id} value={p.id}>{p.full_name}</option>)}
+                  {visiblePatients.map((p: any) => <option key={p.id} value={p.id}>{p.full_name}</option>)}
                 </select>
               )}
               <EcgToggle />
@@ -656,5 +684,5 @@ function EcgToggle() {
 }
 
 export default function PatientJourney() {
-  return <HospitalGate><PatientJourneyInner /></HospitalGate>;
+  return <HospitalGate allow={["doctor", "admin"]}><PatientJourneyInner /></HospitalGate>;
 }

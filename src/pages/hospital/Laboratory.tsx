@@ -21,5 +21,5 @@ function LaboratoryInner() {
 }
 
 export default function Laboratory() {
-  return <HospitalGate><LaboratoryInner /></HospitalGate>;
+  return <HospitalGate allow={["doctor", "lab", "admin"]}><LaboratoryInner /></HospitalGate>;
 }

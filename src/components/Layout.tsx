@@ -3,6 +3,7 @@ import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
 import { useTenantBranding } from "@/hooks/useTenantBranding";
+import { useHospitalRole, HOSPITAL_ROLE_PAGES, HOSPITAL_ROLE_HOME, isRestrictedHospitalRole } from "@/hooks/useHospitalRole";
 import { NavigationSidebar } from "@/components/NavigationSidebar";
 import { Header } from "@/components/layout/Header";
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -69,6 +70,9 @@ export default function Layout() {
   const { isLoading: tenantLoading, tenantConfig, brandBackgroundColor, isAccountingPracticeUK } = useTenant();
   const branding = useTenantBranding();
   const location = useLocation();
+  // HOSPITAL-RBAC [8] — resolves to 'admin' synchronously for non-hospital tenants + platform admins
+  // (no query), so this is a true no-op everywhere except a bsh-hospital doctor/nurse/lab login.
+  const { hospitalRole, loading: hospitalRoleLoading } = useHospitalRole();
 
   const isLoading = authLoading || tenantLoading;
 
@@ -105,6 +109,26 @@ export default function Layout() {
     (location.pathname === "/" || location.pathname === "/dashboard")
   ) {
     return <Navigate to="/accounting/dashboard" replace />;
+  }
+
+  // HOSPITAL-RBAC [8]: a restricted hospital role (doctor/nurse/lab) only reaches its OWN surface —
+  // any other route (incl. /dashboard, /sales, …) bounces to its hospital home. Additive + no-op for
+  // everyone else (admin/master_admin/non-hospital users resolve to 'admin' → never restricted).
+  if (hospitalRoleLoading) {
+    // Only ever true for a bsh-hospital non-admin user while the marker resolves — avoids a wrong-page flash.
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+  if (isRestrictedHospitalRole(hospitalRole)) {
+    const allowed = HOSPITAL_ROLE_PAGES[hospitalRole];
+    const onAllowed = allowed.some((p) => location.pathname === p || location.pathname.startsWith(p + "/"));
+    if (!onAllowed) return <Navigate to={HOSPITAL_ROLE_HOME[hospitalRole]} replace />;
   }
 
   const tenantStyle: React.CSSProperties = {

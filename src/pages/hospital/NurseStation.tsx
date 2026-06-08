@@ -112,5 +112,5 @@ function NurseStationInner() {
 }
 
 export default function NurseStation() {
-  return <HospitalGate><NurseStationInner /></HospitalGate>;
+  return <HospitalGate allow={["nurse", "admin"]}><NurseStationInner /></HospitalGate>;
 }
