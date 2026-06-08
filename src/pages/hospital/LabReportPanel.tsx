@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   FlaskConical, Sparkles, Upload, FileText, Download, Loader2, AlertTriangle,
-  CheckCircle2, Clock, ShieldCheck,
+  CheckCircle2, Clock, ShieldCheck, TrendingUp,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -25,6 +25,7 @@ export function LabReportPanel({ patientId, patientName, labOrders = [] }: Props
   const [orderId, setOrderId] = useState<string>("");
   const [inspecting, setInspecting] = useState(false);
   const [takeaway, setTakeaway] = useState<string>("");
+  const [priorDate, setPriorDate] = useState<string>("");   // same-patient trend [18]: date of the prior report compared
   const [briefErr, setBriefErr] = useState<string>("");
   const [drag, setDrag] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -33,7 +34,7 @@ export function LabReportPanel({ patientId, patientName, labOrders = [] }: Props
   useEffect(() => { if (!orderId && labOrders.length) setOrderId(labOrders[0].id); }, [labOrders, orderId]);
   const selected = useMemo(() => reports.find((r) => r.id === selectedId), [reports, selectedId]);
   // reset the takeaway when switching reports
-  useEffect(() => { setTakeaway(""); setBriefErr(""); }, [selectedId]);
+  useEffect(() => { setTakeaway(""); setBriefErr(""); setPriorDate(""); }, [selectedId]);
 
   async function doUpload(file: File) {
     if (!/\.pdf$/i.test(file.name)) { toast({ title: t("lab.pdfOnly"), description: t("lab.pdfOnlyDesc"), variant: "destructive" }); return; }
@@ -51,7 +52,7 @@ export function LabReportPanel({ patientId, patientName, labOrders = [] }: Props
     setInspecting(true); setBriefErr(""); setTakeaway("");
     try {
       const r = await inspectWithMedica(reportId, lang);
-      setTakeaway(r.takeaway);
+      setTakeaway(r.takeaway); setPriorDate(r.priorComparedDate || "");
       await refetch();                            // pull the structured findings the tool just wrote
     } catch (e: any) {
       setBriefErr(e?.message || t("medica.down"));
@@ -157,7 +158,7 @@ export function LabReportPanel({ patientId, patientName, labOrders = [] }: Props
                 {/* takeaway — the clinical hero */}
                 {!inspecting && takeaway && (
                   <div className="hx-panel hx-panel--accent" style={{ padding: "1rem 1.1rem" }} data-testid="hx-lab-takeaway">
-                    <div className="hx-eyebrow mb-1 flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> {t("lab.takeaway")}</div>
+                    <div className="hx-eyebrow mb-1 flex items-center gap-2 flex-wrap"><span className="flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> {t("lab.takeaway")}</span>{priorDate && <span className="hx-chip hx-chip--accent" style={{ padding: "0.05rem 0.45rem" }} data-testid="hx-lab-trend"><TrendingUp className="h-3 w-3" /> {ti("lab.trendChip", { date: priorDate })}</span>}</div>
                     <p style={{ fontSize: "1.02rem", lineHeight: 1.5, color: "var(--hx-strong)" }}>{takeaway}</p>
                   </div>
                 )}

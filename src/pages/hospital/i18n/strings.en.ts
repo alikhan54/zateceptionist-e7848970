@@ -333,6 +333,7 @@ export const EN: Record<string, string> = {
   "lab.analysing": "Analysing…",
   "lab.analysingNote": "MEDICA is reading the report and flagging abnormal values…",
   "lab.takeaway": "MEDICA clinical takeaway",
+  "lab.trendChip": "Trend vs prior report · {date}",
   "lab.unavailable": "Briefing unavailable",
   "lab.manualNeeded": "Manual entry needed",
   "lab.manualNote": "This report appears scanned (no text layer) and this tenant is restricted to on-box extraction — cloud OCR was not used. Please enter the values manually.",

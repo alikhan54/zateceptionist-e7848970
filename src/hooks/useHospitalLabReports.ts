@@ -74,22 +74,58 @@ export function useHospitalLabReports(patientId?: string) {
  * findings to the row, and returns a one-line clinical takeaway. Returns the takeaway prose;
  * the structured findings are re-read from the row (realtime / refetch).
  */
-export async function inspectWithMedica(reportId: string, lang: "en" | "bn" = "en"): Promise<{ takeaway: string; agent_used?: string }> {
+export async function inspectWithMedica(reportId: string, lang: "en" | "bn" = "en"): Promise<{ takeaway: string; agent_used?: string; priorComparedDate?: string }> {
   // The takeaway is MEDICA's prose (via medica-brief) → lang rides in the message; the
   // structured findings (from inspect-lab-report's Gemini) stay standard medical English.
   // The language is stated INLINE in the takeaway instruction (the trailing directive alone
   // was not reliably followed after the tool call) AND reinforced by withLang. en = byte-identical.
+  //
+  // Same-patient lab trend [18]: if THIS report's patient has a PRIOR inspected report
+  // (SAME patient_id + SAME tenant — RLS scopes the tenant; the patient_id filter scopes the
+  // patient), inject the prior findings so MEDICA's takeaway adds a same-patient trend note.
+  // NO prior (or a patient-less report) → the message is BYTE-IDENTICAL to the single-report
+  // takeaway below — no regression. Never compares across patients.
+  let priorBlock = "";
+  let priorComparedDate: string | undefined;
+  try {
+    const { data: cur } = await supabase
+      .from("hospital_lab_reports" as any)
+      .select("patient_id").eq("id", reportId).maybeSingle();
+    const pid = (cur as any)?.patient_id;
+    if (pid) {
+      const { data: priors } = await supabase
+        .from("hospital_lab_reports" as any)
+        .select("file_name, created_at, findings")
+        .eq("patient_id", pid)                 // SAME patient only (tenant scoped by RLS)
+        .eq("status", "inspected")
+        .neq("id", reportId)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      const prev = ((priors as any[]) || []).find((p) => Array.isArray(p.findings) && p.findings.length);
+      if (prev) {
+        priorComparedDate = String(prev.created_at).slice(0, 10);
+        priorBlock =
+          ` This SAME patient has a PRIOR inspected lab report (${prev.file_name || "previous"}, ${priorComparedDate}) ` +
+          `with findings: ${JSON.stringify(prev.findings).slice(0, 1400)}. For any test appearing in BOTH the new report ` +
+          `and this prior one, add a short same-patient TREND note (rising / falling, worsening / improving) comparing the ` +
+          `new value to that prior value. Compare ONLY this same patient's reports.`;
+      }
+    }
+  } catch { /* prior-fetch is best-effort — never blocks the single-report takeaway */ }
+
   const inBn = lang === "bn" ? " written IN BANGLA (বাংলায়)" : "";
-  const message = withLang(
-    `Use your inspect_lab_report tool on lab report id ${reportId}. Then give exactly ONE concise clinical ` +
-    `takeaway sentence${inBn} highlighting the most important abnormal/critical value(s) for the clinician to act on. ` +
-    `Do not diagnose or prescribe.`,
-    lang,
-  );
+  const base = priorBlock
+    ? `Use your inspect_lab_report tool on lab report id ${reportId}. Then give a concise clinical takeaway (1-2 sentences)${inBn} ` +
+      `highlighting the most important abnormal/critical value(s) for the clinician to act on, AND a same-patient trend note.${priorBlock} ` +
+      `Do not diagnose or prescribe.`
+    : `Use your inspect_lab_report tool on lab report id ${reportId}. Then give exactly ONE concise clinical ` +
+      `takeaway sentence${inBn} highlighting the most important abnormal/critical value(s) for the clinician to act on. ` +
+      `Do not diagnose or prescribe.`;
+  const message = withLang(base, lang);
   const { data, error } = await supabase.functions.invoke("medica-brief", { body: { message } });
   if (error) throw error;
   if (!data?.response) throw new Error(data?.error || "MEDICA returned no response");
-  return { takeaway: String(data.response).replace(/^\s*\*\*\[[^\]]*\]\*\*\s*/, "").trim(), agent_used: data.agent_used };
+  return { takeaway: String(data.response).replace(/^\s*\*\*\[[^\]]*\]\*\*\s*/, "").trim(), agent_used: data.agent_used, priorComparedDate };
 }
 
 export function flagStatus(flag?: string): "critical" | "warning" | "normal" {
