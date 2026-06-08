@@ -236,6 +236,11 @@ export default defineConfig({
       use: { browserName: 'chromium' }, // no setup dep — fresh env-var logins; Phase 1A white-label
     },
     {
+      name: 'master-admin',
+      testMatch: /master-admin\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — env-var logins; Phase 2A control plane
+    },
+    {
       name: 'ops-ui-e2e',
       testMatch: /ops-ui-e2e\.spec\.ts/,
       use: { browserName: 'chromium' }, // no setup dep — uses BBQ_EMAIL/BBQ_PASSWORD
