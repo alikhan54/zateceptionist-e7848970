@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -89,6 +90,7 @@ const features = [
 
 export default function AllTenants() {
   const { authUser } = useAuth();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const { data: tenants, isLoading, refetch } = useAllTenants();
   const updateStatus = useUpdateTenantStatus();
@@ -577,7 +579,7 @@ export default function AllTenants() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem><Eye className="h-4 w-4 mr-2" />View Details</DropdownMenuItem>
+                        <DropdownMenuItem data-testid={`control-${tenant.tenant_id}`} onClick={(e) => { e.stopPropagation(); navigate(`/admin/tenants/${tenant.tenant_id}`); }}><Eye className="h-4 w-4 mr-2" />Control Panel</DropdownMenuItem>
                         <DropdownMenuItem><UserCog className="h-4 w-4 mr-2" />Impersonate</DropdownMenuItem>
                         <DropdownMenuItem><Settings className="h-4 w-4 mr-2" />Settings</DropdownMenuItem>
                         <DropdownMenuSeparator />
