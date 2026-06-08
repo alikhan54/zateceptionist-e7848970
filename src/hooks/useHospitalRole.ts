@@ -12,9 +12,9 @@ export type HospitalRole = "doctor" | "nurse" | "lab" | "admin";
 // Per-role allowed /hospital pages (admin = all). Home = where a wrong role is redirected.
 export const HOSPITAL_ROLE_PAGES: Record<HospitalRole, string[]> = {
   doctor: ["/hospital/journey", "/hospital/patients", "/hospital/pharmacy", "/hospital/lab", "/hospital/diagnostics"],
-  nurse: ["/hospital/nurse"],
+  nurse: ["/hospital/nurse", "/hospital/beds"],
   lab: ["/hospital/lab"],
-  admin: ["/hospital/journey", "/hospital/patients", "/hospital/nurse", "/hospital/pharmacy", "/hospital/lab", "/hospital/diagnostics"],
+  admin: ["/hospital/journey", "/hospital/patients", "/hospital/nurse", "/hospital/beds", "/hospital/pharmacy", "/hospital/lab", "/hospital/diagnostics"],
 };
 export const HOSPITAL_ROLE_HOME: Record<HospitalRole, string> = {
   doctor: "/hospital/journey", nurse: "/hospital/nurse", lab: "/hospital/lab", admin: "/hospital/journey",

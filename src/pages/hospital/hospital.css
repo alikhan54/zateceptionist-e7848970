@@ -192,3 +192,11 @@
 .light .hx-input, .light .hx-select, .light .hx-textarea { background: #ffffff; }
 .light .hx-btn--ghost { background: rgba(15,23,42,0.025); }
 .light .hx-btn--primary { color: #f0fdff; } /* light text on the (darker) cyan gradient reads better on light */
+
+/* ===== HOSPITAL-BEDS [Phase 2] — additive: bed-board KPI pills + variants (dark + light) ===== */
+.hx-stat { display: inline-flex; flex-direction: column; align-items: flex-start; padding: 0.35rem 0.7rem; border-radius: 0.6rem; border: 1px solid var(--hx-border); background: rgba(255,255,255,0.02); min-width: 62px; }
+.hx-stat-n { font-size: 1.15rem; font-weight: 700; line-height: 1.1; color: var(--hx-strong); }
+.hx-stat-l { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--hx-dim); margin-top: 1px; white-space: nowrap; }
+.hx-chip--muted { color: var(--hx-dim); border-color: var(--hx-border); background: transparent; }
+.hx-panel--crit { border-color: rgba(251,113,133,0.45); box-shadow: 0 0 0 1px rgba(251,113,133,0.08); }
+.light .hx-stat { background: rgba(15,23,42,0.025); }

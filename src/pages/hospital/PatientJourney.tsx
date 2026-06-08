@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Activity, HeartPulse, Stethoscope, FlaskConical, Pill, ScanLine, Sparkles, Plus,
-  ClipboardList, CheckCircle2, Clock, Loader2, UserPlus, AlertTriangle,
+  ClipboardList, CheckCircle2, Clock, Loader2, UserPlus, AlertTriangle, BedDouble,
 } from "lucide-react";
 import { useTenant } from "@/contexts/TenantContext";
 import { useClinicPatients } from "@/hooks/useClinicPatients";
@@ -127,6 +127,20 @@ function PatientJourneyInner() {
     [visiblePatients, selectedId, directPatient, doctorScoped, attendingSet],
   );
   const { orders, createOrder, updateOrderStatus } = useHospitalOrders({ patientId: selectedId || undefined });
+
+  // HOSPITAL-BEDS [Phase 2]: read-only ward/bed context for the current patient (additive).
+  const { data: currentBed } = useQuery({
+    queryKey: ["hx-patient-bed", tenantId, selectedId],
+    queryFn: async () => {
+      const { data: a } = await supabase.from("hospital_bed_assignments" as any)
+        .select("bed_id").eq("tenant_id", tenantId).eq("patient_id", selectedId).is("released_at", null).maybeSingle();
+      const bedId = (a as any)?.bed_id;
+      if (!bedId) return null;
+      const { data: b } = await supabase.from("hospital_beds" as any).select("ward,bed_label").eq("id", bedId).maybeSingle();
+      return (b as any) || null;
+    },
+    enabled: !!tenantId && !!selectedId,
+  });
 
   // latest visit (with vitals) for this patient
   const latestVisit = useMemo(() => {
@@ -323,6 +337,7 @@ function PatientJourneyInner() {
                   {age != null && <><span className="hx-faint">·</span><span>{age}y</span></>}
                   {patient.gender && <><span className="hx-faint">·</span><span className="capitalize">{patient.gender}</span></>}
                   {patient.phone && <><span className="hx-faint">·</span><span className="hx-mono">{patient.phone}</span></>}
+                  {currentBed && <span className="hx-chip hx-chip--accent" style={{ padding: "0.05rem 0.5rem" }} data-testid="hx-journey-bed"><BedDouble className="h-3 w-3" /> {currentBed.ward} · {currentBed.bed_label}</span>}
                 </div>
               </div>
             </div>

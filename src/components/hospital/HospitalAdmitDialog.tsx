@@ -5,12 +5,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
-  UserPlus, Stethoscope, ShieldCheck, Phone, CreditCard, IdCard, HeartPulse, Loader2, RefreshCw, AlertTriangle,
+  UserPlus, Stethoscope, ShieldCheck, Phone, CreditCard, IdCard, HeartPulse, Loader2, RefreshCw, AlertTriangle, BedDouble,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useHospitalDepartments } from "@/hooks/useHospitalOrders";
 import { useHospitalStaff } from "@/hooks/useHospitalStaff";
 import { useHospitalAdmissions, type AdmitInput } from "@/hooks/useHospitalAdmissions";
+import { useHospitalBeds } from "@/hooks/useHospitalBeds";
 import { useHospitalT } from "@/pages/hospital/i18n";
 
 type F = AdmitInput & { existing_patient_id?: string | null };
@@ -37,12 +38,14 @@ export function HospitalAdmitDialog({
   const { data: departments = [] } = useHospitalDepartments();
   const { doctors } = useHospitalStaff();
   const { admit, findByPhone } = useHospitalAdmissions();
+  const { availableBeds, assign } = useHospitalBeds();   // HOSPITAL-BEDS: optional bed-pick on admit
   const [f, setF] = useState<F>(EMPTY);
+  const [bedId, setBedId] = useState("");
   const [returning, setReturning] = useState<{ id: string; full_name: string; date_of_birth: string | null; gender: string | null } | null>(null);
   const set = (patch: Partial<F>) => setF((s) => ({ ...s, ...patch }));
   const debounce = useRef<any>(null);
 
-  useEffect(() => { if (open) { setF(EMPTY); setReturning(null); } }, [open]);
+  useEffect(() => { if (open) { setF(EMPTY); setReturning(null); setBedId(""); } }, [open]);
 
   // returning-patient routing [14]: debounced phone lookup → offer the existing record
   useEffect(() => {
@@ -79,6 +82,12 @@ export function HospitalAdmitDialog({
         department_name: deptName, department_code: deptCode, attending_name: attName,
         payment_amount: f.payment_amount === undefined || (f.payment_amount as any) === "" ? null : Number(f.payment_amount),
       });
+      // HOSPITAL-BEDS: optional bed-pick — assign the chosen bed to this admission. A bed failure
+      // does NOT fail the admit (the admission already succeeded); it just toasts a warning.
+      if (bedId && (r as any).admission?.id) {
+        try { await assign.mutateAsync({ admissionId: (r as any).admission.id, patientId: r.patient_id, bedId, reason: "admit" }); }
+        catch (be: any) { toast({ title: t("beds.actionFail"), description: be?.message, variant: "destructive" }); }
+      }
       toast({ title: f.existing_patient_id ? t("admit.readmitted") : t("admit.admitted"),
               description: `${f.full_name.trim()} · ${t("journey.mrn")} ${r.mrn}${attName ? ` · ${attName}` : ""}` });
       onAdmitted?.({ patient_id: r.patient_id, visit_id: r.visit_id, mrn: r.mrn });
@@ -166,6 +175,10 @@ export function HospitalAdmitDialog({
                 <select className="hx-select" value={f.attending_staff_id} onChange={(e) => set({ attending_staff_id: e.target.value })} data-testid="hx-admit-attending">
                   <option value="">{t("admit.select")}</option>
                   {doctors.map((d) => <option key={d.id} value={d.id}>{d.name}{d.job_title ? ` · ${d.job_title}` : ""}</option>)}</select></div>
+              <div><L>{t("beds.bedOptional")}</L>
+                <select className="hx-select" value={bedId} onChange={(e) => setBedId(e.target.value)} data-testid="hx-admit-bed">
+                  <option value="">{t("beds.selectBed")}</option>
+                  {availableBeds.map((b) => <option key={b.id} value={b.id}>{b.ward} · {b.bed_label}</option>)}</select></div>
             </div>
           </Section>
 
