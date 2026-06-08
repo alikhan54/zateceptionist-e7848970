@@ -246,6 +246,11 @@ export default defineConfig({
       use: { browserName: 'chromium' }, // no setup dep — TEST_TENANT_* env logins; Phase 2B per-tenant control proof
     },
     {
+      name: 'rbac-2c',
+      testMatch: /rbac-2c\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — TEST_TENANT_* env logins; Phase 2C full capability control
+    },
+    {
       name: 'ops-ui-e2e',
       testMatch: /ops-ui-e2e\.spec\.ts/,
       use: { browserName: 'chromium' }, // no setup dep — uses BBQ_EMAIL/BBQ_PASSWORD
