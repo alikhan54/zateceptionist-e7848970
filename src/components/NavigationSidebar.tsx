@@ -281,6 +281,13 @@ export function NavigationSidebar() {
     // Regular admins should NOT see these sections
     if (section.adminOnly) return false;
 
+    // Phase 2C (full capability control): a featureKey-gated module that the master admin has
+    // explicitly disabled is hidden from EVERY role except master_admin — INCLUDING the tenant's
+    // own admin. Evaluated BEFORE the admin bypass below. Flags default to true (isEnabled), so a
+    // tenant with no explicit flag is unaffected (no regression). Sections WITHOUT a featureKey
+    // (Settings, account, adminOnly) are not touched by this.
+    if (section.featureKey && !isFeatureEnabled(section.featureKey)) return false;
+
     // Admin can see all non-adminOnly sections
     if (isAdmin) return true;
 
