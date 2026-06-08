@@ -88,6 +88,16 @@ export const EN: Record<string, string> = {
   "medica.unavailable": "Briefing unavailable",
   "medica.retry": "Retry",
   "medica.down": "MEDICA is unavailable right now.",
+  // MEDICA medication recommendations [13]
+  "rec.title": "MEDICA — Medication Suggestions",
+  "rec.ask": "Recommend medications",
+  "rec.idle": "Ask MEDICA to suggest medications grounded in this patient's record (diagnosis, vitals, history). Each is a suggestion you review and accept — nothing is ordered until you Place it.",
+  "rec.loading": "MEDICA is reviewing the record and preparing medication suggestions…",
+  "rec.disclaimer": "AI decision-support — physician must review & approve. Not a prescription.",
+  "rec.accept": "Accept",
+  "rec.accepted": "Added to order entry — review & Place",
+  "rec.none": "No medication suggestions returned.",
+  "rec.unavailable": "Suggestions unavailable",
   // order entry
   "order.title": "Order Entry",
   "order.subtitle": "tests + medications",

@@ -17,7 +17,7 @@ import { VITAL_FIELDS, classifyVital, summarizeVitals, DEFAULT_THRESHOLDS, type 
 import { HospitalAdmitDialog } from "@/components/hospital/HospitalAdmitDialog";
 import { VitalsCaptureDialog } from "@/components/hospital/VitalsCaptureDialog";
 import { useToast } from "@/hooks/use-toast";
-import { HospitalGate, EcgLine, fetchMedicaBrief } from "./hospitalShared";
+import { HospitalGate, EcgLine, fetchMedicaBrief, fetchMedicaRecommendations, type MedRec } from "./hospitalShared";
 import { useHospitalT } from "./i18n";
 
 const PATHWAY_KEYS = ["pathway.registered", "pathway.triaged", "pathway.inConsult", "pathway.ordersPlaced", "pathway.inTreatment", "pathway.resultsReady", "pathway.discharged"];
@@ -206,6 +206,31 @@ function PatientJourneyInner() {
     } catch (e: any) {
       toast({ title: t("order.placeFail"), description: e?.message || t("common.tryAgain"), variant: "destructive" });
     }
+  }
+
+  // ---- MEDICA medication recommendations [13] (suggest → doctor APPROVES → pre-fill; never auto-place) ----
+  const [recState, setRecState] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [recs, setRecs] = useState<MedRec[]>([]);
+  const [recErr, setRecErr] = useState("");
+  useEffect(() => { setRecState("idle"); setRecs([]); setRecErr(""); }, [selectedId]);
+  async function askRecommend() {
+    if (!patient) return;
+    setRecState("loading"); setRecErr("");
+    try {
+      const list = await fetchMedicaRecommendations(patient.full_name, patient.id, lang);
+      setRecs(list); setRecState("done");
+    } catch (e: any) {
+      setRecErr(e?.message || t("medica.down")); setRecState("error");
+    }
+  }
+  // Accept a suggestion → PRE-FILL the medication order entry. The doctor still Places it (nothing auto-placed).
+  function acceptRec(rec: MedRec) {
+    const med = `${rec.name}${rec.dose ? ` ${rec.dose}` : ""}`.trim();
+    setOrderType("medication");
+    const cur = orderDetail.trim();
+    if (cur) setMeds((prev) => [...prev, cur]);   // stack a med already in the box so several accepts queue
+    setOrderDetail(med);
+    toast({ title: t("rec.accepted"), description: med });
   }
 
   // derived pathway stage
@@ -429,6 +454,57 @@ function PatientJourneyInner() {
                 <div className="text-sm" data-testid="hx-brief-error">
                   <p className="hx-chip hx-chip--warn mb-2"><AlertTriangle className="h-3 w-3" /> {t("medica.unavailable")}</p>
                   <p className="hx-dim">{briefErr} <button className="underline" style={{ color: "var(--hx-accent)" }} onClick={askMedica}>{t("medica.retry")}</button></p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* MEDICA — Medication Suggestions [13]: suggest → doctor approves → pre-fills order entry */}
+          <div className="hx-panel hx-rise" style={{ animationDelay: "160ms" }} data-testid="hx-medrec">
+            <div className="hx-panel-h">
+              <Pill className="h-4 w-4" style={{ color: "var(--hx-accent)" }} />
+              <span className="font-semibold">{t("rec.title")}</span>
+              <button className="hx-btn hx-btn--ghost ml-auto" style={{ padding: "0.4rem 0.8rem" }} onClick={askRecommend} disabled={recState === "loading"} data-testid="hx-rec-ask">
+                {recState === "loading" ? <><Loader2 className="h-4 w-4 animate-spin" /> {t("medica.analysing")}</> : <><Sparkles className="h-4 w-4" /> {t("rec.ask")}</>}
+              </button>
+            </div>
+            <div className="hx-panel-b">
+              {recState === "idle" && <p className="hx-dim text-sm">{t("rec.idle")}</p>}
+              {recState === "loading" && (
+                <div className="hx-analysing" data-testid="hx-rec-loading">
+                  <div className="flex items-center gap-2.5 mb-3"><span className="hx-pulse-dot" /><span className="hx-dim text-sm">{t("rec.loading")}</span></div>
+                  <div className="space-y-2">{[88, 72, 80].map((w, i) => <div key={i} style={{ height: 10, width: `${w}%`, borderRadius: 6, background: "var(--hx-skeleton)" }} />)}</div>
+                </div>
+              )}
+              {recState === "done" && (
+                <div data-testid="hx-rec-result">
+                  <div className="hx-chip hx-chip--warn mb-3" style={{ display: "inline-flex" }} data-testid="hx-rec-disclaimer">
+                    <AlertTriangle className="h-3 w-3" /> {t("rec.disclaimer")}
+                  </div>
+                  {recs.length === 0 ? (
+                    <p className="hx-dim text-sm">{t("rec.none")}</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {recs.map((r, i) => (
+                        <li key={`${r.name}-${i}`} className="flex items-start gap-3 rounded-lg px-3 py-2.5" style={{ border: "1px solid var(--hx-border)", background: "var(--hx-skeleton)" }} data-testid="hx-rec-item">
+                          <Pill className="h-4 w-4 mt-0.5 shrink-0" style={{ color: "var(--hx-accent2)" }} />
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium text-sm"><span style={{ color: "var(--hx-strong)" }}>{r.name}</span>{r.dose ? <span className="hx-dim"> · {r.dose}</span> : null}</div>
+                            {r.rationale && <div className="hx-faint text-xs mt-0.5">{r.rationale}</div>}
+                          </div>
+                          <button className="hx-btn hx-btn--primary" style={{ padding: "0.3rem 0.7rem" }} onClick={() => acceptRec(r)} data-testid="hx-rec-accept">
+                            <CheckCircle2 className="h-3.5 w-3.5" /> {t("rec.accept")}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+              {recState === "error" && (
+                <div className="text-sm" data-testid="hx-rec-error">
+                  <p className="hx-chip hx-chip--warn mb-2"><AlertTriangle className="h-3 w-3" /> {t("rec.unavailable")}</p>
+                  <p className="hx-dim">{recErr} <button className="underline" style={{ color: "var(--hx-accent)" }} onClick={askRecommend}>{t("medica.retry")}</button></p>
                 </div>
               )}
             </div>

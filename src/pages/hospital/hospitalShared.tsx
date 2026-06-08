@@ -91,3 +91,35 @@ export async function fetchMedicaBrief(patientName: string, patientId: string, l
   if (!data?.response) throw new Error(data?.error || "No briefing returned");
   return data as MedicaBriefResult;
 }
+
+export interface MedRec { name: string; dose: string; rationale: string; }
+
+/**
+ * MEDICA medication recommendations [13] — rides the SAME medica-brief path (NO brain / Edge
+ * Function change). Instructs MEDICA to return a STRUCTURED JSON array of suggestions grounded
+ * in the patient record. These are DECISION-SUPPORT SUGGESTIONS for the physician to review &
+ * approve — the message explicitly forbids prescribing / placing orders. `lang` puts the
+ * rationale in Bangla (drug names + doses + units stay standard English). Throws if the model
+ * returns nothing parseable; returns [] only for a genuinely empty list.
+ */
+export async function fetchMedicaRecommendations(patientName: string, patientId: string, lang: "en" | "bn" = "en"): Promise<MedRec[]> {
+  const message =
+    `For the hospital patient '${patientName}' (patient id ${patientId}), review their record ` +
+    `(diagnosis, vitals, recent orders, history) and recommend appropriate medications for the physician to consider. ` +
+    `Return ONLY a JSON array (no prose, no markdown) of up to 6 items, each exactly ` +
+    `{"name":"<drug name>","dose":"<dose & frequency>","rationale":"<one short clinical reason` +
+    `${lang === "bn" ? ", written in Bangla (বাংলা)" : ""}>"}. Drug names, doses and units stay in standard English. ` +
+    `These are SUGGESTIONS for the physician to review and approve — do NOT prescribe, do NOT place orders.`;
+  const { data, error } = await supabase.functions.invoke("medica-brief", { body: { message } });
+  if (error) throw error;
+  if (!data?.response) throw new Error(data?.error || "No recommendations returned");
+  const m = String(data.response).match(/\[\s*{[\s\S]*}\s*\]/);
+  if (!m) throw new Error("Could not read recommendations");
+  let arr: any;
+  try { arr = JSON.parse(m[0]); } catch { throw new Error("Could not read recommendations"); }
+  if (!Array.isArray(arr)) throw new Error("Could not read recommendations");
+  return arr
+    .filter((r) => r && r.name)
+    .map((r) => ({ name: String(r.name).trim(), dose: String(r.dose ?? "").trim(), rationale: String(r.rationale ?? "").trim() }))
+    .slice(0, 8);
+}
