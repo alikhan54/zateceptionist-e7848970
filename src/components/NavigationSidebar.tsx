@@ -1026,13 +1026,20 @@ export function NavigationSidebar() {
             The generic MAIN section (Inbox/Appointments/Customers/Tasks + a duplicate Dashboard)
             is intentionally hidden for them — irrelevant to a UK accounting practice (Adeel, 2026-05-30).
             Master admins + all other 35 tenants fall through to the existing render below (MAIN intact). */}
-        {renderAccountingMinimal && (
+        {/* Master admin = pure control plane: render ONLY the Master Admin section.
+            All tenant-operational modules are hidden. Every other role falls through to the
+            existing render paths below, byte-identical (their !isMasterAdmin guard is always true). */}
+        {isMasterAdmin && (
+          <CollapsibleSection section={adminSection} sectionKey="admin" />
+        )}
+
+        {!isMasterAdmin && renderAccountingMinimal && (
           <>
             <CollapsibleSection section={accountingSection} sectionKey="accounting" />
           </>
         )}
 
-        {!renderAccountingMinimal && (
+        {!isMasterAdmin && !renderAccountingMinimal && (
         <>
         {/* Staff Section - Only for staff */}
         {authUser?.role === "staff" && <StaticSection section={staffSection} />}

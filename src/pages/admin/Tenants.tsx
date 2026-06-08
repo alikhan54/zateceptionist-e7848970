@@ -112,6 +112,15 @@ export default function AllTenants() {
     return matchesSearch && matchesStatus && matchesIndustry && matchesPlan;
   });
 
+  // Stat-card aggregates from the full cross-tenant RPC result (not the filtered view).
+  // Replaces the previous hardcoded 156 / 142 / 8 / $48.5K placeholders.
+  const totalTenants = (tenants || []).length;
+  const activeTenants = (tenants || []).filter((t) => t.status === 'active').length;
+  const trialTenants = (tenants || []).filter((t) => t.status === 'trial').length;
+  const totalMrr = (tenants || [])
+    .filter((t) => t.status === 'active')
+    .reduce((sum, t) => sum + (t.monthly_value || 0), 0);
+
   const handleStatusChange = async (tenantId: string, newStatus: string) => {
     try {
       await updateStatus.mutateAsync({ tenantId, status: newStatus });
@@ -427,7 +436,7 @@ export default function AllTenants() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Tenants</p>
-                <p className="text-2xl font-bold">156</p>
+                <p className="text-2xl font-bold">{totalTenants}</p>
               </div>
               <Building2 className="h-8 w-8 text-muted-foreground" />
             </div>
@@ -438,7 +447,7 @@ export default function AllTenants() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Active</p>
-                <p className="text-2xl font-bold text-chart-2">142</p>
+                <p className="text-2xl font-bold text-chart-2">{activeTenants}</p>
               </div>
               <Activity className="h-8 w-8 text-chart-2" />
             </div>
@@ -449,7 +458,7 @@ export default function AllTenants() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Trial</p>
-                <p className="text-2xl font-bold text-yellow-500">8</p>
+                <p className="text-2xl font-bold text-yellow-500">{trialTenants}</p>
               </div>
               <Calendar className="h-8 w-8 text-yellow-500" />
             </div>
@@ -460,7 +469,7 @@ export default function AllTenants() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">MRR</p>
-                <p className="text-2xl font-bold">$48.5K</p>
+                <p className="text-2xl font-bold">${totalMrr.toLocaleString()}</p>
               </div>
               <TrendingUp className="h-8 w-8 text-muted-foreground" />
             </div>

@@ -28,10 +28,10 @@ export default function AdminPanel() {
   ].filter(p => p.value > 0) : [];
 
   const statCards = [
-    { label: 'Active Tenants', value: stats?.activeTenants || 0, icon: Building2, color: 'text-blue-500' },
-    { label: 'Total Users', value: stats?.totalUsers || 0, icon: Users, color: 'text-green-500' },
-    { label: 'Activity Today', value: stats?.activityToday || 0, icon: Activity, color: 'text-purple-500' },
-    { label: 'Conversations', value: stats?.totalConversations || 0, icon: MessageSquare, color: 'text-orange-500' },
+    { label: 'Active Tenants', value: stats?.activeTenants || 0, icon: Building2, color: 'text-blue-500', prefix: '' },
+    { label: 'Total Users', value: stats?.totalUsers || 0, icon: Users, color: 'text-green-500', prefix: '' },
+    { label: 'Activity Today', value: stats?.activityToday || 0, icon: Activity, color: 'text-purple-500', prefix: '' },
+    { label: 'MRR', value: stats?.mrr || 0, icon: TrendingUp, color: 'text-orange-500', prefix: '$' },
   ];
 
   const getLevelBadge = (level: string) => {
@@ -92,7 +92,7 @@ export default function AdminPanel() {
               {statsLoading ? (
                 <Skeleton className="h-8 w-20" />
               ) : (
-                <div className="text-2xl font-bold">{stat.value.toLocaleString()}</div>
+                <div className="text-2xl font-bold">{stat.prefix}{stat.value.toLocaleString()}</div>
               )}
               <p className="text-xs text-muted-foreground">{stat.label}</p>
             </CardContent>
