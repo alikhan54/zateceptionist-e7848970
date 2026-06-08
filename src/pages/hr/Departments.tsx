@@ -69,7 +69,20 @@ export default function DepartmentsPage() {
     }).format(amount);
   };
 
-  const displayDepartments = departments || [];
+  // Enrich each department with a computed clinician count + resolved manager name from the
+  // already-fetched employees (useDepartments returns raw rows without these), so the summary
+  // cards + per-department widgets show real numbers instead of NaN / "No manager assigned".
+  // Additive + page-local; a department with no matching staff resolves to 0 (never NaN).
+  const displayDepartments = (departments || []).map((d: any) => {
+    const deptStaff = (employees || []).filter((e: any) =>
+      (d.id && e.department_id === d.id) || (d.name && (e.department_name === d.name || e.department === d.name)));
+    const mgr = (employees || []).find((e: any) => e.id === d.manager_id);
+    return {
+      ...d,
+      employee_count: typeof d.employee_count === 'number' ? d.employee_count : deptStaff.length,
+      manager_name: d.manager_name || (mgr ? `${mgr.first_name ?? ''} ${mgr.last_name ?? ''}`.trim() : undefined),
+    };
+  });
 
   return (
     <div className="space-y-6">
