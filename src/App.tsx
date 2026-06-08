@@ -285,6 +285,7 @@ const BrandingPage = lazy(() => import("./pages/settings/branding/BrandingPage")
 const AdminPanel = lazy(() => import("./pages/admin/Panel"));
 const AllTenants = lazy(() => import("./pages/admin/Tenants"));
 const AdminUsers = lazy(() => import("./pages/admin/Users"));
+const TenantDetail = lazy(() => import("./pages/admin/TenantDetail"));
 const SystemHealth = lazy(() => import("./pages/admin/Health"));
 const AuditLogs = lazy(() => import("./pages/admin/Logs"));
 const FeatureFlags = lazy(() => import("./pages/admin/Features"));
@@ -1828,6 +1829,16 @@ const App = () => (
                       <ProtectedRoute requiredRole="master_admin">
                         <LazyPage>
                           <AllTenants />
+                        </LazyPage>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/tenants/:tenantId"
+                    element={
+                      <ProtectedRoute requiredRole="master_admin">
+                        <LazyPage>
+                          <TenantDetail />
                         </LazyPage>
                       </ProtectedRoute>
                     }

@@ -330,3 +330,106 @@ export function useAuditLogStats() {
     },
   });
 }
+
+// ============================================================================
+// Phase 2B — per-tenant control. All writes go through the SECURITY DEFINER +
+// is_master_admin()-guarded RPCs in migration 43 (browser direct writes are
+// RLS-blocked to own-tenant). Each RPC is PER-TENANT (explicit tenant_id).
+// ============================================================================
+export interface TenantDetailData {
+  tenant_id: string;
+  company_name: string;
+  industry: string;
+  subscription_plan: string;
+  subscription_status: string;
+  brand_name: string | null;
+  logo_url: string | null;
+  primary_color: string | null;
+  secondary_color: string | null;
+  white_label: boolean;
+  white_label_tenant_cap: number | null;
+  mod_sales: boolean;
+  mod_marketing: boolean;
+  mod_hr: boolean;
+  mod_operations: boolean;
+  mod_communications: boolean;
+  mod_analytics: boolean;
+  ai_sales: boolean;
+  ai_marketing: boolean;
+  ai_hr: boolean;
+  ai_support: boolean;
+  ai_voice: boolean;
+}
+
+// Read one tenant's control detail (module flags + brand + plan; no secret keys).
+export function useTenantDetail(tenantId: string | undefined) {
+  return useQuery({
+    queryKey: ['admin', 'tenant-detail', tenantId],
+    enabled: !!tenantId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('master_admin_get_tenant_detail', { p_tenant_id: tenantId });
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      return (row || null) as TenantDetailData | null;
+    },
+  });
+}
+
+// Toggle ONE tenant's modules (merges features + ai_modules_enabled — preserves secrets).
+export function useUpdateTenantModules() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ tenantId, features, aiModules }: {
+      tenantId: string; features: Record<string, boolean>; aiModules: Record<string, boolean>;
+    }) => {
+      const { data, error } = await supabase.rpc('master_admin_update_tenant_modules', {
+        p_tenant_id: tenantId, p_features: features, p_ai_modules: aiModules,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_d, v) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'tenant-detail', v.tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'tenants'] });
+    },
+  });
+}
+
+// Edit ONE tenant's white-label.
+export function useUpdateWhiteLabel() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: {
+      tenantId: string; brandName: string | null; logoUrl: string | null;
+      primaryColor: string | null; secondaryColor: string | null; whiteLabel: boolean; cap: number | null;
+    }) => {
+      const { data, error } = await supabase.rpc('master_admin_update_white_label', {
+        p_tenant_id: p.tenantId, p_brand_name: p.brandName, p_logo_url: p.logoUrl,
+        p_primary_color: p.primaryColor, p_secondary_color: p.secondaryColor,
+        p_white_label: p.whiteLabel, p_cap: p.cap,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_d, v) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'tenant-detail', v.tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'tenants'] });
+    },
+  });
+}
+
+// Change ONE tenant's plan.
+export function useUpdatePlan() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ tenantId, plan }: { tenantId: string; plan: string }) => {
+      const { data, error } = await supabase.rpc('master_admin_update_plan', { p_tenant_id: tenantId, p_plan: plan });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_d, v) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'tenant-detail', v.tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'tenants'] });
+    },
+  });
+}
