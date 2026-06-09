@@ -14,10 +14,13 @@ import { PageLoading } from "@/components/shared/PageLoading";
 // Eager load critical pages
 import LoginPage from "./pages/Login";
 import Layout from "./components/Layout";
+import TendPreviewGate from "./components/tend/PreviewGate"; // REMOVE AT PUBLIC LAUNCH
 
 // Lazy load all pages for better performance
 // Core Pages
 const Dashboard = lazy(() => import("./pages/Dashboard"));
+const TendIntakePage = lazy(() => import("./pages/tend/TendIntakePage")); // Tend member intake (patient surface, public)
+const TendSafetyTriage = lazy(() => import("./pages/tend-ops/SafetyTriage")); // Tend operator cockpit (telehealth-gated nav; data-isolated)
 const NeuralDashboard = lazy(() => import("./pages/NeuralDashboard"));
 const NeuralDashboardV3 = lazy(() => import("./pages/NeuralDashboardV3"));
 const CustomersPage = lazy(() => import("./pages/Customers"));
@@ -451,6 +454,21 @@ const App = () => (
                     <LazyPage>
                       <Refund />
                     </LazyPage>
+                  }
+                />
+
+                {/* Tend — patient-facing member intake (public, standalone calm layout; NOT operator Layout) */}
+                {/* REMOVE AT PUBLIC LAUNCH: TendPreviewGate restricts the public intake to preview-key
+                    holders during the pre-launch testing phase. At launch, restore the bare element:
+                    <LazyPage><TendIntakePage /></LazyPage> and delete components/tend/PreviewGate.tsx. */}
+                <Route
+                  path="/tend"
+                  element={
+                    <TendPreviewGate>
+                      <LazyPage>
+                        <TendIntakePage />
+                      </LazyPage>
+                    </TendPreviewGate>
                   }
                 />
 
@@ -1397,6 +1415,10 @@ const App = () => (
                   <Route path="/roofing/warranty" element={<LazyPage><RoofingWarrantyTracker /></LazyPage>} />
                   <Route path="/roofing/storm-alerts" element={<LazyPage><RoofingStormAlerts /></LazyPage>} />
                   <Route path="/roofing/inspections" element={<LazyPage><RoofingInspectionCalendar /></LazyPage>} />
+
+                  {/* Tend Operators — telehealth industry only (nav-gated; data-isolated by tenant_id + RLS) */}
+                  <Route path="/tend-ops" element={<Navigate to="/tend-ops/triage" replace />} />
+                  <Route path="/tend-ops/triage" element={<LazyPage><TendSafetyTriage /></LazyPage>} />
 
                   {/* UK Accounting Practice — Smart Ledger Phase 1 */}
                   <Route path="/accounting" element={<Navigate to="/accounting/dashboard" replace />} />

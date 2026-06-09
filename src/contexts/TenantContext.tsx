@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 
-export type IndustryType = "healthcare" | "healthcare_clinic" | "healthcare_staffing" | "real_estate" | "restaurant" | "salon" | "banking_collections" | "construction_estimation" | "youtube_agency" | "technology" | "legal" | "fitness" | "education" | "automotive" | "professional" | "retail" | "laboratory_instruments" | "roofing" | "forex_trading" | "accounting_practice_uk" | "general";
+export type IndustryType = "healthcare" | "healthcare_clinic" | "healthcare_staffing" | "real_estate" | "restaurant" | "salon" | "banking_collections" | "construction_estimation" | "youtube_agency" | "technology" | "legal" | "fitness" | "education" | "automotive" | "professional" | "retail" | "laboratory_instruments" | "roofing" | "forex_trading" | "accounting_practice_uk" | "telehealth" | "general";
 
 export interface TenantConfig {
   id: string;
@@ -466,6 +466,7 @@ interface TenantContextType {
   isRoofing: boolean;
   isForexTrading: boolean;
   isAccountingPracticeUK: boolean;
+  isTelehealth: boolean;
   brandBackgroundColor: string | null;
   refreshConfig: () => Promise<void>;
 }
@@ -672,6 +673,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const isRoofing = industry === "roofing";
   const isForexTrading = industry === "forex_trading";
   const isAccountingPracticeUK = industry === "accounting_practice_uk";
+  const isTelehealth = industry === "telehealth";
 
   // Brand background color (Smart Ledger uses #faf6ed cream).
   // Reads from tenant_config.features.brand_background_color — additive convention.
@@ -714,6 +716,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         isRoofing,
         isForexTrading,
         isAccountingPracticeUK,
+        isTelehealth,
         brandBackgroundColor,
         refreshConfig: fetchTenantConfig,
       }}

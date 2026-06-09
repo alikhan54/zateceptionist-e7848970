@@ -156,7 +156,7 @@ export function NavigationSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, isAdmin, isMasterAdmin, authUser, hasPermission } = useAuth();
-  const { tenantConfig, translate, tenantId, setTenantId, isRestaurant, isBankingCollections, isHealthcareClinic, isConstructionEstimation, isRealEstate, isYouTubeAgency, isLaboratoryInstruments, isRoofing, isAccountingPracticeUK } = useTenant();
+  const { tenantConfig, translate, tenantId, setTenantId, isRestaurant, isBankingCollections, isHealthcareClinic, isConstructionEstimation, isRealEstate, isYouTubeAgency, isLaboratoryInstruments, isRoofing, isAccountingPracticeUK, isTelehealth } = useTenant();
   const { isEnabled } = useFeatureFlags();
   const { toast } = useToast();
 
@@ -601,6 +601,15 @@ export function NavigationSidebar() {
       { title: "Consultation Notes", url: "/clinic/consultations", icon: ClipboardCheck },
       { title: "Health Reports", url: "/clinic/health-reports", icon: FileText },
       { title: "Doctor Reviews", url: "/clinic/review-queue", icon: ClipboardList },
+    ],
+  };
+
+  // Tend (telehealth) operator cockpit — shown ONLY for industry==='telehealth' (tend).
+  const tendOpsSection: NavSection = {
+    label: "Tend Operators",
+    collapsible: true,
+    items: [
+      { title: "Safety & Triage", url: "/tend-ops/triage", icon: ShieldCheck },
     ],
   };
 
@@ -1073,6 +1082,11 @@ export function NavigationSidebar() {
         {/* Real Estate Section — Real Estate industry only */}
         {isRealEstate && canAccessSection(realEstateSection) && (
           <CollapsibleSection section={realEstateSection} sectionKey="realestate" />
+        )}
+
+        {/* Tend Operators Section — telehealth industry only (tend) */}
+        {isTelehealth && canAccessSection(tendOpsSection) && (
+          <CollapsibleSection section={tendOpsSection} sectionKey="tend-ops" />
         )}
 
         {/* Operations Section (general: Vendors, Expenses, Invoices) */}

@@ -1,0 +1,124 @@
+/* ============================================================================
+   Tend — member (patient) surface styling.
+   ADDITIVE + SCOPED: every rule is under .tend-app so it cannot affect the
+   operator dashboard / shadcn theme / any other tenant. Palette + type ported
+   from .tend_mockups/tend_member_app_mockup.html + tend_crisis_breakout_mockup.html.
+   Member view is PLAIN-LANGUAGE: no clinical severity labels, no safety badge.
+   ============================================================================ */
+.tend-app {
+  --sand:#F4F1EA; --sand-2:#EAE4D8; --paper:#FCFBF8; --ink:#19292B; --ink-soft:#5C6B6A;
+  --teal:#2C6E63; --teal-deep:#235A51; --mint:#E4EEEA; --mint-line:#CFE0DA; --mint-deep:#D6E7E0;
+  --gold:#B68A4E; --clay:#B0604A; --clay-soft:#F3E7E2;
+  --fontui:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+  position:fixed; inset:0; z-index:50;
+  font-family:var(--fontui); color:var(--ink); line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  background:radial-gradient(1200px 600px at 20% -10%, #EFEAE0 0%, var(--sand) 55%, #EDE7DB 100%);
+  display:flex; align-items:stretch; justify-content:center;
+}
+.tend-app *{box-sizing:border-box;}
+.tend-screen{
+  width:100%; max-width:480px; background:var(--paper);
+  display:flex; flex-direction:column; height:100%;
+  box-shadow:0 24px 60px -28px rgba(20,40,38,.45);
+}
+@media(min-width:520px){ .tend-screen{ height:100%; max-height:860px; margin:auto; border-radius:30px; overflow:hidden; border:1px solid rgba(25,41,43,.06);} .tend-app{align-items:center;} }
+
+/* app bar */
+.tend-appbar{padding:18px 20px 14px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--sand-2);background:#fff;flex:none;}
+.tend-avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(150deg,var(--teal),var(--teal-deep));display:grid;place-items:center;color:#fff;font-weight:700;font-size:14px;}
+.tend-who{font-weight:680;font-size:15px;}
+.tend-state{font-size:12px;color:var(--teal);display:flex;align-items:center;gap:6px;margin-top:1px;}
+.tend-logo{margin-left:auto;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);font-weight:700;}
+.tend-dot{width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 0 0 rgba(44,110,99,.5);animation:tend-pulse 2.6s infinite;}
+@keyframes tend-pulse{0%{box-shadow:0 0 0 0 rgba(44,110,99,.45)}70%{box-shadow:0 0 0 9px rgba(44,110,99,0)}100%{box-shadow:0 0 0 0 rgba(44,110,99,0)}}
+
+/* chat */
+.tend-chat{flex:1;overflow-y:auto;padding:20px 18px 8px;display:flex;flex-direction:column;gap:12px;background:linear-gradient(180deg,#fff,#FBFAF6);}
+.tend-day{align-self:center;font-size:11px;color:var(--ink-soft);background:var(--sand);padding:4px 11px;border-radius:99px;margin:2px 0 6px;}
+.tend-msg{max-width:84%;padding:12px 15px;border-radius:18px;font-size:14.5px;white-space:pre-wrap;word-wrap:break-word;}
+.tend-thera{align-self:flex-start;background:var(--mint);border:1px solid var(--mint-line);border-bottom-left-radius:6px;color:#16302b;}
+.tend-me{align-self:flex-end;background:var(--teal);color:#fff;border-bottom-right-radius:6px;}
+.tend-typing{align-self:flex-start;background:var(--mint);border:1px solid var(--mint-line);border-bottom-left-radius:6px;padding:13px 16px;border-radius:18px;display:flex;gap:5px;}
+.tend-typing i{width:7px;height:7px;border-radius:50%;background:var(--teal);opacity:.5;animation:tend-bob 1.3s infinite;}
+.tend-typing i:nth-child(2){animation-delay:.18s}.tend-typing i:nth-child(3){animation-delay:.36s}
+@keyframes tend-bob{0%,100%{transform:translateY(0);opacity:.35}50%{transform:translateY(-4px);opacity:.9}}
+
+/* ambient 988 (footer only) + composer — member view: free · 24/7 (NO "confidential" claim) */
+.tend-safety{font-size:11.5px;color:var(--clay);text-align:center;padding:8px 14px;background:var(--clay-soft);border-top:1px solid #ECD9D2;flex:none;}
+.tend-safety b{font-weight:680}
+.tend-composer{display:flex;align-items:center;gap:10px;padding:12px 14px 16px;background:#fff;border-top:1px solid var(--sand-2);flex:none;}
+.tend-field{flex:1;background:var(--sand);border:none;border-radius:99px;padding:12px 16px;color:var(--ink);font-size:14px;font-family:inherit;outline:none;}
+.tend-field::placeholder{color:var(--ink-soft);}
+.tend-send{width:42px;height:42px;border:none;border-radius:50%;background:var(--teal);color:#fff;display:grid;place-items:center;font-size:18px;cursor:pointer;flex:none;}
+.tend-send:disabled{opacity:.5;cursor:default;}
+
+/* ===================== CRISIS BREAKOUT ===================== */
+.tend-hold{flex:1;overflow-y:auto;padding:16px 18px 10px;background:linear-gradient(180deg,#FBFCFB 0%, #F2F8F5 100%);display:flex;flex-direction:column;}
+.tend-emblem{width:62px;height:62px;margin:14px auto 12px;position:relative;display:grid;place-items:center;}
+.tend-emblem .core{width:16px;height:16px;border-radius:50%;background:radial-gradient(circle at 38% 34%,#3c8c7e,var(--teal-deep));box-shadow:0 0 0 6px rgba(44,110,99,.10);}
+.tend-emblem .ring{position:absolute;inset:0;border-radius:50%;border:1.5px solid var(--teal);opacity:0;animation:tend-breathe 4.6s ease-in-out infinite;}
+.tend-emblem .ring.r2{animation-delay:1.6s;}
+@keyframes tend-breathe{0%{transform:scale(.5);opacity:.45}70%{opacity:0}100%{transform:scale(1.18);opacity:0}}
+.tend-held-words{text-align:center;font-size:16.5px;line-height:1.55;color:#1c302c;margin:2px auto 16px;max-width:320px;}
+.tend-held-words b{font-weight:680;}
+.tend-help{background:#fff;border:1px solid var(--mint-line);border-radius:20px;padding:15px 15px 16px;box-shadow:0 14px 34px -24px rgba(20,40,38,.5);}
+.tend-help .lab{font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--teal);font-weight:700;}
+.tend-help .title{font-size:16.5px;font-weight:700;margin:5px 0 3px;color:var(--ink);}
+.tend-help .desc{font-size:12.8px;color:var(--ink-soft);margin-bottom:13px;}
+.tend-taprow{display:flex;gap:10px;}
+.tend-tap{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:15px 10px;border-radius:15px;font-weight:680;font-size:15.5px;text-decoration:none;border:none;cursor:pointer;font-family:inherit;}
+.tend-tap.call{background:var(--teal);color:#fff;box-shadow:0 10px 22px -14px rgba(35,90,81,.8);}
+.tend-tap.text{background:var(--mint);color:var(--teal-deep);border:1px solid var(--mint-line);}
+.tend-line911{text-align:center;font-size:13px;color:var(--ink-soft);margin:15px 6px 6px;}
+.tend-line911 a{color:var(--teal-deep);font-weight:680;text-decoration:none;border-bottom:1.5px solid var(--mint-deep);padding-bottom:1px;}
+.tend-honest{display:flex;gap:10px;align-items:flex-start;background:var(--sand);border-radius:14px;padding:11px 13px;margin:14px 0 4px;font-size:12.6px;color:#3a4a47;line-height:1.5;}
+.tend-honest .h-ic{flex:none;width:22px;height:22px;border-radius:50%;background:#fff;border:1px solid var(--sand-2);display:grid;place-items:center;color:var(--teal);font-size:12px;margin-top:1px;}
+.tend-presence{text-align:center;font-size:13px;color:var(--ink-soft);margin:12px 10px 6px;line-height:1.5;}
+.tend-heldfoot{font-size:11.5px;color:var(--teal-deep);text-align:center;padding:11px 14px;background:var(--mint);border-top:1px solid var(--mint-line);flex:none;}
+.tend-heldfoot b{font-weight:700;}
+
+/* ===================== "YOUR NEXT STEP" (routing, member view) ===================== */
+/* member view = plain-language: NO clinical severity labels, NO scores, NO safety badge */
+.tend-readybar{display:flex;justify-content:center;padding:8px 14px;background:#fff;border-top:1px solid var(--sand-2);flex:none;}
+.tend-ready{font-size:13px;font-weight:620;color:var(--teal-deep);background:var(--mint);border:1px solid var(--mint-line);border-radius:99px;padding:9px 16px;cursor:pointer;font-family:inherit;}
+.tend-ready:disabled{opacity:.5;cursor:default;}
+
+.tend-next{flex:1;overflow-y:auto;padding:26px 20px 18px;background:linear-gradient(180deg,#fff,#FBFAF6);}
+.tend-next h2{font-size:21px;letter-spacing:-.01em;margin:6px 0 4px;font-weight:680;}
+.tend-next .lede{color:var(--ink-soft);font-size:13.5px;margin:0 0 18px;line-height:1.5;}
+.tend-ncard{background:#fff;border:1px solid var(--sand-2);border-radius:20px;padding:16px 17px;margin-bottom:14px;box-shadow:0 10px 26px -22px rgba(20,40,38,.4);}
+.tend-ncard .k{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);font-weight:700;margin-bottom:9px;display:flex;align-items:center;gap:7px;}
+.tend-ncard .lead{font-size:13.5px;color:#22312f;margin:0 0 10px;line-height:1.5;}
+
+/* otc catalog — member browses + chooses (NOT "we recommend [drug]") */
+.tend-otc-item{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-top:1px solid var(--sand-2);}
+.tend-otc-item:first-of-type{border-top:none;}
+.tend-otc-item .oc{flex:none;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--teal-deep);background:var(--mint);border:1px solid var(--mint-line);border-radius:6px;padding:3px 7px;margin-top:1px;min-width:62px;text-align:center;}
+.tend-otc-item .ob{flex:1;}
+.tend-otc-item .on{font-weight:660;font-size:14px;}
+.tend-otc-item .od{font-size:12.5px;color:var(--ink-soft);margin-top:2px;line-height:1.45;}
+.tend-choose{font-size:12px;font-weight:620;color:var(--teal-deep);background:#fff;border:1px solid var(--mint-line);border-radius:10px;padding:7px 12px;cursor:pointer;font-family:inherit;margin-top:2px;}
+
+/* numbered step / cta / fee */
+.tend-step{display:flex;gap:13px;align-items:flex-start;padding:13px 0;border-top:1px solid var(--sand-2);}
+.tend-step:first-of-type{border-top:none;}
+.tend-num{flex:none;width:26px;height:26px;border-radius:50%;background:var(--teal);color:#fff;font-size:13px;font-weight:700;display:grid;place-items:center;margin-top:1px;}
+.tend-step .body{flex:1;}
+.tend-step .t{font-weight:660;font-size:14.5px;}
+.tend-step .d{font-size:13px;color:var(--ink-soft);margin-top:2px;line-height:1.5;}
+.tend-cta{margin-top:10px;display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:640;color:#fff;background:var(--teal);padding:10px 15px;border-radius:12px;border:none;cursor:pointer;font-family:inherit;}
+.tend-cta.ghost{background:#fff;color:var(--teal-deep);border:1px solid var(--mint-line);}
+.tend-ctarow{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center;}
+.tend-fee{font-size:12px;color:var(--ink-soft);}
+.tend-fee b{color:var(--ink);font-weight:680;}
+
+/* self-referral trust line + attribution */
+.tend-selfref{font-size:12.5px;color:#33414a;background:var(--mint);border:1px solid var(--mint-line);border-radius:12px;padding:12px 13px;margin-top:6px;line-height:1.5;}
+.tend-selfref b{color:var(--teal-deep);}
+.tend-attrib{text-align:center;font-size:11.5px;color:var(--ink-soft);margin:14px 0 2px;}
+.tend-attrib b{color:var(--teal-deep);font-weight:640;}
+
+/* generating state */
+.tend-gen{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:30px;background:linear-gradient(180deg,#fff,#FBFAF6);}
+.tend-gen .gtext{font-size:15px;color:var(--ink-soft);text-align:center;max-width:280px;line-height:1.5;}
