@@ -20,6 +20,7 @@ import { VitalsCaptureDialog } from "@/components/hospital/VitalsCaptureDialog";
 import { useToast } from "@/hooks/use-toast";
 import { HospitalGate, EcgLine, fetchMedicaBrief, fetchMedicaRecommendations, type MedRec } from "./hospitalShared";
 import { ConsultationSummaryBox } from "./ConsultationSummary";
+import { PrescriptionPanel } from "./Prescription";
 import { useHospitalT } from "./i18n";
 
 const PATHWAY_KEYS = ["pathway.registered", "pathway.triaged", "pathway.inConsult", "pathway.ordersPlaced", "pathway.inTreatment", "pathway.resultsReady", "pathway.discharged"];
@@ -149,6 +150,15 @@ function PatientJourneyInner() {
     mine.sort((a, b) => +new Date(b.visit_date || b.created_at) - +new Date(a.visit_date || a.created_at));
     return mine[0];
   }, [visits, selectedId]);
+
+  // HOSPITAL-RX: the meds the doctor has ALREADY PLACED for this encounter — the grounding source for
+  // the Assisted prescription draft (the draft must never introduce a drug not in this list).
+  const rxMeds = useMemo(
+    () => orders
+      .filter((o) => o.order_type === "medication" && (!latestVisit?.id || o.visit_id === latestVisit.id || !o.visit_id))
+      .map((o) => (o.details as any)?.item).filter(Boolean) as string[],
+    [orders, latestVisit?.id],
+  );
 
   const thresholds = DEFAULT_THRESHOLDS;
   const vitalsSummary = useMemo(
@@ -650,6 +660,10 @@ function PatientJourneyInner() {
               );
             })}
           </div>
+
+          {/* Prescription — patient-facing take-home Rx (manual or MEDICA-drafted from the placed meds +
+              consultation); doctor-signed, printable, Bangla [HOSPITAL-RX] */}
+          <PrescriptionPanel patient={patient} visitId={latestVisit?.id ?? null} placedMeds={rxMeds} />
         </div>
       </div>
 

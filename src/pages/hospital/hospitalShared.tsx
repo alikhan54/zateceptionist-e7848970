@@ -183,3 +183,61 @@ export async function fetchConsultationSummary(
 }
 
 export { EMPTY_SUMMARY };
+
+/** One line of a prescription. name/dose are clinical (English); the rest may be localized. */
+export interface RxItem { name: string; dose: string; frequency: string; duration: string; route: string; }
+export interface PrescriptionDraft { items: RxItem[]; advice: string; follow_up: string; }
+
+/**
+ * ASSISTED prescription draft [HOSPITAL-RX] — rides the SAME medica-brief path (NO brain / Edge
+ * Function change). MEDICA structures the meds the doctor has ALREADY PLACED (`placedMeds`, the
+ * authoritative source) into Rx lines {name,dose,frequency,duration,route} and drafts patient advice
+ * + follow-up grounded in the consultation. HARD GUARDRAIL: it uses ONLY the supplied medications —
+ * it must NOT add a drug the doctor didn't place (same grounding rule as the consult summary). The
+ * order item text is free-form (e.g. "Amlodipine 5mg"), so MEDICA may fill a sensible dose /
+ * frequency / duration / route where the order text doesn't state it — that structuring IS the
+ * intelligence the incumbent lacks. `lang=bn` writes advice/follow-up + frequency/duration/route in
+ * Bangla; drug names + doses stay standard English. This is an AI DRAFT — not valid until the doctor
+ * signs. Returns empty items only for a genuinely empty placed-med list.
+ */
+export async function fetchPrescriptionDraft(
+  placedMeds: string[], consultationContext: string, patientName: string, patientId: string, lang: "en" | "bn" = "en",
+): Promise<PrescriptionDraft> {
+  const medList = placedMeds.map((m, i) => `${i + 1}. ${m}`).join("\n");
+  // Framed as FORMATTING assistance for meds the physician already decided + placed — NOT MEDICA
+  // prescribing (which it refuses, by design). The physician reviews, edits and signs every line.
+  const message =
+    `The physician treating hospital patient '${patientName}' (patient id ${patientId}) has ALREADY ` +
+    `selected and placed these medications — this is the physician's own clinical decision:\n` +
+    `"""\n${medList}\n"""\n` +
+    (consultationContext ? `Encounter context (for the advice / follow-up wording only):\n"""\n${consultationContext}\n"""\n` : "") +
+    `Act as a FORMATTING assistant for the physician — you are NOT prescribing and NOT making clinical ` +
+    `decisions; the physician will review, edit and SIGN every line. Organize the medications the physician ` +
+    `already placed into a structured table for that review. For EACH placed medication output ` +
+    `{name, dose, frequency, duration, route}: keep name and dose exactly as the physician placed them; for ` +
+    `frequency/duration/route put the standard administration for that medication as an EDITABLE PLACEHOLDER ` +
+    `the physician will confirm or change. Use ONLY the medications listed above — do not add, remove or ` +
+    `substitute any. Also draft a brief patient advice line and a follow-up suggestion for the physician to review. ` +
+    `Return ONLY a JSON object — no preamble, no prose, no markdown fences: ` +
+    `{"items":[{"name":"","dose":"","frequency":"","duration":"","route":""}],"advice":"","follow_up":""}.` +
+    (lang === "bn"
+      ? ` Write "frequency", "duration", "route", "advice" and "follow_up" in Bangla (বাংলা); keep drug names, doses, units and IDs in standard English.`
+      : ``);
+  const { data, error } = await supabase.functions.invoke("medica-brief", { body: { message } });
+  if (error) throw error;
+  if (!data?.response) throw new Error(data?.error || "No prescription draft returned");
+  let raw = String(data.response);
+  const fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);   // tolerate ```json … ``` fences
+  if (fence) raw = fence[1];
+  const m = raw.match(/\{[\s\S]*\}/);
+  if (!m) throw new Error("Could not read the prescription draft");
+  let obj: any;
+  try { obj = JSON.parse(m[0]); } catch { throw new Error("Could not read the prescription draft"); }
+  const s = (v: any) => String(v ?? "").trim();
+  const items: RxItem[] = Array.isArray(obj?.items)
+    ? obj.items.filter((r: any) => r && r.name).map((r: any) => ({
+        name: s(r.name), dose: s(r.dose), frequency: s(r.frequency), duration: s(r.duration), route: s(r.route),
+      })).slice(0, 20)
+    : [];
+  return { items, advice: s(obj?.advice), follow_up: s(obj?.follow_up) };
+}
