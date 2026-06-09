@@ -1,18 +1,24 @@
 # CC Multi-Session Coordination
 
-**Last updated:** 2026-06-10 (Master-Admin Phase 3 IN PROGRESS — see marker below)
+**Last updated:** 2026-06-10 (Master-Admin Phase 3 MERGED — `cabb6b7` cherry-picked to main via isolated temp worktree; accuracy + real feature control + lifecycle; prior: Phase 2C `c463e32`, 2B `a079a18`, 2A `c643982`)
 
 ---
 
-## 🔧 IN PROGRESS — Master-Admin Phase 3 (accuracy + real feature control + lifecycle) — started 2026-06-10
+## 🚢 Master-Admin Phase 3 (accurate data + real feature control + lifecycle) — MERGED 2026-06-10
 
-**Session:** Master-Admin-Phase3. **Worktree:** `D:/420-system/frontend-3` (branch `wt/phase3`, off `origin/main` `3fe683c`). Isolated; will merge via isolated temp worktree.
+**Session:** Master-Admin-Phase3. Cherry-picked `cabb6b7` onto `origin/main` via an **isolated temp worktree** (`../merge-p3`). Work branch `wt/phase3` @ `fadfacb` (worktree `D:/420-system/frontend-3`). **6 files, additive; ZERO new DDL** (reuses existing 1B/2B RPCs).
 
-**Lane (claiming):** `src/hooks/useAdminData.ts`, `src/pages/admin/*` (incl. `Panel.tsx`, `Tenants.tsx`, `Users.tsx`, `SystemHealth.tsx`, `Logs.tsx`, `FeatureFlags.tsx`, `TenantDetail.tsx`), master-admin RPCs. Reuses existing 1B/2B RPCs (`derive_lifecycle_signals`, `master_admin_*`) — aiming for ZERO new DDL.
+**3.1 Accuracy (committed):** `useAdminData.ts` new `useLifecycleSignals()` (calls existing `derive_lifecycle_signals(null)` → real per-tenant `last_active` + stage). `Tenants.tsx` **Last Activity** now real `last_active` (or honest "Never") — was `created_at` mislabeled; **MRR card → "Potential MRR · plan-assigned · $0 collected"**; removed always-`-` Messages/Calls cols; per-row "Plan Value" shows real plan price; **killed the mock detail Sheet** (fake John Doe users / fake invoices / fake usage chart) → row click now opens the real Control Panel. `Panel.tsx` MRR → "Potential MRR" + subtext; "Activity Today" (audit-stale, always 0) → real "Active This Week"; Recent-Activity honest staleness note. `Health.tsx` fabricated CPU/mem/uptime/1.2M-requests/423-conns **removed**; real DB-connectivity probe + real platform metrics; charts/services/queues/incidents/alerts clearly tagged **Illustrative**. `Logs.tsx` honest "audit logging not capturing new events" banner (data real but frozen since Jan 8).
 
-**Additive shared-file touch (only if unavoidable + logged here):** none planned (reaching `TenantDetail` via existing `/admin/tenants/:tenantId` route; not editing `App.tsx`/`NavigationSidebar.tsx`/`TenantContext.tsx`). No n8n / LangGraph / VAPI.
+**3.2 Real feature control (committed):** `Features.tsx` mock (TechCorp/HealthFirst fake flags, fake A/B, non-persistent toggles) **fully replaced** with a real per-tenant **Feature Control hub** — searchable/filterable tenant list → select → real module toggles (hydrated from `master_admin_get_tenant_detail`, saved via `master_admin_update_tenant_modules`, secret-preserving merge) + "Full Control Panel" link. `Tenants.tsx` Control Panel now **discoverable** (row click → `/admin/tenants/:id` + visible per-row "Control Panel" button).
 
-**Scope:** 3.1 honest accuracy (MRR Potential-vs-Collected-$0, real/honest last-activity, system-health truth, audit recency), 3.2 replace mock `/admin/features` Feature Flags with real per-tenant control + make Control Panel discoverable, 3.3 surface `derive_lifecycle_signals` on tenants + dashboard. Will update this marker → MERGED at merge.
+**3.3 Lifecycle (stretch, done):** `Tenants.tsx` Lifecycle column + filter; `Panel.tsx` lifecycle distribution + "needs attention" panel (never_activated / at_risk / churned). All from `derive_lifecycle_signals`.
+
+**Verification:** merged tree `vite build` clean + `tsc --noEmit` 0 errors. DB cross-checks (`.tmp_phase3/`): MRR $9,992 potential / **$0 collected** (3 seed subs, the 1 paddle id is literal `sub_test_001`); lifecycle 18 never_activated / 14 active / 5 activating / 5 churned / 3 at_risk (covers all 45); real `last_active` (tend logged in yesterday vs signup 06-03); audit newest 2026-01-08 → stale banner triggers. **Feature toggle round-trip on welkin `saif-7b33fce7`** via the exact RPC: marketing OFF → DB `features.marketing_module=false` + `ai.marketing=false`, other keys/secrets preserved, **cosmique byte-unchanged**, fully restored. **Isolation:** cosmique → `master_admin_all_tenants` 0 rows, write RPC REJECTED, `derive_lifecycle_signals` own-tenant-only (1 row = cosmique), all `/admin/*` routes `requiredRole=master_admin`.
+
+**⚠ Gap (same as 2A/2B/2C):** master-admin *visual* E2E not run — `zatesystems7@gmail.com` (the only master_admin) password is not in the creds file. Data + write-path + isolation are DB-proven (the exact RPCs the UI calls); founder verifies the rendered panel on their own live login after Publish.
+
+**Owns:** `src/hooks/useAdminData.ts`, `src/pages/admin/{Panel,Tenants,Health,Logs,Features}.tsx`. No shared-file edits (App.tsx/NavigationSidebar/TenantContext untouched). **UI live after Lovable Publish.**
 
 ---
 
