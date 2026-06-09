@@ -25,13 +25,17 @@ import {
 } from "lucide-react";
 import { useRestaurantMenu, type MenuItem } from "@/hooks/useRestaurantMenu";
 import { useToast } from "@/hooks/use-toast";
+import { useCurrency } from "@/hooks/useCurrency";
 
 export default function MenuEditor() {
-  const { menu, categories, items, isLoading, toggleAvailability, addItem, removeItem } =
+  const { menu, categories, items, isLoading, toggleAvailability, addItem, editItem, removeItem } =
     useRestaurantMenu();
   const { toast } = useToast();
+  const { currency, formatPrice } = useCurrency();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [editTarget, setEditTarget] = useState<MenuItem | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", price: "", description: "", category_id: "", prep_time_minutes: "" });
   const [newItem, setNewItem] = useState({
     name: "",
     price: "",
@@ -55,7 +59,8 @@ export default function MenuEditor() {
         price: parseFloat(newItem.price),
         description: newItem.description,
         category_id: newItem.category_id,
-        currency: "AED",
+        // Use tenant's currency (set in tenant_config). Empty allowed — DB has no NOT NULL.
+        currency: currency,
         is_available: true,
         prep_time_minutes: newItem.prep_time_minutes
           ? parseInt(newItem.prep_time_minutes)
@@ -83,6 +88,39 @@ export default function MenuEditor() {
       await toggleAvailability.mutateAsync(itemId);
     } catch {
       toast({ title: "Failed to update availability", variant: "destructive" });
+    }
+  };
+
+  const openEdit = (item: MenuItem) => {
+    setEditTarget(item);
+    setEditForm({
+      name: item.name || "",
+      price: String(item.price ?? ""),
+      description: item.description || "",
+      category_id: item.category_id || "",
+      prep_time_minutes: item.prep_time_minutes != null ? String(item.prep_time_minutes) : "",
+    });
+  };
+
+  const handleEditSave = async () => {
+    if (!editTarget) return;
+    if (!editForm.name || !editForm.price || !editForm.category_id) {
+      toast({ title: "Please fill required fields", variant: "destructive" });
+      return;
+    }
+    try {
+      await editItem.mutateAsync({
+        ...editTarget,
+        name: editForm.name,
+        price: parseFloat(editForm.price),
+        description: editForm.description,
+        category_id: editForm.category_id,
+        prep_time_minutes: editForm.prep_time_minutes ? parseInt(editForm.prep_time_minutes) : undefined,
+      });
+      toast({ title: `Updated ${editForm.name}` });
+      setEditTarget(null);
+    } catch {
+      toast({ title: "Failed to update item", variant: "destructive" });
     }
   };
 
@@ -140,7 +178,7 @@ export default function MenuEditor() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Price (AED) *</Label>
+                  <Label>Price{currency ? ` (${currency})` : ""} *</Label>
                   <Input
                     type="number"
                     value={newItem.price}
@@ -252,7 +290,7 @@ export default function MenuEditor() {
                     )}
                   </div>
                   <p className="font-bold text-lg whitespace-nowrap ml-2">
-                    {item.price} {item.currency || ""}
+                    {formatPrice(item.price)}
                   </p>
                 </div>
 
@@ -279,14 +317,27 @@ export default function MenuEditor() {
                       {item.is_available ? "Available" : "Unavailable"}
                     </span>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => handleRemoveItem(item.id, item.name)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => openEdit(item)}
+                      data-testid={`menu-edit-${item.id}`}
+                      aria-label={`Edit ${item.name}`}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => handleRemoveItem(item.id, item.name)}
+                      data-testid={`menu-delete-${item.id}`}
+                      aria-label={`Delete ${item.name}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -300,6 +351,46 @@ export default function MenuEditor() {
           <p>No items in this category</p>
         </div>
       )}
+
+      {/* Edit item dialog */}
+      <Dialog open={!!editTarget} onOpenChange={(o) => !o && setEditTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Menu Item</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2" data-testid="menu-edit-dialog">
+            <div className="space-y-2">
+              <Label>Name *</Label>
+              <Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} placeholder="Item name" data-testid="menu-edit-name" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Price{currency ? ` (${currency})` : ""} *</Label>
+                <Input type="number" value={editForm.price} onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} placeholder="0.00" data-testid="menu-edit-price" />
+              </div>
+              <div className="space-y-2">
+                <Label>Prep Time (min)</Label>
+                <Input type="number" value={editForm.prep_time_minutes} onChange={(e) => setEditForm({ ...editForm, prep_time_minutes: e.target.value })} placeholder="15" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Category *</Label>
+              <select className="w-full border rounded-md px-3 py-2 text-sm" value={editForm.category_id} onChange={(e) => setEditForm({ ...editForm, category_id: e.target.value })}>
+                <option value="">Select category</option>
+                {categories.map((cat) => (<option key={cat.id} value={cat.id}>{cat.name}</option>))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Input value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} placeholder="Short description" />
+            </div>
+            <Button className="w-full" onClick={handleEditSave} disabled={editItem.isPending} data-testid="menu-edit-save">
+              {editItem.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Pencil className="h-4 w-4 mr-2" />}
+              Save Changes
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

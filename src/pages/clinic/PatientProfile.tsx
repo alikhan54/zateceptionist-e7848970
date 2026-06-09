@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,7 +21,7 @@ import {
   ArrowLeft, Phone, Mail, Cake, User, Stethoscope, Activity,
   Heart, AlertCircle, Calendar, FileText, Star, Sparkles,
   ClipboardList, Image as ImageIcon, MessageSquare, Pencil,
-  ChevronRight, ShieldCheck, BookOpen, Plus,
+  ChevronRight, ShieldCheck, BookOpen, Plus, Brain, Package, RefreshCw,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
@@ -58,7 +60,7 @@ export default function PatientProfile() {
   const { patientId } = useParams<{ patientId: string }>();
   const navigate = useNavigate();
   const { data, isLoading } = useClinicPatient(patientId);
-  const { tenantConfig, isHealthcareClinic } = useTenant();
+  const { tenantId, tenantConfig, isHealthcareClinic } = useTenant();
   const tenantUuid = tenantConfig?.id || "";
   const [addRxOpen, setAddRxOpen] = useState(false);
   const [editPatientOpen, setEditPatientOpen] = useState(false);
@@ -74,6 +76,45 @@ export default function PatientProfile() {
     () => appointments.find(a => a.scheduled_at && new Date(a.scheduled_at) > new Date()),
     [appointments]
   );
+
+  // ── Care signals (additive, healthcare-clinic-gated, READ-only surfacing) ──
+  // Follow-ups / consent / packages = clinic_* tables (SLUG, by patient_id).
+  // "Reminded?" = a REAL message_queue delivery to this patient's phone (UUID
+  // tenant column) — NOT the appointments.reminder_sent artifact flag. Each
+  // signal degrades to its own empty-state.
+  const patientPhone = patient?.phone || "";
+  const { data: careSignals } = useQuery({
+    queryKey: ["clinic_care_signals", tenantId, patient?.id, patientPhone, tenantUuid],
+    enabled: isHealthcareClinic && !!tenantId && !!patient?.id,
+    queryFn: async () => {
+      const pid = patient!.id;
+      const today = new Date().toISOString().slice(0, 10);
+      const fuP = supabase.from("clinic_post_care_schedule" as any)
+        .select("id, scheduled_date, status").eq("tenant_id", tenantId as string).eq("patient_id", pid).eq("status", "pending");
+      const conP = supabase.from("clinic_consent_forms" as any)
+        .select("id, status").eq("tenant_id", tenantId as string).eq("patient_id", pid);
+      const pkgP = supabase.from("clinic_patient_packages" as any)
+        .select("id, sessions_remaining, status").eq("tenant_id", tenantId as string).eq("patient_id", pid).eq("status", "active");
+      const remP = (patientPhone && tenantUuid)
+        ? supabase.from("message_queue" as any).select("id, channel").eq("tenant_id", tenantUuid)
+            .eq("recipient_identifier", patientPhone).in("message_type", ["appointment_reminder_24h", "appointment_reminder_2h"]).limit(1)
+        : Promise.resolve({ data: [] as any[] });
+      const [fu, con, pkg, rem] = await Promise.all([fuP, conP, pkgP, remP]);
+      const fuRows = (fu.data || []) as any[];
+      const conRows = (con.data || []) as any[];
+      const pkgRows = (pkg.data || []) as any[];
+      const remRows = (rem.data || []) as any[];
+      const signed = conRows.filter(r => (r.status || "").toLowerCase() === "signed").length;
+      return {
+        followupsDue: fuRows.length,
+        followupsOverdue: fuRows.filter(r => (r.scheduled_date || "9999") < today).length,
+        consentTotal: conRows.length, consentSigned: signed, consentUnsigned: conRows.length - signed,
+        activePackages: pkgRows.length,
+        sessionsRemaining: pkgRows.reduce((s, r) => s + (r.sessions_remaining || 0), 0),
+        reminded: remRows.length > 0, remindedChannel: remRows[0]?.channel || null,
+      };
+    },
+  });
 
   // Build a unified timeline (consultations + appointments + health analyses)
   const timeline = useMemo(() => {
@@ -274,6 +315,18 @@ export default function PatientProfile() {
                 >
                   <Pencil className="h-4 w-4 mr-1.5" /> Edit
                 </Button>
+                {isHealthcareClinic && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    data-testid="patient-ask-medica"
+                    className="border-teal-500/40 text-teal-700 dark:text-teal-300 hover:bg-teal-500/10"
+                    onClick={() => window.dispatchEvent(new CustomEvent("omega:ask", { detail: { prompt:
+                      `Give me a clinical summary for patient ${patient.full_name} (patient_id: ${patient.id}) — recent visits, any vitals alerts, follow-ups due or overdue, consent status, and prepaid package balance. Surface and flag for the clinician; do not diagnose, prescribe, or decide treatment.` } }))}
+                  >
+                    <Brain className="h-4 w-4 mr-1.5" /> Ask MEDICA about {patient.full_name.split(" ")[0]}
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -320,6 +373,90 @@ export default function PatientProfile() {
           small
         />
       </div>
+
+      {/* Care signals — ADDITIVE, healthcare-clinic-gated, READ-only surfacing.
+          Each signal degrades to its own empty-state. */}
+      {isHealthcareClinic && (
+        <div>
+          <h2 className="text-base font-semibold tracking-tight flex items-center gap-2">
+            Care signals
+            <span className="inline-flex items-center gap-1 rounded-full border border-teal-500/30 bg-teal-500/10 text-teal-700 dark:text-teal-300 px-2 py-0.5 text-[11px] font-semibold">
+              <Sparkles className="h-3 w-3" />New
+            </span>
+          </h2>
+          <p className="text-sm text-muted-foreground">At-a-glance status from the floor &amp; automation layer — read-only awareness for staff.</p>
+          <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 mt-3">
+            {/* Next appointment + reminded? (real delivery, not the flag) */}
+            <Card>
+              <CardContent className="pt-5 pb-4 space-y-2">
+                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" />Next appointment</div>
+                {upcomingAppt?.scheduled_at ? (
+                  <>
+                    <div className="text-sm font-bold">{formatDate(upcomingAppt.scheduled_at, "medium")}</div>
+                    {upcomingAppt.service && <div className="text-xs text-muted-foreground">{upcomingAppt.service}</div>}
+                    {careSignals?.reminded ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-700 px-2 py-0.5 text-[11px] font-semibold w-fit">
+                        <ShieldCheck className="h-3 w-3" />Reminded{careSignals.remindedChannel ? ` · ${careSignals.remindedChannel}` : ""}
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-muted-foreground">Reminder not sent yet</span>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-sm font-medium text-muted-foreground flex items-center gap-2"><span className="inline-block h-1.5 w-5 rounded-full bg-border" />None scheduled</div>
+                )}
+              </CardContent>
+            </Card>
+            {/* Follow-ups due / overdue */}
+            <Card>
+              <CardContent className="pt-5 pb-4 space-y-2">
+                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5"><RefreshCw className="h-3.5 w-3.5" />Follow-ups</div>
+                {(careSignals?.followupsDue ?? 0) > 0 ? (
+                  <>
+                    <div className="text-sm font-bold">{careSignals!.followupsDue} due{careSignals!.followupsOverdue > 0 ? ` · ${careSignals!.followupsOverdue} overdue` : ""}</div>
+                    {careSignals!.followupsOverdue > 0
+                      ? <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-700 px-2 py-0.5 text-[11px] font-semibold w-fit">Overdue — action needed</span>
+                      : <span className="inline-flex items-center rounded-full bg-blue-100 text-blue-700 px-2 py-0.5 text-[11px] font-semibold w-fit">Pending</span>}
+                  </>
+                ) : (
+                  <div className="text-sm font-medium text-muted-foreground flex items-center gap-2"><span className="inline-block h-1.5 w-5 rounded-full bg-border" />None pending</div>
+                )}
+              </CardContent>
+            </Card>
+            {/* Consent — surface only, never blocks care */}
+            <Card>
+              <CardContent className="pt-5 pb-4 space-y-2">
+                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5" />Consent</div>
+                {(careSignals?.consentTotal ?? 0) > 0 ? (
+                  <>
+                    <div className="flex flex-wrap gap-1.5">
+                      {careSignals!.consentSigned > 0 && <span className="inline-flex items-center rounded-full bg-emerald-100 text-emerald-700 px-2 py-0.5 text-[11px] font-semibold">Signed {careSignals!.consentSigned}</span>}
+                      {careSignals!.consentUnsigned > 0 && <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-700 px-2 py-0.5 text-[11px] font-semibold">Missing {careSignals!.consentUnsigned}</span>}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground italic">Surface only — doesn’t block care; clinician verifies.</div>
+                  </>
+                ) : (
+                  <div className="text-sm font-medium text-muted-foreground flex items-center gap-2"><span className="inline-block h-1.5 w-5 rounded-full bg-border" />No forms on file</div>
+                )}
+              </CardContent>
+            </Card>
+            {/* Prepaid package balance */}
+            <Card>
+              <CardContent className="pt-5 pb-4 space-y-2">
+                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5"><Package className="h-3.5 w-3.5" />Package balance</div>
+                {(careSignals?.activePackages ?? 0) > 0 ? (
+                  <>
+                    <div className="text-sm font-bold">{careSignals!.sessionsRemaining} session{careSignals!.sessionsRemaining === 1 ? "" : "s"} left</div>
+                    <div className="text-xs text-muted-foreground">{careSignals!.activePackages} active package{careSignals!.activePackages === 1 ? "" : "s"}</div>
+                  </>
+                ) : (
+                  <div className="text-sm font-medium text-muted-foreground flex items-center gap-2"><span className="inline-block h-1.5 w-5 rounded-full bg-border" />No active package</div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
       <Tabs defaultValue="timeline" className="space-y-4">

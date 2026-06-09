@@ -74,11 +74,13 @@ const STATUS_ICON: Record<string, React.ReactNode> = {
   cancelled: <XCircle className="h-3 w-3" />,
 };
 
+// NOTE: currency intentionally blank — filled at form-open from defaults below
+// (existing PO currency → tenant currency). AED no longer hardcoded.
 const BLANK_FORM = {
   po_number: "",
   vendor_name: "",
   total_amount: "",
-  currency: "AED",
+  currency: "",
   status: "draft",
   delivery_date: "",
   payment_terms: "NET-30",
@@ -118,7 +120,8 @@ export default function PurchaseOrders() {
   const defaults = useMemo(() => ({
     industry: purchaseOrders[0]?.industry || tenantConfig?.industry || "general",
     region: purchaseOrders[0]?.region || tenantConfig?.region || "uae",
-    currency: purchaseOrders[0]?.currency || "AED",
+    // Prefer existing PO currency → tenant currency → blank. AED fallback removed.
+    currency: purchaseOrders[0]?.currency || tenantConfig?.currency || "",
   }), [purchaseOrders, tenantConfig]);
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["ops_purchase_orders", tenantSlug] });

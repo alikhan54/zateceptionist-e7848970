@@ -231,6 +231,26 @@ export default defineConfig({
       use: { browserName: 'chromium' }, // no setup dep — 6 industries, env-var credentials
     },
     {
+      name: 'branding',
+      testMatch: /branding\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — fresh env-var logins; Phase 1A white-label
+    },
+    {
+      name: 'master-admin',
+      testMatch: /master-admin\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — env-var logins; Phase 2A control plane
+    },
+    {
+      name: 'tenant-2b',
+      testMatch: /tenant-2b\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — TEST_TENANT_* env logins; Phase 2B per-tenant control proof
+    },
+    {
+      name: 'rbac-2c',
+      testMatch: /rbac-2c\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — TEST_TENANT_* env logins; Phase 2C full capability control
+    },
+    {
       name: 'ops-ui-e2e',
       testMatch: /ops-ui-e2e\.spec\.ts/,
       use: { browserName: 'chromium' }, // no setup dep — uses BBQ_EMAIL/BBQ_PASSWORD
@@ -524,6 +544,21 @@ export default defineConfig({
       name: 'hr-course-gen-verify',
       testMatch: /hr-course-gen-verify\.spec\.ts/,
       use: { browserName: 'chromium' }, // no setup dep — fresh login; existing-course AI-content gen vs local preview (CG_BASE/HR_V6_BASE)
+    },
+    {
+      name: 'chaptered-video-verify',
+      testMatch: /chaptered-video-verify\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — fresh login; chaptered HeyGen player vs local preview (CV_BASE/HR_V6_BASE)
+    },
+    {
+      name: 'chaptered-custom-avatar-verify',
+      testMatch: /chaptered-custom-avatar-verify\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — fresh login; custom-avatar chaptered player vs local preview (CA_BASE/HR_V6_BASE)
+    },
+    {
+      name: 'rehost-permanent-verify',
+      testMatch: /rehost-permanent-verify\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — fresh login; re-host permanence (Supabase storage) vs local preview (RH_BASE/HR_V6_BASE)
     },
   ],
 });

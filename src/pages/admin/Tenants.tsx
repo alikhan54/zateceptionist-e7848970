@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -89,6 +90,7 @@ const features = [
 
 export default function AllTenants() {
   const { authUser } = useAuth();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const { data: tenants, isLoading, refetch } = useAllTenants();
   const updateStatus = useUpdateTenantStatus();
@@ -111,6 +113,15 @@ export default function AllTenants() {
     const matchesPlan = planFilter === 'all' || tenant.subscription_plan === planFilter;
     return matchesSearch && matchesStatus && matchesIndustry && matchesPlan;
   });
+
+  // Stat-card aggregates from the full cross-tenant RPC result (not the filtered view).
+  // Replaces the previous hardcoded 156 / 142 / 8 / $48.5K placeholders.
+  const totalTenants = (tenants || []).length;
+  const activeTenants = (tenants || []).filter((t) => t.status === 'active').length;
+  const trialTenants = (tenants || []).filter((t) => t.status === 'trial').length;
+  const totalMrr = (tenants || [])
+    .filter((t) => t.status === 'active')
+    .reduce((sum, t) => sum + (t.monthly_value || 0), 0);
 
   const handleStatusChange = async (tenantId: string, newStatus: string) => {
     try {
@@ -427,7 +438,7 @@ export default function AllTenants() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Tenants</p>
-                <p className="text-2xl font-bold">156</p>
+                <p className="text-2xl font-bold">{totalTenants}</p>
               </div>
               <Building2 className="h-8 w-8 text-muted-foreground" />
             </div>
@@ -438,7 +449,7 @@ export default function AllTenants() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Active</p>
-                <p className="text-2xl font-bold text-chart-2">142</p>
+                <p className="text-2xl font-bold text-chart-2">{activeTenants}</p>
               </div>
               <Activity className="h-8 w-8 text-chart-2" />
             </div>
@@ -449,7 +460,7 @@ export default function AllTenants() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Trial</p>
-                <p className="text-2xl font-bold text-yellow-500">8</p>
+                <p className="text-2xl font-bold text-yellow-500">{trialTenants}</p>
               </div>
               <Calendar className="h-8 w-8 text-yellow-500" />
             </div>
@@ -460,7 +471,7 @@ export default function AllTenants() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">MRR</p>
-                <p className="text-2xl font-bold">$48.5K</p>
+                <p className="text-2xl font-bold">${totalMrr.toLocaleString()}</p>
               </div>
               <TrendingUp className="h-8 w-8 text-muted-foreground" />
             </div>
@@ -568,7 +579,7 @@ export default function AllTenants() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem><Eye className="h-4 w-4 mr-2" />View Details</DropdownMenuItem>
+                        <DropdownMenuItem data-testid={`control-${tenant.tenant_id}`} onClick={(e) => { e.stopPropagation(); navigate(`/admin/tenants/${tenant.tenant_id}`); }}><Eye className="h-4 w-4 mr-2" />Control Panel</DropdownMenuItem>
                         <DropdownMenuItem><UserCog className="h-4 w-4 mr-2" />Impersonate</DropdownMenuItem>
                         <DropdownMenuItem><Settings className="h-4 w-4 mr-2" />Settings</DropdownMenuItem>
                         <DropdownMenuSeparator />

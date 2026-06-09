@@ -1,0 +1,32 @@
+{
+  "timestamp_utc": "2026-06-06T18:08:03.403258+00:00",
+  "tenant_id": "bsh-hospital",
+  "mode": "commit",
+  "record": {
+    "timestamp": "2026-06-06T18:07:59.849258+00:00",
+    "email": "bsh-hospital@zatesystems.com",
+    "role": "admin",
+    "tenant_uuid": "58b1e299-d7f2-4db7-b24f-3cd2fb5322a6",
+    "auth_id": "5bfe512f-42a3-4170-89c3-cfdd30863dae",
+    "users_id": "0113b008-6f52-42f2-b3ba-6b0a55008071",
+    "password": "REDACTED",
+    "trigger_path": "BIND (no phantom)",
+    "error": null
+  },
+  "verifications": {
+    "V1_auth_user_present": "PASS",
+    "V2_public_users_slug": "PASS",
+    "V3_user_roles_slug": "PASS",
+    "V4_fk_integrity": "PASS",
+    "V5_no_phantom_count_ok": "PASS (tc pre=44 post=45; intended uuid present)",
+    "V6_isolation": "PASS",
+    "V7_tenant_fields": "PASS",
+    "V8_role_admin": "PASS"
+  },
+  "pre_snapshot": {
+    "tenant_config_count": 44,
+    "other_tenant_users": 47,
+    "slug_rows": 0,
+    "control_md5": "b24f428f0d09b0a6f7d121bd9c7b7805"
+  }
+}

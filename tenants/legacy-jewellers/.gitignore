@@ -1,0 +1,5 @@
+# Never commit secrets for this tenant. Live credentials are written OUTSIDE the
+# repo at D:/420-system/tenants/legacy-jewellers/.credentials/ ; this is a safety net.
+.credentials/
+*credentials*.txt
+*-credentials.txt

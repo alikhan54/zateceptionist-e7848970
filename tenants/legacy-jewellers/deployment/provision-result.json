@@ -1,0 +1,32 @@
+{
+  "timestamp_utc": "2026-06-04T19:07:48.637920+00:00",
+  "tenant_id": "legacy-jewellers",
+  "mode": "commit",
+  "record": {
+    "timestamp": "2026-06-04T19:07:45.460903+00:00",
+    "email": "info@thelegacyjewellers.com",
+    "role": "admin",
+    "tenant_uuid": "f1abef0c-43e1-4589-8746-9a890f7718fd",
+    "auth_id": "43878ac8-9877-4e89-8d0d-86e4d1e13283",
+    "users_id": "97635d3a-2d88-4e92-9fb3-a5033af1fbcd",
+    "password": "REDACTED",
+    "trigger_path": "BIND (no phantom)",
+    "error": null
+  },
+  "verifications": {
+    "V1_auth_user_present": "PASS",
+    "V2_public_users_slug": "PASS",
+    "V3_user_roles_slug": "PASS",
+    "V4_fk_integrity": "PASS",
+    "V5_no_phantom_count_ok": "PASS (tc pre=43 post=44; phantom=0)",
+    "V6_isolation": "PASS",
+    "V7_tenant_fields": "PASS",
+    "V8_role_admin": "PASS"
+  },
+  "pre_snapshot": {
+    "tenant_config_count": 43,
+    "other_tenant_users": 46,
+    "legacy_slug_rows": 0,
+    "control_md5": "5e5aa84195787fc12d435a88cbcbb11f"
+  }
+}

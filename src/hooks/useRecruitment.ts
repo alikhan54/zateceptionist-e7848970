@@ -28,7 +28,7 @@ export interface JobRequisition {
   location_city: string | null;
   location_country: string;
   number_of_openings: number;
-  status: 'draft' | 'open' | 'active' | 'on_hold' | 'closed' | 'filled';
+  status: 'draft' | 'pending_approval' | 'approved' | 'open' | 'active' | 'on_hold' | 'closed' | 'filled' | 'cancelled';
   priority: string;
   published_at: string | null;
   closed_at: string | null;
@@ -69,6 +69,19 @@ export interface JobApplication {
   ai_interview_score: number | null;
   ai_interview_summary: string | null;
   ai_interview_recommendation: string | null;
+  // AI screening (Claude/Gemini) — the explainable-score source. ai_screening_result is the
+  // JSON {score, skill_match_pct, experience_match, location_match, strengths[], red_flags[], reasoning}.
+  ai_screening_score: number | null;
+  ai_screening_result: {
+    score?: number;
+    skill_match_pct?: number | string;
+    experience_match?: string;
+    location_match?: string;
+    strengths?: string[];
+    red_flags?: string[];
+    recommended_action?: string;
+    reasoning?: string;
+  } | null;
   outreach_status: string;
   outreach_channel: string | null;
   offer_salary: number | null;
@@ -78,7 +91,7 @@ export interface JobApplication {
   updated_at: string;
   // Joined fields
   candidate?: Candidate;
-  requisition?: Pick<JobRequisition, 'id' | 'job_title' | 'department_id' | 'location_city' | 'employment_type'>;
+  requisition?: Pick<JobRequisition, 'id' | 'job_title' | 'department_id' | 'location_city' | 'employment_type' | 'status' | 'created_at'>;
 }
 
 export interface Candidate {
@@ -101,6 +114,8 @@ export interface Candidate {
   match_score: number | null;
   contact_strategy: string | null;
   status: string;
+  job_id: string | null;
+  experience_years: number | null;
   created_at: string;
 }
 
@@ -227,7 +242,7 @@ export function useJobApplications(jobRequisitionId?: string) {
             source, enrichment_status, match_score, contact_strategy, status
           ),
           requisition:hr_job_requisitions(
-            id, job_title, department_id, location_city, employment_type
+            id, job_title, department_id, location_city, employment_type, status, created_at
           )
         `)
         .eq('tenant_id', tenantUuid)
@@ -390,6 +405,36 @@ export function useOutreachFeed(limit = 100) {
   });
 }
 
+// Latest hr_recruitment_outreach row per application_id (tenant-scoped) — powers the
+// pipeline-card outreach/reply badge. Mirrors the useOutreachFeed query; reads existing
+// columns only. Returns a Map<application_id, latest row> (newest by sent_at || created_at).
+export function useOutreachByApplication() {
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
+  return useQuery({
+    queryKey: ['outreach_by_application', tenantUuid],
+    queryFn: async () => {
+      const map = new Map<string, any>();
+      if (!tenantUuid) return map;
+      const { data, error } = await supabase
+        .from('hr_recruitment_outreach')
+        .select('*')
+        .eq('tenant_id', tenantUuid)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      const ts = (r: any) => new Date(r.sent_at || r.created_at || 0).getTime();
+      for (const r of (data || []) as any[]) {
+        const aid = r.application_id;
+        if (!aid) continue;
+        const prev = map.get(aid);
+        if (!prev || ts(r) > ts(prev)) map.set(aid, r);
+      }
+      return map;
+    },
+    enabled: !!tenantUuid,
+  });
+}
+
 export function useSourcingRuns(jobRequisitionId?: string) {
   const { tenantConfig } = useTenant();
   const tenantUuid = tenantConfig?.id;
@@ -523,10 +568,21 @@ export function useCreateJob() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data: JobRequisition) => {
       queryClient.invalidateQueries({ queryKey: ['hr_job_requisitions'] });
       queryClient.invalidateQueries({ queryKey: ['recruitment_stats'] });
       toast.success('Job posted successfully');
+      // Auto-source on post: when the toggle is on, actually kick off Sourcing v2
+      // (trigger_type:'auto') — previously the toggle was decorative and nothing fired.
+      // The entry workflow enforces the guardrails (premium+Apify tenants only, and
+      // idempotent: skips if a run already exists for this job), so this is a safe
+      // fire-and-forget. Job creation already succeeded; a webhook hiccup never blocks
+      // the post, and the Sourcing tab + watchdog are the fallbacks.
+      if (data?.auto_source_enabled && tenantUuid) {
+        callWebhook('/hr/job/trigger-sourcing-v2', { job_requisition_id: data.id, trigger_type: 'auto' }, tenantUuid)
+          .then(() => queryClient.invalidateQueries({ queryKey: ['hr_sourcing_runs'] }))
+          .catch(() => { /* non-blocking — manual Sourcing button + watchdog remain */ });
+      }
     },
     onError: () => toast.error('Failed to create job posting'),
   });
@@ -910,5 +966,32 @@ export function useRejectOffer() {
       toast.success('Offer rejected');
     },
     onError: () => toast.error('Failed to reject offer'),
+  });
+}
+
+// Archive / restore a candidate — soft state via hr_candidates.status ('archived' is an
+// already-supported value; nothing wrote it before). Additive, recoverable, tenant-scoped.
+export function useArchiveCandidate() {
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ candidateId, archive }: { candidateId: string; archive: boolean }) => {
+      if (!tenantUuid) throw new Error('No tenant');
+      const { error } = await supabase
+        .from('hr_candidates')
+        .update({ status: archive ? 'archived' : 'active' })
+        .eq('id', candidateId)
+        .eq('tenant_id', tenantUuid);
+      if (error) throw error;
+    },
+    onSuccess: (_d, { archive }) => {
+      queryClient.invalidateQueries({ queryKey: ['hr_candidates'] });
+      queryClient.invalidateQueries({ queryKey: ['hr_job_applications'] });
+      queryClient.invalidateQueries({ queryKey: ['recruitment_stats'] });
+      toast.success(archive ? 'Candidate archived' : 'Candidate restored');
+    },
+    onError: () => toast.error('Failed to update candidate'),
   });
 }

@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { AnimatedNumber } from '@/components/hr/AnimatedNumber';
 import { CircularProgress } from '@/components/hr/CircularProgress';
+import { CourseChapters } from '@/components/hr/CourseChapters';
 import {
   GraduationCap, BookOpen, Clock, Users, Award, Play,
   CheckCircle2, Search, Calendar, TrendingUp, Sparkles, Trophy, Plus,
@@ -28,7 +29,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 export default function TrainingPage() {
   const { tenantConfig } = useTenant();
   const queryClient = useQueryClient();
-  const { programs, enrollments, enroll, createProgram, generateCourse, generateAvatarVideo, updateCourse, deleteCourse, addCourseMedia } = useTraining();
+  const { programs, enrollments, enroll, createProgram, generateCourse, generateAvatarVideo, updateCourse, deleteCourse, addCourseMedia, generateChapters, refreshChapters } = useTraining();
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -542,6 +543,14 @@ export default function TrainingPage() {
           </DialogHeader>
           {!quizOpen ? (
             <div className="space-y-4">
+              {playerRecord?.program?.id && (
+                <CourseChapters
+                  programId={playerRecord.program.id}
+                  generating={generateChapters.isPending}
+                  onGenerate={(mode) => generateChapters.mutate({ training_program_id: playerRecord.program.id, avatar_mode: mode })}
+                  onRefresh={() => refreshChapters.mutate({ training_program_id: playerRecord.program.id })}
+                />
+              )}
               {playerRecord?.program?.ai?.avatar_video_url && (
                 <video controls src={playerRecord.program.ai.avatar_video_url} className="w-full rounded" data-testid="course-avatar-video" />
               )}

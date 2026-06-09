@@ -65,12 +65,19 @@ export default function LoginPage() {
     }
   };
 
-  const handleForgotPassword = () => {
+  const handleForgotPassword = async () => {
     if (!email) {
       toast.error('Please enter your email address first');
       return;
     }
-    toast.info('Password reset functionality coming soon');
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success('Password reset email sent — check your inbox.');
   };
 
   // Google OAuth Sign In

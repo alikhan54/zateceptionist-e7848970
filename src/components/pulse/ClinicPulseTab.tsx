@@ -45,7 +45,9 @@ export function ClinicPulseTab() {
     queryFn: async () => {
       if (!tenantId) return [];
       const { data } = await supabase.from("appointments" as any)
-        .select("id,status,scheduled_at,service,total_price")
+        // NOTE: appointments has no `total_price` column → selecting it 400s (PostgREST 42703).
+        // The revenue aggregation below already defaults missing price to 0 → avg-visit shows "—".
+        .select("id,status,scheduled_at,service")
         .eq("tenant_id", tenantId)
         .gte("scheduled_at", thirtyDaysAgoISO);
       return data || [];
@@ -71,7 +73,9 @@ export function ClinicPulseTab() {
     queryFn: async () => {
       if (!tenantId) return [];
       const { data } = await supabase.from("clinic_consultations" as any)
-        .select("id,patient_id,treatment_id,diagnosis,created_at")
+        // NOTE: clinic_consultations has no `treatment_id` column → selecting it 400s (PostgREST 42703).
+        // The top-treatment aggregation below already null-guards `c.treatment_id` → that widget shows "—".
+        .select("id,patient_id,diagnosis,created_at")
         .eq("tenant_id", tenantId)
         .gte("created_at", thirtyDaysAgoISO);
       return data || [];

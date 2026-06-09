@@ -2,7 +2,10 @@ import { useState, useEffect, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
+import { useHospitalT } from "@/pages/hospital/i18n";
+import { useHospitalRole, HOSPITAL_ROLE_PAGES, isRestrictedHospitalRole } from "@/hooks/useHospitalRole";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
+import { BrandedLogo } from "@/components/branding/BrandedLogo";
 import {
   Sidebar,
   SidebarContent,
@@ -71,6 +74,7 @@ import {
   ClipboardList,
   BookOpen,
   UserPlus,
+  BedDouble,
   Truck,
   Mail,
   Eye,
@@ -116,6 +120,8 @@ import {
   Plug,
   Microscope,
   Wrench,
+  Hammer,
+  Gem,
   Ship,
   Compass,
   Radio,
@@ -156,7 +162,12 @@ export function NavigationSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, isAdmin, isMasterAdmin, authUser, hasPermission } = useAuth();
-  const { tenantConfig, translate, tenantId, setTenantId, isRestaurant, isBankingCollections, isHealthcareClinic, isConstructionEstimation, isRealEstate, isYouTubeAgency, isLaboratoryInstruments, isRoofing, isAccountingPracticeUK, isTelehealth } = useTenant();
+  const { tenantConfig, translate, tenantId, setTenantId, isRestaurant, isBankingCollections, isHealthcareClinic, isHospital, isConstructionEstimation, isRealEstate, isYouTubeAgency, isLaboratoryInstruments, isRoofing, isAccountingPracticeUK, isJewellery, isTelehealth } = useTenant();
+  // Hospital-scoped i18n — only affects the (isHospital-gated) hospital nav section below.
+  const { t: hospT } = useHospitalT();
+  // HOSPITAL-RBAC [8] — resolves to 'admin' (no query) for non-hospital tenants + platform admins,
+  // so this is a no-op everywhere except a bsh-hospital doctor/nurse/lab login.
+  const { hospitalRole } = useHospitalRole();
   const { isEnabled } = useFeatureFlags();
   const { toast } = useToast();
 
@@ -268,12 +279,26 @@ export function NavigationSidebar() {
 
   // Helper function to check if user can see section
   const canAccessSection = (section: NavSection): boolean => {
+    // HOSPITAL-RBAC [8] — a restricted hospital role (doctor/nurse/lab) sees ONLY the hospital section
+    // (identified by its /hospital/* item urls). Explicit DEFAULT-DENY for every other section
+    // (Sales/Marketing/HR/Operations/Master-Admin/…). No-op for admin/master_admin/non-hospital
+    // (hospitalRole resolves to 'admin' there → not restricted).
+    if (isRestrictedHospitalRole(hospitalRole)) {
+      return !!section.items?.some((it) => it.url?.startsWith("/hospital/"));
+    }
     // Master admin sees EVERYTHING
     if (isMasterAdmin) return true;
 
     // CRITICAL FIX: adminOnly sections (like Master Admin) are ONLY for master_admin
     // Regular admins should NOT see these sections
     if (section.adminOnly) return false;
+
+    // Phase 2C (full capability control): a featureKey-gated module that the master admin has
+    // explicitly disabled is hidden from EVERY role except master_admin — INCLUDING the tenant's
+    // own admin. Evaluated BEFORE the admin bypass below. Flags default to true (isEnabled), so a
+    // tenant with no explicit flag is unaffected (no regression). Sections WITHOUT a featureKey
+    // (Settings, account, adminOnly) are not touched by this.
+    if (section.featureKey && !isFeatureEnabled(section.featureKey)) return false;
 
     // Admin can see all non-adminOnly sections
     if (isAdmin) return true;
@@ -511,10 +536,13 @@ export function NavigationSidebar() {
     label: "Restaurant",
     collapsible: true,
     items: [
+      { title: "POS", url: "/operations/pos", icon: Calculator },
       { title: "Orders", url: "/operations/orders", icon: ShoppingCart },
       { title: "Kitchen Display", url: "/operations/kitchen-display", icon: ChefHat },
       { title: "Menu Editor", url: "/operations/menu", icon: UtensilsCrossed },
       { title: "Reservations", url: "/operations/reservations", icon: CalendarCheck },
+      { title: "Loyalty Club", url: "/operations/loyalty", icon: Award },
+      { title: "Dispatch", url: "/operations/dispatch", icon: Truck },
       // Inventory removed: lives under Operations > Supply Chain to avoid duplication.
     ],
   };
@@ -610,6 +638,37 @@ export function NavigationSidebar() {
     collapsible: true,
     items: [
       { title: "Safety & Triage", url: "/tend-ops/triage", icon: ShieldCheck },
+    ],
+  };
+
+  const hospitalSection: NavSection = {
+    label: hospT("nav.section"),
+    collapsible: true,
+    // HOSPITAL-RBAC [8]: restrict the sub-items to the role's allowed pages (admin/unrestricted = all).
+    items: [
+      { title: hospT("nav.journey"), url: "/hospital/journey", icon: Activity },
+      { title: hospT("nav.admissions"), url: "/hospital/patients", icon: Stethoscope },
+      { title: hospT("nav.nurse"), url: "/hospital/nurse", icon: UserPlus },
+      { title: hospT("nav.beds"), url: "/hospital/beds", icon: BedDouble },
+      { title: hospT("nav.pharmacy"), url: "/hospital/pharmacy", icon: Pill },
+      { title: hospT("nav.laboratory"), url: "/hospital/lab", icon: Syringe },
+      { title: hospT("nav.diagnostics"), url: "/hospital/diagnostics", icon: FileText },
+    ].filter((it) => !isRestrictedHospitalRole(hospitalRole) || HOSPITAL_ROLE_PAGES[hospitalRole].includes(it.url)),
+  };
+
+  const jewellerySection: NavSection = {
+    label: "Jewelry",
+    collapsible: true,
+    items: [
+      { title: "Command Center", url: "/jewelry/dashboard", icon: LayoutDashboard },
+      { title: "Point of Sale", url: "/jewelry/pos", icon: ShoppingCart },
+      { title: "Orders", url: "/jewelry/orders", icon: ClipboardList },
+      { title: "Inventory", url: "/jewelry/inventory", icon: Package },
+      { title: "Workshop", url: "/jewelry/workshop", icon: Hammer },
+      { title: "Repairs", url: "/jewelry/repairs", icon: Wrench },
+      { title: "Loose Stones", url: "/jewelry/loose-stones", icon: Gem },
+      { title: "Gold Rate", url: "/jewelry/gold-rate", icon: Banknote },
+      { title: "Reports", url: "/jewelry/reports", icon: BookOpen },
     ],
   };
 
@@ -937,28 +996,7 @@ export function NavigationSidebar() {
     <Sidebar collapsible="icon" className="border-r" style={accentStyle}>
       {/* Header */}
       <SidebarHeader className="p-4 border-b">
-        <div className={cn("flex items-center gap-3", collapsed && "justify-center")}>
-          {tenantConfig?.logo_url ? (
-            <Avatar className="h-9 w-9 shrink-0">
-              <AvatarImage src={tenantConfig.logo_url} alt={tenantConfig.company_name || "Company"} />
-              <AvatarFallback className="bg-primary text-primary-foreground">
-                {tenantConfig.company_name?.charAt(0) || "Z"}
-              </AvatarFallback>
-            </Avatar>
-          ) : (
-            <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center shrink-0">
-              <Zap className="h-5 w-5 text-primary-foreground" />
-            </div>
-          )}
-          {!collapsed && (
-            <div className="flex flex-col overflow-hidden">
-              <span className="font-semibold text-sm truncate">{tenantConfig?.company_name || "Zateceptionist"}</span>
-              <span className="text-xs text-muted-foreground truncate">
-                {tenantConfig?.industry ? tenantConfig.industry.replace(/_/g, " ") : "Business Hub"}
-              </span>
-            </div>
-          )}
-        </div>
+        <BrandedLogo collapsed={collapsed} />
       </SidebarHeader>
 
       {/* User Context Banner */}
@@ -1018,13 +1056,20 @@ export function NavigationSidebar() {
             The generic MAIN section (Inbox/Appointments/Customers/Tasks + a duplicate Dashboard)
             is intentionally hidden for them — irrelevant to a UK accounting practice (Adeel, 2026-05-30).
             Master admins + all other 35 tenants fall through to the existing render below (MAIN intact). */}
-        {renderAccountingMinimal && (
+        {/* Master admin = pure control plane: render ONLY the Master Admin section.
+            All tenant-operational modules are hidden. Every other role falls through to the
+            existing render paths below, byte-identical (their !isMasterAdmin guard is always true). */}
+        {isMasterAdmin && (
+          <CollapsibleSection section={adminSection} sectionKey="admin" />
+        )}
+
+        {!isMasterAdmin && renderAccountingMinimal && (
           <>
             <CollapsibleSection section={accountingSection} sectionKey="accounting" />
           </>
         )}
 
-        {!renderAccountingMinimal && (
+        {!isMasterAdmin && !renderAccountingMinimal && (
         <>
         {/* Staff Section - Only for staff */}
         {authUser?.role === "staff" && <StaticSection section={staffSection} />}
@@ -1044,6 +1089,11 @@ export function NavigationSidebar() {
         {/* HR AI Section */}
         {canAccessSection(hrSection) && <CollapsibleSection section={hrSection} sectionKey="hr" />}
 
+        {/* Jewelry Section — jewellery industry only (Legacy Jewellers) */}
+        {isJewellery && canAccessSection(jewellerySection) && (
+          <CollapsibleSection section={jewellerySection} sectionKey="jewelry" />
+        )}
+
         {/* Restaurant Section — restaurant tenants only */}
         {isRestaurant && canAccessSection(restaurantSection) && (
           <CollapsibleSection section={restaurantSection} sectionKey="restaurant" />
@@ -1057,6 +1107,11 @@ export function NavigationSidebar() {
         {/* Clinic Section — Healthcare/Aesthetics industry only */}
         {isHealthcareClinic && canAccessSection(clinicSection) && (
           <CollapsibleSection section={clinicSection} sectionKey="clinic" />
+        )}
+
+        {/* Hospital Section — hospital industry only (native cardio vertical) */}
+        {isHospital && canAccessSection(hospitalSection) && (
+          <CollapsibleSection section={hospitalSection} sectionKey="hospital" />
         )}
 
         {/* Estimation Section — Construction industry only */}

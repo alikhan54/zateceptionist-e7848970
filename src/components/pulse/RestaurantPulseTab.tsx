@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
+import { useCurrency } from "@/hooks/useCurrency";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Utensils, Receipt, TrendingUp, ChefHat, Truck } from "lucide-react";
@@ -14,6 +15,7 @@ import { Utensils, Receipt, TrendingUp, ChefHat, Truck } from "lucide-react";
  */
 export function RestaurantPulseTab() {
   const { tenantId } = useTenant();
+  const { formatPrice } = useCurrency();
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const todayISO = today.toISOString();
   const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
@@ -90,8 +92,8 @@ export function RestaurantPulseTab() {
           <Badge variant="outline" className="text-[10px]">restaurant</Badge>
         </div>
         <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
-          <Widget testid="restpulse-orders-today" icon={<Receipt className="h-4 w-4 text-emerald-500" />} label="Orders today" value={stats.todayCount > 0 ? String(stats.todayCount) : "—"} hint={stats.todayCount === 0 ? "No orders yet today" : `AED ${stats.todayRevenue}`} />
-          <Widget testid="restpulse-avg-ticket" icon={<TrendingUp className="h-4 w-4 text-violet-500" />} label="Avg ticket (7d)" value={stats.avgTicket !== null ? `AED ${stats.avgTicket}` : "—"} hint={stats.avgTicket === null ? "Not enough data yet" : "Per-order average"} />
+          <Widget testid="restpulse-orders-today" icon={<Receipt className="h-4 w-4 text-emerald-500" />} label="Orders today" value={stats.todayCount > 0 ? String(stats.todayCount) : "—"} hint={stats.todayCount === 0 ? "No orders yet today" : formatPrice(stats.todayRevenue)} />
+          <Widget testid="restpulse-avg-ticket" icon={<TrendingUp className="h-4 w-4 text-violet-500" />} label="Avg ticket (7d)" value={stats.avgTicket !== null ? formatPrice(stats.avgTicket) : "—"} hint={stats.avgTicket === null ? "Not enough data yet" : "Per-order average"} />
           <Widget testid="restpulse-delivery-pct" icon={<Truck className="h-4 w-4 text-sky-500" />} label="Delivery share" value={stats.deliveryPct !== null ? `${stats.deliveryPct}%` : "—"} hint={stats.deliveryPct === null ? "Not enough data" : `${stats.dineInCount} dine-in (7d)`} />
           <Widget testid="restpulse-top-item" icon={<ChefHat className="h-4 w-4 text-rose-500" />} label="Top menu item" value={stats.topItems[0]?.name || "—"} hint={stats.topItems[0] ? `${stats.topItems[0].count} sold (7d)` : "Not enough data"} />
         </div>

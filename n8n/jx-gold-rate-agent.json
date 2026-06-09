@@ -1,0 +1,427 @@
+{
+  "name": "420 Jewellery - Live Gold-Rate Agent v1.0",
+  "nodes": [
+    {
+      "id": "GR.1 Schedule",
+      "name": "GR.1 Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "GR.2 Get Jewellery Tenants",
+      "name": "GR.2 Get Jewellery Tenants",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/tenant_config?industry=eq.jewellery&select=tenant_id,id,company_name,currency",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {}
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "gQE27pII1aZEzHbn",
+          "name": "ZATECEPTIONIST-V2"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "GR.3 Loop Tenants",
+      "name": "GR.3 Loop Tenants",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      }
+    },
+    {
+      "id": "GR.4 Store Tenant",
+      "name": "GR.4 Store Tenant",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GR.4 Store tenant + base-rate config into workflow static data (safe multi-tenant loop).\nconst sd = $getWorkflowStaticData('node');\nconst t = $input.first().json;  // run-once-for-all-items safe (batchSize=1 from GR.3)\nsd.t = t;\nsd.currentTenantSlug = t.tenant_id;\nsd.currentTenantUUID = t.id;\n// Base 24K/gram resolution config:\nsd.base_24k_override = (t.base_24k_override != null) ? Number(t.base_24k_override) : null; // optional per-run override\nsd.external_24k = null;   // (optional) set by an external spot-price node if/when wired\nsd.default_24k = 24000;   // fallback PKR per-gram 24K when no live/current rate (configurable)\nsd.broadcast_enabled = false; // SAFETY: never blast WhatsApp until explicitly enabled at deploy\nreturn [ { json: t } ];\n"
+      }
+    },
+    {
+      "id": "GR.5 Get Current 24K",
+      "name": "GR.5 Get Current 24K",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/jx_gold_rate?tenant_id=eq.{{ $json.tenant_id }}&karat=eq.24&select=rate_per_gram,source&order=effective_at.desc&limit=1",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {}
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "gQE27pII1aZEzHbn",
+          "name": "ZATECEPTIONIST-V2"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "GR.6 Compute Rates",
+      "name": "GR.6 Compute Rates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GR.6 Compute karat rates \u2014 mirrors src/lib/jewelry/calc.ts EXACTLY.\nconst TOLA_GRAMS = 11.6638;                          // calc.ts TOLA_GRAMS\nconst KARAT_FACTOR = { 24: 1, 22: 22/24, 21: 21/24, 18: 18/24 }; // calc.ts karatFactor = karat/24\nconst round2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100; // calc.ts round2\nconst sd = $getWorkflowStaticData('node');\nconst tenant = sd.t || {};\nconst slug = tenant.tenant_id;\n// current real 24K from GR.5 (ignore placeholder)\nlet current24 = null;\nfor (const it of $input.all()) { const r = it.json; if (r && r.rate_per_gram != null && r.source !== 'placeholder') { current24 = Number(r.rate_per_gram); break; } }\n// base precedence: external spot -> per-run override -> current real 24K -> configurable default\nlet base = null;\nif (sd.external_24k && Number(sd.external_24k) > 0) base = Number(sd.external_24k);\nelse if (sd.base_24k_override && Number(sd.base_24k_override) > 0) base = Number(sd.base_24k_override);\nelse if (current24 && current24 > 0) base = current24;\nelse base = Number(sd.default_24k || 0);\nif (!base || base <= 0) throw new Error('GR.6: no base 24K rate for ' + slug);\nconst out = []; sd.rates = {};\nfor (const k of [24,22,21,18]) {\n  const perGram = round2(base * KARAT_FACTOR[k]);\n  const perTola = round2(perGram * TOLA_GRAMS);\n  sd.rates[k] = { perGram, perTola };\n  out.push({ json: { tenant_id: slug, metal: 'gold', karat: k, rate_per_gram: perGram, rate_per_tola: perTola, source: 'agent', effective_at: new Date().toISOString() } });\n}\nreturn out;\n"
+      }
+    },
+    {
+      "id": "GR.7 Patch Rate",
+      "name": "GR.7 Patch Rate",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        300
+      ],
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/jx_gold_rate?tenant_id=eq.{{ $json.tenant_id }}&karat=eq.{{ $json.karat }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ rate_per_gram: $json.rate_per_gram, rate_per_tola: $json.rate_per_tola, source: 'agent', effective_at: $json.effective_at, updated_at: $json.effective_at }) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "gQE27pII1aZEzHbn",
+          "name": "ZATECEPTIONIST-V2"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "GR.8 Collapse To Tenant",
+      "name": "GR.8 Collapse To Tenant",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GR.8 Collapse the 4 per-karat PATCH results back to one item per tenant.\nconst sd = $getWorkflowStaticData('node');\nreturn [ { json: sd.t } ];\n"
+      }
+    },
+    {
+      "id": "GR.9 Get Opted-in Customers",
+      "name": "GR.9 Get Opted-in Customers",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1920,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/jx_customer?tenant_id=eq.{{ $json.tenant_id }}&phone=not.is.null&select=id,name,phone,tags",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {}
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "gQE27pII1aZEzHbn",
+          "name": "ZATECEPTIONIST-V2"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "GR.10 Build Broadcast Payload",
+      "name": "GR.10 Build Broadcast Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GR.10 Build the WhatsApp rate-broadcast payload. DOES NOT SEND (gated downstream).\nconst sd = $getWorkflowStaticData('node');\nconst tenant = sd.t || {};\nconst rates = sd.rates || {};\nconst cur = tenant.currency || 'PKR';\nconst company = tenant.company_name || 'Legacy Jewellers';\nconst r24 = rates[24] ? rates[24].perGram : null;\nconst r22 = rates[22] ? rates[22].perGram : null;\nconst r21 = rates[21] ? rates[21].perGram : null;\nconst body = `Today's gold rate at ${company}:\\n24K: ${cur} ${r24}/g\\n22K: ${cur} ${r22}/g\\n21K: ${cur} ${r21}/g\\nVisit us in F-7 Markaz, Islamabad. Reply STOP to opt out.`;\nconst phoneId = tenant.whatsapp_phone_number_id || null; // dependency: Legacy's connected Meta WhatsApp number\nconst customers = $input.all().map(i => i.json).filter(c => c && c.phone);\nconst payloads = customers.map(c => ({ json: {\n  tenant_id: tenant.tenant_id, customer_id: c.id, to: c.phone, channel: 'whatsapp',\n  phone_number_id: phoneId, whatsapp_access_token: tenant.whatsapp_access_token || null,\n  broadcast_enabled: !!sd.broadcast_enabled,\n  message: { messaging_product: 'whatsapp', to: c.phone, type: 'text', text: { body } }\n}}));\nif (payloads.length === 0) return [ { json: { tenant_id: tenant.tenant_id, recipients: 0, broadcast_enabled: !!sd.broadcast_enabled, preview: body } } ];\nreturn payloads;\n"
+      }
+    },
+    {
+      "id": "GR.11 Broadcast Gate",
+      "name": "GR.11 Broadcast Gate",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.broadcast_enabled }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "c2",
+              "leftValue": "={{ $json.phone_number_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "GR.12 Send WhatsApp",
+      "name": "GR.12 Send WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2640,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $json.phone_number_id }}/messages",
+        "authentication": "none",
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.message) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.whatsapp_access_token }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "connections": {
+    "GR.1 Schedule": {
+      "main": [
+        [
+          {
+            "node": "GR.2 Get Jewellery Tenants",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GR.2 Get Jewellery Tenants": {
+      "main": [
+        [
+          {
+            "node": "GR.3 Loop Tenants",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GR.3 Loop Tenants": {
+      "main": [
+        [],
+        [
+          {
+            "node": "GR.4 Store Tenant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GR.4 Store Tenant": {
+      "main": [
+        [
+          {
+            "node": "GR.5 Get Current 24K",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GR.5 Get Current 24K": {
+      "main": [
+        [
+          {
+            "node": "GR.6 Compute Rates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GR.6 Compute Rates": {
+      "main": [
+        [
+          {
+            "node": "GR.7 Patch Rate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GR.7 Patch Rate": {
+      "main": [
+        [
+          {
+            "node": "GR.8 Collapse To Tenant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GR.8 Collapse To Tenant": {
+      "main": [
+        [
+          {
+            "node": "GR.9 Get Opted-in Customers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GR.9 Get Opted-in Customers": {
+      "main": [
+        [
+          {
+            "node": "GR.10 Build Broadcast Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GR.10 Build Broadcast Payload": {
+      "main": [
+        [
+          {
+            "node": "GR.11 Broadcast Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GR.11 Broadcast Gate": {
+      "main": [
+        [
+          {
+            "node": "GR.12 Send WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "GR.3 Loop Tenants",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GR.12 Send WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "GR.3 Loop Tenants",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  }
+}

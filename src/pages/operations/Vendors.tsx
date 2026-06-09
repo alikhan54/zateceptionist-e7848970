@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
+import { useCurrency } from "@/hooks/useCurrency";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -72,22 +73,26 @@ function ScoreBadge({ score }: { score: number | null }) {
   );
 }
 
+// NOTE: currency intentionally blank — overridden at form-init via the tenant's
+// useCurrency().currency or first existing vendor row (see `defaults` below).
+// AED is no longer hardcoded.
 const BLANK_FORM = {
   name: "",
   email: "",
   phone: "",
   whatsapp: "",
   city: "",
-  country: "UAE",
+  country: "",
   categories: "",
   payment_terms: "NET-30",
-  currency: "AED",
+  currency: "",
   lead_time_days: "",
   is_approved: true,
 };
 
 export default function Vendors() {
   const { tenantConfig } = useTenant();
+  const { currency: tenantCurrency } = useCurrency();
   const tenantSlug = tenantConfig?.tenant_id ?? "";
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
@@ -116,8 +121,10 @@ export default function Vendors() {
   const defaults = useMemo(() => ({
     industry: vendors[0]?.industry || tenantConfig?.industry || "general",
     region: vendors[0]?.region || tenantConfig?.region || "uae",
-    currency: vendors[0]?.currency || "AED",
-  }), [vendors, tenantConfig]);
+    // Prefer existing vendor currency → tenant currency → blank.
+    // The hardcoded "AED" fallback removed (was wrong for PKR tenants).
+    currency: vendors[0]?.currency || tenantCurrency || "",
+  }), [vendors, tenantConfig, tenantCurrency]);
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["ops_vendors", tenantSlug] });
 

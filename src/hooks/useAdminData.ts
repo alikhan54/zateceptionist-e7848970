@@ -20,6 +20,7 @@ export interface TenantData {
   created_at: string;
   updated_at: string;
   users_count?: number;
+  monthly_value?: number;
   status?: string;
   plan?: string;
 }
@@ -52,75 +53,74 @@ export interface AuditLog {
 }
 
 // Hook to fetch all tenants (for master admin)
+// Uses the master_admin_all_tenants() RPC (SECURITY DEFINER + is_master_admin
+// guard, 0 rows for non-admin). The previous direct tenant_config select was
+// silently single-tenanted by RLS — the "1 tenant in the table" bug.
 export function useAllTenants() {
   return useQuery({
     queryKey: ['admin', 'tenants'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('tenant_config')
-        .select('*')
-        .order('created_at', { ascending: false });
-
+      const { data, error } = await supabase.rpc('master_admin_all_tenants');
       if (error) throw error;
-      
-      // Get user counts per tenant
-      const { data: userCounts } = await supabase
-        .from('users')
-        .select('tenant_id');
-      
-      const countMap: Record<string, number> = {};
-      (userCounts || []).forEach((u: { tenant_id: string }) => {
-        countMap[u.tenant_id] = (countMap[u.tenant_id] || 0) + 1;
-      });
 
-      return (data || []).map((t: TenantData) => ({
-        ...t,
-        users_count: countMap[t.tenant_id] || 0,
+      return (data || []).map((t: {
+        tenant_id: string; company_name: string; industry: string;
+        subscription_plan: string; subscription_status: string; created_at: string;
+        onboarding_completed: boolean; white_label_enabled: boolean;
+        users_count: number; monthly_value: number;
+      }) => ({
+        id: t.tenant_id,
+        tenant_id: t.tenant_id,
+        company_name: t.company_name,
+        industry: t.industry,
+        logo_url: null,
+        subscription_status: t.subscription_status,
+        subscription_plan: t.subscription_plan,
+        email: '',
+        features: null,
+        has_whatsapp: false,
+        has_email: false,
+        has_voice: false,
+        has_instagram: false,
+        has_facebook: false,
+        created_at: t.created_at,
+        updated_at: t.created_at,
+        users_count: Number(t.users_count) || 0,
+        monthly_value: Number(t.monthly_value) || 0,
         status: t.subscription_status || 'active',
         plan: t.subscription_plan || 'starter',
-      }));
+      })) as TenantData[];
     },
   });
 }
 
 // Hook to fetch all users across all tenants (for master admin)
+// Uses the master_admin_all_users() RPC (migration 42, SECURITY DEFINER +
+// is_master_admin guard, 0 rows for non-admin). Replaces the RLS-limited
+// direct users select.
 export function useAllUsers() {
   return useQuery({
     queryKey: ['admin', 'users'],
     queryFn: async () => {
-      // Fetch users
-      const { data: users, error } = await supabase
-        .from('users')
-        .select('*')
-        .order('created_at', { ascending: false });
-
+      const { data, error } = await supabase.rpc('master_admin_all_users');
       if (error) throw error;
 
-      // Fetch roles
-      const { data: roles } = await supabase
-        .from('user_roles')
-        .select('user_id, role');
-
-      const roleMap: Record<string, string> = {};
-      (roles || []).forEach((r: { user_id: string; role: string }) => {
-        roleMap[r.user_id] = r.role;
-      });
-
-      // Fetch tenant names
-      const { data: tenants } = await supabase
-        .from('tenant_config')
-        .select('tenant_id, company_name');
-
-      const tenantMap: Record<string, string> = {};
-      (tenants || []).forEach((t: { tenant_id: string; company_name: string }) => {
-        tenantMap[t.tenant_id] = t.company_name;
-      });
-
-      return (users || []).map((u: UserData) => ({
-        ...u,
-        role: roleMap[u.id] || 'staff',
-        tenant_name: tenantMap[u.tenant_id] || u.tenant_id,
-      }));
+      return (data || []).map((u: {
+        id: string; email: string; full_name: string | null; role: string;
+        tenant_id: string; tenant_company_name: string | null;
+        is_active: boolean; last_sign_in: string | null; created_at: string;
+      }) => ({
+        id: u.id,
+        email: u.email,
+        full_name: u.full_name,
+        avatar_url: null,
+        tenant_id: u.tenant_id,
+        is_active: u.is_active,
+        created_at: u.created_at,
+        last_login: u.last_sign_in || undefined,
+        role: u.role || 'staff',
+        tenant_name: u.tenant_company_name || u.tenant_id,
+      })) as UserData[];
     },
   });
 }
@@ -169,39 +169,35 @@ export function useAuditLogs(options?: { limit?: number; tenantFilter?: string }
 }
 
 // Hook for admin dashboard stats
+// Cross-tenant counts via the master_admin RPCs (the direct count() queries were
+// RLS-limited to a single tenant — the silent-single-tenant bug). MRR from
+// master_admin_mrr_breakdown(). Activity uses audit_logs (cross-tenant policy exists).
 export function useAdminStats() {
   return useQuery({
     queryKey: ['admin', 'stats'],
     queryFn: async () => {
-      // Get tenant count
-      const { count: tenantCount } = await supabase
-        .from('tenant_config')
-        .select('*', { count: 'exact', head: true });
+      const { data: tenants } = await supabase.rpc('master_admin_all_tenants');
+      const { data: users } = await supabase.rpc('master_admin_all_users');
+      const { data: mrrRows } = await supabase.rpc('master_admin_mrr_breakdown');
 
-      // Get user count
-      const { count: userCount } = await supabase
-        .from('users')
-        .select('*', { count: 'exact', head: true });
+      const tenantList = (tenants || []) as { subscription_status: string }[];
+      const mrr = ((mrrRows || []) as { mrr: number | string }[])
+        .reduce((sum, r) => sum + Number(r.mrr || 0), 0);
 
-      // Get recent audit log count (last 24 hours)
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
-      
       const { count: activityCount } = await supabase
         .from('audit_logs')
         .select('*', { count: 'exact', head: true })
         .gte('created_at', yesterday.toISOString());
 
-      // Get conversation count
-      const { count: conversationCount } = await supabase
-        .from('conversations')
-        .select('*', { count: 'exact', head: true });
-
       return {
-        activeTenants: tenantCount || 0,
-        totalUsers: userCount || 0,
+        activeTenants: tenantList.filter((t) => t.subscription_status === 'active').length,
+        totalTenants: tenantList.length,
+        totalUsers: (users || []).length,
         activityToday: activityCount || 0,
-        totalConversations: conversationCount || 0,
+        mrr,
+        totalConversations: 0,
       };
     },
   });
@@ -331,6 +327,109 @@ export function useAuditLogStats() {
         warnings: warningCount || 0,
         errors: errorCount || 0,
       };
+    },
+  });
+}
+
+// ============================================================================
+// Phase 2B — per-tenant control. All writes go through the SECURITY DEFINER +
+// is_master_admin()-guarded RPCs in migration 43 (browser direct writes are
+// RLS-blocked to own-tenant). Each RPC is PER-TENANT (explicit tenant_id).
+// ============================================================================
+export interface TenantDetailData {
+  tenant_id: string;
+  company_name: string;
+  industry: string;
+  subscription_plan: string;
+  subscription_status: string;
+  brand_name: string | null;
+  logo_url: string | null;
+  primary_color: string | null;
+  secondary_color: string | null;
+  white_label: boolean;
+  white_label_tenant_cap: number | null;
+  mod_sales: boolean;
+  mod_marketing: boolean;
+  mod_hr: boolean;
+  mod_operations: boolean;
+  mod_communications: boolean;
+  mod_analytics: boolean;
+  ai_sales: boolean;
+  ai_marketing: boolean;
+  ai_hr: boolean;
+  ai_support: boolean;
+  ai_voice: boolean;
+}
+
+// Read one tenant's control detail (module flags + brand + plan; no secret keys).
+export function useTenantDetail(tenantId: string | undefined) {
+  return useQuery({
+    queryKey: ['admin', 'tenant-detail', tenantId],
+    enabled: !!tenantId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('master_admin_get_tenant_detail', { p_tenant_id: tenantId });
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      return (row || null) as TenantDetailData | null;
+    },
+  });
+}
+
+// Toggle ONE tenant's modules (merges features + ai_modules_enabled — preserves secrets).
+export function useUpdateTenantModules() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ tenantId, features, aiModules }: {
+      tenantId: string; features: Record<string, boolean>; aiModules: Record<string, boolean>;
+    }) => {
+      const { data, error } = await supabase.rpc('master_admin_update_tenant_modules', {
+        p_tenant_id: tenantId, p_features: features, p_ai_modules: aiModules,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_d, v) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'tenant-detail', v.tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'tenants'] });
+    },
+  });
+}
+
+// Edit ONE tenant's white-label.
+export function useUpdateWhiteLabel() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: {
+      tenantId: string; brandName: string | null; logoUrl: string | null;
+      primaryColor: string | null; secondaryColor: string | null; whiteLabel: boolean; cap: number | null;
+    }) => {
+      const { data, error } = await supabase.rpc('master_admin_update_white_label', {
+        p_tenant_id: p.tenantId, p_brand_name: p.brandName, p_logo_url: p.logoUrl,
+        p_primary_color: p.primaryColor, p_secondary_color: p.secondaryColor,
+        p_white_label: p.whiteLabel, p_cap: p.cap,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_d, v) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'tenant-detail', v.tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'tenants'] });
+    },
+  });
+}
+
+// Change ONE tenant's plan.
+export function useUpdatePlan() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ tenantId, plan }: { tenantId: string; plan: string }) => {
+      const { data, error } = await supabase.rpc('master_admin_update_plan', { p_tenant_id: tenantId, p_plan: plan });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_d, v) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'tenant-detail', v.tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'tenants'] });
     },
   });
 }

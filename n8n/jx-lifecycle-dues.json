@@ -1,0 +1,422 @@
+{
+  "name": "420 Jewellery - Lifecycle & Dues v1.0",
+  "nodes": [
+    {
+      "id": "Sched",
+      "name": "Sched",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        -140
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "Hook",
+      "name": "Hook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        140
+      ],
+      "webhookId": "jewellery-lifecycle-dues",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "jewellery/lifecycle-dues",
+        "responseMode": "lastNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "GetTenants",
+      "name": "GetTenants",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        200,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/tenant_config?industry=eq.jewellery&select=tenant_id,id,company_name,currency,phone",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {}
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "gQE27pII1aZEzHbn",
+          "name": "ZATECEPTIONIST-V2"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "Collect",
+      "name": "Collect",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        0
+      ],
+      "parameters": {
+        "jsCode": "let t=$input.all().map(i=>i.json); t=(t.length===1&&Array.isArray(t[0]))?t[0]:t;\nconst d=new Date(),pad=n=>String(n).padStart(2,'0');\nconst fmt=z=>z.getUTCFullYear()+'-'+pad(z.getUTCMonth()+1)+'-'+pad(z.getUTCDate());\nconst today=fmt(d),tomorrow=fmt(new Date(d.getTime()+86400000));\nlet slugs=t.map(x=>x.tenant_id); if(!slugs.length) slugs=['__none__'];\nreturn [{json:{tenants:t,slugs,today,tomorrow}}];"
+      }
+    },
+    {
+      "id": "Get_orders",
+      "name": "Get_orders",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        600,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/jx_order?tenant_id=in.({{ $json.slugs.join(',') }})&status=neq.delivered&balance=gt.0&select=tenant_id,order_no,status,delivery_date,balance,customer_id",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {}
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "gQE27pII1aZEzHbn",
+          "name": "ZATECEPTIONIST-V2"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "C_orders",
+      "name": "C_orders",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const prev=$('Collect').item.json;\nlet r=$input.all().map(i=>i.json); r=(r.length===1&&Array.isArray(r[0]))?r[0]:r;\nr=r.filter(z=>z&&typeof z==='object'&&!Array.isArray(z));\nreturn [{json:Object.assign({},prev,{orders:r})}];"
+      }
+    },
+    {
+      "id": "Get_repairs",
+      "name": "Get_repairs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1000,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/jx_repair?tenant_id=in.({{ $json.slugs.join(',') }})&status=eq.ready&select=tenant_id,id,item_desc,customer_id,promised_date,charge,status",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {}
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "gQE27pII1aZEzHbn",
+          "name": "ZATECEPTIONIST-V2"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "C_repairs",
+      "name": "C_repairs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const prev=$('C_orders').item.json;\nlet r=$input.all().map(i=>i.json); r=(r.length===1&&Array.isArray(r[0]))?r[0]:r;\nr=r.filter(z=>z&&typeof z==='object'&&!Array.isArray(z));\nreturn [{json:Object.assign({},prev,{repairs:r})}];"
+      }
+    },
+    {
+      "id": "Get_customers",
+      "name": "Get_customers",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1400,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://fncfbywkemsxwuiowxxe.supabase.co/rest/v1/jx_customer?tenant_id=in.({{ $json.slugs.join(',') }})&select=id,name,phone,tenant_id",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {}
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "gQE27pII1aZEzHbn",
+          "name": "ZATECEPTIONIST-V2"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "C_customers",
+      "name": "C_customers",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const prev=$('C_repairs').item.json;\nlet r=$input.all().map(i=>i.json); r=(r.length===1&&Array.isArray(r[0]))?r[0]:r;\nr=r.filter(z=>z&&typeof z==='object'&&!Array.isArray(z));\nreturn [{json:Object.assign({},prev,{customers:r})}];"
+      }
+    },
+    {
+      "id": "Compute",
+      "name": "Compute",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1800,
+        0
+      ],
+      "parameters": {
+        "jsCode": "\nconst A=$input.first().json;\nconst today=A.today, tomorrow=A.tomorrow;\nconst cust={}; for(const c of (A.customers||[])) cust[c.id]=c;\nconst tinfo={}; for(const t of (A.tenants||[])) tinfo[t.tenant_id]=t;\nconst wp=(to,body)=>({to:to||null,phone_number_id:null,messaging_product:'whatsapp',type:'text',text:{body}});\nconst reminders=[];\nfor(const o of (A.orders||[])){\n  const c=cust[o.customer_id]||{}; const cur=(tinfo[o.tenant_id]||{}).currency||'PKR';\n  const bal=Number(o.balance)||0;\n  const near=o.delivery_date && String(o.delivery_date).slice(0,10)<=tomorrow;\n  const body=\"Reminder from Legacy Jewellers: your order \"+o.order_no+\" has an outstanding balance of \"+cur+\" \"+bal+\".\"+(near?(\" It is due by \"+String(o.delivery_date).slice(0,10)+\".\"):\"\")+\" Please contact us to settle it.\";\n  reminders.push({tenant_id:o.tenant_id,type:near?'balance_due_soon':'balance',ref:o.order_no,customer:c.name||null,to:c.phone||null,message:body,whatsapp_payload:wp(c.phone,body)});\n}\nfor(const r of (A.repairs||[])){\n  const c=cust[r.customer_id]||{};\n  const body=\"Good news \u2014 your repair is ready for pickup at Legacy Jewellers!\";\n  reminders.push({tenant_id:r.tenant_id,type:'repair_ready',ref:r.id,customer:c.name||null,to:c.phone||null,message:body,whatsapp_payload:wp(c.phone,body)});\n}\nconst byType=reminders.reduce((m,x)=>{m[x.type]=(m[x.type]||0)+1;return m;},{});\nreturn [{json:{count:reminders.length, by_type:byType, reminders, broadcast_enabled:false, sent:false}}];\n"
+      }
+    },
+    {
+      "id": "Gate",
+      "name": "Gate",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.broadcast_enabled }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "Send",
+      "name": "Send",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2200,
+        -120
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $json.whatsapp_payload.phone_number_id }}/messages",
+        "authentication": "none",
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.whatsapp_payload) }}"
+      }
+    },
+    {
+      "id": "Done",
+      "name": "Done",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2200,
+        120
+      ],
+      "parameters": {
+        "jsCode": "return $input.all();"
+      }
+    }
+  ],
+  "connections": {
+    "Sched": {
+      "main": [
+        [
+          {
+            "node": "GetTenants",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hook": {
+      "main": [
+        [
+          {
+            "node": "GetTenants",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GetTenants": {
+      "main": [
+        [
+          {
+            "node": "Collect",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect": {
+      "main": [
+        [
+          {
+            "node": "Get_orders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get_orders": {
+      "main": [
+        [
+          {
+            "node": "C_orders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "C_orders": {
+      "main": [
+        [
+          {
+            "node": "Get_repairs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get_repairs": {
+      "main": [
+        [
+          {
+            "node": "C_repairs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "C_repairs": {
+      "main": [
+        [
+          {
+            "node": "Get_customers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get_customers": {
+      "main": [
+        [
+          {
+            "node": "C_customers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "C_customers": {
+      "main": [
+        [
+          {
+            "node": "Compute",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute": {
+      "main": [
+        [
+          {
+            "node": "Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gate": {
+      "main": [
+        [
+          {
+            "node": "Send",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -122,6 +122,9 @@ const Expenses = lazy(() => import("./pages/operations/Expenses"));
 const Invoices = lazy(() => import("./pages/operations/Invoices"));
 const KitchenDisplay = lazy(() => import("./pages/operations/KitchenDisplay"));
 const MenuEditor = lazy(() => import("./pages/operations/MenuEditor"));
+const LoyaltyClub = lazy(() => import("./pages/operations/LoyaltyClub"));
+const Dispatch = lazy(() => import("./pages/operations/Dispatch"));
+const POS = lazy(() => import("./pages/operations/POS"));
 const Reservations = lazy(() => import("./pages/operations/Reservations"));
 const AiIntelligence = lazy(() => import("./pages/operations/AiIntelligence"));
 const OpsCommandCenter = lazy(() => import("./pages/operations/OpsCommandCenter"));
@@ -160,6 +163,26 @@ const HealthReports = lazy(() => import("./pages/clinic/HealthReports"));
 const DoctorReviewQueue = lazy(() => import("./pages/clinic/DoctorReviewQueue"));
 const ClinicWaitingArea = lazy(() => import("./pages/clinic/WaitingArea"));
 const ClinicPackages = lazy(() => import("./pages/clinic/ClinicPackages"));
+
+// Hospital Module (native cardio vertical — hospital industry only)
+const HospitalPatientJourney = lazy(() => import("./pages/hospital/PatientJourney"));
+const HospitalPatients = lazy(() => import("./pages/hospital/HospitalPatients"));
+const HospitalPharmacy = lazy(() => import("./pages/hospital/PharmacyQueue"));
+const HospitalLab = lazy(() => import("./pages/hospital/Laboratory"));
+const HospitalDiagnostics = lazy(() => import("./pages/hospital/DiagnosticsQueue"));
+const HospitalNurse = lazy(() => import("./pages/hospital/NurseStation"));
+const HospitalBeds = lazy(() => import("./pages/hospital/BedBoard"));
+
+// Jewelry Module (Project JX)
+const JewelryDashboard = lazy(() => import("./pages/jewelry/Dashboard"));
+const JewelryGoldRate = lazy(() => import("./pages/jewelry/GoldRate"));
+const JewelryInventory = lazy(() => import("./pages/jewelry/Inventory"));
+const JewelryPOS = lazy(() => import("./pages/jewelry/PointOfSale"));
+const JewelryOrders = lazy(() => import("./pages/jewelry/Orders"));
+const JewelryReports = lazy(() => import("./pages/jewelry/Reports"));
+const JewelryWorkshop = lazy(() => import("./pages/jewelry/Karigars"));
+const JewelryRepairs = lazy(() => import("./pages/jewelry/Repairs"));
+const JewelryLooseStones = lazy(() => import("./pages/jewelry/LooseStones"));
 
 // Real Estate Module
 const RealEstateDashboard = lazy(() => import("./pages/realestate/RealEstateDashboard"));
@@ -259,12 +282,14 @@ const KnowledgeBaseSettings = lazy(() => import("./pages/settings/KnowledgeBase"
 const CompanyInfoSettings = lazy(() => import("./pages/settings/CompanyInfo"));
 const AITrainingSettings = lazy(() => import("./pages/settings/AITraining"));
 const OutreachSettings = lazy(() => import("./pages/settings/OutreachSettings"));
+const BrandingPage = lazy(() => import("./pages/settings/branding/BrandingPage"));
 // PhoneNumberSettings removed — now part of VoiceAIHub
 
 // Admin Module
 const AdminPanel = lazy(() => import("./pages/admin/Panel"));
 const AllTenants = lazy(() => import("./pages/admin/Tenants"));
 const AdminUsers = lazy(() => import("./pages/admin/Users"));
+const TenantDetail = lazy(() => import("./pages/admin/TenantDetail"));
 const SystemHealth = lazy(() => import("./pages/admin/Health"));
 const AuditLogs = lazy(() => import("./pages/admin/Logs"));
 const FeatureFlags = lazy(() => import("./pages/admin/Features"));
@@ -274,6 +299,7 @@ const CompanySetup = lazy(() => import("./pages/onboarding/CompanySetup"));
 
 // Auth
 const AuthCallback = lazy(() => import("./pages/auth/Callback"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 
 // Invite
 const Invite = lazy(() => import("./pages/Invite"));
@@ -296,6 +322,7 @@ const Privacy = lazy(() => import("./pages/public/Privacy"));
 const Refund = lazy(() => import("./pages/public/Refund"));
 const Landing = lazy(() => import("./pages/public/Landing"));
 const Demo = lazy(() => import("./pages/public/Demo"));
+const OrderStorefront = lazy(() => import("./pages/public/OrderStorefront"));
 
 // Other
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -351,6 +378,14 @@ const App = () => (
                 {/* Public routes */}
                 <Route path="/login" element={<LoginPage />} />
                 <Route
+                  path="/reset-password"
+                  element={
+                    <LazyPage>
+                      <ResetPassword />
+                    </LazyPage>
+                  }
+                />
+                <Route
                   path="/auth/callback"
                   element={
                     <LazyPage>
@@ -404,6 +439,15 @@ const App = () => (
                   element={
                     <LazyPage>
                       <LeadMagnetPage />
+                    </LazyPage>
+                  }
+                />
+                {/* Public consumer ordering PWA — /order/:slug (no auth, mobile-first) */}
+                <Route
+                  path="/order/:slug"
+                  element={
+                    <LazyPage>
+                      <OrderStorefront />
                     </LazyPage>
                   }
                 />
@@ -1191,6 +1235,30 @@ const App = () => (
                     }
                   />
                   <Route
+                    path="/operations/loyalty"
+                    element={
+                      <LazyPage>
+                        <LoyaltyClub />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/operations/dispatch"
+                    element={
+                      <LazyPage>
+                        <Dispatch />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/operations/pos"
+                    element={
+                      <LazyPage>
+                        <POS />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
                     path="/operations/reservations"
                     element={
                       <LazyPage>
@@ -1279,6 +1347,81 @@ const App = () => (
                     element={
                       <LazyPage>
                         <AccountImport />
+                      </LazyPage>
+                    }
+                  />
+
+                  {/* Jewelry Module (Project JX) */}
+                  <Route path="/jewelry" element={<Navigate to="/jewelry/dashboard" replace />} />
+                  <Route
+                    path="/jewelry/dashboard"
+                    element={
+                      <LazyPage>
+                        <JewelryDashboard />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/jewelry/gold-rate"
+                    element={
+                      <LazyPage>
+                        <JewelryGoldRate />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/jewelry/inventory"
+                    element={
+                      <LazyPage>
+                        <JewelryInventory />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/jewelry/pos"
+                    element={
+                      <LazyPage>
+                        <JewelryPOS />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/jewelry/orders"
+                    element={
+                      <LazyPage>
+                        <JewelryOrders />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/jewelry/reports"
+                    element={
+                      <LazyPage>
+                        <JewelryReports />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/jewelry/workshop"
+                    element={
+                      <LazyPage>
+                        <JewelryWorkshop />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/jewelry/repairs"
+                    element={
+                      <LazyPage>
+                        <JewelryRepairs />
+                      </LazyPage>
+                    }
+                  />
+                  <Route
+                    path="/jewelry/loose-stones"
+                    element={
+                      <LazyPage>
+                        <JewelryLooseStones />
                       </LazyPage>
                     }
                   />
@@ -1397,6 +1540,16 @@ const App = () => (
                       </LazyPage>
                     }
                   />
+
+                  {/* Hospital Module — hospital industry only (per-page !isHospital guard) */}
+                  <Route path="/hospital" element={<Navigate to="/hospital/journey" replace />} />
+                  <Route path="/hospital/journey" element={<LazyPage><HospitalPatientJourney /></LazyPage>} />
+                  <Route path="/hospital/patients" element={<LazyPage><HospitalPatients /></LazyPage>} />
+                  <Route path="/hospital/nurse" element={<LazyPage><HospitalNurse /></LazyPage>} />
+                  <Route path="/hospital/beds" element={<LazyPage><HospitalBeds /></LazyPage>} />
+                  <Route path="/hospital/pharmacy" element={<LazyPage><HospitalPharmacy /></LazyPage>} />
+                  <Route path="/hospital/lab" element={<LazyPage><HospitalLab /></LazyPage>} />
+                  <Route path="/hospital/diagnostics" element={<LazyPage><HospitalDiagnostics /></LazyPage>} />
 
                   {/* Estimation Module */}
                   <Route path="/estimation" element={<Navigate to="/estimation/projects" replace />} />
@@ -1673,6 +1826,14 @@ const App = () => (
                       </LazyPage>
                     }
                   />
+                  <Route
+                    path="/settings/branding"
+                    element={
+                      <LazyPage>
+                        <BrandingPage />
+                      </LazyPage>
+                    }
+                  />
                   <Route path="/settings/phone-numbers" element={<Navigate to="/communications/voice-ai?tab=phones" replace />} />
 
                   {/* Admin Module - ONLY for master_admin role */}
@@ -1692,6 +1853,16 @@ const App = () => (
                       <ProtectedRoute requiredRole="master_admin">
                         <LazyPage>
                           <AllTenants />
+                        </LazyPage>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/tenants/:tenantId"
+                    element={
+                      <ProtectedRoute requiredRole="master_admin">
+                        <LazyPage>
+                          <TenantDetail />
                         </LazyPage>
                       </ProtectedRoute>
                     }

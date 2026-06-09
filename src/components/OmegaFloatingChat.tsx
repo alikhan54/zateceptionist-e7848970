@@ -9,6 +9,7 @@ import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { sanitizeResponse } from "@/lib/security/sanitizeResponse";
+import { getHospitalLang, withLang } from "@/pages/hospital/i18n";
 
 const AGENT_COLORS: Record<string, string> = {
   OMEGA: "text-violet-400",
@@ -28,9 +29,19 @@ interface ChatMessage {
   execution_time_ms?: number;
 }
 
+// Seeded prompts for the MEDICA (healthcare-clinic) branch. Each maps to a real
+// floor-layer tool: follow-ups (HT13), vitals alerts (HT11), appointments +
+// reminder/no-show (HT15), patient summary (HT16 patient_360).
+const MEDICA_PROMPTS: { label: string; prompt: string }[] = [
+  { label: "Which follow-ups are due or overdue?", prompt: "Which post-care follow-ups are due or overdue right now? List the patients and flag any overdue ones for staff." },
+  { label: "Any vitals alerts to review?", prompt: "Are there any recent visits with warning or critical vitals alerts I should review? Surface and flag them for the clinician — do not diagnose." },
+  { label: "Today's appointments & no-shows", prompt: "What's the appointment status today — upcoming visits, reminder status (24h/2h), and any no-shows detected?" },
+  { label: "Summarize a patient", prompt: "Give me a clinical summary for a patient (ask me for the name) — recent visits, follow-ups due, consent status, and prepaid package balance. Surface and flag for the clinician; do not diagnose." },
+];
+
 export function OmegaFloatingChat() {
   const { user, authUser, isAdmin } = useAuth();
-  const { tenantId, tenantConfig, isAccountingPracticeUK } = useTenant();
+  const { tenantId, tenantConfig, isAccountingPracticeUK, isHealthcareClinic, isHospital } = useTenant();
   const tenantUuid = tenantConfig?.id;
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -135,15 +146,25 @@ export function OmegaFloatingChat() {
     setInput("");
     setLoading(true);
     try {
+      // Hospital-scoped Bangla: when the hospital language is Bangla, ask OMEGA to reply in
+      // Bangla via the message itself (no brain change). The on-screen user bubble keeps the
+      // original `msg`; only the outbound message carries the directive. Every other tenant /
+      // path (no hx-lang / not hospital) sends `msg` unchanged → byte-identical.
+      const outMessage = (isHospital && getHospitalLang() === "bn") ? withLang(msg, "bn") : msg;
       const res = await callWebhook(WEBHOOKS.OMEGA_CHAT, {
-        message: msg,
+        message: outMessage,
         channel: "web_chat",
         sender_identifier: user?.email || "",
         sender_type: isAdmin ? "admin" : "team_member",
         tenant_uuid: tenantUuid || "",
-        // Accounting tenants → route to the purpose-built ACCOUNTANT agent (12 tools, fast + accurate).
-        // All other tenants → unchanged (generic OMEGA). Gated + additive = cross-tenant safe.
-        ...(isAccountingPracticeUK ? { agent_preference: "accountant" } : {}),
+        // Healthcare clinics → MEDICA (clinical agent, floor-aware via HT10-16).
+        // Accounting tenants → ACCOUNTANT. All others → unchanged (generic OMEGA).
+        // Gated + additive = cross-tenant safe; tenant_id (authenticated slug) is sent below.
+        ...(isHealthcareClinic
+          ? { agent_preference: "medica" }
+          : isAccountingPracticeUK
+          ? { agent_preference: "accountant" }
+          : {}),
       }, tenantId);
       const data = res.data as any;
       if (res.success && data) {
@@ -165,9 +186,20 @@ export function OmegaFloatingChat() {
     } finally {
       setLoading(false);
     }
-  }, [input, loading, user, tenantId, tenantUuid, toast, speakResponse, isAccountingPracticeUK]);
+  }, [input, loading, user, tenantId, tenantUuid, toast, speakResponse, isAccountingPracticeUK, isHealthcareClinic, isHospital]);
 
   const send = useCallback(() => sendMessage(), [sendMessage]);
+
+  // Allow other pages (e.g. PatientProfile "Ask MEDICA about …") to open this
+  // panel pre-scoped to a patient. Additive; dispatched only by clinic UI.
+  useEffect(() => {
+    const onAsk = (e: Event) => {
+      const detail = (e as CustomEvent).detail || {};
+      if (detail?.prompt) { setOpen(true); sendMessage(detail.prompt); }
+    };
+    window.addEventListener("omega:ask", onAsk as EventListener);
+    return () => window.removeEventListener("omega:ask", onAsk as EventListener);
+  }, [sendMessage]);
 
   if (!user) return null;
   if (!tenantId) return null;
@@ -192,8 +224,8 @@ export function OmegaFloatingChat() {
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b bg-violet-500/5">
             <div className="flex items-center gap-2">
-              <Brain className="h-5 w-5 text-violet-400" />
-              <span className="font-semibold text-sm">{isAccountingPracticeUK ? "AI Accountant" : "OMEGA AI"}</span>
+              <Brain className={`h-5 w-5 ${isHealthcareClinic ? "text-teal-500" : "text-violet-400"}`} />
+              <span className="font-semibold text-sm">{isHealthcareClinic ? "MEDICA" : isAccountingPracticeUK ? "AI Accountant" : "OMEGA AI"}</span>
             </div>
             <div className="flex items-center gap-1">
               <Button
@@ -216,10 +248,23 @@ export function OmegaFloatingChat() {
             <div className="space-y-3">
               {messages.length === 0 && (
                 <div className="text-center text-muted-foreground py-12">
-                  <Brain className="h-8 w-8 mx-auto mb-3 opacity-20" />
-                  <p className="text-sm">{isAccountingPracticeUK ? "Ask your AI Accountant anything..." : "Ask OMEGA anything..."}</p>
+                  <Brain className={`h-8 w-8 mx-auto mb-3 ${isHealthcareClinic ? "opacity-30 text-teal-500" : "opacity-20"}`} />
+                  <p className="text-sm">{isHealthcareClinic ? "Ask MEDICA about a patient, follow-ups, or today's schedule." : isAccountingPracticeUK ? "Ask your AI Accountant anything..." : "Ask OMEGA anything..."}</p>
                   {speechSupported && (
                     <p className="text-xs mt-1 opacity-60">or tap the mic to speak</p>
+                  )}
+                  {isHealthcareClinic && (
+                    <div className="mt-4 flex flex-col gap-2 text-left">
+                      {MEDICA_PROMPTS.map((p) => (
+                        <button
+                          key={p.label}
+                          onClick={() => sendMessage(p.prompt)}
+                          className="flex items-center gap-2 rounded-lg border border-teal-500/30 bg-teal-500/5 px-3 py-2 text-xs font-medium text-teal-700 dark:text-teal-300 hover:bg-teal-500/10 transition-colors"
+                        >
+                          <Brain className="h-3.5 w-3.5 shrink-0" />{p.label}
+                        </button>
+                      ))}
+                    </div>
                   )}
                 </div>
               )}
@@ -255,7 +300,7 @@ export function OmegaFloatingChat() {
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === "Enter" && !e.shiftKey && send()}
-              placeholder={isListening ? "Listening..." : (isAccountingPracticeUK ? "Ask your AI Accountant..." : "Ask OMEGA...")}
+              placeholder={isListening ? "Listening..." : (isHealthcareClinic ? "Ask MEDICA..." : isAccountingPracticeUK ? "Ask your AI Accountant..." : "Ask OMEGA...")}
               disabled={loading || isListening}
               className="flex-1 h-9 text-sm"
             />

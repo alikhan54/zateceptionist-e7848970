@@ -1,0 +1,202 @@
+/* ============================================================================
+   Hospital vertical — scoped "dark clinical command surface".
+   Everything is namespaced under `.hx` so it NEVER leaks to other industries.
+   ========================================================================== */
+.hx {
+  --hx-bg: #070b12;
+  --hx-bg2: #0b1322;
+  --hx-panel: rgba(15, 24, 40, 0.72);
+  --hx-panel-solid: #0e1726;
+  --hx-border: rgba(56, 189, 248, 0.14);
+  --hx-border-strong: rgba(56, 189, 248, 0.32);
+  --hx-text: #e6edf6;
+  --hx-dim: #8da2bd;
+  --hx-faint: #5b6b85;
+  --hx-accent: #22d3ee;
+  --hx-accent2: #2dd4bf;
+  --hx-ok: #34d399;
+  --hx-warn: #fbbf24;
+  --hx-crit: #fb7185;
+  --hx-strong: #ffffff;                  /* emphasis ("white") text → theme var [LIGHTMODE] */
+  --hx-skeleton: rgba(255,255,255,0.06); /* loading skeleton bars → theme var [LIGHTMODE] */
+
+  position: relative;
+  min-height: 100%;
+  margin: -1.5rem;            /* bleed past the default page padding for a true command surface */
+  padding: 1.5rem clamp(1rem, 3vw, 2.5rem) 3rem;
+  color: var(--hx-text);
+  background:
+    radial-gradient(1200px 600px at 12% -10%, rgba(34, 211, 238, 0.10), transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, rgba(45, 212, 191, 0.08), transparent 55%),
+    linear-gradient(180deg, var(--hx-bg2), var(--hx-bg));
+  font-feature-settings: "cv02", "ss01", "tnum";
+  -webkit-font-smoothing: antialiased;
+}
+/* faint clinical grid */
+.hx::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0.5;
+  background-image:
+    linear-gradient(rgba(94, 234, 212, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(94, 234, 212, 0.04) 1px, transparent 1px);
+  background-size: 44px 44px; mask-image: radial-gradient(circle at 50% 0%, #000 30%, transparent 80%);
+}
+.hx > * { position: relative; z-index: 1; }
+
+.hx-h1 { font-size: clamp(1.4rem, 2.4vw, 2rem); font-weight: 650; letter-spacing: -0.02em; }
+.hx-mono { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+.hx-dim { color: var(--hx-dim); }
+.hx-faint { color: var(--hx-faint); }
+.hx-eyebrow { font-size: 0.66rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--hx-accent2); font-weight: 600; }
+
+/* ---- panels ---- */
+.hx-panel {
+  position: relative; border: 1px solid var(--hx-border); border-radius: 16px;
+  background: var(--hx-panel); backdrop-filter: blur(10px);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 18px 40px -24px rgba(0,0,0,0.8);
+}
+.hx-panel--accent { border-color: var(--hx-border-strong); box-shadow: 0 0 0 1px rgba(34,211,238,0.06), 0 24px 60px -30px rgba(34,211,238,0.25); }
+.hx-panel-h { padding: 0.9rem 1.1rem; border-bottom: 1px solid var(--hx-border); display: flex; align-items: center; gap: 0.6rem; }
+.hx-panel-b { padding: 1.1rem; }
+
+/* ---- chips / badges ---- */
+.hx-chip { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.18rem 0.6rem; border-radius: 999px;
+  font-size: 0.72rem; font-weight: 600; border: 1px solid var(--hx-border); color: var(--hx-dim); background: rgba(255,255,255,0.02); }
+.hx-chip--ok { color: var(--hx-ok); border-color: rgba(52,211,153,0.35); background: rgba(52,211,153,0.08); }
+.hx-chip--warn { color: var(--hx-warn); border-color: rgba(251,191,36,0.4); background: rgba(251,191,36,0.09); }
+.hx-chip--crit { color: var(--hx-crit); border-color: rgba(251,113,133,0.45); background: rgba(251,113,133,0.1); }
+.hx-chip--accent { color: var(--hx-accent); border-color: rgba(34,211,238,0.4); background: rgba(34,211,238,0.08); }
+
+/* ---- pathway stepper ---- */
+.hx-path { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+.hx-path-step { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 0.74rem; color: var(--hx-faint); white-space: nowrap; }
+.hx-path-step .dot { width: 9px; height: 9px; border-radius: 999px; background: currentColor; box-shadow: 0 0 0 3px rgba(255,255,255,0.03); }
+.hx-path-step.done { color: var(--hx-accent2); }
+.hx-path-step.active { color: var(--hx-accent); }
+.hx-path-step.active .dot { box-shadow: 0 0 0 3px rgba(34,211,238,0.18), 0 0 16px rgba(34,211,238,0.7); animation: hx-blink 1.6s ease-in-out infinite; }
+.hx-path-sep { color: var(--hx-faint); opacity: 0.5; }
+
+/* ---- journey spine ---- */
+.hx-spine { position: relative; padding-left: 1.6rem; }
+.hx-spine::before { content: ""; position: absolute; left: 8px; top: 6px; bottom: 6px; width: 2px;
+  background: linear-gradient(var(--hx-accent2), rgba(45,212,191,0.06)); }
+.hx-node { position: relative; padding: 0 0 1.15rem 0; }
+.hx-node:last-child { padding-bottom: 0; }
+.hx-node::before { content: ""; position: absolute; left: -1.6rem; top: 3px; width: 18px; height: 18px; border-radius: 999px;
+  background: var(--hx-panel-solid); border: 2px solid var(--hx-faint); }
+.hx-node.done::before { border-color: var(--hx-accent2); background: radial-gradient(circle, var(--hx-accent2) 38%, var(--hx-panel-solid) 42%); }
+.hx-node.active::before { border-color: var(--hx-accent); box-shadow: 0 0 14px rgba(34,211,238,0.6); animation: hx-blink 1.6s ease-in-out infinite; }
+
+/* ---- vitals ---- */
+.hx-vital { border: 1px solid var(--hx-border); border-radius: 12px; padding: 0.7rem 0.8rem; background: rgba(255,255,255,0.015); }
+.hx-vital .v { font-size: 1.45rem; font-weight: 650; line-height: 1; font-variant-numeric: tabular-nums; }
+.hx-vital .l { font-size: 0.64rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--hx-faint); }
+.hx-vital--normal { border-color: rgba(52,211,153,0.22); }
+.hx-vital--warning { border-color: rgba(251,191,36,0.5); background: rgba(251,191,36,0.05); }
+.hx-vital--critical { border-color: rgba(251,113,133,0.6); background: rgba(251,113,133,0.07); box-shadow: 0 0 0 1px rgba(251,113,133,0.18); }
+.hx-vital--critical .v { color: var(--hx-crit); }
+.hx-vital--warning .v { color: var(--hx-warn); }
+
+/* ---- inputs / buttons ---- */
+.hx-input, .hx-select, .hx-textarea {
+  width: 100%; background: rgba(2,6,14,0.55); border: 1px solid var(--hx-border); color: var(--hx-text);
+  border-radius: 10px; padding: 0.5rem 0.7rem; font-size: 0.85rem; outline: none; transition: border-color .15s, box-shadow .15s;
+}
+.hx-input:focus, .hx-select:focus, .hx-textarea:focus { border-color: var(--hx-border-strong); box-shadow: 0 0 0 3px rgba(34,211,238,0.12); }
+.hx-select option { background: var(--hx-panel-solid); color: var(--hx-text); }
+.hx-label { font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--hx-dim); margin-bottom: 0.3rem; display: block; }
+.hx-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; border-radius: 10px;
+  padding: 0.6rem 1rem; font-size: 0.85rem; font-weight: 600; cursor: pointer; border: 1px solid transparent; transition: transform .1s, filter .15s, background .15s; }
+.hx-btn:active { transform: translateY(1px); }
+.hx-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.hx-btn--primary { color: #021018; background: linear-gradient(135deg, var(--hx-accent), var(--hx-accent2)); box-shadow: 0 10px 30px -12px rgba(34,211,238,0.6); }
+.hx-btn--primary:hover:not(:disabled) { filter: brightness(1.08); }
+.hx-btn--ghost { color: var(--hx-text); border-color: var(--hx-border); background: rgba(255,255,255,0.02); }
+.hx-btn--ghost:hover:not(:disabled) { border-color: var(--hx-border-strong); }
+
+/* ---- MEDICA brief ---- */
+.hx-brief { white-space: pre-wrap; font-size: 0.88rem; line-height: 1.6; color: var(--hx-text); }
+.hx-brief strong { color: var(--hx-strong); }
+.hx-analysing { position: relative; overflow: hidden; }
+.hx-analysing::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(100deg, transparent 20%, rgba(34,211,238,0.10) 50%, transparent 80%);
+  background-size: 200% 100%; animation: hx-sweep 1.6s linear infinite; }
+.hx-pulse-dot { width: 10px; height: 10px; border-radius: 999px; background: var(--hx-accent);
+  box-shadow: 0 0 0 0 rgba(34,211,238,0.6); animation: hx-ping 1.4s cubic-bezier(0,0,.2,1) infinite; }
+
+/* ---- ECG ---- */
+.hx-ecg { width: 100%; height: 38px; display: block; overflow: visible; }
+.hx-ecg .trace { fill: none; stroke: rgba(45,212,191,0.28); stroke-width: 1.5; }
+.hx-ecg .spark { fill: none; stroke: var(--hx-accent); stroke-width: 2; stroke-linecap: round;
+  filter: drop-shadow(0 0 6px rgba(34,211,238,0.9)); stroke-dasharray: 60 760; animation: hx-ecg-run 2.4s linear infinite; }
+.hx-ecg-off .hx-ecg .spark { display: none; } /* ECG toggle OFF [FIX2] → static trace only */
+
+/* ---- orchestrated load ---- */
+.hx-rise { animation: hx-rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+
+@keyframes hx-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes hx-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+@keyframes hx-sweep { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@keyframes hx-ping { 0% { box-shadow: 0 0 0 0 rgba(34,211,238,0.5); } 70% { box-shadow: 0 0 0 9px rgba(34,211,238,0); } 100% { box-shadow: 0 0 0 0 rgba(34,211,238,0); } }
+@keyframes hx-ecg-run { from { stroke-dashoffset: 820; } to { stroke-dashoffset: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .hx-rise, .hx-analysing::after, .hx-pulse-dot, .hx-ecg .spark, .hx-path-step.active .dot, .hx-node.active::before { animation: none !important; }
+}
+
+/* ============================================================================
+   LIGHT MODE [HOSPITAL-LIGHTMODE] — opt-in via the global toggle (`html.light`).
+   Dark is the DEFAULT: the base `.hx` above is unchanged. Here we re-point the `.hx`
+   vars + a few hardcoded surfaces to clean LIGHT values. Clinical semantics stay
+   correct — critical = RED, warning = AMBER, normal = GREEN — at light-readable
+   shades; the classification logic is untouched (only the rendered shade changes).
+   `.hx-dialog` carries the dialog vars because shadcn DialogContent is PORTALED
+   outside `.hx`; it defaults to the exact dark values (dark dialogs byte-identical).
+   ========================================================================== */
+.hx-dialog { --hx-dialog-bg: #0b1322; --hx-dialog-border: rgba(56,189,248,0.22); --hx-text: #e6edf6; }
+
+.light .hx, .light .hx-dialog {
+  --hx-bg: #e7edf5;
+  --hx-bg2: #f7fafd;
+  --hx-panel: rgba(255,255,255,0.92);
+  --hx-panel-solid: #ffffff;
+  --hx-border: rgba(15,23,42,0.10);
+  --hx-border-strong: rgba(8,145,178,0.42);
+  --hx-text: #0f1e33;
+  --hx-dim: #475569;
+  --hx-faint: #76869c;
+  --hx-accent: #0891b2;   /* cyan-600 — readable as text/accents on light */
+  --hx-accent2: #0d9488;  /* teal-600 — eyebrows/spine on light */
+  --hx-ok: #047857;       /* emerald-700 — clearly GREEN on light */
+  --hx-warn: #b45309;     /* amber-700 — clearly AMBER on light */
+  --hx-crit: #e11d48;     /* rose-600 — clearly RED on light */
+  --hx-strong: #0a1424;
+  --hx-skeleton: rgba(15,23,42,0.07);
+  --hx-dialog-bg: #ffffff;
+  --hx-dialog-border: rgba(8,145,178,0.35);
+}
+.light .hx {
+  background:
+    radial-gradient(1200px 600px at 12% -10%, rgba(8,145,178,0.06), transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, rgba(13,148,136,0.05), transparent 55%),
+    linear-gradient(180deg, var(--hx-bg2), var(--hx-bg));
+}
+.light .hx::before {
+  background-image:
+    linear-gradient(rgba(15,23,42,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15,23,42,0.035) 1px, transparent 1px);
+}
+.light .hx-panel { box-shadow: 0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -28px rgba(15,23,42,0.20); }
+.light .hx-panel--accent { box-shadow: 0 0 0 1px rgba(8,145,178,0.10), 0 24px 60px -34px rgba(8,145,178,0.28); }
+.light .hx-chip { background: rgba(15,23,42,0.035); }
+.light .hx-vital { background: rgba(15,23,42,0.02); }
+.light .hx-input, .light .hx-select, .light .hx-textarea { background: #ffffff; }
+.light .hx-btn--ghost { background: rgba(15,23,42,0.025); }
+.light .hx-btn--primary { color: #f0fdff; } /* light text on the (darker) cyan gradient reads better on light */
+
+/* ===== HOSPITAL-BEDS [Phase 2] — additive: bed-board KPI pills + variants (dark + light) ===== */
+.hx-stat { display: inline-flex; flex-direction: column; align-items: flex-start; padding: 0.35rem 0.7rem; border-radius: 0.6rem; border: 1px solid var(--hx-border); background: rgba(255,255,255,0.02); min-width: 62px; }
+.hx-stat-n { font-size: 1.15rem; font-weight: 700; line-height: 1.1; color: var(--hx-strong); }
+.hx-stat-l { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--hx-dim); margin-top: 1px; white-space: nowrap; }
+.hx-chip--muted { color: var(--hx-dim); border-color: var(--hx-border); background: transparent; }
+.hx-panel--crit { border-color: rgba(251,113,133,0.45); box-shadow: 0 0 0 1px rgba(251,113,133,0.08); }
+.light .hx-stat { background: rgba(15,23,42,0.025); }
