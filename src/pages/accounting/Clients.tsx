@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 // Phase 4 (2026-06-02): per-client tasking — clicking a row navigates to Jobs
 // filtered by client_id; "New job for this client" goes through the same URL with new=1.
 import { useNavigate } from "react-router-dom";
@@ -24,7 +24,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { useTriggerCompaniesHouseSync } from "@/hooks/useTriggerCompaniesHouseSync";
-import { MoreVertical, RefreshCw, Search, Users, Plus, Pencil } from "lucide-react";
+import { MoreVertical, RefreshCw, Search, Users, Plus, Pencil, ChevronRight, ChevronDown, Building2 } from "lucide-react";
+import { CompaniesHousePanel, postCodeFromAddress } from "@/components/accounting/CompaniesHousePanel";
 import {
   Dialog,
   DialogContent,
@@ -48,6 +49,11 @@ interface AccountingClient {
   accounts_next_due: string | null;
   // Wave 2b Phase C: drive the "fetching from CH" spinner.
   companies_house_sync_status: string | null;
+  // MoneyPex (2026-06-09): list columns "Partner Responsible" + "Post Code".
+  // post_code flat column is mostly empty on the synced roster — fall back to the
+  // postal_code inside registered_office_address (populated by CH sync).
+  partner_responsible: string | null;
+  post_code: string | null;
 }
 
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -79,6 +85,22 @@ export default function AccountingClients() {
   // Wave 2b Phase C: id of a just-added client awaiting CH sync → row shows a spinner.
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [editTarget, setEditTarget] = useState<AccountingClientFull | null>(null);
+  // MoneyPex (2026-06-09): which client row is expanded to show the Companies House panel.
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // Shared CH-sync trigger used by both the row dropdown and the expanded panel button.
+  // Sets syncingId so the row's CH-Status cell shows the "Fetching…" spinner; cleared
+  // when the mutation settles (the hook shows the success/partial/fail toast).
+  const handleCompaniesHouseSync = (companyNo: string, clientId: string) => {
+    if (!companyNo) return;
+    setSyncingId(clientId);
+    chSync
+      .mutateAsync([companyNo])
+      .catch(() => {
+        /* toast handled inside hook */
+      })
+      .finally(() => setSyncingId((cur) => (cur === clientId ? null : cur)));
+  };
 
   const clients: AccountingClient[] = useMemo(
     () =>
@@ -93,6 +115,9 @@ export default function AccountingClients() {
         company_status: c.company_status,
         accounts_next_due: c.accounts_next_due,
         companies_house_sync_status: c.companies_house_sync_status,
+        partner_responsible: c.partner_responsible,
+        // Prefer the flat column; fall back to the CH registered-office postal_code.
+        post_code: c.post_code ?? postCodeFromAddress(c.registered_office_address),
       })),
     [fullClients],
   );
@@ -162,14 +187,18 @@ export default function AccountingClients() {
       {/* Table */}
       <Card>
         <CardContent className="p-0">
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-8" />
                 <TableHead>Name</TableHead>
                 <TableHead>Company No.</TableHead>
                 <TableHead>VAT Number</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>CH Status</TableHead>
+                <TableHead>Partner Responsible</TableHead>
+                <TableHead>Post Code</TableHead>
                 <TableHead>Accounts Due</TableHead>
                 <TableHead>Period End</TableHead>
                 <TableHead>Email</TableHead>
@@ -180,7 +209,7 @@ export default function AccountingClients() {
               {isLoading ? (
                 Array.from({ length: 6 }).map((_, i) => (
                   <TableRow key={`skel-${i}`}>
-                    {Array.from({ length: 9 }).map((__, j) => (
+                    {Array.from({ length: 12 }).map((__, j) => (
                       <TableCell key={`skel-${i}-${j}`}>
                         <Skeleton className="h-4 w-full" />
                       </TableCell>
@@ -189,13 +218,13 @@ export default function AccountingClients() {
                 ))
               ) : error ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center text-sm text-destructive py-8">
+                  <TableCell colSpan={12} className="text-center text-sm text-destructive py-8">
                     Couldn't load clients: {error}
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-12">
+                  <TableCell colSpan={12} className="text-center text-sm text-muted-foreground py-12">
                     {clients.length === 0 ? (
                       <div className="flex flex-col items-center gap-2">
                         <Users className="h-8 w-8 text-muted-foreground/50" />
@@ -210,13 +239,33 @@ export default function AccountingClients() {
                 filtered.map((c) => {
                   const statusKey = (c.status ?? "active").toLowerCase();
                   const variant = STATUS_VARIANT[statusKey] ?? "secondary";
+                  const isExpanded = expandedId === c.id;
+                  const full = (fullClients ?? []).find((fc) => fc.id === c.id) ?? null;
+                  const rowSyncing = c.id === syncingId && c.companies_house_sync_status !== "synced";
                   return (
+                    <Fragment key={c.id}>
                     <TableRow
-                      key={c.id}
                       className="cursor-pointer transition-colors hover:bg-muted/50"
                       onClick={() => handleRowClick(c.id)}
                       data-testid={`client-row-${c.id}`}
+                      data-state={isExpanded ? "expanded" : undefined}
                     >
+                      <TableCell className="pr-0" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          aria-label={isExpanded ? "Hide company details" : "Show company details"}
+                          aria-expanded={isExpanded}
+                          data-testid={`client-row-expand-${c.id}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedId((cur) => (cur === c.id ? null : c.id));
+                          }}
+                        >
+                          {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        </Button>
+                      </TableCell>
                       <TableCell className="font-medium">{c.name}</TableCell>
                       <TableCell className="font-mono text-xs">{c.company_no || "—"}</TableCell>
                       <TableCell className="font-mono text-xs">{c.vat_number || "—"}</TableCell>
@@ -226,7 +275,7 @@ export default function AccountingClients() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {c.id === syncingId && c.companies_house_sync_status !== "synced" ? (
+                        {rowSyncing ? (
                           <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground" data-testid={`ch-fetching-${c.id}`}>
                             <RefreshCw className="h-3 w-3 animate-spin" />
                             Fetching from Companies House…
@@ -242,6 +291,8 @@ export default function AccountingClients() {
                           <span className="text-xs text-muted-foreground">—</span>
                         )}
                       </TableCell>
+                      <TableCell className="text-xs">{c.partner_responsible || "—"}</TableCell>
+                      <TableCell className="font-mono text-xs">{c.post_code || "—"}</TableCell>
                       <TableCell className="text-xs">{formatPeriodEnd(c.accounts_next_due)}</TableCell>
                       <TableCell>{formatPeriodEnd(c.accounting_period_end)}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">
@@ -264,6 +315,16 @@ export default function AccountingClients() {
                             <DropdownMenuItem
                               onClick={(e) => {
                                 e.stopPropagation();
+                                setExpandedId((cur) => (cur === c.id ? null : c.id));
+                              }}
+                              data-testid={`client-row-details-${c.id}`}
+                            >
+                              <Building2 className="mr-2 h-4 w-4" />
+                              {isExpanded ? "Hide company details" : "View company details"}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 handleEditClient(c.id);
                               }}
                               data-testid={`client-row-edit-${c.id}`}
@@ -272,13 +333,10 @@ export default function AccountingClients() {
                               Edit client
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              disabled={!c.company_no || chSync.isPending}
+                              disabled={!c.company_no || rowSyncing}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (!c.company_no) return;
-                                chSync.mutateAsync([c.company_no]).catch(() => {
-                                  /* toast handled inside hook */
-                                });
+                                if (c.company_no) handleCompaniesHouseSync(c.company_no, c.id);
                               }}
                               data-testid={`client-row-ch-sync-${c.id}`}
                             >
@@ -308,17 +366,30 @@ export default function AccountingClients() {
                         </DropdownMenu>
                       </TableCell>
                     </TableRow>
+                    {isExpanded && full && (
+                      <TableRow data-testid={`client-detail-row-${c.id}`} className="hover:bg-transparent">
+                        <TableCell colSpan={12} className="bg-muted/20 p-3">
+                          <CompaniesHousePanel
+                            client={full}
+                            syncing={rowSyncing}
+                            onSync={(companyNo) => handleCompaniesHouseSync(companyNo, c.id)}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    </Fragment>
                   );
                 })
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
 
       {/* Add client dialog */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="max-w-2xl" data-testid="add-client-dialog">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="add-client-dialog">
           <DialogHeader>
             <DialogTitle>Add a client</DialogTitle>
             <DialogDescription>
@@ -346,7 +417,7 @@ export default function AccountingClients() {
 
       {/* Edit client dialog */}
       <Dialog open={!!editTarget} onOpenChange={(o) => !o && setEditTarget(null)}>
-        <DialogContent className="max-w-2xl" data-testid="edit-client-dialog">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="edit-client-dialog">
           <DialogHeader>
             <DialogTitle>Edit client</DialogTitle>
             <DialogDescription>{editTarget?.name}</DialogDescription>

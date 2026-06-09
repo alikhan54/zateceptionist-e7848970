@@ -100,19 +100,27 @@ export function jobCategoryMeta(code: string | null | undefined): { label: strin
   return null;
 }
 
+// MoneyPex taxonomy alignment (2026-06-09): the DB-driven `accounting_job_types`
+// codes (corporation_tax, annual_accounts, confirmation_statement, …) are the real
+// codes on `accounting_jobs.category`. The legacy FILING_CATEGORIES list uses
+// different codes (ct600, accounts_full, …), so these label/short/color resolvers
+// must consult `jobCategoryMeta` FIRST (which checks JOB_TYPE_BADGE_META then legacy)
+// before the legacy-only CATEGORY_BY_CODE map — otherwise a DB-coded job rendered
+// its raw code (e.g. "corporation_tax") instead of "Corporation Tax".
+
 export function categoryLabel(code: string | null | undefined): string {
   if (!code) return "Untagged";
-  return CATEGORY_BY_CODE[code as FilingCategory]?.label ?? code;
+  return jobCategoryMeta(code)?.label ?? CATEGORY_BY_CODE[code as FilingCategory]?.label ?? code;
 }
 
 export function categoryShort(code: string | null | undefined): string {
   if (!code) return "—";
-  return CATEGORY_BY_CODE[code as FilingCategory]?.short ?? code;
+  return jobCategoryMeta(code)?.short ?? CATEGORY_BY_CODE[code as FilingCategory]?.short ?? code;
 }
 
 export function categoryColor(code: string | null | undefined): string {
   if (!code) return "hsl(220 14% 60%)";
-  return CATEGORY_BY_CODE[code as FilingCategory]?.color ?? "hsl(220 14% 60%)";
+  return jobCategoryMeta(code)?.color ?? CATEGORY_BY_CODE[code as FilingCategory]?.color ?? "hsl(220 14% 60%)";
 }
 
 export function isValidCategory(value: string | null | undefined): value is FilingCategory {

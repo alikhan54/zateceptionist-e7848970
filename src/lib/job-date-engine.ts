@@ -211,11 +211,16 @@ export function computePriority(
 
 /**
  * Wave 2a Phase 2 — auto-description from job type + period end.
- *   Annual Accounts        → "Annual accounts filing for year end {date}"
+ *   Annual Accounts        → "Annual Accounts + Corporation Tax filing for year end {date}"
  *   Confirmation Statement → "Confirmation statement for period ending {date}"
  *   else                   → "{Type} for period ending {date}"
  * {date} = period_end formatted DD MMM YYYY. Returns "" when no period end
  * (caller leaves description blank / user-entered untouched).
+ *
+ * MoneyPex combine (2026-06-09): a UK Annual Accounts job covers the CT600 filing
+ * too — Adil never wants a SEPARATE Corporation Tax job. The auto-description for an
+ * Annual Accounts job therefore states it covers both (editable). The Create dialog
+ * never auto-creates a Corporation Tax job; the user picks ONE Annual Accounts type.
  */
 export function computeJobDescription(
   jobTypeName: string | null | undefined,
@@ -228,7 +233,7 @@ export function computeJobDescription(
   if (Number.isNaN(d.getTime())) return "";
   const dateStr = d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
   const name = (jobTypeName || "").trim();
-  if (/annual accounts/i.test(name)) return `Annual accounts filing for year end ${dateStr}`;
+  if (/annual accounts/i.test(name)) return `Annual Accounts + Corporation Tax filing for year end ${dateStr}`;
   if (/confirmation statement/i.test(name)) return `Confirmation statement for period ending ${dateStr}`;
   return `${name || "Filing"} for period ending ${dateStr}`;
 }

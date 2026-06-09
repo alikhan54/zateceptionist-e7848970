@@ -586,7 +586,7 @@ export default function AccountingJobs() {
             {isLoading
               ? "Loading…"
               : `${jobs.length} ${jobs.length === 1 ? "job" : "jobs"}${
-                  statusFilter !== "all" || priorityFilter !== "all" || search || clientParam
+                  statusFilter !== "all" || priorityFilter !== "all" || categoryFilter !== "all" || ownerFilter !== OWNER_ALL || search || clientParam
                     ? " (filtered)"
                     : ""
                 }`}
@@ -703,7 +703,16 @@ export default function AccountingJobs() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All categories</SelectItem>
-            {FILING_CATEGORIES.map((c) => (
+            {/* MoneyPex taxonomy fix (2026-06-09): source the filter from the SAME
+                DB-driven job_types as the Create dialog (codes corporation_tax,
+                annual_accounts, …). The legacy FILING_CATEGORIES codes (ct600,
+                accounts_full, …) do NOT match `accounting_jobs.category`, so filtering
+                by them returned 0 rows. Fall back to FILING_CATEGORIES only when no
+                job_types are seeded (non-accounting tenants). */}
+            {(jobTypes.length > 0
+              ? jobTypes.map((t) => ({ code: t.code, label: t.name }))
+              : FILING_CATEGORIES.map((c) => ({ code: c.code, label: c.label }))
+            ).map((c) => (
               <SelectItem key={c.code} value={c.code}>
                 {c.label}
               </SelectItem>
