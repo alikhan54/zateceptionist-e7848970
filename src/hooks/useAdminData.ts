@@ -203,6 +203,59 @@ export function useAdminStats() {
   });
 }
 
+// ============================================================================
+// Phase 3 — lifecycle signals (read-only). Reuses the existing 1B RPC
+// derive_lifecycle_signals(null), which for a master_admin returns one row per
+// tenant with the REAL last_active (MAX auth.users.last_sign_in_at across the
+// tenant's users) and a derived lifecycle_stage. ZERO new DDL — authenticated
+// already has EXECUTE and the is_master_admin() guard scopes access.
+// ============================================================================
+export type LifecycleStage =
+  | 'new' | 'never_activated' | 'activating' | 'active' | 'silent' | 'at_risk' | 'churned';
+
+export interface LifecycleSignal {
+  tenant_id: string;
+  company_name: string;
+  signup_date: string | null;
+  days_since_signup: number | null;
+  onboarding_completed: boolean;
+  last_active: string | null;
+  days_silent: number | null;
+  subscription_plan: string | null;
+  monthly_value: number;
+  is_paid: boolean;
+  billing_status: string | null;
+  lifecycle_stage: LifecycleStage;
+}
+
+// Display config for each lifecycle stage. `attention` marks the cohorts that
+// matter for retention (surfaced prominently on the dashboard).
+export const LIFECYCLE_CONFIG: Record<LifecycleStage, {
+  label: string; className: string; attention: boolean; order: number; hint: string;
+}> = {
+  active:          { label: 'Active',          className: 'bg-green-500/10 text-green-600 border-green-500/30',   attention: false, order: 0, hint: 'Logged in within the last 3 days' },
+  new:             { label: 'New',             className: 'bg-blue-500/10 text-blue-600 border-blue-500/30',      attention: false, order: 1, hint: 'Signed up within the last day' },
+  activating:      { label: 'Activating',      className: 'bg-cyan-500/10 text-cyan-600 border-cyan-500/30',      attention: false, order: 2, hint: 'Logged in but onboarding not finished' },
+  silent:          { label: 'Silent',          className: 'bg-slate-400/10 text-slate-500 border-slate-400/30',   attention: false, order: 3, hint: 'No login in 3–7 days' },
+  at_risk:         { label: 'At risk',         className: 'bg-orange-500/10 text-orange-600 border-orange-500/30', attention: true,  order: 4, hint: 'No login in 7–30 days' },
+  never_activated: { label: 'Never activated', className: 'bg-red-500/10 text-red-600 border-red-500/30',         attention: true,  order: 5, hint: 'No user has ever logged in' },
+  churned:         { label: 'Churned',         className: 'bg-muted text-muted-foreground border-border',         attention: true,  order: 6, hint: 'No login in over 30 days' },
+};
+
+export function useLifecycleSignals() {
+  return useQuery({
+    queryKey: ['admin', 'lifecycle'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('derive_lifecycle_signals', { p_tenant_id: null });
+      if (error) throw error;
+      return (data || []).map((r: LifecycleSignal) => ({
+        ...r,
+        monthly_value: Number(r.monthly_value) || 0,
+      })) as LifecycleSignal[];
+    },
+  });
+}
+
 // Mutation to create audit log
 export function useCreateAuditLog() {
   const queryClient = useQueryClient();

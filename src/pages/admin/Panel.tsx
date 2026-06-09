@@ -9,7 +9,7 @@ import {
   Server, Database, Globe, Plus, Settings, RefreshCw, Eye, ArrowRight,
   MessageSquare
 } from 'lucide-react';
-import { useAdminStats, useAllTenants, useAuditLogs } from '@/hooks/useAdminData';
+import { useAdminStats, useAllTenants, useAuditLogs, useLifecycleSignals, LIFECYCLE_CONFIG, LifecycleStage } from '@/hooks/useAdminData';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -18,6 +18,7 @@ export default function AdminPanel() {
   const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useAdminStats();
   const { data: tenants, isLoading: tenantsLoading } = useAllTenants();
   const { data: recentLogs, isLoading: logsLoading } = useAuditLogs({ limit: 5 });
+  const { data: lifecycle } = useLifecycleSignals();
 
   // Calculate plan distribution from real tenant data
   const planDistribution = tenants ? [
@@ -27,11 +28,31 @@ export default function AdminPanel() {
     { name: 'Starter', value: tenants.filter(t => t.plan === 'starter' || !t.plan).length, color: 'hsl(var(--chart-4))' },
   ].filter(p => p.value > 0) : [];
 
+  // Real lifecycle distribution from derive_lifecycle_signals (one row per tenant).
+  const lifecycleCounts = (lifecycle || []).reduce<Record<string, number>>((acc, l) => {
+    acc[l.lifecycle_stage] = (acc[l.lifecycle_stage] || 0) + 1;
+    return acc;
+  }, {});
+  const lifecycleTotal = lifecycle?.length || 0;
+  const orderedStages = (Object.keys(LIFECYCLE_CONFIG) as LifecycleStage[])
+    .sort((a, b) => LIFECYCLE_CONFIG[a].order - LIFECYCLE_CONFIG[b].order);
+  const attentionCount = (lifecycleCounts['never_activated'] || 0)
+    + (lifecycleCounts['at_risk'] || 0) + (lifecycleCounts['churned'] || 0);
+  // Real "active this week" = tenants with a login in the last 7 days (true signal,
+  // unlike the audit-log "Activity Today" which is structurally 0 since logging is stale).
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const activeThisWeek = (lifecycle || []).filter(
+    (l) => l.last_active && new Date(l.last_active).getTime() >= weekAgo
+  ).length;
+  // Audit logging is effectively frozen (newest event is months old) — flag it honestly.
+  const newestLog = recentLogs && recentLogs.length > 0 ? new Date(recentLogs[0].created_at) : null;
+  const logsAreStale = newestLog ? (Date.now() - newestLog.getTime() > 14 * 24 * 60 * 60 * 1000) : false;
+
   const statCards = [
-    { label: 'Active Tenants', value: stats?.activeTenants || 0, icon: Building2, color: 'text-blue-500', prefix: '' },
-    { label: 'Total Users', value: stats?.totalUsers || 0, icon: Users, color: 'text-green-500', prefix: '' },
-    { label: 'Activity Today', value: stats?.activityToday || 0, icon: Activity, color: 'text-purple-500', prefix: '' },
-    { label: 'MRR', value: stats?.mrr || 0, icon: TrendingUp, color: 'text-orange-500', prefix: '$' },
+    { label: 'Active Tenants', value: stats?.activeTenants || 0, icon: Building2, color: 'text-blue-500', prefix: '', suffix: '' },
+    { label: 'Total Users', value: stats?.totalUsers || 0, icon: Users, color: 'text-green-500', prefix: '', suffix: '' },
+    { label: 'Active This Week', value: activeThisWeek, icon: Activity, color: 'text-purple-500', prefix: '', suffix: '' },
+    { label: 'Potential MRR', value: stats?.mrr || 0, icon: TrendingUp, color: 'text-orange-500', prefix: '$', suffix: '' },
   ];
 
   const getLevelBadge = (level: string) => {
@@ -95,10 +116,70 @@ export default function AdminPanel() {
                 <div className="text-2xl font-bold">{stat.prefix}{stat.value.toLocaleString()}</div>
               )}
               <p className="text-xs text-muted-foreground">{stat.label}</p>
+              {stat.label === 'Potential MRR' && (
+                <p className="text-[10px] text-muted-foreground mt-0.5">plan-assigned · $0 collected (no payments yet)</p>
+              )}
             </CardContent>
           </Card>
         ))}
       </div>
+
+      {/* Tenant Lifecycle — real signals from derive_lifecycle_signals. Answers
+          "who needs attention?" not just "how many tenants". */}
+      {lifecycleTotal > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Tenant Lifecycle</CardTitle>
+                <CardDescription>Derived from real sign-in activity &amp; onboarding · who needs attention</CardDescription>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/admin/tenants')}>
+                View tenants <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Attention cohorts up top */}
+            <div className="grid grid-cols-3 gap-3">
+              {([
+                { stage: 'never_activated' as LifecycleStage, label: 'Never activated' },
+                { stage: 'at_risk' as LifecycleStage, label: 'At risk' },
+                { stage: 'churned' as LifecycleStage, label: 'Churned' },
+              ]).map(({ stage, label }) => (
+                <div key={stage} className="rounded-lg border p-3">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className={`h-4 w-4 ${stage === 'never_activated' ? 'text-red-500' : stage === 'at_risk' ? 'text-orange-500' : 'text-muted-foreground'}`} />
+                    <span className="text-2xl font-bold">{lifecycleCounts[stage] || 0}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">{label}</p>
+                </div>
+              ))}
+            </div>
+            {/* Proportional bar across all stages */}
+            <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-muted">
+              {orderedStages.map((stage) => {
+                const n = lifecycleCounts[stage] || 0;
+                if (!n) return null;
+                const pct = (n / lifecycleTotal) * 100;
+                const color: Record<LifecycleStage, string> = {
+                  active: '#16a34a', new: '#3b82f6', activating: '#06b6d4', silent: '#94a3b8',
+                  at_risk: '#f97316', never_activated: '#ef4444', churned: '#9ca3af',
+                };
+                return <div key={stage} style={{ width: `${pct}%`, backgroundColor: color[stage] }} title={`${LIFECYCLE_CONFIG[stage].label}: ${n}`} />;
+              })}
+            </div>
+            {/* Legend with counts */}
+            <div className="flex flex-wrap gap-2">
+              {orderedStages.map((stage) => (
+                <Badge key={stage} variant="outline" className={LIFECYCLE_CONFIG[stage].className} title={LIFECYCLE_CONFIG[stage].hint}>
+                  {LIFECYCLE_CONFIG[stage].label}: {lifecycleCounts[stage] || 0}
+                </Badge>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Plan Distribution */}
@@ -156,7 +237,11 @@ export default function AdminPanel() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle>Recent Activity</CardTitle>
-                <CardDescription>Latest audit logs</CardDescription>
+                <CardDescription>
+                  {logsAreStale && newestLog
+                    ? `Audit log · no new events since ${newestLog.toLocaleDateString()}`
+                    : 'Latest audit logs'}
+                </CardDescription>
               </div>
               <Button variant="ghost" size="sm" onClick={() => navigate('/admin/logs')}>
                 View All <ArrowRight className="ml-2 h-4 w-4" />

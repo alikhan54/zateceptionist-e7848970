@@ -53,6 +53,12 @@ export default function AuditLogs() {
   const { data: tenants } = useAllTenants();
   const { data: logStats, isLoading: statsLoading } = useAuditLogStats();
 
+  // Honest recency: the audit log is real but only captures the events that were
+  // written to `audit_logs`. If the newest event is weeks old, surface that plainly
+  // rather than implying the feed is live.
+  const newestLog = logs && logs.length > 0 ? new Date(logs[0].created_at) : null;
+  const logsAreStale = newestLog ? Date.now() - newestLog.getTime() > 14 * 24 * 60 * 60 * 1000 : false;
+
   // Get tenant list for filter
   const tenantList = ['All Tenants', ...(tenants || []).map(t => t.company_name)];
 
@@ -188,6 +194,25 @@ export default function AuditLogs() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Honest recency notice — the feed is real audit data, not live-streaming. */}
+      {logsAreStale && newestLog && (
+        <Card className="border-yellow-500/30 bg-yellow-500/5">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-yellow-500 mt-0.5 flex-shrink-0" />
+              <div className="text-sm">
+                <p className="font-medium">Audit logging is not currently capturing new events.</p>
+                <p className="text-muted-foreground mt-0.5">
+                  The {logStats?.total ?? 0} event{(logStats?.total ?? 0) === 1 ? '' : 's'} below are real, but the most
+                  recent was {formatDistanceToNow(newestLog, { addSuffix: true })} ({newestLog.toLocaleDateString()}).
+                  New user / admin actions are not being written to <code>audit_logs</code> right now.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filters & Log List */}
       <Card>

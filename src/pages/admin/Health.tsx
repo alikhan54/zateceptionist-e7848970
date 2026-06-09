@@ -1,4 +1,7 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAdminStats, useLifecycleSignals } from '@/hooks/useAdminData';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,13 +13,21 @@ import { Input } from '@/components/ui/input';
 import {
   Activity, Server, Database, Cpu, HardDrive, Wifi, RefreshCw, Bell,
   CheckCircle2, AlertTriangle, XCircle, Clock, Zap, Globe, MessageSquare,
-  Phone, Mail, CloudOff, TrendingUp, TrendingDown, Settings
+  Phone, Mail, CloudOff, TrendingUp, TrendingDown, Settings, Building2, Users, Info
 } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   AreaChart, Area, BarChart, Bar
 } from 'recharts';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ILLUSTRATIVE sample data (NOT live telemetry). Live infrastructure metrics
+// (per-service latency, queue depth, incident history) require a server-side
+// metrics endpoint that is not yet wired to this browser app. These arrays drive
+// the clearly-labelled "Illustrative" sections below so the layout is visible;
+// they are never presented as real operational numbers. Real, live signals
+// (database connectivity + platform counts) are computed in the component.
+// ─────────────────────────────────────────────────────────────────────────────
 const responseTimeData = [
   { time: '00:00', api: 45, db: 12, cache: 2 },
   { time: '04:00', api: 42, db: 10, cache: 2 },
@@ -79,12 +90,36 @@ const alertRules = [
 
 export default function SystemHealth() {
   const [selectedTab, setSelectedTab] = useState('overview');
+  const { data: stats } = useAdminStats();
+  const { data: lifecycle } = useLifecycleSignals();
 
-  const metrics = [
-    { label: 'CPU Usage', value: 34, max: 100, icon: Cpu, status: 'good' },
-    { label: 'Memory', value: 6.2, max: 16, unit: 'GB', icon: Server, status: 'good' },
-    { label: 'Storage', value: 245, max: 500, unit: 'GB', icon: HardDrive, status: 'good' },
-    { label: 'Network I/O', value: 156, max: 1000, unit: 'MB/s', icon: Wifi, status: 'good' },
+  // Live database-connectivity probe: a tiny real round-trip (is_master_admin()).
+  // Gives a TRUE reachable/latency signal — unlike the fabricated uptime numbers.
+  const dbProbe = useQuery({
+    queryKey: ['admin', 'db-probe'],
+    refetchInterval: 30000,
+    queryFn: async () => {
+      const t0 = performance.now();
+      const { error } = await supabase.rpc('is_master_admin');
+      const ms = Math.round(performance.now() - t0);
+      return { ok: !error, ms, error: error?.message ?? null };
+    },
+  });
+
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const activeThisWeek = (lifecycle || []).filter(
+    (l) => l.last_active && new Date(l.last_active).getTime() >= weekAgo
+  ).length;
+  const dbOk = dbProbe.data?.ok ?? false;
+  const dbMs = dbProbe.data?.ms ?? null;
+
+  // Real, live platform metrics — a browser app cannot read host CPU/RAM/disk, so the
+  // fabricated CPU/Memory/Storage/Network gauges are replaced with metrics that ARE real.
+  const platformMetrics = [
+    { label: 'Total Tenants', value: stats?.totalTenants ?? '—', icon: Building2 },
+    { label: 'Total Users', value: stats?.totalUsers ?? '—', icon: Users },
+    { label: 'Active This Week', value: activeThisWeek, icon: Activity },
+    { label: 'DB Latency', value: dbMs != null ? `${dbMs}ms` : '—', icon: Database },
   ];
 
   const getStatusIcon = (status: string) => {
@@ -125,22 +160,46 @@ export default function SystemHealth() {
         </div>
       </div>
 
-      {/* Overall Status */}
-      <Card className="bg-chart-2/10 border-chart-2/30">
+      {/* Overall Status — derived from a LIVE database connectivity probe (real). */}
+      <Card className={dbOk ? 'bg-chart-2/10 border-chart-2/30' : 'bg-destructive/10 border-destructive/30'}>
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-full bg-chart-2/20 flex items-center justify-center">
-                <CheckCircle2 className="h-6 w-6 text-chart-2" />
+              <div className={`h-12 w-12 rounded-full flex items-center justify-center ${dbOk ? 'bg-chart-2/20' : 'bg-destructive/20'}`}>
+                {dbOk ? <CheckCircle2 className="h-6 w-6 text-chart-2" /> : <XCircle className="h-6 w-6 text-destructive" />}
               </div>
               <div>
-                <h3 className="text-xl font-semibold text-chart-2">All Systems Operational</h3>
-                <p className="text-muted-foreground">7 of 8 services healthy • 1 with elevated latency</p>
+                <h3 className={`text-xl font-semibold ${dbOk ? 'text-chart-2' : 'text-destructive'}`}>
+                  {dbProbe.isLoading ? 'Checking database…' : dbOk ? 'Database reachable' : 'Database unreachable'}
+                </h3>
+                <p className="text-muted-foreground">
+                  {dbOk
+                    ? `Supabase responded${dbMs != null ? ` in ${dbMs}ms` : ''} · live platform data`
+                    : dbProbe.data?.error || 'No response from Supabase'}
+                </p>
               </div>
             </div>
             <div className="text-right">
-              <p className="text-2xl font-bold">99.98%</p>
-              <p className="text-sm text-muted-foreground">30-day uptime</p>
+              <p className="text-2xl font-bold">{stats?.totalTenants ?? '—'}</p>
+              <p className="text-sm text-muted-foreground">tenants served</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Honest scope banner: what's live vs illustrative. */}
+      <Card className="border-blue-500/30 bg-blue-500/5">
+        <CardContent className="p-4">
+          <div className="flex items-start gap-3 text-sm">
+            <Info className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="font-medium">What's live vs. illustrative on this page</p>
+              <p className="text-muted-foreground mt-0.5">
+                <span className="text-foreground font-medium">Live:</span> database connectivity, latency, and the platform
+                metrics below (tenants, users, active-this-week). <span className="text-foreground font-medium">Illustrative:</span> the
+                latency/error/uptime charts, service list, queues, and incident history are sample layouts — live infrastructure
+                telemetry (CPU, memory, per-service health) requires a server-side metrics endpoint not yet wired to this app.
+              </p>
             </div>
           </div>
         </CardContent>
@@ -156,19 +215,17 @@ export default function SystemHealth() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 mt-6">
-          {/* Resource Metrics */}
+          {/* Live platform metrics (real — from RPCs + DB probe) */}
           <div className="grid md:grid-cols-4 gap-4">
-            {metrics.map((metric) => (
+            {platformMetrics.map((metric) => (
               <Card key={metric.label}>
                 <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center justify-between mb-2">
                     <metric.icon className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-sm font-medium">
-                      {metric.value}{metric.unit || '%'} / {metric.max}{metric.unit || '%'}
-                    </span>
+                    <Badge variant="outline" className="text-[10px] bg-chart-2/10 text-chart-2 border-chart-2/30">live</Badge>
                   </div>
-                  <Progress value={(metric.value / metric.max) * 100} className="h-2" />
-                  <p className="text-sm text-muted-foreground mt-2">{metric.label}</p>
+                  <div className="text-2xl font-bold">{metric.value}</div>
+                  <p className="text-sm text-muted-foreground mt-1">{metric.label}</p>
                 </CardContent>
               </Card>
             ))}
@@ -179,8 +236,10 @@ export default function SystemHealth() {
             {/* Response Time */}
             <Card>
               <CardHeader>
-                <CardTitle>Response Time</CardTitle>
-                <CardDescription>Average latency by service (24h)</CardDescription>
+                <CardTitle className="flex items-center gap-2">Response Time
+                  <Badge variant="outline" className="text-[10px] text-muted-foreground">Illustrative</Badge>
+                </CardTitle>
+                <CardDescription>Average latency by service (24h) — sample data</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="h-64">
@@ -207,8 +266,10 @@ export default function SystemHealth() {
             {/* Error Rate */}
             <Card>
               <CardHeader>
-                <CardTitle>Error Rate</CardTitle>
-                <CardDescription>Percentage of failed requests (24h)</CardDescription>
+                <CardTitle className="flex items-center gap-2">Error Rate
+                  <Badge variant="outline" className="text-[10px] text-muted-foreground">Illustrative</Badge>
+                </CardTitle>
+                <CardDescription>Percentage of failed requests (24h) — sample data</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="h-64">
@@ -241,8 +302,10 @@ export default function SystemHealth() {
           {/* Uptime History */}
           <Card>
             <CardHeader>
-              <CardTitle>Uptime History</CardTitle>
-              <CardDescription>Daily uptime percentage (last 7 days)</CardDescription>
+              <CardTitle className="flex items-center gap-2">Uptime History
+                <Badge variant="outline" className="text-[10px] text-muted-foreground">Illustrative</Badge>
+              </CardTitle>
+              <CardDescription>Daily uptime percentage (last 7 days) — sample data</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-48">
@@ -264,30 +327,10 @@ export default function SystemHealth() {
             </CardContent>
           </Card>
 
-          {/* Active Connections */}
-          <div className="grid md:grid-cols-3 gap-4">
-            <Card>
-              <CardContent className="p-4 text-center">
-                <p className="text-3xl font-bold">423</p>
-                <p className="text-sm text-muted-foreground">Active Connections</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 text-center">
-                <p className="text-3xl font-bold">1.2M</p>
-                <p className="text-sm text-muted-foreground">Requests Today</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 text-center">
-                <p className="text-3xl font-bold">45ms</p>
-                <p className="text-sm text-muted-foreground">Avg Response Time</p>
-              </CardContent>
-            </Card>
-          </div>
         </TabsContent>
 
         <TabsContent value="services" className="space-y-4 mt-6">
+          <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Info className="h-3.5 w-3.5" />Illustrative sample — per-service health requires a metrics backend not yet wired.</p>
           <div className="grid md:grid-cols-2 gap-4">
             {services.map((service) => (
               <Card key={service.name}>
@@ -327,6 +370,7 @@ export default function SystemHealth() {
         </TabsContent>
 
         <TabsContent value="queues" className="space-y-4 mt-6">
+          <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Info className="h-3.5 w-3.5" />Illustrative sample — live queue depth requires a metrics backend not yet wired.</p>
           <div className="grid md:grid-cols-2 gap-4">
             {queueData.map((queue) => (
               <Card key={queue.queue}>
@@ -358,6 +402,7 @@ export default function SystemHealth() {
         </TabsContent>
 
         <TabsContent value="incidents" className="space-y-4 mt-6">
+          <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Info className="h-3.5 w-3.5" />Illustrative sample — no incident-tracking source is wired to this app yet.</p>
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -406,6 +451,7 @@ export default function SystemHealth() {
         </TabsContent>
 
         <TabsContent value="alerts" className="space-y-4 mt-6">
+          <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Info className="h-3.5 w-3.5" />Illustrative sample — alert rules are not yet connected to a live monitor.</p>
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">

@@ -21,13 +21,6 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -55,23 +48,10 @@ import {
   ArrowUpDown, Download, RefreshCw, Calendar, Activity, CreditCard, Settings,
   AlertTriangle, TrendingUp
 } from 'lucide-react';
-import { 
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  BarChart, Bar
-} from 'recharts';
-import { useAllTenants, useUpdateTenantStatus, useCreateAuditLog, TenantData } from '@/hooks/useAdminData';
+import { useAllTenants, useUpdateTenantStatus, useCreateAuditLog, useLifecycleSignals, LIFECYCLE_CONFIG, LifecycleStage, TenantData } from '@/hooks/useAdminData';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
-
-const usageData = [
-  { month: 'Jan', messages: 8500, calls: 450 },
-  { month: 'Feb', messages: 10200, calls: 520 },
-  { month: 'Mar', messages: 12500, calls: 680 },
-  { month: 'Apr', messages: 11800, calls: 590 },
-  { month: 'May', messages: 14200, calls: 720 },
-  { month: 'Jun', messages: 15800, calls: 890 },
-];
 
 const industries = ['Technology', 'Healthcare', 'Retail', 'Legal', 'Education', 'Manufacturing', 'Finance', 'Real Estate'];
 const plans = ['Starter', 'Growth', 'Professional', 'Enterprise'];
@@ -93,14 +73,20 @@ export default function AllTenants() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { data: tenants, isLoading, refetch } = useAllTenants();
+  const { data: lifecycle } = useLifecycleSignals();
   const updateStatus = useUpdateTenantStatus();
   const createLog = useCreateAuditLog();
+
+  // Map of tenant_id -> real lifecycle signal (last_active + stage), from the
+  // derive_lifecycle_signals RPC. Powers the real Last Activity column + the
+  // Lifecycle column/filter. Tenants without a signal fall back gracefully.
+  const lifecycleMap = new Map((lifecycle || []).map((l) => [l.tenant_id, l]));
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [industryFilter, setIndustryFilter] = useState<string>('all');
   const [planFilter, setPlanFilter] = useState<string>('all');
-  const [selectedTenant, setSelectedTenant] = useState<TenantData | null>(null);
+  const [lifecycleFilter, setLifecycleFilter] = useState<string>('all');
   const [showCreateWizard, setShowCreateWizard] = useState(false);
   const [wizardStep, setWizardStep] = useState(1);
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>(['sales', 'marketing']);
@@ -111,7 +97,9 @@ export default function AllTenants() {
     const matchesStatus = statusFilter === 'all' || tenant.subscription_status === statusFilter;
     const matchesIndustry = industryFilter === 'all' || tenant.industry === industryFilter;
     const matchesPlan = planFilter === 'all' || tenant.subscription_plan === planFilter;
-    return matchesSearch && matchesStatus && matchesIndustry && matchesPlan;
+    const matchesLifecycle = lifecycleFilter === 'all' ||
+      lifecycleMap.get(tenant.tenant_id)?.lifecycle_stage === lifecycleFilter;
+    return matchesSearch && matchesStatus && matchesIndustry && matchesPlan && matchesLifecycle;
   });
 
   // Stat-card aggregates from the full cross-tenant RPC result (not the filtered view).
@@ -158,6 +146,26 @@ export default function AllTenants() {
     };
     const { variant, label } = config[status] || { variant: 'outline' as const, label: status };
     return <Badge variant={variant}>{label}</Badge>;
+  };
+
+  // Real lifecycle badge from derive_lifecycle_signals (never fabricated).
+  const getLifecycleBadge = (tenantId: string) => {
+    const sig = lifecycleMap.get(tenantId);
+    if (!sig) return <span className="text-xs text-muted-foreground">—</span>;
+    const cfg = LIFECYCLE_CONFIG[sig.lifecycle_stage];
+    return <Badge variant="outline" className={cfg.className} title={cfg.hint}>{cfg.label}</Badge>;
+  };
+
+  // Real last activity = MAX(auth.users.last_sign_in_at) across the tenant's users.
+  // No signal / never logged in => honest "Never" (not a fabricated date).
+  const renderLastActivity = (tenantId: string) => {
+    const sig = lifecycleMap.get(tenantId);
+    if (!sig || !sig.last_active) return <span className="text-muted-foreground">Never</span>;
+    return (
+      <span className="text-muted-foreground" title={new Date(sig.last_active).toLocaleString()}>
+        {formatDistanceToNow(new Date(sig.last_active), { addSuffix: true })}
+      </span>
+    );
   };
 
   const wizardSteps = [
@@ -470,8 +478,9 @@ export default function AllTenants() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">MRR</p>
+                <p className="text-sm text-muted-foreground">Potential MRR</p>
                 <p className="text-2xl font-bold">${totalMrr.toLocaleString()}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">plan-assigned · $0 collected</p>
               </div>
               <TrendingUp className="h-8 w-8 text-muted-foreground" />
             </div>
@@ -526,6 +535,19 @@ export default function AllTenants() {
                   ))}
                 </SelectContent>
               </Select>
+              <Select value={lifecycleFilter} onValueChange={setLifecycleFilter}>
+                <SelectTrigger className="w-40" data-testid="lifecycle-filter">
+                  <SelectValue placeholder="Lifecycle" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Lifecycle</SelectItem>
+                  {(Object.keys(LIFECYCLE_CONFIG) as LifecycleStage[])
+                    .sort((a, b) => LIFECYCLE_CONFIG[a].order - LIFECYCLE_CONFIG[b].order)
+                    .map((stage) => (
+                      <SelectItem key={stage} value={stage}>{LIFECYCLE_CONFIG[stage].label}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardHeader>
@@ -538,19 +560,18 @@ export default function AllTenants() {
                 <TableHead>Plan</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-center">Users</TableHead>
-                <TableHead className="text-center">Messages</TableHead>
-                <TableHead className="text-center">Calls</TableHead>
+                <TableHead>Lifecycle</TableHead>
                 <TableHead>Last Activity</TableHead>
-                <TableHead className="text-right">MRR</TableHead>
-                <TableHead></TableHead>
+                <TableHead className="text-right">Plan Value</TableHead>
+                <TableHead className="text-right">Manage</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredTenants.map(tenant => (
-                <TableRow 
-                  key={tenant.id} 
+                <TableRow
+                  key={tenant.id}
                   className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => setSelectedTenant(tenant)}
+                  onClick={() => navigate(`/admin/tenants/${tenant.tenant_id}`)}
                 >
                   <TableCell>
                     <div className="flex items-center gap-3">
@@ -559,34 +580,46 @@ export default function AllTenants() {
                       </Avatar>
                       <div>
                         <p className="font-medium">{tenant.company_name}</p>
-                        <p className="text-xs text-muted-foreground">{tenant.email}</p>
+                        <p className="text-xs text-muted-foreground">{tenant.tenant_id}</p>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>{tenant.industry}</TableCell>
-                  <TableCell><Badge variant="outline">{tenant.plan}</Badge></TableCell>
+                  <TableCell><Badge variant="outline" className="capitalize">{tenant.plan}</Badge></TableCell>
                   <TableCell>{getStatusBadge(tenant.status)}</TableCell>
                   <TableCell className="text-center">{tenant.users_count || 0}</TableCell>
-                  <TableCell className="text-center">-</TableCell>
-                  <TableCell className="text-center">-</TableCell>
-                  <TableCell className="text-muted-foreground">{tenant.updated_at ? new Date(tenant.updated_at).toLocaleDateString() : '-'}</TableCell>
-                  <TableCell className="text-right font-medium">-</TableCell>
+                  <TableCell>{getLifecycleBadge(tenant.tenant_id)}</TableCell>
+                  <TableCell>{renderLastActivity(tenant.tenant_id)}</TableCell>
+                  <TableCell className="text-right font-medium">
+                    {tenant.monthly_value && tenant.monthly_value > 0
+                      ? `$${tenant.monthly_value.toLocaleString()}/mo`
+                      : <span className="text-muted-foreground">Free</span>}
+                  </TableCell>
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem data-testid={`control-${tenant.tenant_id}`} onClick={(e) => { e.stopPropagation(); navigate(`/admin/tenants/${tenant.tenant_id}`); }}><Eye className="h-4 w-4 mr-2" />Control Panel</DropdownMenuItem>
-                        <DropdownMenuItem><UserCog className="h-4 w-4 mr-2" />Impersonate</DropdownMenuItem>
-                        <DropdownMenuItem><Settings className="h-4 w-4 mr-2" />Settings</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem><Pause className="h-4 w-4 mr-2" />Suspend</DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive"><Trash2 className="h-4 w-4 mr-2" />Delete</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        data-testid={`control-${tenant.tenant_id}`}
+                        onClick={(e) => { e.stopPropagation(); navigate(`/admin/tenants/${tenant.tenant_id}`); }}
+                      >
+                        <Settings className="h-4 w-4 mr-1.5" />Control Panel
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/admin/tenants/${tenant.tenant_id}`); }}><Eye className="h-4 w-4 mr-2" />Control Panel</DropdownMenuItem>
+                          <DropdownMenuItem><UserCog className="h-4 w-4 mr-2" />Impersonate</DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem><Pause className="h-4 w-4 mr-2" />Suspend</DropdownMenuItem>
+                          <DropdownMenuItem className="text-destructive"><Trash2 className="h-4 w-4 mr-2" />Delete</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -594,176 +627,6 @@ export default function AllTenants() {
           </Table>
         </CardContent>
       </Card>
-
-      {/* Tenant Detail Sheet */}
-      <Sheet open={!!selectedTenant} onOpenChange={() => setSelectedTenant(null)}>
-        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
-          {selectedTenant && (
-            <>
-              <SheetHeader>
-                <div className="flex items-center gap-4">
-                  <Avatar className="h-12 w-12">
-                    <AvatarFallback>{selectedTenant.company_name?.slice(0, 2).toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <SheetTitle>{selectedTenant.company_name}</SheetTitle>
-                    <SheetDescription>{selectedTenant.email}</SheetDescription>
-                  </div>
-                </div>
-              </SheetHeader>
-
-              <Tabs defaultValue="overview" className="mt-6">
-                <TabsList className="grid w-full grid-cols-5">
-                  <TabsTrigger value="overview">Overview</TabsTrigger>
-                  <TabsTrigger value="users">Users</TabsTrigger>
-                  <TabsTrigger value="usage">Usage</TabsTrigger>
-                  <TabsTrigger value="billing">Billing</TabsTrigger>
-                  <TabsTrigger value="settings">Settings</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="overview" className="space-y-4 mt-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <Card>
-                      <CardContent className="p-4">
-                        <p className="text-sm text-muted-foreground">Status</p>
-                        <div className="mt-1">{getStatusBadge(selectedTenant.status)}</div>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardContent className="p-4">
-                        <p className="text-sm text-muted-foreground">Plan</p>
-                        <p className="font-medium mt-1">{selectedTenant.plan}</p>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardContent className="p-4">
-                        <p className="text-sm text-muted-foreground">Industry</p>
-                        <p className="font-medium mt-1">{selectedTenant.industry}</p>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardContent className="p-4">
-                        <p className="text-sm text-muted-foreground">Created</p>
-                        <p className="font-medium mt-1">{selectedTenant.created_at ? new Date(selectedTenant.created_at).toLocaleDateString() : '-'}</p>
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">Usage This Month</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-48">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={usageData}>
-                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                            <XAxis dataKey="month" className="text-xs" />
-                            <YAxis className="text-xs" />
-                            <Tooltip />
-                            <Area type="monotone" dataKey="messages" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.2} />
-                          </AreaChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="users" className="space-y-4 mt-4">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">{selectedTenant.users_count || 0} users</p>
-                    <Button size="sm"><Plus className="h-4 w-4 mr-2" />Add User</Button>
-                  </div>
-                  <div className="space-y-2">
-                    {['John Doe', 'Jane Smith', 'Mike Johnson'].map(user => (
-                      <div key={user} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-8 w-8">
-                            <AvatarFallback>{user.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                          </Avatar>
-                          <span>{user}</span>
-                        </div>
-                        <Badge variant="outline">Admin</Badge>
-                      </div>
-                    ))}
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="usage" className="space-y-4 mt-4">
-                  <div className="space-y-4">
-                    <div>
-                      <div className="flex justify-between text-sm mb-2">
-                        <span>Messages</span>
-                        <span>- / 50,000</span>
-                      </div>
-                      <Progress value={0} />
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-sm mb-2">
-                        <span>Voice Minutes</span>
-                        <span>- / 1,000</span>
-                      </div>
-                      <Progress value={0} />
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-sm mb-2">
-                        <span>Users</span>
-                        <span>{selectedTenant.users_count || 0} / 50</span>
-                      </div>
-                      <Progress value={((selectedTenant.users_count || 0) / 50) * 100} />
-                    </div>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="billing" className="space-y-4 mt-4">
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Current MRR</p>
-                          <p className="text-2xl font-bold">-</p>
-                        </div>
-                        <CreditCard className="h-8 w-8 text-muted-foreground" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                  <div className="space-y-2">
-                    <p className="font-medium">Recent Invoices</p>
-                    {['Mar 2024', 'Feb 2024', 'Jan 2024'].map(month => (
-                      <div key={month} className="flex items-center justify-between p-3 border rounded-lg">
-                        <span>{month}</span>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">-</span>
-                          <Badge variant="default">Paid</Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="settings" className="space-y-4 mt-4">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <div>
-                        <p className="font-medium">Suspend Tenant</p>
-                        <p className="text-sm text-muted-foreground">Temporarily disable access</p>
-                      </div>
-                      <Button variant="outline">Suspend</Button>
-                    </div>
-                    <div className="flex items-center justify-between p-3 border border-destructive/50 bg-destructive/5 rounded-lg">
-                      <div>
-                        <p className="font-medium text-destructive">Delete Tenant</p>
-                        <p className="text-sm text-muted-foreground">Permanently remove all data</p>
-                      </div>
-                      <Button variant="destructive">Delete</Button>
-                    </div>
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </>
-          )}
-        </SheetContent>
-      </Sheet>
     </div>
   );
 }
