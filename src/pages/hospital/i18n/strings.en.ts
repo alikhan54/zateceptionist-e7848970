@@ -99,6 +99,38 @@ export const EN: Record<string, string> = {
   "rec.accepted": "Added to order entry — review & Place",
   "rec.none": "No medication suggestions returned.",
   "rec.unavailable": "Suggestions unavailable",
+
+  // ---- autonomy mode toggle (reusable: consultation, OT, post-op, nursing) [HOSPITAL-CONSULT] ----
+  "mode.label": "Autonomy mode",
+  "mode.manual": "Manual",
+  "mode.assisted": "Assisted",
+  "mode.autonomous": "Autonomous",
+  "mode.autonomousSoon": "Autonomous mode — coming soon",
+
+  // ---- consultation summary box (below MEDICA) [HOSPITAL-CONSULT] ----
+  "consult.title": "Consultation Summary",
+  "consult.empty": "Open an encounter (capture vitals) to record the consultation summary for this visit.",
+  "consult.hintManual": "Manual — you write the consultation summary. No AI drafting.",
+  "consult.hintAssisted": "Assisted — write your notes, then MEDICA drafts a structured summary you review, edit and approve before saving.",
+  "consult.notes": "Consultation notes",
+  "consult.notesPh": "Type or dictate what was discussed this encounter — symptoms, history, exam findings, plan…",
+  "consult.draft": "Summarize with MEDICA",
+  "consult.drafting": "Summarizing…",
+  "consult.needNotes": "Write some consultation notes first.",
+  "consult.disclaimer": "AI-drafted from your notes — physician must review & approve before saving.",
+  "consult.chiefComplaint": "Chief complaint",
+  "consult.history": "History",
+  "consult.examination": "Examination",
+  "consult.assessment": "Assessment",
+  "consult.plan": "Plan",
+  "consult.sectionPh": "—",
+  "consult.save": "Save summary",
+  "consult.saved": "Consultation summary saved",
+  "consult.saveFail": "Could not save the summary",
+  "consult.savedAt": "Saved",
+  "consult.src.manual": "written manually",
+  "consult.src.assisted": "MEDICA-assisted",
+
   // order entry
   "order.title": "Order Entry",
   "order.subtitle": "tests + medications",

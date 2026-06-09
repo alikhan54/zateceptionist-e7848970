@@ -131,3 +131,55 @@ export async function fetchMedicaRecommendations(patientName: string, patientId:
     .map((r) => ({ name: String(r.name).trim(), dose: String(r.dose ?? "").trim(), rationale: String(r.rationale ?? "").trim() }))
     .slice(0, 8);
 }
+
+/** Structured consultation summary — the 5 SOAP-ish sections MEDICA drafts (Assisted mode). */
+export interface ConsultationSummary {
+  chief_complaint: string;
+  history: string;
+  examination: string;
+  assessment: string;
+  plan: string;
+}
+
+const EMPTY_SUMMARY: ConsultationSummary = { chief_complaint: "", history: "", examination: "", assessment: "", plan: "" };
+
+/**
+ * ASSISTED consultation summary [HOSPITAL-CONSULT] — rides the SAME medica-brief path (NO brain /
+ * Edge Function change). MEDICA reads the doctor's free-text consultation notes (the authoritative
+ * source) and structures them into chief complaint / history / examination / assessment / plan.
+ * This is a DRAFT for the physician to review, edit and APPROVE before it is saved — the message
+ * forbids inventing clinical facts not in the notes/record. `lang` puts the section PROSE in Bangla
+ * (clinical terms, drug names, units and IDs stay standard English). Returns the 5 sections; throws
+ * if the model returns nothing parseable.
+ */
+export async function fetchConsultationSummary(
+  notes: string, patientName: string, patientId: string, lang: "en" | "bn" = "en",
+): Promise<ConsultationSummary> {
+  const message =
+    `A clinician has written these consultation notes for the hospital patient '${patientName}' ` +
+    `(patient id ${patientId}). Notes:\n"""\n${notes}\n"""\n` +
+    `Summarize ONLY what these notes (and the patient's record) support into a structured consultation ` +
+    `summary. Do NOT invent findings, diagnoses or plans that are not present. Return ONLY a JSON object ` +
+    `(no prose, no markdown) with exactly these keys: ` +
+    `{"chief_complaint":"…","history":"…","examination":"…","assessment":"…","plan":"…"}. ` +
+    `Each value is concise clinical prose${lang === "bn" ? ", written in Bangla (বাংলা)" : ""}; use an empty string ` +
+    `for a section the notes don't cover. Medical terms, drug names, units and IDs stay in standard English.`;
+  const { data, error } = await supabase.functions.invoke("medica-brief", { body: { message } });
+  if (error) throw error;
+  if (!data?.response) throw new Error(data?.error || "No summary returned");
+  const m = String(data.response).match(/\{[\s\S]*\}/);
+  if (!m) throw new Error("Could not read the summary");
+  let obj: any;
+  try { obj = JSON.parse(m[0]); } catch { throw new Error("Could not read the summary"); }
+  if (!obj || typeof obj !== "object") throw new Error("Could not read the summary");
+  const s = (v: any) => String(v ?? "").trim();
+  return {
+    chief_complaint: s(obj.chief_complaint),
+    history: s(obj.history),
+    examination: s(obj.examination),
+    assessment: s(obj.assessment),
+    plan: s(obj.plan),
+  };
+}
+
+export { EMPTY_SUMMARY };

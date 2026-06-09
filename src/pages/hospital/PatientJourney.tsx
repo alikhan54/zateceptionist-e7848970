@@ -19,6 +19,7 @@ import { HospitalAdmitDialog } from "@/components/hospital/HospitalAdmitDialog";
 import { VitalsCaptureDialog } from "@/components/hospital/VitalsCaptureDialog";
 import { useToast } from "@/hooks/use-toast";
 import { HospitalGate, EcgLine, fetchMedicaBrief, fetchMedicaRecommendations, type MedRec } from "./hospitalShared";
+import { ConsultationSummaryBox } from "./ConsultationSummary";
 import { useHospitalT } from "./i18n";
 
 const PATHWAY_KEYS = ["pathway.registered", "pathway.triaged", "pathway.inConsult", "pathway.ordersPlaced", "pathway.inTreatment", "pathway.resultsReady", "pathway.discharged"];
@@ -501,6 +502,10 @@ function PatientJourneyInner() {
               )}
             </div>
           </div>
+
+          {/* Consultation Summary — directly BELOW the MEDICA brief panel. Manual (doctor writes) or
+              Assisted (MEDICA drafts from notes → doctor approves) via the reusable autonomy toggle. */}
+          <ConsultationSummaryBox patientId={selectedId} patientName={patient.full_name} visitId={latestVisit?.id ?? null} />
 
           {/* MEDICA — Medication Suggestions [13]: suggest → doctor approves → pre-fills order entry */}
           <div className="hx-panel hx-rise" style={{ animationDelay: "160ms" }} data-testid="hx-medrec">
