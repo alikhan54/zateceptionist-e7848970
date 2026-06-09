@@ -1,6 +1,18 @@
 # CC Multi-Session Coordination
 
-**Last updated:** 2026-06-08 (Master-Admin Phase 2C full-capability-control option-b MERGED — `c463e32` cherry-picked to main; data-migration Part 2 investigating same session; Phase 2B per-tenant control `a079a18`; Phase 2A control-plane `c643982`; password-reset flow `d7ac59d`; prior: Phase 1A+1B `b0b8e65`+`f501f63` under `09c7110`, HR Recruitment Pipeline Visibility `ceb874a`, Quick Wins `417d032`, UI Overhaul `c79058e`, Video Stack `8c7ce4e`, Sourcing `86805bb`, Smart Ledger Wave 1 `e1c9545`, clinic Phase-2/3)
+**Last updated:** 2026-06-10 (Master-Admin Phase 3 IN PROGRESS — see marker below)
+
+---
+
+## 🔧 IN PROGRESS — Master-Admin Phase 3 (accuracy + real feature control + lifecycle) — started 2026-06-10
+
+**Session:** Master-Admin-Phase3. **Worktree:** `D:/420-system/frontend-3` (branch `wt/phase3`, off `origin/main` `3fe683c`). Isolated; will merge via isolated temp worktree.
+
+**Lane (claiming):** `src/hooks/useAdminData.ts`, `src/pages/admin/*` (incl. `Panel.tsx`, `Tenants.tsx`, `Users.tsx`, `SystemHealth.tsx`, `Logs.tsx`, `FeatureFlags.tsx`, `TenantDetail.tsx`), master-admin RPCs. Reuses existing 1B/2B RPCs (`derive_lifecycle_signals`, `master_admin_*`) — aiming for ZERO new DDL.
+
+**Additive shared-file touch (only if unavoidable + logged here):** none planned (reaching `TenantDetail` via existing `/admin/tenants/:tenantId` route; not editing `App.tsx`/`NavigationSidebar.tsx`/`TenantContext.tsx`). No n8n / LangGraph / VAPI.
+
+**Scope:** 3.1 honest accuracy (MRR Potential-vs-Collected-$0, real/honest last-activity, system-health truth, audit recency), 3.2 replace mock `/admin/features` Feature Flags with real per-tenant control + make Control Panel discoverable, 3.3 surface `derive_lifecycle_signals` on tenants + dashboard. Will update this marker → MERGED at merge.
 
 ---
 
