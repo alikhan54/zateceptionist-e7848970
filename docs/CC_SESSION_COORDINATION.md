@@ -1,6 +1,16 @@
 # CC Multi-Session Coordination
 
-**Last updated:** 2026-06-10 (Master-Admin Phase 3 MERGED — `cabb6b7` cherry-picked to main via isolated temp worktree; accuracy + real feature control + lifecycle; prior: Phase 2C `c463e32`, 2B `a079a18`, 2A `c643982`)
+**Last updated:** 2026-06-10 (Master-Admin Phase 4 IN PROGRESS — activation command + real per-tenant usage; base `a4070b3`; prior: Phase 3 `cabb6b7`, 2C `c463e32`, 2B `a079a18`, 2A `c643982`)
+
+---
+
+## 🔭 Master-Admin Phase 4 (Activation Command + real per-tenant usage) — IN PROGRESS 2026-06-10
+
+**Session:** Master-Admin-Phase4. Branch `wt/phase4` (worktree `D:/420-system/frontend-4`), base `origin/main` @ `a4070b3`. **Additive only.**
+
+**Plan:** ONE new read-only RPC `master_admin_tenant_usage()` (migration **`44-master-admin-tenant-usage.sql`** — claimed; SECURITY DEFINER + `is_master_admin()` guard, 0 rows for non-admins, one GROUP-BY scan per usage table) feeding a new **Activation Command** view at `/admin/tenants?view=activation` (chase-list of never_activated/at_risk/churned tenants with real contact + mailto) plus a real **Platform Pulse** strip and honest **Revenue Path funnel** on `Panel.tsx`, and a **Usage (7d)** column / usage card on `Tenants.tsx` + `TenantDetail.tsx`.
+
+**Owns (additive):** `src/hooks/useAdminData.ts` (new `useTenantUsage`), `src/pages/admin/{Panel,Tenants,TenantDetail}.tsx`, NEW `src/pages/admin/Activation.tsx`, NEW `supabase/migrations/44-master-admin-tenant-usage.sql`. **No shared-file edits** — App.tsx/NavigationSidebar/TenantContext untouched (activation reachable via `?view=activation`, zero new route). Migration **44 CLAIMED**.
 
 ---
 
