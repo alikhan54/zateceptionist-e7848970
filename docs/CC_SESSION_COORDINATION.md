@@ -1,12 +1,22 @@
 # CC Multi-Session Coordination
 
-**Last updated:** 2026-06-10 (Master-Admin Phase 5 IN PROGRESS — see entry below; prior: Phase 4 `4c58524`, Phase 3 `cabb6b7`, 2C `c463e32`, 2B `a079a18`, 2A `c643982`)
+**Last updated:** 2026-06-10 (Master-Admin Phase 5 MERGED — `c4d119b`; **master-admin lane CLOSED** (no further admin phases planned); migration 45 used — **next free migration: 46**; prior: Phase 4 `4c58524`, Phase 3 `cabb6b7`, 2C `c463e32`, 2B `a079a18`, 2A `c643982`)
 
 ---
 
-## 🔧 Master-Admin Phase 5 (closing: audit-log pipeline fix + dupe card removal + honest buttons) — IN PROGRESS 2026-06-10
+## 🚢 Master-Admin Phase 5 (closing: audit-login pipeline + dupe card + honest buttons) — MERGED 2026-06-10
 
-**Session:** Master-Admin-Phase5 (admin lane). Worktree `D:/420-system/frontend-5` / branch `wt/phase5` off `origin/main` (`0d8a666`). **Scope (additive/surgical):** (A) fix the dead `audit_logs` write pipeline (6 rows total, newest 2026-01-08) — investigation first, smallest correct fix, possibly **migration 45** (claimed — next session take 46); (B) remove the duplicate "Recent Tenants" card from `/admin` Panel.tsx; (C) disable/neutralize the fake-success buttons (Add User / Delete user / Change Role / Create Tenant). **Owns:** `src/pages/admin/{Panel,Users,Tenants,Logs}.tsx`, `src/hooks/useAdminData.ts` (admin lane), migration 45. No auth-flow restructuring; HARD-STOP rules per phase prompt. Final admin phase — lane closes after merge.
+**Session:** Master-Admin-Phase5. Cherry-picked `c4d119b` onto `origin/main` (`b0bf37d`) via an **isolated temp worktree** (`.merge-p5`); work branch `wt/phase5` @ `f4aa6b1` (worktree `D:/420-system/frontend-5`, both removed). **6 files modified + migration 45 + 1 new spec. Master-admin lane CLOSED — the master admin is COMPLETE; no further admin phases planned. Next session needing a migration: take 46.**
+
+**5.A — audit pipeline (the real fix):** Investigation (`D:/420-system/.tmp_phase5/investigation.md`) proved the pipeline **never existed**: the 6 rows were batch-seeded (two groups of 3 with byte-identical timestamps, NULL user_id); no trigger/function writes audit_logs; nothing in src/ writes `tenant.login`; and the only frontend insert (admin actions) was RLS-blocked for cross-tenant master-admin writes. Fix: **migration 45 `log_audit_event`** — SECURITY DEFINER RPC, identity (user_id/email/tenant) derived from JWT via `users.auth_id = auth.uid()` (client can never spoof; `p_tenant_id` honored only for `is_master_admin()`; returns false instead of raising; EXECUTE for authenticated+service_role only, anon revoked). `AuthContext.login()` fires it **fire-and-forget after successful sign-in** (try/catch + swallowed promise — can never block/fail a login; no auth restructuring). `useCreateAuditLog` re-routed through the RPC (call sites unchanged; un-breaks the false-failure toast on the real user activate/deactivate action). Phase-3 staleness banners untouched — they self-heal on recency (verified).
+
+**5.B:** Removed the duplicate "Recent Tenants" card from `/admin` (Panel.tsx). "Recent Activity" card stays (now live).
+
+**5.C — honest buttons:** Add User / Delete User / Change Role (Users.tsx) and the Create Tenant 6-step mock wizard (Tenants.tsx) faked success with no backend → disabled with "coming soon" tooltips; fake toasts + mock wizard (~250 lines) removed. Also disabled the **handler-less** Impersonate/Suspend/Delete row items (Tenants.tsx). Working actions untouched: user activate/deactivate, Control Panel/TenantDetail, Activation Command, Features hub. NOTE for future wiring: Users/Tenants "Export" buttons + Users "Edit User"/"Send Email" menu items are handler-less dead weight (silent, no fake success) — left as-is; `handleStatusChange` in Tenants.tsx is pre-existing orphaned code (defined, never called).
+
+**Verification (all gates):** RPC guards **7/7** (own-tenant write; spoof neutralized → caller's own tenant; master override; phantom auth.uid → false/no row; anon EXECUTE denied; action clamp + level whitelist; master SELECT). E2E **13/13** (`.tmp_phase5/verify_phase5.py`): real **welkin + cosmique Playwright logins** vs local preview each fired `/rpc/log_audit_event` (200) and wrote real rows (correct tenant `saif-7b33fce7`/`cosmique`, email, `tenant.login`, success, real user_id); master "Today" = 2 ≥ 1 via the exact Logs.tsx queries (simulated JWT — master browser E2E self-skips per pattern); newest-log age 0d → banner self-heals; cosmique SELECT sees only own tenant; cosmique master RPC 0 rows; bundle checks (dupe card gone, fake toast/wizard strings gone, tooltips present). Merged tree: tsc 0 errors + build clean. The 2 new audit rows are REAL logins (kept, not fixtures). Screenshots: `.tmp_phase5/results/`.
+
+**Owns:** `src/contexts/AuthContext.tsx` (login audit call ONLY — 1 additive block), `src/hooks/useAdminData.ts`, `src/pages/admin/{Panel,Users,Tenants}.tsx`, migration 45, `tests/phase5-audit-login.spec.ts`, `playwright.config.ts` (+project, additive). **UI live after Lovable Publish.**
 
 ---
 
