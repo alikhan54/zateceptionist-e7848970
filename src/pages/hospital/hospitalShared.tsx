@@ -294,6 +294,118 @@ export async function fetchPrescriptionDraft(
 }
 
 // ===========================================================================================
+// HOSPITAL-OT — print multiplexing + the consent / operative-note drafters.
+// ===========================================================================================
+
+/**
+ * Print-CSS for ONE paper block, scoped by a body attribute so MULTIPLE printable papers can be
+ * mounted on the same page without printing each other (the original Rx rule was unconditional —
+ * `body *` hidden + its own block visible — which multi-prints once a second paper exists).
+ * No attribute (manual Ctrl+P) → none of these rules fire → the page prints normally.
+ */
+export const hxPrintCss = (id: string) =>
+  `@media print { body[data-hx-print] * { visibility: hidden !important; } ` +
+  `body[data-hx-print="${id}"] #${id}, body[data-hx-print="${id}"] #${id} * { visibility: visible !important; } ` +
+  `body[data-hx-print="${id}"] #${id} { position: absolute; left: 0; top: 0; width: 100%; } }`;
+
+/** Print exactly one mounted paper block (sets the body discriminator, prints, then clears it). */
+export function printHxBlock(id: string): void {
+  try {
+    document.body.setAttribute("data-hx-print", id);
+    window.print();
+  } finally {
+    // window.print() blocks in most browsers; the timeout also covers async print dialogs
+    setTimeout(() => document.body.removeAttribute("data-hx-print"), 500);
+  }
+}
+
+export interface ConsentDraft { explanation: string; risks: string; }
+
+/**
+ * ASSISTED consent draft [HOSPITAL-OT] — DEMO_PLAN §5d formatting-assist framing. MEDICA writes the
+ * plain-language explanation + STANDARD risks for a consent form, for the physician to review word
+ * by word before the patient signs. Grounding: it must NOT invent patient-specific claims — anything
+ * not supported by the record stays standard/generic. `lang=bn` writes the consent in Bangla (the
+ * patient's language — the point of the feature); procedure/drug names may stay English.
+ */
+export async function fetchConsentDraft(
+  procedureName: string, patientName: string, patientId: string, lang: "en" | "bn" = "en",
+): Promise<ConsentDraft> {
+  const message =
+    `The physician has decided to perform '${procedureName}' for hospital patient '${patientName}' ` +
+    `(patient id ${patientId}) and asks you to FORMAT the patient consent form for his review — you are ` +
+    `NOT making clinical decisions; the physician reviews every word before the patient signs. Write: ` +
+    `(1) "explanation" — a plain-language description of the procedure a patient with no medical background ` +
+    `can understand (what happens, why it is done, what to expect); ` +
+    `(2) "risks" — the STANDARD recognised risks of this procedure, stated honestly and calmly. ` +
+    `You may use the patient's record for context, but do NOT invent patient-specific claims — any statement ` +
+    `the record does not support stays standard/generic. ` +
+    `Return ONLY a JSON object (no prose, no markdown fences): {"explanation":"…","risks":"…"}.` +
+    (lang === "bn"
+      ? ` Write both values in clear, natural Bangla (বাংলা) — the patient reads this; the procedure name and device/drug names may stay English.`
+      : ``);
+  const { data, error } = await supabase.functions.invoke("medica-brief", { body: { message } });
+  if (error) throw error;
+  if (!data?.response) throw new Error(data?.error || "No consent draft returned");
+  let raw = String(data.response);
+  const fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence) raw = fence[1];
+  const m = raw.match(/\{[\s\S]*\}/);
+  if (!m) throw new Error("Could not read the consent draft");
+  let obj: any;
+  try { obj = JSON.parse(m[0]); } catch { throw new Error("Could not read the consent draft"); }
+  const s = (v: any) => String(v ?? "").trim();
+  return { explanation: s(obj?.explanation), risks: s(obj?.risks) };
+}
+
+export interface OpNoteDraft {
+  pre_op_diagnosis: string; procedure_performed: string; findings: string;
+  complications: string; post_op_instructions: string;
+}
+
+/**
+ * ASSISTED operative-note draft [HOSPITAL-OT] — §5d framing. The surgeon's rough dictated findings
+ * are STRUCTURED into the 5 operative-note sections. BLANK-RATHER-THAN-INVENT: a section the
+ * surgeon's text does not support stays an empty string (procedure_performed may restate the
+ * scheduled procedure). The surgeon reviews, edits and SIGNS — nothing is final until signed.
+ */
+export async function fetchOpNoteDraft(
+  roughFindings: string, procedureName: string, patientName: string, patientId: string, lang: "en" | "bn" = "en",
+): Promise<OpNoteDraft> {
+  const message =
+    `The operating surgeon has dictated rough operative findings for '${procedureName}' on hospital patient ` +
+    `'${patientName}' (patient id ${patientId}):\n"""\n${roughFindings}\n"""\n` +
+    `Act as a FORMATTING assistant — you are NOT making clinical decisions; the surgeon reviews, edits and ` +
+    `SIGNS this note. Structure ONLY what the surgeon's text supports into a JSON object with exactly these ` +
+    `keys: {"pre_op_diagnosis":"","procedure_performed":"","findings":"","complications":"","post_op_instructions":""}. ` +
+    `A section the surgeon's text does not support stays an EMPTY STRING — do not invent. ` +
+    `"procedure_performed" may restate the scheduled procedure. If the surgeon states there were no ` +
+    `complications, write that; otherwise leave "complications" empty. ` +
+    `Return ONLY the JSON object (no prose, no markdown fences).` +
+    (lang === "bn"
+      ? ` Write the section prose in Bangla (বাংলা); clinical terms, device names, drug names and measurements stay English.`
+      : ``);
+  const { data, error } = await supabase.functions.invoke("medica-brief", { body: { message } });
+  if (error) throw error;
+  if (!data?.response) throw new Error(data?.error || "No operative-note draft returned");
+  let raw = String(data.response);
+  const fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence) raw = fence[1];
+  const m = raw.match(/\{[\s\S]*\}/);
+  if (!m) throw new Error("Could not read the operative-note draft");
+  let obj: any;
+  try { obj = JSON.parse(m[0]); } catch { throw new Error("Could not read the operative-note draft"); }
+  const s = (v: any) => String(v ?? "").trim();
+  return {
+    pre_op_diagnosis: s(obj?.pre_op_diagnosis),
+    procedure_performed: s(obj?.procedure_performed),
+    findings: s(obj?.findings),
+    complications: s(obj?.complications),
+    post_op_instructions: s(obj?.post_op_instructions),
+  };
+}
+
+// ===========================================================================================
 // HOSPITAL-STYLE — per-doctor MEDICA style-memory.
 // CAPTURE: when a doctor saves/signs an ASSISTED draft he edited, the deltas (drafted → final)
 // are recorded fire-and-forget, scoped (tenant_id, doctor_id). Manual mode captures nothing.

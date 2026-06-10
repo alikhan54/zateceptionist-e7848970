@@ -21,6 +21,8 @@ import { useToast } from "@/hooks/use-toast";
 import { HospitalGate, EcgLine, fetchMedicaBrief, fetchMedicaRecommendations, type MedRec } from "./hospitalShared";
 import { ConsultationSummaryBox } from "./ConsultationSummary";
 import { PrescriptionPanel } from "./Prescription";
+import { OperationTheatrePanel, statusChipClass } from "./OperationTheatre";
+import { useHospitalOT } from "@/hooks/useHospitalOT";
 import { useHospitalT } from "./i18n";
 
 const PATHWAY_KEYS = ["pathway.registered", "pathway.triaged", "pathway.inConsult", "pathway.ordersPlaced", "pathway.inTreatment", "pathway.resultsReady", "pathway.discharged"];
@@ -129,6 +131,10 @@ function PatientJourneyInner() {
     [visiblePatients, selectedId, directPatient, doctorScoped, attendingSet],
   );
   const { orders, createOrder, updateOrderStatus } = useHospitalOrders({ patientId: selectedId || undefined });
+
+  // HOSPITAL-OT: the patient's latest operation case — drives the additive OT status chip in the
+  // header + the OT panel (same query key as the panel → one fetch).
+  const { otCase } = useHospitalOT(selectedId || undefined);
 
   // HOSPITAL-BEDS [Phase 2]: read-only ward/bed context for the current patient (additive).
   const { data: currentBed } = useQuery({
@@ -349,6 +355,7 @@ function PatientJourneyInner() {
                   {patient.gender && <><span className="hx-faint">·</span><span className="capitalize">{patient.gender}</span></>}
                   {patient.phone && <><span className="hx-faint">·</span><span className="hx-mono">{patient.phone}</span></>}
                   {currentBed && <span className="hx-chip hx-chip--accent" style={{ padding: "0.05rem 0.5rem" }} data-testid="hx-journey-bed"><BedDouble className="h-3 w-3" /> {currentBed.ward} · {currentBed.bed_label}</span>}
+                  {otCase && <span className={`hx-chip ${statusChipClass(otCase.status)}`} style={{ padding: "0.05rem 0.5rem" }} data-testid="hx-journey-ot">OT · {t(`ot.status.${otCase.status}`)}</span>}
                 </div>
               </div>
             </div>
@@ -664,6 +671,10 @@ function PatientJourneyInner() {
           {/* Prescription — patient-facing take-home Rx (manual or MEDICA-drafted from the placed meds +
               consultation); doctor-signed, printable, Bangla [HOSPITAL-RX] */}
           <PrescriptionPanel patient={patient} visitId={latestVisit?.id ?? null} placedMeds={rxMeds} />
+
+          {/* Operation Theatre — gated bilingual consent + the surgeon's signed operative note
+              [HOSPITAL-OT]; status also chips in the patient header */}
+          <OperationTheatrePanel patient={patient} visitId={latestVisit?.id ?? null} />
         </div>
       </div>
 

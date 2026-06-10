@@ -18,7 +18,7 @@ import { useHospitalConsultation } from "@/hooks/useHospitalConsultation";
 import { useHospitalT } from "./i18n";
 import { useHospitalMode, HospitalModeToggle } from "./hospitalMode";
 import {
-  fetchPrescriptionDraft, captureStyleDeltas, useDoctorStyleCount,
+  fetchPrescriptionDraft, captureStyleDeltas, useDoctorStyleCount, hxPrintCss, printHxBlock,
   type RxItem, type PrescriptionDraft, type StyleDelta,
 } from "./hospitalShared";
 
@@ -147,8 +147,9 @@ export function PrescriptionPanel({
 
   return (
     <div className="hx-panel hx-rise" style={{ animationDelay: "300ms" }} data-testid="hx-rx">
-      {/* print isolation — only the Rx paper prints (platform POS pattern) */}
-      <style>{`@media print { body * { visibility: hidden !important; } #hx-rx-print, #hx-rx-print * { visibility: visible !important; } #hx-rx-print { position: absolute; left: 0; top: 0; width: 100%; } }`}</style>
+      {/* print isolation — body-attr multiplexed so the consent/op-note papers on the same page
+          never co-print with the Rx (HOSPITAL-OT retrofit; identical behavior when used alone) */}
+      <style>{hxPrintCss("hx-rx-print")}</style>
 
       <div className="hx-panel-h">
         <FileText className="h-4 w-4" style={{ color: "var(--hx-accent)" }} />
@@ -257,7 +258,7 @@ export function PrescriptionPanel({
                 <PenLine className="h-4 w-4" /> {t("rx.sign")}
               </button>
               {canPrint && (
-                <button className="hx-btn hx-btn--ghost" onClick={() => window.print()} data-testid="hx-rx-print-btn">
+                <button className="hx-btn hx-btn--ghost" onClick={() => printHxBlock("hx-rx-print")} data-testid="hx-rx-print-btn">
                   <Printer className="h-4 w-4" /> {t("rx.print")}
                 </button>
               )}
