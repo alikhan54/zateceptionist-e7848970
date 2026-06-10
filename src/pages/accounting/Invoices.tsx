@@ -79,6 +79,8 @@ import { useInvoiceSettings, useBumpInvoiceNumber } from "@/hooks/useInvoiceSett
 import { buildInvoicePdf, invoicePdfFilename } from "@/lib/invoice-pdf";
 // Email-delivery-layer v1: real per-invoice delivery state (queued→sending→sent/failed).
 import { useInvoiceDeliveryStatus, type InvoiceDelivery } from "@/hooks/useInvoiceDeliveryStatus";
+// Phase C: auto-chase state ("Chased N× · next {date}") from the chase producer.
+import { useInvoiceChases, type InvoiceChaseState } from "@/hooks/useInvoiceChases";
 
 type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
 
@@ -180,6 +182,19 @@ function DeliveryChip({ d }: { d: InvoiceDelivery | undefined }) {
   );
 }
 
+/** Phase C — "Chased N× · next {date}" line under the delivery chip. */
+function ChaseLine({ c }: { c: InvoiceChaseState | undefined }) {
+  if (!c || c.count === 0) return null;
+  const next = c.nextDueAt
+    ? new Date(c.nextDueAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })
+    : null;
+  return (
+    <div className="mt-0.5 text-[10px] text-muted-foreground" data-testid={`chase-line-${c.invoiceId}`}>
+      Chased {c.count}×{next ? ` · next ${next}` : c.lastStep >= 6 ? " · cap reached" : ""}
+    </div>
+  );
+}
+
 function StatCard({
   label,
   value,
@@ -243,6 +258,7 @@ export default function AccountingInvoices() {
   const recordPayment = useRecordPayment();
   const sendInvoice = useSendInvoice(invoiceSettings);
   const { data: deliveryByInvoice = {} } = useInvoiceDeliveryStatus();
+  const { data: chasesByInvoice = {} } = useInvoiceChases();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -597,7 +613,10 @@ export default function AccountingInvoices() {
                       <TableCell>
                         <Badge variant={meta.variant}>{meta.label}</Badge>
                       </TableCell>
-                      <TableCell><DeliveryChip d={deliveryByInvoice[inv.id]} /></TableCell>
+                      <TableCell>
+                        <DeliveryChip d={deliveryByInvoice[inv.id]} />
+                        <ChaseLine c={chasesByInvoice[inv.id]} />
+                      </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>

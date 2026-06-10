@@ -79,7 +79,10 @@ import { useAccountingJobStatuses } from "@/hooks/useAccountingJobStatuses";
 import { useAccountingJobStatusCounts } from "@/hooks/useAccountingJobStatusCounts";
 import { computeJobDates, formatCompanyType, computePriority, computeJobDescription } from "@/lib/job-date-engine";
 // Phase 4 (2026-06-02): per-client tasking via ?client=<id>&new=1 URL params.
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { ToastAction } from "@/components/ui/toast";
+// Phase C (2026-06-10): settings-driven invoice numbering on the auto-draft paths.
+import { useInvoiceSettings, useBumpInvoiceNumber } from "@/hooks/useInvoiceSettings";
 // Phase E: auto-create a draft invoice when a job is created with an assignee
 // and the job-type has a default_fee. Idempotency is enforced at the DB layer
 // by the partial UNIQUE index on (tenant_id, job_id) WHERE job_id IS NOT NULL.
@@ -303,7 +306,12 @@ export default function AccountingJobs() {
   // Phase E: invoice creator + invoice-number generator (used inside handleSubmit
   // only — the auto-invoice path runs after a successful createJob).
   const { createInvoice } = useAccountingInvoices();
-  const generateInvoiceNumber = useGenerateInvoiceNumber();
+  // Phase C: the auto-draft paths emit the settings-driven sequence (smart-ledger:
+  // bare 1878-series continuing Adil's real numbering) and advance it on create.
+  const { data: invoiceSettings = null } = useInvoiceSettings();
+  const generateInvoiceNumber = useGenerateInvoiceNumber(invoiceSettings);
+  const bumpInvoiceNumber = useBumpInvoiceNumber();
+  const navigate = useNavigate();
   // Phase F: bulk reminder enrolment for jobs with a statutory deadline.
   const scheduleJobReminders = useScheduleJobReminders();
 
@@ -442,56 +450,21 @@ export default function AccountingJobs() {
       if (editingJob) {
         await updateJob.mutateAsync({ id: editingJob.id, patch: payload });
         toast({ title: "Job updated", description: form.title.trim() });
+        // Phase C: the edit dialog can also move a job INTO "Invoice to send" —
+        // same idempotent auto-draft as the quick-status path.
+        if (payload.status === "invoice_sent" && editingJob.status !== "invoice_sent") {
+          await ensureDraftInvoiceForJob({ ...editingJob, ...payload } as AccountingJob);
+        }
       } else {
         const newJob = await createJob.mutateAsync(payload);
         toast({ title: "Job created", description: form.title.trim() });
 
-        // Phase E: auto-create a DRAFT invoice when:
-        //   1. Job has an assigned owner (owner_user_id set)
-        //   2. A real client is linked (not internal)
-        //   3. The picked job_type has a default_fee set (NOT NULL, > 0)
-        // Idempotency: the partial UNIQUE index on (tenant_id, job_id) WHERE
-        // job_id IS NOT NULL will reject a duplicate — we catch that quietly.
-        // Failure to create the invoice is non-fatal: the job still saved.
+        // Phase E: auto-create a DRAFT invoice on job CREATE when the job has an
+        // owner + client and the job_type has a default_fee. (Shared mechanics in
+        // ensureDraftInvoiceForJob — see Phase C below.)
         const jt = pickedCategory ? jobTypeByCode.get(pickedCategory) : null;
-        const eligible =
-          !!newJob.owner_user_id &&
-          !!newJob.client_id &&
-          !!jt &&
-          jt.default_fee != null &&
-          Number(jt.default_fee) > 0;
-        if (eligible && jt) {
-          try {
-            const invoiceNo = await generateInvoiceNumber();
-            await createInvoice.mutateAsync({
-              client_id: newJob.client_id as string,
-              invoice_no: invoiceNo,
-              amount: Number(jt.default_fee),
-              currency: jt.default_currency || "GBP",
-              status: "draft",
-              description: jt.name,
-              job_id: newJob.id,
-            });
-            toast({
-              title: "Draft invoice created",
-              description: `${invoiceNo} • ${jt.default_currency || "GBP"} ${Number(jt.default_fee).toFixed(2)} • ${jt.name}`,
-            });
-          } catch (invErr) {
-            // 23505 = unique_violation from Postgres → idempotent duplicate skip.
-            const msg = invErr instanceof Error ? invErr.message : String(invErr);
-            const code = (invErr as { code?: string } | null)?.code;
-            const isDup =
-              code === "23505" ||
-              /duplicate|unique|uq_acc_inv_tenant_job/i.test(msg);
-            if (!isDup) {
-              toast({
-                title: "Auto-invoice skipped",
-                description: msg,
-                variant: "destructive",
-              });
-            }
-            // Silent on dup — the draft already exists, nothing to do.
-          }
+        if (newJob.owner_user_id && jt) {
+          await ensureDraftInvoiceForJob(newJob, { description: jt.name });
         }
 
         // Phase F: enroll the statutory-deadline reminder cadence when:
@@ -540,6 +513,58 @@ export default function AccountingJobs() {
     }
   }
 
+  /**
+   * Phase C (2026-06-10): ensure a DRAFT invoice exists for a job — the shared
+   * auto-draft used by BOTH the Phase-E create path and the invoice_sent transition.
+   * Eligibility: a real client + the job's type has default_fee > 0 (smart-ledger:
+   * annual_accounts = £50.00 from real invoice #1877; other types NULL until Adil
+   * sets them via Manage Types). Number = the settings-driven sequence (1878-series),
+   * advanced on create. Idempotency is DB-level: the partial UNIQUE index
+   * uq_acc_inv_tenant_job (tenant_id, job_id) rejects a second invoice for the same
+   * job — re-transitions create ZERO duplicates (dup caught silently).
+   */
+  async function ensureDraftInvoiceForJob(
+    job: AccountingJob,
+    opts: { description?: string | null } = {},
+  ) {
+    const jt =
+      (job.job_type_id ? jobTypes.find((t) => t.id === job.job_type_id) : null) ??
+      (job.category ? jobTypeByCode.get(job.category) : null) ??
+      null;
+    if (!job.client_id || !jt || jt.default_fee == null || Number(jt.default_fee) <= 0) return;
+    try {
+      const invoiceNo = await generateInvoiceNumber();
+      await createInvoice.mutateAsync({
+        client_id: job.client_id,
+        invoice_no: invoiceNo,
+        amount: Number(jt.default_fee),
+        currency: jt.default_currency || "GBP",
+        status: "draft",
+        description: opts.description ?? job.description ?? jt.name,
+        job_id: job.id,
+      });
+      await bumpInvoiceNumber(invoiceNo, invoiceSettings);
+      const clientName = job.accounting_clients?.name ?? "client";
+      toast({
+        title: `Draft invoice ${invoiceNo} created`,
+        description: `${jt.default_currency || "GBP"} ${Number(jt.default_fee).toFixed(2)} for ${clientName}`,
+        action: (
+          <ToastAction altText="View invoices" onClick={() => navigate("/accounting/invoices")}>
+            View invoices
+          </ToastAction>
+        ),
+      });
+    } catch (invErr) {
+      // 23505 = unique_violation → the draft already exists (idempotent re-transition).
+      const msg = invErr instanceof Error ? invErr.message : String(invErr);
+      const code = (invErr as { code?: string } | null)?.code;
+      const isDup = code === "23505" || /duplicate|unique|uq_acc_inv_tenant_job/i.test(msg);
+      if (!isDup) {
+        toast({ title: "Auto-invoice skipped", description: msg, variant: "destructive" });
+      }
+    }
+  }
+
   async function handleQuickStatus(job: AccountingJob, next: AccountingJobStatus) {
     try {
       await updateJob.mutateAsync({ id: job.id, patch: { status: next } });
@@ -547,6 +572,10 @@ export default function AccountingJobs() {
         title: "Status changed",
         description: `${job.title} → ${statusMeta(next).label}`,
       });
+      // Phase C: entering "Invoice to send" auto-drafts the invoice (idempotent).
+      if (next === "invoice_sent" && job.status !== "invoice_sent") {
+        await ensureDraftInvoiceForJob(job);
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Update failed";
       toast({ title: "Couldn't change status", description: msg, variant: "destructive" });
