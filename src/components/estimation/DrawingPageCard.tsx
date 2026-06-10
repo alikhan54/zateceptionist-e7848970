@@ -30,9 +30,11 @@ interface Props {
   projectId: string;
   tenantId: string;
   onChanged: () => void;
+  /** From DrawingsTab: detected/unsynced polygon counts for this page. */
+  syncState?: { detected: number; unsynced: number };
 }
 
-export default function DrawingPageCard({ page, projectId, tenantId, onChanged }: Props) {
+export default function DrawingPageCard({ page, projectId, tenantId, onChanged, syncState }: Props) {
   const [detecting, setDetecting] = useState(false);
   const [rendering, setRendering] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -103,7 +105,12 @@ export default function DrawingPageCard({ page, projectId, tenantId, onChanged }
               </div>
             )}
           </div>
-          <Badge className={badge.cls}>{badge.label}</Badge>
+          <div className="flex flex-col items-end gap-1">
+            <Badge className={badge.cls}>{badge.label}</Badge>
+            {syncState && syncState.detected > 0 && syncState.unsynced === 0 && (
+              <Badge variant="outline" className="text-emerald-700 border-emerald-300">Synced ✓</Badge>
+            )}
+          </div>
         </div>
 
         <div className="text-xs text-muted-foreground">

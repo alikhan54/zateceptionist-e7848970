@@ -451,6 +451,22 @@ export async function renderMarkupV2(
   }, tenantSlug, 120000);
 }
 
+/**
+ * Push detected v2 rooms into v1's estimation_rooms (idempotent, skip-existing).
+ * Omit pageNumber to sync every page with detected polygons.
+ */
+export async function syncToV1(
+  projectId: string,
+  tenantSlug: string,
+  pageNumber?: number,
+) {
+  return callWebhookWithTimeout(WEBHOOKS.ESTIMATION_V2_ACTION, {
+    action: "sync_to_v1",
+    project_id: projectId,
+    ...(pageNumber != null ? { page_number: pageNumber } : {}),
+  }, tenantSlug, 120000);
+}
+
 export async function recalculateWaste(
   projectId: string,
   tenantId: string,
