@@ -406,6 +406,37 @@ export async function fetchOpNoteDraft(
 }
 
 // ===========================================================================================
+// HOSPITAL-POSTOP — the early-warning NARRATIVE. The NEWS2-style score is deterministic math
+// computed by src/lib/hospital/news2.ts; MEDICA only puts it into one plain sentence for the
+// ward team (§5d formatting-assist framing). It NEVER alters the score, never acts, never orders.
+// ===========================================================================================
+
+export async function fetchEwsNarrative(args: {
+  patientName: string; patientId: string;
+  score: number; band: string; trend: string;
+  missing: string[]; drivers: { label: string; value: number; points: number }[];
+  checks: number; lang?: "en" | "bn";
+}): Promise<string> {
+  const { patientName, patientId, score, band, trend, missing, drivers, checks, lang = "en" } = args;
+  const driverTxt = drivers.map((d) => `${d.label} ${d.value} (${d.points} pts)`).join(", ") || "none above 0";
+  const message =
+    `The hospital's monitoring system has ALREADY computed a deterministic early-warning result for ` +
+    `post-operative patient '${patientName}' (patient id ${patientId}) — you are NOT scoring, NOT making ` +
+    `clinical decisions, NOT ordering anything; the ward team reviews the patient. The computed result: ` +
+    `partial NEWS2 total ${score} (parameters not captured: ${missing.join(", ") || "none"}), band ${band.toUpperCase()}, ` +
+    `trend ${trend} over ${checks} recorded check${checks === 1 ? "" : "s"}; driving parameters: ${driverTxt}. ` +
+    `Write EXACTLY ONE plain-language sentence for the ward board telling the team why this patient needs ` +
+    `review now, citing the driving vitals and the trend. Do not add recommendations, orders, or anything ` +
+    `beyond that one sentence.` +
+    (lang === "bn" ? ` Write the sentence in clear, natural Bangla (বাংলা); vital names, values and units stay English.` : ``);
+  const { data, error } = await supabase.functions.invoke("medica-brief", { body: { message } });
+  if (error) throw error;
+  if (!data?.response) throw new Error(data?.error || "No narrative returned");
+  // strip the agent banner + any wrapping quotes/markdown; keep the one sentence
+  return String(data.response).replace(/^\s*\*\*\[[^\]]*\]\*\*\s*/, "").replace(/^["'\s]+|["'\s]+$/g, "").trim();
+}
+
+// ===========================================================================================
 // HOSPITAL-STYLE — per-doctor MEDICA style-memory.
 // CAPTURE: when a doctor saves/signs an ASSISTED draft he edited, the deltas (drafted → final)
 // are recorded fire-and-forget, scoped (tenant_id, doctor_id). Manual mode captures nothing.

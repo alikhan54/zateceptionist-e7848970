@@ -22,6 +22,7 @@ import { HospitalGate, EcgLine, fetchMedicaBrief, fetchMedicaRecommendations, ty
 import { ConsultationSummaryBox } from "./ConsultationSummary";
 import { PrescriptionPanel } from "./Prescription";
 import { OperationTheatrePanel, statusChipClass } from "./OperationTheatre";
+import { PostOpPanel } from "./PostOpPanel";
 import { useHospitalOT } from "@/hooks/useHospitalOT";
 import { useHospitalT } from "./i18n";
 
@@ -675,6 +676,10 @@ function PatientJourneyInner() {
           {/* Operation Theatre — gated bilingual consent + the surgeon's signed operative note
               [HOSPITAL-OT]; status also chips in the patient header */}
           <OperationTheatrePanel patient={patient} visitId={latestVisit?.id ?? null} />
+
+          {/* Post-op monitoring — deterministic partial-NEWS2 early-warning (renders only when an
+              active episode exists; MEDICA narrates, never scores) [HOSPITAL-POSTOP] */}
+          <PostOpPanel patient={patient} />
         </div>
       </div>
 

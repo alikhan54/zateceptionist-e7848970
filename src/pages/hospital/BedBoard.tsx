@@ -5,6 +5,7 @@ import { useState } from "react";
 import { BedDouble, ArrowRightLeft, LogOut, Sparkles, AlertTriangle, UserPlus, Activity } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useHospitalBeds, type BedRow, LONG_STAY_DAYS } from "@/hooks/useHospitalBeds";
+import { usePostopBoard, isAlertState } from "@/hooks/useHospitalPostop";
 import { HospitalGate } from "./hospitalShared";
 import { useHospitalT } from "./i18n";
 
@@ -16,6 +17,8 @@ function BedBoardInner() {
   const { t, ti } = useHospitalT();
   const { toast } = useToast();
   const { wards, unassigned, availableBeds, kpis, isLoading, assign, transfer, discharge, setStatus } = useHospitalBeds();
+  // HOSPITAL-POSTOP (additive, read-only): patient → early-warning state for the occupied-tile flag
+  const { data: ewsByPatient } = usePostopBoard();
   const [assignSel, setAssignSel] = useState<Record<string, string>>({});
   const [transferFor, setTransferFor] = useState<string | null>(null);
 
@@ -118,6 +121,18 @@ function BedBoardInner() {
                       <div className="flex items-center gap-1.5 mt-1">
                         <span className="hx-chip text-xs" data-testid="hx-bed-los">{ti("beds.losDays", { n: b.los_days ?? 0 })}</span>
                         {b.long_stay && <span className="hx-chip hx-chip--crit text-xs" data-testid="hx-bed-longstay"><AlertTriangle className="h-3 w-3" /> {t("beds.longStay")}</span>}
+                        {(() => {
+                          // HOSPITAL-POSTOP flag — deterministic early-warning on the ward board
+                          const ews = b.patient_id ? ewsByPatient?.get(b.patient_id) : undefined;
+                          if (!ews || !isAlertState(ews.band, ews.trend)) return null;
+                          return (
+                            <span className={`hx-chip text-xs ${ews.band === "high" ? "hx-chip--crit" : "hx-chip--warn"}`}
+                              data-testid="hx-bed-ews" data-band={ews.band || ""} data-trend={ews.trend || ""}>
+                              <Activity className="h-3 w-3" /> {ti("postop.bedFlag", { n: ews.score ?? "—" })}
+                              {ews.trend === "deteriorating" ? " ↑" : ""}
+                            </span>
+                          );
+                        })()}
                       </div>
                       {transferFor === b.id ? (
                         <select className="hx-select mt-2" value="" onChange={(e) => doTransfer(b, e.target.value)} data-testid="hx-bed-transfer-select">

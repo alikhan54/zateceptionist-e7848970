@@ -236,6 +236,24 @@ export const BN: Record<string, string> = {
   "ot.note.signed": "অপারেটিভ নোট স্বাক্ষরিত — কেস সম্পন্ন",
   "ot.note.failed": "অপারেটিভ নোট সংরক্ষণ করা যায়নি",
 
+  // ---- post-op monitoring + early-warning [HOSPITAL-POSTOP] (DRAFT — native review pending) ----
+  "postop.title": "পোস্ট-অপ পর্যবেক্ষণ",
+  "postop.score": "EWS {n}",
+  "postop.band.low": "নিম্ন",
+  "postop.band.medium": "মাঝারি — পর্যালোচনা করুন",
+  "postop.band.high": "উচ্চ — এখনই পর্যালোচনা করুন",
+  "postop.trend.improving": "উন্নতি হচ্ছে",
+  "postop.trend.stable": "স্থিতিশীল",
+  "postop.trend.deteriorating": "অবনতি হচ্ছে",
+  "postop.partial": "আংশিক NEWS2 — স্কোর করা হয়নি: {list}। অগ্রহণকৃত প্যারামিটার প্রকৃত স্কোর কেবল বাড়াতে পারে।",
+  "postop.drivers": "চালিকা ভাইটালস",
+  "postop.pts": "পয়েন্ট",
+  "postop.history": "চেক ({n})",
+  "postop.narrate": "কেন? (MEDICA)",
+  "postop.narrating": "লেখা হচ্ছে…",
+  "postop.disclaimer": "নির্ধারিত স্কোরের AI বর্ণনা — টিম রোগীকে পর্যালোচনা করবে; কিছুই অর্ডার করা হয় না।",
+  "postop.bedFlag": "EWS {n}",
+
   // ---- per-doctor style-memory marker [HOSPITAL-STYLE] (DRAFT — native review pending) ----
   "style.learned": "MEDICA আপনার {n}টি পছন্দ শিখেছে",
   "style.learnedTitle": "আপনি MEDICA-র খসড়ায় যে সম্পাদনা করেন তা থেকে MEDICA নীরবে আপনার স্টাইল শেখে — শুধুমাত্র আপনার জন্য। এটি কেবল শব্দচয়ন ও ডিফল্ট প্রভাবিত করে; আপনি এখনো সবকিছু পর্যালোচনা ও স্বাক্ষর করেন।",

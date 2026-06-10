@@ -8,6 +8,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { openPostopEpisode } from "@/hooks/useHospitalPostop";
 import type { OpNoteDraft } from "@/pages/hospital/hospitalShared";
 
 export type OTStatus = "planned" | "consented" | "in_theatre" | "completed";
@@ -180,6 +181,15 @@ export function useHospitalOT(patientId?: string | null) {
       const { error } = await supabase.from("hospital_ot_cases" as any)
         .update(patch).eq("id", otCase.id).eq("tenant_id", tenantId);
       if (error) throw error;
+      // HOSPITAL-POSTOP (additive, fire-and-forget — deliberately NOT awaited): completing the
+      // case opens the post-op monitoring episode. A failure here never affects the sign (already
+      // committed above); the consent gate/trigger is untouched.
+      if (p.sign) {
+        openPostopEpisode({
+          tenantId, patientId: otCase.patient_id,
+          otCaseId: otCase.id, admissionId: otCase.admission_id,
+        }).then(() => qc.invalidateQueries({ queryKey: ["hospital_postop"] })).catch(() => { /* non-blocking */ });
+      }
     },
     onSuccess: invalidate,
   });

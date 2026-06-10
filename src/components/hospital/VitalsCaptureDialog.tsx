@@ -2,10 +2,13 @@
 // (reusing useClinicVisits.saveVitals / createVisit). Two-tier flags light LIVE as
 // values are typed (same classifyVital engine the journey panel uses). Dark-themed.
 import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { HeartPulse, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTenant } from "@/contexts/TenantContext";
 import { useClinicVisits, type VitalsPayload } from "@/hooks/useClinicVisits";
+import { recomputePostopEpisode } from "@/hooks/useHospitalPostop";
 import { classifyVital, DEFAULT_THRESHOLDS, type VitalStatus } from "@/lib/clinic/vitalsThresholds";
 import { useHospitalT } from "@/pages/hospital/i18n";
 
@@ -29,6 +32,8 @@ export function VitalsCaptureDialog({
 }) {
   const { toast } = useToast();
   const { t, ti } = useHospitalT();
+  const { tenantId } = useTenant();
+  const qc = useQueryClient();
   const { visits, saveVitals, createVisit } = useClinicVisits();
   const [vals, setVals] = useState<Record<string, string>>({});
 
@@ -67,6 +72,12 @@ export function VitalsCaptureDialog({
       let vid = targetVisit;
       if (!vid) { const v = await createVisit.mutateAsync(patientId); vid = v.id; }
       await saveVitals.mutateAsync({ id: vid!, vitals: payload });
+      // HOSPITAL-POSTOP (additive, fire-and-forget — deliberately NOT awaited): recompute the
+      // patient's active post-op early-warning episode from the just-saved vitals. A recompute
+      // failure can never block or fail this save (it has already succeeded above).
+      recomputePostopEpisode({ tenantId, patientId })
+        .then(() => qc.invalidateQueries({ queryKey: ["hospital_postop"] }))
+        .catch(() => { /* non-blocking by contract */ });
       toast({ title: t("vc.recorded"), description: patientName ? ti("vc.recordedDesc", { name: patientName }) : t("vc.flagsUpdated") });
       onOpenChange(false);
     } catch (e: any) {

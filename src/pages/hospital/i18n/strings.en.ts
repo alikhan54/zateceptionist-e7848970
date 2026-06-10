@@ -240,6 +240,24 @@ export const EN: Record<string, string> = {
   "ot.note.signed": "Operative note signed — case completed",
   "ot.note.failed": "Could not save the operative note",
 
+  // ---- post-op monitoring + early-warning [HOSPITAL-POSTOP] ----
+  "postop.title": "Post-op Monitoring",
+  "postop.score": "EWS {n}",
+  "postop.band.low": "Low",
+  "postop.band.medium": "Medium — review",
+  "postop.band.high": "HIGH — review now",
+  "postop.trend.improving": "Improving",
+  "postop.trend.stable": "Stable",
+  "postop.trend.deteriorating": "Deteriorating",
+  "postop.partial": "Partial NEWS2 — not scored: {list}. An uncaptured parameter can only raise the true score.",
+  "postop.drivers": "Driving vitals",
+  "postop.pts": "pts",
+  "postop.history": "Checks ({n})",
+  "postop.narrate": "Why? (MEDICA)",
+  "postop.narrating": "Writing…",
+  "postop.disclaimer": "AI narration of a deterministic score — the team reviews the patient; nothing is ordered.",
+  "postop.bedFlag": "EWS {n}",
+
   // ---- per-doctor style-memory marker [HOSPITAL-STYLE] ----
   "style.learned": "MEDICA has learned {n} of your preferences",
   "style.learnedTitle": "MEDICA quietly learns your style from the edits you make to its drafts — scoped to you alone. It shapes wording and defaults only; you still review and sign everything.",
