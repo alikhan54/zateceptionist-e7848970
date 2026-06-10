@@ -62,6 +62,7 @@ import {
   Sparkles,
   CheckCircle,
   XCircle,
+  Download,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -73,6 +74,9 @@ import { useAccountingClientsList } from "@/hooks/useAccountingClientsList";
 import { useGenerateInvoiceNumber } from "@/hooks/useGenerateInvoiceNumber";
 import { useRecordPayment } from "@/hooks/useRecordPayment";
 import { useSendInvoice } from "@/hooks/useSendInvoice";
+// Invoice Phase B (2026-06-10): per-tenant branding/bank/numbering settings + branded PDF.
+import { useInvoiceSettings, useBumpInvoiceNumber } from "@/hooks/useInvoiceSettings";
+import { buildInvoicePdf, invoicePdfFilename } from "@/lib/invoice-pdf";
 
 type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
 
@@ -201,9 +205,13 @@ export default function AccountingInvoices() {
     deleteInvoice,
   } = useAccountingInvoices(filters);
   const { data: clients = [] } = useAccountingClientsList();
-  const generateInvoiceNo = useGenerateInvoiceNumber();
+  // Phase B: settings drive the number scheme, the branded PDF, and the branded email.
+  const { data: invoiceSettings = null } = useInvoiceSettings();
+  const generateInvoiceNo = useGenerateInvoiceNumber(invoiceSettings);
+  const bumpInvoiceNumber = useBumpInvoiceNumber();
   const recordPayment = useRecordPayment();
-  const sendInvoice = useSendInvoice();
+  const sendInvoice = useSendInvoice(invoiceSettings);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<AccountingInvoice | null>(null);
@@ -307,6 +315,8 @@ export default function AccountingInvoices() {
       } else {
         await createInvoice.mutateAsync(payload);
         toast({ title: "Invoice created", description: form.invoice_no });
+        // Phase B: advance the settings-driven sequence so the next invoice continues it.
+        await bumpInvoiceNumber(form.invoice_no.trim(), invoiceSettings);
       }
       closeDialogs();
     } catch (err) {
@@ -322,6 +332,21 @@ export default function AccountingInvoices() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Send failed";
       toast({ title: "Couldn't send invoice", description: msg, variant: "destructive" });
+    }
+  }
+
+  // Phase B: generate + download the branded PDF locally (no upload — that happens on Send).
+  async function handleDownloadPdf(inv: AccountingInvoice) {
+    setDownloadingId(inv.id);
+    try {
+      const doc = await buildInvoicePdf(inv, invoiceSettings);
+      doc.save(invoicePdfFilename(inv));
+      toast({ title: "PDF downloaded", description: invoicePdfFilename(inv) });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "PDF generation failed";
+      toast({ title: "Couldn't generate PDF", description: msg, variant: "destructive" });
+    } finally {
+      setDownloadingId(null);
     }
   }
 
@@ -557,6 +582,17 @@ export default function AccountingInvoices() {
                             >
                               Edit details
                             </DropdownMenuItem>
+                            <DropdownMenuItem
+                              disabled={downloadingId === inv.id}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDownloadPdf(inv);
+                              }}
+                              data-testid={`invoice-row-download-pdf-${inv.id}`}
+                            >
+                              <Download className="mr-2 h-4 w-4" />
+                              {downloadingId === inv.id ? "Generating…" : "Download PDF"}
+                            </DropdownMenuItem>
                             {canSend && (
                               <DropdownMenuItem
                                 onClick={(e) => {
@@ -621,8 +657,8 @@ export default function AccountingInvoices() {
           </CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground">
-          PDF generation, TrueLayer auto-matched payments, customer portal, recurring invoices,
-          and line-by-line VAT breakdown land in Phase 2 (post-May-25 demo).
+          Branded PDF download + branded invoice emails are live. TrueLayer auto-matched payments,
+          customer portal, recurring invoices, and line-by-line VAT breakdown land in Phase 2.
         </CardContent>
       </Card>
 

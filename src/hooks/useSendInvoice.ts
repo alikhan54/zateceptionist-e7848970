@@ -2,6 +2,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase, N8N_WEBHOOK_BASE } from "@/lib/supabase";
 import { useTenant } from "@/contexts/TenantContext";
 import type { AccountingInvoice } from "@/hooks/useAccountingInvoices";
+import type { InvoiceSettings } from "@/hooks/useInvoiceSettings";
+import { buildInvoicePdf, invoicePdfFilename } from "@/lib/invoice-pdf";
+import { renderInvoiceEmailHtml, PDF_LINK_TTL_SECONDS } from "@/lib/invoice-email";
 
 interface SmtpRouterResponse {
   ok: boolean;
@@ -22,32 +25,36 @@ interface EnqueueResponse {
   message?: string;
 }
 
-function renderInvoiceEmail(invoice: AccountingInvoice, fromMailbox: string, companyName: string): string {
-  const amt = new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency: invoice.currency || "GBP",
-  }).format(Number(invoice.amount) || 0);
-  const due = invoice.due_at ?? "the date listed";
-  const clientName = invoice.accounting_clients?.name ?? "Client";
-
-  return [
-    `Dear ${clientName},`,
-    ``,
-    `Please find attached invoice ${invoice.invoice_no} for ${amt}, due on ${due}.`,
-    ``,
-    invoice.description ? `Notes: ${invoice.description}` : "",
-    ``,
-    `If you have any questions, please reply to this email.`,
-    ``,
-    `Kind regards,`,
-    companyName || "Smart Ledger Solutions Ltd",
-    fromMailbox,
-  ]
-    .filter(Boolean)
-    .join("\n");
+/**
+ * Upload the branded PDF to the PRIVATE `invoices` bucket (tenant-scoped storage RLS,
+ * migration 40) and return a signed download URL + storage path. Returns nulls on any
+ * failure — the email then goes out without the link (send must not be blocked by
+ * storage hiccups).
+ */
+async function uploadInvoicePdf(
+  invoice: AccountingInvoice,
+  settings: InvoiceSettings | null,
+  tenantId: string,
+): Promise<{ url: string | null; path: string | null }> {
+  try {
+    const doc = await buildInvoicePdf(invoice, settings);
+    const blob = doc.output("blob");
+    const path = `${tenantId}/${invoice.id}/${invoicePdfFilename(invoice)}`;
+    const { error: upErr } = await supabase.storage
+      .from("invoices")
+      .upload(path, blob, { contentType: "application/pdf", upsert: true });
+    if (upErr) return { url: null, path: null };
+    const { data: signed, error: signErr } = await supabase.storage
+      .from("invoices")
+      .createSignedUrl(path, PDF_LINK_TTL_SECONDS);
+    if (signErr || !signed?.signedUrl) return { url: null, path };
+    return { url: signed.signedUrl, path };
+  } catch {
+    return { url: null, path: null };
+  }
 }
 
-export function useSendInvoice() {
+export function useSendInvoice(settings?: InvoiceSettings | null) {
   const { tenantId, tenantConfig } = useTenant();
   const queryClient = useQueryClient();
 
@@ -78,15 +85,15 @@ export function useSendInvoice() {
       }
       const mailbox = smtpJson.email_address;
 
-      // 2. Render email body
-      const body = renderInvoiceEmail(
-        invoice,
-        mailbox,
-        tenantConfig.company_name ?? "Smart Ledger Solutions Ltd",
-      );
-      const subject = `Invoice ${invoice.invoice_no} from ${tenantConfig.company_name ?? "Smart Ledger"}`;
+      // 2. Generate + upload the branded PDF (Phase B); best-effort — null link on failure.
+      const pdf = await uploadInvoicePdf(invoice, settings ?? null, tenantId);
 
-      // 3. Enqueue to Communication v3.8
+      // 3. Render the BRANDED HTML email body (Phase B — replaces plain text).
+      const companyName = tenantConfig.company_name ?? "Smart Ledger Solutions Ltd";
+      const body = renderInvoiceEmailHtml(invoice, settings ?? null, pdf.url, companyName, mailbox);
+      const subject = `Invoice ${invoice.invoice_no} from ${settings?.firm_display_name ?? companyName}`;
+
+      // 4. Enqueue to Communication v3.8 (mechanics unchanged — sacred workflow, never modified)
       // CRITICAL: message_queue.tenant_id is UUID (FK to tenant_config.id), NOT slug
       const enqResp = await fetch(`${N8N_WEBHOOK_BASE}/queue/enqueue`, {
         method: "POST",
@@ -104,7 +111,13 @@ export function useSendInvoice() {
           source: "smart_ledger_invoice_send",
           source_module: "accounting",
           workflow: "D7-C Invoices UI",
-          message_params: { invoice_id: invoice.id, mailbox_used: mailbox },
+          message_params: {
+            invoice_id: invoice.id,
+            mailbox_used: mailbox,
+            content_type: "html",
+            pdf_url: pdf.url,
+            pdf_storage_path: pdf.path,
+          },
         }),
       });
       const enqJson = (await enqResp.json()) as EnqueueResponse;
@@ -114,7 +127,7 @@ export function useSendInvoice() {
         );
       }
 
-      // 4. Update invoice: status=sent, sent_at=now, sent_via_mailbox=mailbox
+      // 5. Update invoice: status=sent, sent_at=now, sent_via_mailbox + persist pdf_url
       const { data: sessionData } = await supabase.auth.getSession();
       const userId = sessionData.session?.user?.id ?? null;
       const { error: updErr } = await supabase
@@ -123,13 +136,14 @@ export function useSendInvoice() {
           status: "sent",
           sent_at: new Date().toISOString(),
           sent_via_mailbox: mailbox,
+          pdf_url: pdf.url,
           updated_by: userId,
         } as never)
         .eq("id", invoice.id)
         .eq("tenant_id", tenantId);
       if (updErr) throw updErr;
 
-      return { mailbox, queueId: enqJson.queue_id };
+      return { mailbox, queueId: enqJson.queue_id, pdfUrl: pdf.url };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["accounting_invoices", tenantId] });

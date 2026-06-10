@@ -304,6 +304,31 @@ export default function AccountingFinance() {
         />
       </div>
 
+      {/* Invoice Phase B (2026-06-10): receivables aging — owed amounts by days past due.
+          Additive next to the existing single Overdue total (their sum matches it). */}
+      <Card data-testid="finance-aging">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Receivables aging</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            {([
+              ["0–30 days", kpis?.aging.b0_30 ?? 0, "aging-0-30"],
+              ["31–60 days", kpis?.aging.b31_60 ?? 0, "aging-31-60"],
+              ["61–90 days", kpis?.aging.b61_90 ?? 0, "aging-61-90"],
+              ["90+ days", kpis?.aging.b90p ?? 0, "aging-90p"],
+            ] as Array<[string, number, string]>).map(([label, value, testId], i) => (
+              <div key={testId} className="rounded-md border p-3" data-testid={testId}>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
+                <p className={`mt-1 font-mono text-lg font-bold ${value > 0 ? (i >= 2 ? "text-destructive" : "") : "text-muted-foreground"}`}>
+                  {kpisLoading ? "…" : formatGBP(value)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Empty state */}
       {showEmptyState && (
         <Card className="border-primary/30 bg-card/60" data-testid="finance-empty-state">

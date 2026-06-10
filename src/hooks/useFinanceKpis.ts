@@ -17,6 +17,9 @@ export interface FinanceKpis {
   invoiceCounts: { draft: number; sent: number; paid: number; partial: number; overdue: number; cancelled: number };
   paidInvoiceCount: number;
   unpaidInvoiceCount: number;
+  // Invoice Phase B (2026-06-10): receivables aging — owed amounts bucketed by days
+  // past due_at (only past-due invoices; the existing `overdue` total is their sum).
+  aging: { b0_30: number; b31_60: number; b61_90: number; b90p: number };
 }
 
 interface RawInvoice {
@@ -151,7 +154,9 @@ export function useFinanceKpis(range: FinanceRange = "month") {
     }
     let outstanding = 0;
     let overdue = 0;
+    const aging = { b0_30: 0, b31_60: 0, b61_90: 0, b90p: 0 };
     const todayMs = Date.now();
+    const DAY = 24 * 60 * 60 * 1000;
     for (const inv of invoices) {
       if (inv.status === "paid" || inv.status === "cancelled" || inv.status === "draft") continue;
       const amt = toNum(inv.amount);
@@ -160,8 +165,16 @@ export function useFinanceKpis(range: FinanceRange = "month") {
       outstanding += owed;
       // Overdue = explicit status OR due_at in the past
       const dueMs = inv.due_at ? new Date(inv.due_at).getTime() : NaN;
-      if (inv.status === "overdue" || (Number.isFinite(dueMs) && dueMs < todayMs)) {
+      const isPastDue = Number.isFinite(dueMs) && dueMs < todayMs;
+      if (inv.status === "overdue" || isPastDue) {
         overdue += owed;
+        // Phase B aging: bucket by days past due. status='overdue' without a due_at
+        // can't be aged — count it in 0-30 (most-recent bucket) rather than dropping it.
+        const daysPast = isPastDue ? Math.floor((todayMs - dueMs) / DAY) : 0;
+        if (daysPast <= 30) aging.b0_30 += owed;
+        else if (daysPast <= 60) aging.b31_60 += owed;
+        else if (daysPast <= 90) aging.b61_90 += owed;
+        else aging.b90p += owed;
       }
     }
 
@@ -223,6 +236,7 @@ export function useFinanceKpis(range: FinanceRange = "month") {
       invoiceCounts,
       paidInvoiceCount,
       unpaidInvoiceCount,
+      aging,
     };
   }, [invoicesQ.data, paymentsQ.data, clientsQ.data, range]);
 
