@@ -560,5 +560,10 @@ export default defineConfig({
       testMatch: /rehost-permanent-verify\.spec\.ts/,
       use: { browserName: 'chromium' }, // no setup dep — fresh login; re-host permanence (Supabase storage) vs local preview (RH_BASE/HR_V6_BASE)
     },
+    {
+      name: 'hr-tier0-b6',
+      testMatch: /hr-tier0-b6\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — fresh login per test; creds via env (skips without)
+    },
   ],
 });
