@@ -1,6 +1,12 @@
 # CC Multi-Session Coordination
 
-**Last updated:** 2026-06-10 (Master-Admin Phase 4 MERGED — `4c58524` cherry-picked to main via isolated temp worktree; Activation Command + real per-tenant usage RPC migration 44; prior: Phase 3 `cabb6b7`, 2C `c463e32`, 2B `a079a18`, 2A `c643982`)
+**Last updated:** 2026-06-10 (Master-Admin Phase 5 IN PROGRESS — see entry below; prior: Phase 4 `4c58524`, Phase 3 `cabb6b7`, 2C `c463e32`, 2B `a079a18`, 2A `c643982`)
+
+---
+
+## 🔧 Master-Admin Phase 5 (closing: audit-log pipeline fix + dupe card removal + honest buttons) — IN PROGRESS 2026-06-10
+
+**Session:** Master-Admin-Phase5 (admin lane). Worktree `D:/420-system/frontend-5` / branch `wt/phase5` off `origin/main` (`0d8a666`). **Scope (additive/surgical):** (A) fix the dead `audit_logs` write pipeline (6 rows total, newest 2026-01-08) — investigation first, smallest correct fix, possibly **migration 45** (claimed — next session take 46); (B) remove the duplicate "Recent Tenants" card from `/admin` Panel.tsx; (C) disable/neutralize the fake-success buttons (Add User / Delete user / Change Role / Create Tenant). **Owns:** `src/pages/admin/{Panel,Users,Tenants,Logs}.tsx`, `src/hooks/useAdminData.ts` (admin lane), migration 45. No auth-flow restructuring; HARD-STOP rules per phase prompt. Final admin phase — lane closes after merge.
 
 ---
 
