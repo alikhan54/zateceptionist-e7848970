@@ -422,6 +422,35 @@ export async function getDissectedPages(projectId: string) {
   return data;
 }
 
+// ── Estimation v2 — Drawings tab actions (PDF Dissector via n8n bridge) ──
+// Vector-only: the bridge hardcodes use_hybrid:false (vision bbox blocker still open).
+
+export async function detectRoomsV2(
+  projectId: string,
+  tenantSlug: string,
+  pageNumber: number,
+) {
+  return callWebhookWithTimeout(WEBHOOKS.ESTIMATION_V2_ACTION, {
+    action: "detect_rooms",
+    project_id: projectId,
+    page_number: pageNumber,
+  }, tenantSlug, 120000);
+}
+
+export async function renderMarkupV2(
+  projectId: string,
+  tenantSlug: string,
+  pageNumber: number,
+  pdfUrl?: string,
+) {
+  return callWebhookWithTimeout(WEBHOOKS.ESTIMATION_V2_ACTION, {
+    action: "render_markup",
+    project_id: projectId,
+    page_number: pageNumber,
+    ...(pdfUrl ? { pdf_url: pdfUrl } : {}),
+  }, tenantSlug, 120000);
+}
+
 export async function recalculateWaste(
   projectId: string,
   tenantId: string,

@@ -24,6 +24,7 @@ import { ArrowLeft, Building2, Calendar, Users, DollarSign, Plus, Ruler, FileTex
 import { toast } from "sonner";
 import CompletenessGrid from "@/components/estimation/CompletenessGrid";
 import FloorPlanViewer from "@/components/estimation/FloorPlanViewer";
+import DrawingsTab from "@/components/estimation/DrawingsTab";
 
 const STATUS_LABELS: Record<string, string> = {
   rfp_received: "RFP Received", reviewing: "Reviewing", in_progress: "In Progress",
@@ -628,6 +629,7 @@ export default function ProjectDetail() {
         <TabsList className="flex-wrap">
           <TabsTrigger value="overview"><Building2 className="h-4 w-4 mr-1" /> Overview</TabsTrigger>
           <TabsTrigger value="rooms"><Ruler className="h-4 w-4 mr-1" /> Rooms</TabsTrigger>
+          <TabsTrigger value="drawings"><Sparkles className="h-4 w-4 mr-1" /> Drawings</TabsTrigger>
           <TabsTrigger value="takeoff"><FileText className="h-4 w-4 mr-1" /> Takeoff</TabsTrigger>
           <TabsTrigger value="estimate"><DollarSign className="h-4 w-4 mr-1" /> Estimate</TabsTrigger>
           <TabsTrigger value="rfis"><HelpCircle className="h-4 w-4 mr-1" /> RFIs</TabsTrigger>
@@ -838,6 +840,11 @@ export default function ProjectDetail() {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        {/* DRAWINGS TAB (Estimation v2 — AI drawing analysis, vector-only) */}
+        <TabsContent value="drawings" className="space-y-4">
+          <DrawingsTab projectId={id!} />
         </TabsContent>
 
         {/* TAKEOFF TAB */}
