@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,8 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useTenant } from "@/contexts/TenantContext";
 import { useDrawingPages } from "@/hooks/useDrawingPages";
 import DrawingPageCard from "./DrawingPageCard";
-import { dissectPdf } from "@/lib/api/estimationApi";
-import { Loader2, Sparkles } from "lucide-react";
+import { dissectPdf, syncToV1 } from "@/lib/api/estimationApi";
+import { Loader2, Sparkles, Send } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
@@ -17,10 +17,68 @@ interface Props {
 
 export default function DrawingsTab({ projectId }: Props) {
   const { tenantId } = useTenant();
+  const queryClient = useQueryClient();
   const [polling, setPolling] = useState(false);
+  const [sending, setSending] = useState(false);
   const [selectedPdf, setSelectedPdf] = useState<string>("");
 
   const { pages, isLoading, refetch } = useDrawingPages(projectId, { poll: polling });
+
+  // Per-page polygon sync state: how many detected rooms exist / are not yet in Takeoff.
+  const { data: polySync = [] } = useQuery({
+    queryKey: ["estimation_polygons_sync", tenantId, projectId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("estimation_room_polygons" as any)
+        .select("page_number,synced_to_v1")
+        .eq("tenant_id", tenantId)
+        .eq("project_id", projectId)
+        .eq("detection_status", "detected");
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+    enabled: !!tenantId && !!projectId,
+  });
+  const unsyncedCount = polySync.filter((r: any) => !r.synced_to_v1).length;
+  const syncByPage: Record<number, { detected: number; unsynced: number }> = {};
+  for (const r of polySync as any[]) {
+    const s = (syncByPage[r.page_number] ||= { detected: 0, unsynced: 0 });
+    s.detected += 1;
+    if (!r.synced_to_v1) s.unsynced += 1;
+  }
+
+  const invalidateAfterChange = () => {
+    refetch();
+    queryClient.invalidateQueries({ queryKey: ["estimation_polygons_sync", tenantId, projectId] });
+  };
+
+  const handleSendToTakeoff = async () => {
+    if (!tenantId) return;
+    setSending(true);
+    try {
+      const resp = await syncToV1(projectId, tenantId);
+      const d = ((resp as any)?.data || resp) as any;
+      if (!d?.success) {
+        toast.error(d?.error || (resp as any)?.error || "Send to Takeoff failed — please try again.");
+        return;
+      }
+      if (d.synced > 0) {
+        toast.success(
+          `${d.synced} room${d.synced === 1 ? "" : "s"} added to Takeoff — assign materials in the Takeoff tab` +
+          (d.skipped_existing ? ` (${d.skipped_existing} already there)` : ""),
+        );
+      } else {
+        toast.info(`Nothing new to send — ${d.skipped_existing} room${d.skipped_existing === 1 ? "" : "s"} already in Takeoff`);
+      }
+      invalidateAfterChange();
+      queryClient.invalidateQueries({ queryKey: ["estimation_rooms", tenantId, projectId] });
+      queryClient.invalidateQueries({ queryKey: ["estimation_takeoff", tenantId, projectId] });
+    } catch {
+      toast.error("Send to Takeoff timed out — please try again.");
+    } finally {
+      setSending(false);
+    }
+  };
 
   // Project dissection status — polled while an analysis is running.
   const { data: proj } = useQuery({
@@ -88,13 +146,32 @@ export default function DrawingsTab({ projectId }: Props) {
     <div className="space-y-4" data-testid="drawings-tab">
       {/* Header strip */}
       <Card className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white">
-        <CardContent className="py-5">
-          <h3 className="text-lg font-bold flex items-center gap-2">
-            <Sparkles className="h-5 w-5" /> AI Drawing Analysis
-          </h3>
-          <p className="text-emerald-100 text-sm mt-1">
-            Upload a bidset, Zate reads every page, finds every room, and marks up your drawings.
-          </p>
+        <CardContent className="py-5 flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <h3 className="text-lg font-bold flex items-center gap-2">
+              <Sparkles className="h-5 w-5" /> AI Drawing Analysis
+            </h3>
+            <p className="text-emerald-100 text-sm mt-1">
+              Upload a bidset, Zate reads every page, finds every room, and marks up your drawings.
+            </p>
+          </div>
+          {polySync.length > 0 && (
+            <Button
+              size="lg"
+              variant="secondary"
+              className="bg-white text-emerald-700 hover:bg-emerald-50 font-bold"
+              onClick={handleSendToTakeoff}
+              disabled={sending || unsyncedCount === 0}
+              data-testid="send-to-takeoff"
+            >
+              {sending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+              {sending
+                ? "Sending..."
+                : unsyncedCount > 0
+                  ? `Send ${unsyncedCount} room${unsyncedCount === 1 ? "" : "s"} to Takeoff`
+                  : "All rooms in Takeoff ✓"}
+            </Button>
+          )}
         </CardContent>
       </Card>
 
@@ -148,7 +225,8 @@ export default function DrawingsTab({ projectId }: Props) {
               page={p}
               projectId={projectId}
               tenantId={tenantId || ""}
-              onChanged={refetch}
+              onChanged={invalidateAfterChange}
+              syncState={syncByPage[p.page_number]}
             />
           ))}
         </div>
