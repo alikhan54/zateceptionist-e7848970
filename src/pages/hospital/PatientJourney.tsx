@@ -23,6 +23,7 @@ import { ConsultationSummaryBox } from "./ConsultationSummary";
 import { PrescriptionPanel } from "./Prescription";
 import { OperationTheatrePanel, statusChipClass } from "./OperationTheatre";
 import { PostOpPanel } from "./PostOpPanel";
+import { DischargePanel } from "./DischargePanel";
 import { useHospitalOT } from "@/hooks/useHospitalOT";
 import { useHospitalT } from "./i18n";
 
@@ -680,6 +681,10 @@ function PatientJourneyInner() {
           {/* Post-op monitoring — deterministic partial-NEWS2 early-warning (renders only when an
               active episode exists; MEDICA narrates, never scores) [HOSPITAL-POSTOP] */}
           <PostOpPanel patient={patient} />
+
+          {/* Discharge — deterministic readiness + grounded bilingual signed summary (med reconciliation
+              off the signed Rx); sign closes the episode + frees the bed via existing flows [HOSPITAL-DISCHARGE] */}
+          <DischargePanel patient={patient} />
         </div>
       </div>
 

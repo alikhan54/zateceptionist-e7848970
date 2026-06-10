@@ -406,6 +406,61 @@ export async function fetchOpNoteDraft(
 }
 
 // ===========================================================================================
+// HOSPITAL-DISCHARGE — the discharge-summary drafter. §5d formatting-assist framing: MEDICA writes
+// the narrative sections FROM the real record only (blank-rather-than-invent). It NEVER touches the
+// medication list — discharge_meds is the signed prescription (med reconciliation), passed back to
+// the caller untouched. lang=bn writes the patient-facing prose in Bangla.
+// ===========================================================================================
+
+export interface DischargeNarrative {
+  reason_for_admission: string; procedure_performed: string; hospital_course: string;
+  follow_up: string; danger_signs: string;
+}
+
+export async function fetchDischargeSummary(args: {
+  patientName: string; patientId: string; lang?: "en" | "bn";
+  record: { admission?: string; procedure?: string; opNote?: string; consult?: string; episode?: string };
+}): Promise<DischargeNarrative> {
+  const { patientName, patientId, lang = "en", record } = args;
+  const ctx = [
+    record.admission && `Admission: ${record.admission}`,
+    record.procedure && `Procedure: ${record.procedure}`,
+    record.opNote && `Operative note: ${record.opNote}`,
+    record.consult && `Consultation: ${record.consult}`,
+    record.episode && `Post-op course: ${record.episode}`,
+  ].filter(Boolean).join("\n");
+  const message =
+    `Write a discharge summary for hospital patient '${patientName}' (patient id ${patientId}), FROM this ` +
+    `recorded clinical information ONLY:\n"""\n${ctx || "(limited record)"}\n"""\n` +
+    `You are a FORMATTING assistant — not making clinical decisions; the physician reviews, edits and SIGNS. ` +
+    `Return ONLY a JSON object (no prose, no markdown fences) with exactly: ` +
+    `{"reason_for_admission":"","procedure_performed":"","hospital_course":"","follow_up":"","danger_signs":""}. ` +
+    `Ground every section in the record above — a section the record does not support stays an EMPTY STRING; ` +
+    `do NOT invent events, findings, dates or instructions. "danger_signs" lists the warning signs that should ` +
+    `bring the patient back. Do NOT include a medication list (the prescription is handled separately). ` +
+    `Each value is concise patient-readable prose` +
+    (lang === "bn" ? `, written in clear Bangla (বাংলা); clinical/drug/device names + measurements stay standard English.` : `.`);
+  const { data, error } = await supabase.functions.invoke("medica-brief", { body: { message } });
+  if (error) throw error;
+  if (!data?.response) throw new Error(data?.error || "No discharge summary returned");
+  let raw = String(data.response);
+  const fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence) raw = fence[1];
+  const m = raw.match(/\{[\s\S]*\}/);
+  if (!m) throw new Error("Could not read the discharge summary");
+  let obj: any;
+  try { obj = JSON.parse(m[0]); } catch { throw new Error("Could not read the discharge summary"); }
+  const s = (v: any) => String(v ?? "").trim();
+  return {
+    reason_for_admission: s(obj?.reason_for_admission),
+    procedure_performed: s(obj?.procedure_performed),
+    hospital_course: s(obj?.hospital_course),
+    follow_up: s(obj?.follow_up),
+    danger_signs: s(obj?.danger_signs),
+  };
+}
+
+// ===========================================================================================
 // HOSPITAL-NURSE — the MEDICA shift brief. The worklist is deterministic; MEDICA only summarizes
 // it into one short paragraph for the nurse starting her shift (§5d framing) — it decides nothing,
 // orders nothing, and the deteriorating patient is surfaced first from the post-op EWS.

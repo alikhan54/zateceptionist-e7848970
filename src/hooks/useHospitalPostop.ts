@@ -108,6 +108,27 @@ export async function openPostopEpisode(args: {
 }
 
 /**
+ * Close the patient's active post-op episode (status active → closed) — called from the discharge
+ * sign flow. Returns true if it closed (or there was nothing to close), false on a real failure so
+ * the caller can record episode_closed accurately in the discharge snapshot. NEVER throws.
+ */
+export async function closePostopEpisode(args: { tenantId: string | null | undefined; patientId: string | null | undefined }): Promise<boolean> {
+  const { tenantId, patientId } = args;
+  if (!tenantId || !patientId) return true;
+  try {
+    const { error } = await supabase
+      .from("hospital_postop_episodes" as any)
+      .update({ status: "closed", updated_at: new Date().toISOString() })
+      .eq("tenant_id", tenantId).eq("patient_id", patientId).eq("status", "active");
+    if (error) { console.warn("[hx-postop] close skipped:", (error as any).message); return false; }
+    return true;
+  } catch (e: any) {
+    console.warn("[hx-postop] close skipped (non-blocking):", e?.message);
+    return false;
+  }
+}
+
+/**
  * Recompute the active episode from the patient's LATEST captured vitals (clinic_visits is
  * latest-per-visit — READ-only here) and append to score_history. Fire-and-forget by contract:
  * any failure logs and returns — the vitals save that triggered it is already committed.
