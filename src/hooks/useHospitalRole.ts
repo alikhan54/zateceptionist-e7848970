@@ -7,20 +7,24 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
 import { supabase } from "@/integrations/supabase/client";
 
-export type HospitalRole = "doctor" | "nurse" | "lab" | "admin";
+export type HospitalRole = "doctor" | "nurse" | "lab" | "pharmacy" | "admin";
 
 // Per-role allowed /hospital pages (admin = all). Home = where a wrong role is redirected.
 export const HOSPITAL_ROLE_PAGES: Record<HospitalRole, string[]> = {
   doctor: ["/hospital/journey", "/hospital/patients", "/hospital/pharmacy", "/hospital/lab", "/hospital/diagnostics"],
   nurse: ["/hospital/nurse", "/hospital/beds"],
   lab: ["/hospital/lab"],
+  pharmacy: ["/hospital/pharmacy"],
   admin: ["/hospital/journey", "/hospital/patients", "/hospital/nurse", "/hospital/beds", "/hospital/pharmacy", "/hospital/lab", "/hospital/diagnostics"],
 };
 export const HOSPITAL_ROLE_HOME: Record<HospitalRole, string> = {
-  doctor: "/hospital/journey", nurse: "/hospital/nurse", lab: "/hospital/lab", admin: "/hospital/journey",
+  doctor: "/hospital/journey", nurse: "/hospital/nurse", lab: "/hospital/lab", pharmacy: "/hospital/pharmacy", admin: "/hospital/journey",
 };
-export const isRestrictedHospitalRole = (r: HospitalRole | null | undefined): r is "doctor" | "nurse" | "lab" =>
-  r === "doctor" || r === "nurse" || r === "lab";
+export const isRestrictedHospitalRole = (r: HospitalRole | null | undefined): r is "doctor" | "nurse" | "lab" | "pharmacy" =>
+  r === "doctor" || r === "nurse" || r === "lab" || r === "pharmacy";
+
+// the explicit, restrictable markers — anything NOT in this set falls through to full-access 'admin'
+const KNOWN_RESTRICTED = new Set(["doctor", "nurse", "lab", "pharmacy"]);
 
 interface Marker { hospitalRole: HospitalRole; hrEmployeeId: string | null; }
 const cache = new Map<string, Marker>();          // dedup across the sidebar / gate / layout / pages
@@ -31,15 +35,15 @@ async function loadMarker(userId: string): Promise<Marker> {
   try {
     const { data } = await supabase.from("hr_employees" as any).select("id,hospital_role").eq("user_id", userId).maybeSingle();
     const r = (data as any)?.hospital_role;
-    if (r === "doctor" || r === "nurse" || r === "lab" || r === "admin")
+    if (r === "admin" || KNOWN_RESTRICTED.has(r))
       return { hospitalRole: r, hrEmployeeId: (data as any)?.id ?? null };
   } catch { /* fall through to the mirror */ }
-  // FALLBACK: users.preferences (always self-readable).
+  // FALLBACK: users.preferences (always self-readable) — where the pharmacy marker lives.
   try {
     const { data } = await supabase.from("users" as any).select("preferences").eq("id", userId).maybeSingle();
     const p = ((data as any)?.preferences ?? {}) as Record<string, unknown>;
-    const r = p.hospital_role;
-    if (r === "doctor" || r === "nurse" || r === "lab" || r === "admin")
+    const r = p.hospital_role as string | undefined;
+    if (r === "admin" || (r && KNOWN_RESTRICTED.has(r)))
       return { hospitalRole: r as HospitalRole, hrEmployeeId: (p.hr_employee_id as string) ?? null };
   } catch { /* fall through */ }
   // No marker → full-access hospital admin. ONLY explicit doctor/nurse/lab markers ever restrict.

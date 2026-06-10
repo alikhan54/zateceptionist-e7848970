@@ -236,6 +236,24 @@ export const BN: Record<string, string> = {
   "ot.note.signed": "অপারেটিভ নোট স্বাক্ষরিত — কেস সম্পন্ন",
   "ot.note.failed": "অপারেটিভ নোট সংরক্ষণ করা যায়নি",
 
+  // ---- nursing worklist [HOSPITAL-NURSE] (DRAFT — native review pending) ----
+  "nurse.worklist": "আমার ওয়ার্কলিস্ট",
+  "nurse.pendingN": "{n}টি বাকি",
+  "nurse.overdueN": "{n}টি সময় পেরিয়েছে",
+  "nurse.worklistEmpty": "এখন কোনো কাজ নেই — অর্ডার ও ভাইটালস রাউন্ড এখানে দেখা যাবে।",
+  "nurse.markDone": "সম্পন্ন চিহ্নিত করুন",
+  "nurse.done": "সম্পন্ন",
+  "nurse.notePh": "নোট (ঐচ্ছিক)",
+  "nurse.taskDone": "কাজ সম্পন্ন চিহ্নিত হয়েছে",
+  "nurse.taskFail": "কাজ আপডেট করা যায়নি",
+  "nurse.overdue": "সময় পেরিয়েছে",
+  "nurse.doctorOrders": "ডাক্তারের অর্ডার",
+  "nurse.unknownPatient": "রোগী",
+  "nurse.theNurse": "নার্স",
+  "nurse.shiftBrief": "শিফট ব্রিফ (MEDICA)",
+  "nurse.briefing": "ব্রিফিং…",
+  "nurse.briefDisclaimer": "আপনার গণনাকৃত ওয়ার্কলিস্টের AI সারসংক্ষেপ — এটি কিছু সিদ্ধান্ত নেয় না; আপনি সেবার অগ্রাধিকার নির্ধারণ করেন।",
+
   // ---- post-op monitoring + early-warning [HOSPITAL-POSTOP] (DRAFT — native review pending) ----
   "postop.title": "পোস্ট-অপ পর্যবেক্ষণ",
   "postop.score": "EWS {n}",

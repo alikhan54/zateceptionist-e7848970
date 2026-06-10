@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
+import { deriveMedAdminTask } from "@/hooks/useHospitalNurseTasks";
 
 export type HospitalOrderType = "lab" | "medication" | "imaging";
 export type HospitalOrderStatus =
@@ -108,7 +109,17 @@ export function useHospitalOrders(filter: OrderFilter = {}) {
       if (error) throw error;
       return data as unknown as HospitalOrder;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["hospital_orders", tenantId] }),
+    onSuccess: (order) => {
+      queryClient.invalidateQueries({ queryKey: ["hospital_orders", tenantId] });
+      // HOSPITAL-NURSE (additive, fire-and-forget, NON-BLOCKING): a placed MEDICATION order becomes a
+      // med_admin task on the nurse's worklist. A failed task-write can never affect order placement
+      // (this runs in onSuccess, after the order already committed) and is swallowed.
+      if (order?.order_type === "medication") {
+        deriveMedAdminTask({ tenantId, order })
+          .then(() => queryClient.invalidateQueries({ queryKey: ["hospital_nurse_tasks"] }))
+          .catch(() => { /* non-blocking by contract */ });
+      }
+    },
   });
 
   // Advance an order's status. Optional `payment` (pharmacy dispense) writes the additive

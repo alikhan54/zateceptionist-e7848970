@@ -240,6 +240,24 @@ export const EN: Record<string, string> = {
   "ot.note.signed": "Operative note signed — case completed",
   "ot.note.failed": "Could not save the operative note",
 
+  // ---- nursing worklist [HOSPITAL-NURSE] ----
+  "nurse.worklist": "My Worklist",
+  "nurse.pendingN": "{n} pending",
+  "nurse.overdueN": "{n} overdue",
+  "nurse.worklistEmpty": "No tasks right now — orders and vitals rounds will appear here.",
+  "nurse.markDone": "Mark done",
+  "nurse.done": "Done",
+  "nurse.notePh": "Note (optional)",
+  "nurse.taskDone": "Task marked done",
+  "nurse.taskFail": "Could not update the task",
+  "nurse.overdue": "Overdue",
+  "nurse.doctorOrders": "Doctor's orders",
+  "nurse.unknownPatient": "Patient",
+  "nurse.theNurse": "the nurse",
+  "nurse.shiftBrief": "Shift brief (MEDICA)",
+  "nurse.briefing": "Briefing…",
+  "nurse.briefDisclaimer": "AI summary of your computed worklist — it decides nothing; you prioritise care.",
+
   // ---- post-op monitoring + early-warning [HOSPITAL-POSTOP] ----
   "postop.title": "Post-op Monitoring",
   "postop.score": "EWS {n}",

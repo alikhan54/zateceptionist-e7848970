@@ -8,6 +8,7 @@ import { useClinicPatients } from "@/hooks/useClinicPatients";
 import { useClinicVisits } from "@/hooks/useClinicVisits";
 import { summarizeVitals, DEFAULT_THRESHOLDS, type VitalStatus } from "@/lib/clinic/vitalsThresholds";
 import { HospitalGate, EcgLine } from "./hospitalShared";
+import { NurseWorklist } from "./NurseWorklist";
 import { useHospitalT } from "./i18n";
 import { HospitalAdmitDialog } from "@/components/hospital/HospitalAdmitDialog";
 import { VitalsCaptureDialog } from "@/components/hospital/VitalsCaptureDialog";
@@ -71,6 +72,9 @@ function NurseStationInner() {
           <EcgLine className="mt-3" />
         </div>
       </div>
+
+      {/* HOSPITAL-NURSE worklist — orders→tasks + AM/PM rounds + accountability + MEDICA shift brief */}
+      <NurseWorklist />
 
       {/* patient queue */}
       <div className="hx-panel hx-rise mt-4" style={{ animationDelay: "80ms" }}>

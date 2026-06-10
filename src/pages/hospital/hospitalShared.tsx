@@ -406,6 +406,38 @@ export async function fetchOpNoteDraft(
 }
 
 // ===========================================================================================
+// HOSPITAL-NURSE — the MEDICA shift brief. The worklist is deterministic; MEDICA only summarizes
+// it into one short paragraph for the nurse starting her shift (§5d framing) — it decides nothing,
+// orders nothing, and the deteriorating patient is surfaced first from the post-op EWS.
+// ===========================================================================================
+
+export async function fetchShiftBrief(args: {
+  nurseName: string;
+  items: { patient: string; ews?: string | null; pending: number; overdue: number; nextDue?: string | null; tasks: string[] }[];
+  lang?: "en" | "bn";
+}): Promise<string> {
+  const { nurseName, items, lang = "en" } = args;
+  const lines = items.map((p) =>
+    `- ${p.patient}${p.ews ? ` [post-op EWS ${p.ews}]` : ""}: ${p.pending} pending` +
+    `${p.overdue ? `, ${p.overdue} OVERDUE` : ""}${p.nextDue ? `, next due ${p.nextDue}` : ""}` +
+    `${p.tasks.length ? ` — ${p.tasks.slice(0, 4).join("; ")}` : ""}`,
+  ).join("\n");
+  const message =
+    `The nursing worklist for ${nurseName}'s shift has ALREADY been computed (deterministically). ` +
+    `You are NOT deciding clinical priority or ordering anything — you summarize this list for the nurse ` +
+    `starting her shift. The list (patients with their pending/overdue tasks; a HIGH or deteriorating ` +
+    `post-op EWS means see them first):\n"""\n${lines || "(no tasks)"}\n"""\n` +
+    `Write ONE short plain-language paragraph (3-4 sentences) telling her who needs her first and what is ` +
+    `due or overdue, leading with any high/deteriorating post-op patient. Do not invent tasks not listed; ` +
+    `do not add clinical orders or recommendations.` +
+    (lang === "bn" ? ` Write the paragraph in clear, natural Bangla (বাংলা); patient names, EWS values and times stay English.` : ``);
+  const { data, error } = await supabase.functions.invoke("medica-brief", { body: { message } });
+  if (error) throw error;
+  if (!data?.response) throw new Error(data?.error || "No shift brief returned");
+  return String(data.response).replace(/^\s*\*\*\[[^\]]*\]\*\*\s*/, "").trim();
+}
+
+// ===========================================================================================
 // HOSPITAL-POSTOP — the early-warning NARRATIVE. The NEWS2-style score is deterministic math
 // computed by src/lib/hospital/news2.ts; MEDICA only puts it into one plain sentence for the
 // ward team (§5d formatting-assist framing). It NEVER alters the score, never acts, never orders.
