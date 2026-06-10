@@ -178,6 +178,10 @@ export const EN: Record<string, string> = {
   "rx.date": "Date",
   "rx.signedDigital": "Digitally signed",
 
+  // ---- per-doctor style-memory marker [HOSPITAL-STYLE] ----
+  "style.learned": "MEDICA has learned {n} of your preferences",
+  "style.learnedTitle": "MEDICA quietly learns your style from the edits you make to its drafts — scoped to you alone. It shapes wording and defaults only; you still review and sign everything.",
+
   // order entry
   "order.title": "Order Entry",
   "order.subtitle": "tests + medications",

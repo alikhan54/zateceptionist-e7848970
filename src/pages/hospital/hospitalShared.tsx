@@ -2,6 +2,7 @@
 // and the medica-brief Edge Function client. Importing this also loads the scoped theme.
 import React, { useEffect } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import { useTenant } from "@/contexts/TenantContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -154,7 +155,10 @@ const EMPTY_SUMMARY: ConsultationSummary = { chief_complaint: "", history: "", e
  */
 export async function fetchConsultationSummary(
   notes: string, patientName: string, patientId: string, lang: "en" | "bn" = "en",
+  opts?: { doctorId?: string | null },
 ): Promise<ConsultationSummary> {
+  // HOSPITAL-STYLE: this doctor's learned corrections ("" when none → message byte-identical to today)
+  const styleBlock = await loadDoctorStyleBlock(opts?.doctorId, "consult");
   const message =
     `A clinician has written these consultation notes for the hospital patient '${patientName}' ` +
     `(patient id ${patientId}). Notes:\n"""\n${notes}\n"""\n` +
@@ -163,7 +167,8 @@ export async function fetchConsultationSummary(
     `(no prose, no markdown) with exactly these keys: ` +
     `{"chief_complaint":"…","history":"…","examination":"…","assessment":"…","plan":"…"}. ` +
     `Each value is concise clinical prose${lang === "bn" ? ", written in Bangla (বাংলা)" : ""}; use an empty string ` +
-    `for a section the notes don't cover. Medical terms, drug names, units and IDs stay in standard English.`;
+    `for a section the notes don't cover. Medical terms, drug names, units and IDs stay in standard English.` +
+    styleBlock;
   const { data, error } = await supabase.functions.invoke("medica-brief", { body: { message } });
   if (error) throw error;
   if (!data?.response) throw new Error(data?.error || "No summary returned");
@@ -202,7 +207,10 @@ export interface PrescriptionDraft { items: RxItem[]; advice: string; follow_up:
  */
 export async function fetchPrescriptionDraft(
   placedMeds: string[], consultationContext: string, patientName: string, patientId: string, lang: "en" | "bn" = "en",
+  opts?: { doctorId?: string | null },
 ): Promise<PrescriptionDraft> {
+  // HOSPITAL-STYLE: this doctor's learned corrections ("" when none → message byte-identical to today)
+  const styleBlock = await loadDoctorStyleBlock(opts?.doctorId, "rx");
   const medList = placedMeds.map((m, i) => `${i + 1}. ${m}`).join("\n");
   // Framed as FORMATTING assistance for meds the physician already decided + placed — NOT MEDICA
   // prescribing (which it refuses, by design). The physician reviews, edits and signs every line.
@@ -222,7 +230,8 @@ export async function fetchPrescriptionDraft(
     `{"items":[{"name":"","dose":"","frequency":"","duration":"","route":""}],"advice":"","follow_up":""}.` +
     (lang === "bn"
       ? ` Write "frequency", "duration", "route", "advice" and "follow_up" in Bangla (বাংলা); keep drug names, doses, units and IDs in standard English.`
-      : ``);
+      : ``) +
+    styleBlock;
   const { data, error } = await supabase.functions.invoke("medica-brief", { body: { message } });
   if (error) throw error;
   if (!data?.response) throw new Error(data?.error || "No prescription draft returned");
@@ -234,10 +243,149 @@ export async function fetchPrescriptionDraft(
   let obj: any;
   try { obj = JSON.parse(m[0]); } catch { throw new Error("Could not read the prescription draft"); }
   const s = (v: any) => String(v ?? "").trim();
-  const items: RxItem[] = Array.isArray(obj?.items)
+  const modelItems: RxItem[] = Array.isArray(obj?.items)
     ? obj.items.filter((r: any) => r && r.name).map((r: any) => ({
         name: s(r.name), dose: s(r.dose), frequency: s(r.frequency), duration: s(r.duration), route: s(r.route),
-      })).slice(0, 20)
+      }))
     : [];
+
+  // HARD GROUNDING GUARD (defense-in-depth) — the prompt asks for placed-meds-only, but a model can
+  // still drift (add a STAT dose, a PRN adjunct, a duplicate) especially once style memory is in play.
+  // So we ANCHOR the result to the doctor's PLACED meds: exactly ONE row per distinct placed drug,
+  // taking its name+dose from what the doctor actually placed and pulling ONLY frequency/duration/route
+  // (the structuring) from the best-matching model item. An invented drug therefore CANNOT reach the
+  // doctor — this is structural, not prompt-dependent. Style memory shapes wording/defaults, never the
+  // drug set.
+  const baseName = (str: string) => {
+    const t = str.trim();
+    const cut = t.search(/\s\d/);          // first space-then-digit = start of the dose
+    return (cut > 0 ? t.slice(0, cut) : t).trim();
+  };
+  const baseDose = (str: string) => {
+    const t = str.trim();
+    const cut = t.search(/\s\d/);
+    return cut > 0 ? t.slice(cut + 1).trim() : "";
+  };
+  const norm = (str: string) => str.toLowerCase().replace(/\s+/g, " ").trim();
+
+  const seen = new Set<string>();
+  const items: RxItem[] = [];
+  for (const placed of placedMeds) {
+    // Dedupe by the FULL placed string (name+dose) so a real "Aspirin 75mg" and "Aspirin 300mg STAT"
+    // both survive as distinct placed orders, while an exact case/spacing duplicate collapses.
+    const fullKey = norm(placed);
+    if (!fullKey || seen.has(fullKey)) continue;
+    seen.add(fullKey);
+    const nm = baseName(placed);
+    const nameKey = norm(nm);
+    // best model match for the STRUCTURING fields (freq/dur/route): exact base-name first, else contains
+    const hit =
+      modelItems.find((mi) => norm(baseName(mi.name)) === nameKey) ||
+      modelItems.find((mi) => { const n = norm(mi.name); return n.includes(nameKey) || nameKey.includes(n); });
+    items.push({
+      name: nm,                                    // the placed drug name (authoritative — never invented)
+      dose: baseDose(placed) || (hit?.dose ?? ""),  // the placed dose; model dose only if none was placed
+      frequency: hit?.frequency ?? "",
+      duration: hit?.duration ?? "",
+      route: hit?.route ?? "",
+    });
+  }
   return { items, advice: s(obj?.advice), follow_up: s(obj?.follow_up) };
+}
+
+// ===========================================================================================
+// HOSPITAL-STYLE — per-doctor MEDICA style-memory.
+// CAPTURE: when a doctor saves/signs an ASSISTED draft he edited, the deltas (drafted → final)
+// are recorded fire-and-forget, scoped (tenant_id, doctor_id). Manual mode captures nothing.
+// CONDITION: the two drafters load THIS doctor's recent corrections (bounded) and append a
+// style block to the message they already send — empty block when none → the prompt is
+// BYTE-IDENTICAL to today (no regression). Learned preferences shape STYLE among valid options
+// only — the grounding guardrails and the physician's review/sign remain untouched.
+// ===========================================================================================
+
+export interface StyleDelta { field_or_section: string; drafted: string; final: string; }
+
+const STYLE_VAL_MAX = 160;   // per-value truncation (keeps the injection compact)
+const STYLE_ROWS_MAX = 12;   // corrections loaded per draft (newest first)
+const STYLE_CAPTURE_MAX = 8; // deltas captured per save/sign (anti-spam)
+const trunc = (v: string) => (v.length > STYLE_VAL_MAX ? v.slice(0, STYLE_VAL_MAX) + "…" : v);
+
+/**
+ * Fire-and-forget capture of a doctor's edits to an Assisted draft. NEVER throws, NEVER awaited
+ * by callers on the critical path — a capture failure must not affect the save/sign.
+ */
+export function captureStyleDeltas(args: {
+  tenantId: string | null | undefined;
+  doctorId: string | null | undefined;
+  context: "consult" | "rx";
+  visitId?: string | null;
+  deltas: StyleDelta[];
+}): void {
+  const { tenantId, doctorId, context, visitId } = args;
+  const deltas = (args.deltas || [])
+    .filter((d) => d && d.field_or_section && d.drafted.trim() !== d.final.trim())
+    .slice(0, STYLE_CAPTURE_MAX);
+  if (!tenantId || !doctorId || deltas.length === 0) return;
+  const rows = deltas.map((d) => ({
+    tenant_id: tenantId,
+    doctor_id: doctorId,
+    context,
+    source_visit_id: visitId ?? null,
+    delta: { field_or_section: d.field_or_section, drafted: trunc(d.drafted.trim()), final: trunc(d.final.trim()) },
+  }));
+  // intentionally not awaited by callers; all failures swallowed (non-blocking by design)
+  supabase.from("hospital_doctor_style" as any).insert(rows as any).then(({ error }: any) => {
+    if (error) console.warn("[hx-style] capture skipped (non-blocking):", error?.message);
+  }, (e: any) => console.warn("[hx-style] capture skipped (non-blocking):", e?.message));
+}
+
+/**
+ * Load THIS doctor's recent corrections (RLS additionally enforces tenant + doctor) and build the
+ * compact style block appended to the drafter messages. Returns "" when there are none, on any
+ * error, or when no doctorId is supplied — so the no-corrections prompt is byte-identical to today.
+ */
+export async function loadDoctorStyleBlock(doctorId: string | null | undefined, context: "consult" | "rx"): Promise<string> {
+  if (!doctorId) return "";
+  try {
+    const { data, error } = await supabase
+      .from("hospital_doctor_style" as any)
+      .select("delta")
+      .eq("doctor_id", doctorId)
+      .eq("context", context)
+      .order("captured_at", { ascending: false })
+      .limit(STYLE_ROWS_MAX);
+    if (error || !data || data.length === 0) return "";
+    const lines = (data as any[])
+      .map((r) => r?.delta)
+      .filter((d) => d && d.field_or_section)
+      .map((d) => `- ${d.field_or_section}: "${trunc(String(d.drafted ?? ""))}" → physician changed to "${trunc(String(d.final ?? ""))}"`);
+    if (lines.length === 0) return "";
+    return (
+      `\n\n[Physician style memory — this physician has previously adjusted your drafts as follows:\n` +
+      lines.join("\n") +
+      `\nMirror this physician's style, phrasing and defaults where clinically appropriate. These preferences ` +
+      `shape STYLE and wording among valid options ONLY — they NEVER override the source material or clinical ` +
+      `grounding above, and the physician still reviews, edits and signs every output. You are NOT making ` +
+      `clinical decisions.]`
+    );
+  } catch {
+    return ""; // fail-open to no-style; drafting must never break on the memory layer
+  }
+}
+
+/** This doctor's learned-correction count — drives the "MEDICA has learned N of your preferences" marker. */
+export function useDoctorStyleCount(doctorId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["hx-style-count", doctorId],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("hospital_doctor_style" as any)
+        .select("id", { count: "exact", head: true })
+        .eq("doctor_id", doctorId);
+      if (error) return 0;
+      return count ?? 0;
+    },
+    enabled: !!doctorId,
+    staleTime: 30_000,
+  });
 }

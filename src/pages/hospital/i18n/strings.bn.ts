@@ -176,6 +176,10 @@ export const BN: Record<string, string> = {
   "rx.date": "তারিখ",
   "rx.signedDigital": "ডিজিটালি স্বাক্ষরিত",
 
+  // ---- per-doctor style-memory marker [HOSPITAL-STYLE] (DRAFT — native review pending) ----
+  "style.learned": "MEDICA আপনার {n}টি পছন্দ শিখেছে",
+  "style.learnedTitle": "আপনি MEDICA-র খসড়ায় যে সম্পাদনা করেন তা থেকে MEDICA নীরবে আপনার স্টাইল শেখে — শুধুমাত্র আপনার জন্য। এটি কেবল শব্দচয়ন ও ডিফল্ট প্রভাবিত করে; আপনি এখনো সবকিছু পর্যালোচনা ও স্বাক্ষর করেন।",
+
   "order.title": "অর্ডার এন্ট্রি",
   "order.subtitle": "টেস্ট + ওষুধ",
   "order.type": "ধরন",

@@ -9,7 +9,7 @@
 // patient instructions (advice/follow-up + frequency/duration/route) in Bangla; drug names/doses stay
 // standard English. Additive, hospital-scoped; reuses `hx-*` classes (light/dark + i18n automatic).
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FileText, Sparkles, Loader2, AlertTriangle, CheckCircle2, Printer, Plus, Trash2, PenLine } from "lucide-react";
+import { FileText, Sparkles, Loader2, AlertTriangle, CheckCircle2, Printer, Plus, Trash2, PenLine, Brain } from "lucide-react";
 import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -17,7 +17,10 @@ import { useHospitalPrescription } from "@/hooks/useHospitalPrescription";
 import { useHospitalConsultation } from "@/hooks/useHospitalConsultation";
 import { useHospitalT } from "./i18n";
 import { useHospitalMode, HospitalModeToggle } from "./hospitalMode";
-import { fetchPrescriptionDraft, type RxItem } from "./hospitalShared";
+import {
+  fetchPrescriptionDraft, captureStyleDeltas, useDoctorStyleCount,
+  type RxItem, type PrescriptionDraft, type StyleDelta,
+} from "./hospitalShared";
 
 const EMPTY_ITEM: RxItem = { name: "", dose: "", frequency: "", duration: "", route: "" };
 const ageFrom = (dob?: string | null) => {
@@ -28,14 +31,18 @@ const ageFrom = (dob?: string | null) => {
 export function PrescriptionPanel({
   patient, visitId, placedMeds,
 }: { patient: any; visitId?: string | null; placedMeds: string[] }) {
-  const { t, lang } = useHospitalT();
-  const { tenantConfig } = useTenant();
+  const { t, ti, lang } = useHospitalT();
+  const { tenantConfig, tenantId } = useTenant();
   const { authUser } = useAuth();
   const { toast } = useToast();
   const { isAssisted } = useHospitalMode();
   const patientId = patient?.id as string | undefined;
   const { rx, save } = useHospitalPrescription(visitId, patientId);
   const { note: consult } = useHospitalConsultation(visitId, patientId);
+  // HOSPITAL-STYLE: doctor identity (users.id, same as authored_by) + learned-count marker + draft snapshot
+  const doctorId = authUser?.id ?? null;
+  const { data: styleCount = 0 } = useDoctorStyleCount(doctorId);
+  const aiDraftRef = useRef<PrescriptionDraft | null>(null);
 
   const [items, setItems] = useState<RxItem[]>([]);
   const [advice, setAdvice] = useState("");
@@ -58,6 +65,7 @@ export function PrescriptionPanel({
     setDirty(false);
     setDrafted(rx?.source === "assisted");
     setAiState("idle"); setAiErr("");
+    aiDraftRef.current = null;   // a stored row is not a live draft — only a fresh MEDICA draft is diffable
   }, [visitId, rx?.updated_at, rx?.source]);
 
   const setItem = (i: number, k: keyof RxItem, v: string) => {
@@ -80,7 +88,8 @@ export function PrescriptionPanel({
     if (placedMeds.length === 0) { toast({ title: t("rx.needMeds"), variant: "destructive" }); return; }
     setAiState("loading"); setAiErr("");
     try {
-      const d = await fetchPrescriptionDraft(placedMeds, consultContext, patient.full_name, patientId, lang);
+      const d = await fetchPrescriptionDraft(placedMeds, consultContext, patient.full_name, patientId, lang, { doctorId });
+      aiDraftRef.current = { items: d.items.map((it) => ({ ...it })), advice: d.advice, follow_up: d.follow_up };
       setItems(d.items.length ? d.items : []); setAdvice(d.advice); setFollowUp(d.follow_up);
       setDrafted(true); setDirty(true); setAiState("idle");
     } catch (e: any) {
@@ -98,11 +107,30 @@ export function PrescriptionPanel({
     const final = cleanItems();
     if (status === "signed" && final.length === 0) { toast({ title: t("rx.needItem"), variant: "destructive" }); return; }
     try {
+      const assistedSave = isAssisted && drafted;
       await save.mutateAsync({
         items: final, advice, follow_up: followUp,
-        source: isAssisted && drafted ? "assisted" : "manual",
+        source: assistedSave ? "assisted" : "manual",
         status, lang,
       });
+      // HOSPITAL-STYLE capture — at SIGN, ASSISTED only, fire-and-forget AFTER the sign succeeded
+      // (a capture failure can never affect the sign). Manual mode records nothing.
+      if (status === "signed" && assistedSave && aiDraftRef.current) {
+        const d0 = aiDraftRef.current;
+        const deltas: StyleDelta[] = [];
+        for (const di of d0.items) {
+          const fi = final.find((x) => x.name.trim().toLowerCase() === di.name.trim().toLowerCase());
+          if (!fi) continue;   // doctor removed the med — a clinical decision, not a style signal
+          (["dose", "frequency", "duration", "route"] as (keyof RxItem)[]).forEach((k) => {
+            if ((di[k] || "").trim() !== (fi[k] || "").trim())
+              deltas.push({ field_or_section: `rx.${di.name.trim()}.${k}`, drafted: di[k] || "", final: fi[k] || "" });
+          });
+        }
+        if ((d0.advice || "").trim() !== advice.trim()) deltas.push({ field_or_section: "rx.advice", drafted: d0.advice || "", final: advice });
+        if ((d0.follow_up || "").trim() !== followUp.trim()) deltas.push({ field_or_section: "rx.follow_up", drafted: d0.follow_up || "", final: followUp });
+        captureStyleDeltas({ tenantId, doctorId, context: "rx", visitId, deltas });
+        aiDraftRef.current = { items: final.map((it) => ({ ...it })), advice, follow_up: followUp };  // new baseline
+      }
       setItems(final); setDirty(false);
       toast({ title: status === "signed" ? t("rx.signed") : t("rx.savedDraft") });
     } catch (e: any) {
@@ -128,6 +156,11 @@ export function PrescriptionPanel({
         {rx && (
           <span className={`hx-chip ${isSigned ? "hx-chip--ok" : "hx-chip--warn"}`} style={{ padding: "0.1rem 0.5rem" }} data-testid="hx-rx-status">
             {isSigned ? <CheckCircle2 className="h-3 w-3" /> : null}{isSigned ? t("rx.signedChip") : t("rx.draftChip")}
+          </span>
+        )}
+        {isAssisted && styleCount > 0 && (
+          <span className="hx-chip hx-chip--accent" style={{ padding: "0.1rem 0.5rem" }} data-testid="hx-style-marker" title={t("style.learnedTitle")}>
+            <Brain className="h-3 w-3" /> {ti("style.learned", { n: styleCount })}
           </span>
         )}
         <span className="ml-auto"><HospitalModeToggle /></span>

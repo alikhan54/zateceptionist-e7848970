@@ -7,12 +7,17 @@
 // Either way it persists to the additive per-encounter `hospital_consultation_notes` table.
 // Additive, hospital-scoped; reuses only `hx-*` classes (light/dark + i18n automatic).
 import { useEffect, useRef, useState } from "react";
-import { FileText, Sparkles, Loader2, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { FileText, Sparkles, Loader2, AlertTriangle, CheckCircle2, Brain } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTenant } from "@/contexts/TenantContext";
 import { useToast } from "@/hooks/use-toast";
 import { useHospitalConsultation } from "@/hooks/useHospitalConsultation";
 import { useHospitalT } from "./i18n";
 import { useHospitalMode, HospitalModeToggle } from "./hospitalMode";
-import { fetchConsultationSummary, type ConsultationSummary as Summary } from "./hospitalShared";
+import {
+  fetchConsultationSummary, captureStyleDeltas, useDoctorStyleCount,
+  type ConsultationSummary as Summary, type StyleDelta,
+} from "./hospitalShared";
 
 const SECTIONS: { key: keyof Summary; labelKey: string }[] = [
   { key: "chief_complaint", labelKey: "consult.chiefComplaint" },
@@ -25,10 +30,16 @@ const SECTIONS: { key: keyof Summary; labelKey: string }[] = [
 export function ConsultationSummaryBox({
   patientId, patientName, visitId,
 }: { patientId?: string; patientName?: string; visitId?: string | null }) {
-  const { t, lang } = useHospitalT();
+  const { t, ti, lang } = useHospitalT();
   const { toast } = useToast();
   const { isAssisted } = useHospitalMode();
   const { note, save } = useHospitalConsultation(visitId, patientId);
+  // HOSPITAL-STYLE: this doctor's identity (users.id, same as authored_by) + learned-count marker
+  const { authUser } = useAuth();
+  const { tenantId } = useTenant();
+  const doctorId = authUser?.id ?? null;
+  const { data: styleCount = 0 } = useDoctorStyleCount(doctorId);
+  const aiDraftRef = useRef<Summary | null>(null);   // MEDICA's ORIGINAL draft (for the edit delta)
 
   const [notes, setNotes] = useState("");
   const [sum, setSum] = useState<Summary>({ chief_complaint: "", history: "", examination: "", assessment: "", plan: "" });
@@ -55,6 +66,7 @@ export function ConsultationSummaryBox({
     setDirty(false);
     setDrafted(note?.summary_source === "assisted");
     setAiState("idle"); setAiErr("");
+    aiDraftRef.current = null;   // a stored row is not a live draft — only a fresh MEDICA draft is diffable
   }, [visitId, note?.updated_at, note?.summary_source]);
 
   const setField = (k: keyof Summary, v: string) => { setSum((p) => ({ ...p, [k]: v })); setDirty(true); };
@@ -64,7 +76,8 @@ export function ConsultationSummaryBox({
     if (!notes.trim()) { toast({ title: t("consult.needNotes"), variant: "destructive" }); return; }
     setAiState("loading"); setAiErr("");
     try {
-      const s = await fetchConsultationSummary(notes, patientName, patientId, lang);
+      const s = await fetchConsultationSummary(notes, patientName, patientId, lang, { doctorId });
+      aiDraftRef.current = { ...s };   // snapshot the ORIGINAL draft so the doctor's edits can be diffed at save
       setSum(s); setDrafted(true); setDirty(true); setAiState("idle");
     } catch (e: any) {
       setAiErr(e?.message || t("medica.down")); setAiState("error");
@@ -74,13 +87,24 @@ export function ConsultationSummaryBox({
   async function onSave() {
     if (!visitId || !patientId) return;
     try {
+      const assistedSave = isAssisted && drafted;
       await save.mutateAsync({
         notes,
         chief_complaint: sum.chief_complaint, history: sum.history, examination: sum.examination,
         assessment: sum.assessment, plan: sum.plan,
-        summary_source: isAssisted && drafted ? "assisted" : "manual",
+        summary_source: assistedSave ? "assisted" : "manual",
         lang,
       });
+      // HOSPITAL-STYLE capture — ASSISTED saves only, fire-and-forget AFTER the save succeeded
+      // (a capture failure can never affect the save). Manual mode records nothing.
+      if (assistedSave && aiDraftRef.current) {
+        const drafted0 = aiDraftRef.current;
+        const deltas: StyleDelta[] = (Object.keys(drafted0) as (keyof Summary)[])
+          .filter((k) => (drafted0[k] || "").trim() !== (sum[k] || "").trim())
+          .map((k) => ({ field_or_section: `consult.${k}`, drafted: drafted0[k] || "", final: sum[k] || "" }));
+        captureStyleDeltas({ tenantId, doctorId, context: "consult", visitId, deltas });
+        aiDraftRef.current = { ...sum };   // the saved state is the new baseline (no double-capture on re-save)
+      }
       setDirty(false);
       toast({ title: t("consult.saved") });
     } catch (e: any) {
@@ -95,6 +119,11 @@ export function ConsultationSummaryBox({
       <div className="hx-panel-h">
         <FileText className="h-4 w-4" style={{ color: "var(--hx-accent2)" }} />
         <span className="font-semibold">{t("consult.title")}</span>
+        {isAssisted && styleCount > 0 && (
+          <span className="hx-chip hx-chip--accent" style={{ padding: "0.1rem 0.5rem" }} data-testid="hx-style-marker" title={t("style.learnedTitle")}>
+            <Brain className="h-3 w-3" /> {ti("style.learned", { n: styleCount })}
+          </span>
+        )}
         <span className="ml-auto"><HospitalModeToggle /></span>
       </div>
       <div className="hx-panel-b">
