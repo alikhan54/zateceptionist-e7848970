@@ -94,7 +94,13 @@ export function useSendInvoice(settings?: InvoiceSettings | null) {
       const subject = `Invoice ${invoice.invoice_no} from ${settings?.firm_display_name ?? companyName}`;
 
       // 4. Enqueue to Communication v3.8 (mechanics unchanged — sacred workflow, never modified)
-      // CRITICAL: message_queue.tenant_id is UUID (FK to tenant_config.id), NOT slug
+      // CRITICAL contracts (verified against ENQUEUE.2/ENQUEUE.4, 2026-06-10):
+      //  - message_queue.tenant_id is UUID (tenant_config.id), NOT slug
+      //  - the webhook reads `params` (NOT `message_params`) into message_queue.message_params
+      //  - a TOP-LEVEL `subject` is parsed but never inserted — subject must ride INSIDE params
+      // The email-delivery-service reads params.subject / params.content_type /
+      // params.mailbox_used / params.workflow_type; the FE delivery-status hook keys
+      // off params.invoice_id.
       const enqResp = await fetch(`${N8N_WEBHOOK_BASE}/queue/enqueue`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -104,15 +110,16 @@ export function useSendInvoice(settings?: InvoiceSettings | null) {
           recipient_identifier: recipient,
           recipient_name: invoice.accounting_clients?.name ?? null,
           message_content: body,
-          subject,
           priority: 5,
           scheduled_at: new Date().toISOString(),
           max_attempts: 3,
           source: "smart_ledger_invoice_send",
           source_module: "accounting",
           workflow: "D7-C Invoices UI",
-          message_params: {
+          params: {
+            subject,
             invoice_id: invoice.id,
+            workflow_type: "invoice",
             mailbox_used: mailbox,
             content_type: "html",
             pdf_url: pdf.url,

@@ -77,6 +77,8 @@ import { useSendInvoice } from "@/hooks/useSendInvoice";
 // Invoice Phase B (2026-06-10): per-tenant branding/bank/numbering settings + branded PDF.
 import { useInvoiceSettings, useBumpInvoiceNumber } from "@/hooks/useInvoiceSettings";
 import { buildInvoicePdf, invoicePdfFilename } from "@/lib/invoice-pdf";
+// Email-delivery-layer v1: real per-invoice delivery state (queued→sending→sent/failed).
+import { useInvoiceDeliveryStatus, type InvoiceDelivery } from "@/hooks/useInvoiceDeliveryStatus";
 
 type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
 
@@ -149,6 +151,35 @@ function isOverdueDate(due_at: string | null, status: InvoiceStatus): boolean {
   return new Date(due_at).getTime() < Date.now();
 }
 
+/** Email-delivery-layer v1 — per-invoice delivery chip (real send state, not just "marked sent"). */
+function DeliveryChip({ d }: { d: InvoiceDelivery | undefined }) {
+  if (!d) return <span className="text-xs text-muted-foreground">—</span>;
+  if (d.state === "sent") {
+    return (
+      <Badge
+        variant="secondary"
+        className="text-[10px]"
+        title={`Delivered via ${d.mailbox ?? "?"}\nSMTP message-id: ${d.messageId ?? "?"}`}
+        data-testid={`delivery-chip-${d.invoiceId}`}
+      >
+        ✓ Delivered
+      </Badge>
+    );
+  }
+  if (d.state === "bounced" || d.state === "failed") {
+    return (
+      <Badge variant="destructive" className="text-[10px]" title={d.error ?? undefined} data-testid={`delivery-chip-${d.invoiceId}`}>
+        {d.state === "bounced" ? "Bounced" : "Send failed"}
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="outline" className="text-[10px]" data-testid={`delivery-chip-${d.invoiceId}`}>
+      {d.state === "sending" ? "Sending…" : "Queued"}
+    </Badge>
+  );
+}
+
 function StatCard({
   label,
   value,
@@ -211,6 +242,7 @@ export default function AccountingInvoices() {
   const bumpInvoiceNumber = useBumpInvoiceNumber();
   const recordPayment = useRecordPayment();
   const sendInvoice = useSendInvoice(invoiceSettings);
+  const { data: deliveryByInvoice = {} } = useInvoiceDeliveryStatus();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -494,7 +526,7 @@ export default function AccountingInvoices() {
                 <TableHead>Due</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Sent via</TableHead>
+                <TableHead>Delivery</TableHead>
                 <TableHead className="w-12 text-right" />
               </TableRow>
             </TableHeader>
@@ -565,7 +597,7 @@ export default function AccountingInvoices() {
                       <TableCell>
                         <Badge variant={meta.variant}>{meta.label}</Badge>
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{inv.sent_via_mailbox ?? "—"}</TableCell>
+                      <TableCell><DeliveryChip d={deliveryByInvoice[inv.id]} /></TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
