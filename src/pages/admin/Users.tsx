@@ -41,22 +41,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { format, formatDistanceToNow } from 'date-fns';
 import { useAllUsers, useUpdateUserStatus, useCreateAuditLog, useAllTenants } from '@/hooks/useAdminData';
@@ -76,21 +67,12 @@ export default function AdminUsers() {
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [tenantFilter, setTenantFilter] = useState<string>('all');
-  const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
 
   const { data: users, isLoading, refetch } = useAllUsers();
   const { data: tenants } = useAllTenants();
   const updateStatus = useUpdateUserStatus();
   const createLog = useCreateAuditLog();
-
-  // New user form state
-  const [newUser, setNewUser] = useState({
-    email: '',
-    full_name: '',
-    role: 'staff',
-    tenant_id: '',
-  });
 
   const filteredUsers = (users || []).filter(user => {
     const matchesSearch = 
@@ -116,15 +98,6 @@ export default function AdminUsers() {
       const now = new Date();
       return createdDate.getMonth() === now.getMonth() && createdDate.getFullYear() === now.getFullYear();
     }).length || 0,
-  };
-
-  const handleAddUser = () => {
-    toast({
-      title: 'User created',
-      description: `Invitation sent to ${newUser.email}`,
-    });
-    setIsAddUserOpen(false);
-    setNewUser({ email: '', full_name: '', role: 'staff', tenant_id: '' });
   };
 
   const handleToggleStatus = async (user: any) => {
@@ -153,20 +126,9 @@ export default function AdminUsers() {
     }
   };
 
-  const handleDeleteUser = (user: any) => {
-    toast({
-      title: 'User deleted',
-      description: `${user.full_name} has been removed`,
-      variant: 'destructive',
-    });
-  };
-
-  const handleChangeRole = (user: any, newRole: string) => {
-    toast({
-      title: 'Role updated',
-      description: `${user.full_name} is now a ${newRole.replace('_', ' ')}`,
-    });
-  };
+  // NOTE: Add User, Delete User, and Change Role are intentionally disabled —
+  // there is no backend for them yet (users are provisioned via onboarding).
+  // The previous handlers showed success toasts without doing anything.
 
   // Get unique tenants for filter dropdown
   const uniqueTenants = tenants || [];
@@ -188,80 +150,17 @@ export default function AdminUsers() {
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
-          <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Add User
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add New User</DialogTitle>
-                <DialogDescription>
-                  Create a new user account and assign them to a tenant.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label>Full Name</Label>
-                  <Input
-                    value={newUser.full_name}
-                    onChange={(e) => setNewUser(prev => ({ ...prev, full_name: e.target.value }))}
-                    placeholder="John Doe"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Email</Label>
-                  <Input
-                    type="email"
-                    value={newUser.email}
-                    onChange={(e) => setNewUser(prev => ({ ...prev, email: e.target.value }))}
-                    placeholder="john@example.com"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Role</Label>
-                  <Select 
-                    value={newUser.role} 
-                    onValueChange={(v) => setNewUser(prev => ({ ...prev, role: v }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="staff">Staff</SelectItem>
-                      <SelectItem value="manager">Manager</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="master_admin">Master Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Tenant</Label>
-                  <Select 
-                    value={newUser.tenant_id} 
-                    onValueChange={(v) => setNewUser(prev => ({ ...prev, tenant_id: v }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select tenant" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {uniqueTenants.map(tenant => (
-                        <SelectItem key={tenant.tenant_id} value={tenant.tenant_id}>
-                          {tenant.company_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsAddUserOpen(false)}>Cancel</Button>
-                <Button onClick={handleAddUser}>Create User</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span tabIndex={0}>
+                <Button disabled data-testid="add-user-disabled">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add User
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>Coming soon — users are managed via onboarding for now</TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
@@ -481,9 +380,9 @@ export default function AdminUsers() {
                             Send Email
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleChangeRole(user, 'manager')}>
+                          <DropdownMenuItem disabled data-testid="change-role-disabled">
                             <Shield className="h-4 w-4 mr-2" />
-                            Change Role
+                            Change Role (coming soon)
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleToggleStatus(user)}>
                             {user.is_active ? (
@@ -499,12 +398,9 @@ export default function AdminUsers() {
                             )}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            onClick={() => handleDeleteUser(user)}
-                            className="text-destructive"
-                          >
+                          <DropdownMenuItem disabled data-testid="delete-user-disabled">
                             <Trash2 className="h-4 w-4 mr-2" />
-                            Delete User
+                            Delete User (coming soon)
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

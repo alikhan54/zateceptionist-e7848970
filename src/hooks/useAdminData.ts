@@ -292,27 +292,37 @@ export function useTenantUsage() {
 }
 
 // Mutation to create audit log
+//
+// Routed through the SECURITY DEFINER RPC log_audit_event (migration 45) instead
+// of a direct table insert: the direct insert was RLS-blocked for cross-tenant
+// master-admin writes (tenant_isolation_rls_fix requires the caller's own
+// tenant_id). The RPC derives user/email/tenant from the JWT server-side and
+// honors p_tenant_id only for master_admin callers, so call sites stay unchanged.
 export function useCreateAuditLog() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (log: Omit<AuditLog, 'id' | 'created_at'>) => {
-      const { data, error } = await supabase
-        .from('audit_logs')
-        .insert(log)
-        .select()
-        .maybeSingle();
+      const { data, error } = await supabase.rpc('log_audit_event', {
+        p_action: log.action,
+        p_resource: log.resource,
+        p_details: log.details,
+        p_level: log.level,
+        p_metadata: log.metadata ?? {},
+        p_tenant_id: log.tenant_id || null,
+      });
 
       if (error) throw error;
       if (!data) {
         throw new Error(
-          "Audit log insert affected 0 rows. Your session may be missing tenant_id, or the RLS INSERT policy on audit_logs may be misconfigured."
+          'Audit log write was skipped — this session has no profile row (users.auth_id) to attribute the event to.'
         );
       }
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'audit-logs'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'audit-log-stats'] });
     },
   });
 }

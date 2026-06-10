@@ -4,22 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Select,
   SelectContent,
@@ -42,11 +29,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { 
+import {
   Building2, Plus, Search, Filter, MoreHorizontal, Users, MessageSquare,
-  Phone, Eye, UserCog, Pause, Trash2, ChevronRight, ChevronLeft, Check,
-  ArrowUpDown, Download, RefreshCw, Calendar, Activity, CreditCard, Settings,
-  AlertTriangle, TrendingUp, Target
+  Eye, UserCog, Pause, Trash2, ArrowUpDown, Download, RefreshCw, Calendar,
+  Activity, Settings, AlertTriangle, TrendingUp, Target
 } from 'lucide-react';
 import { useAllTenants, useUpdateTenantStatus, useCreateAuditLog, useLifecycleSignals, useTenantUsage, LIFECYCLE_CONFIG, LifecycleStage, TenantData } from '@/hooks/useAdminData';
 import { useAuth } from '@/contexts/AuthContext';
@@ -54,20 +40,7 @@ import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import AdminActivation from './Activation';
 
-const industries = ['Technology', 'Healthcare', 'Retail', 'Legal', 'Education', 'Manufacturing', 'Finance', 'Real Estate'];
-const plans = ['Starter', 'Growth', 'Professional', 'Enterprise'];
 const statuses = ['active', 'trial', 'suspended', 'churned'];
-
-const features = [
-  { id: 'sales', label: 'Sales Module', description: 'Pipeline, leads, deals' },
-  { id: 'marketing', label: 'Marketing Module', description: 'Campaigns, automation' },
-  { id: 'hr', label: 'HR Module', description: 'Employees, payroll' },
-  { id: 'operations', label: 'Operations Module', description: 'Inventory, invoices' },
-  { id: 'voice', label: 'Voice AI', description: 'AI-powered calls' },
-  { id: 'whatsapp', label: 'WhatsApp', description: 'WhatsApp messaging' },
-  { id: 'email', label: 'Email Campaigns', description: 'Email marketing' },
-  { id: 'sms', label: 'SMS', description: 'SMS messaging' },
-];
 
 export default function AllTenants() {
   const { authUser } = useAuth();
@@ -92,9 +65,6 @@ export default function AllTenants() {
   const [industryFilter, setIndustryFilter] = useState<string>('all');
   const [planFilter, setPlanFilter] = useState<string>('all');
   const [lifecycleFilter, setLifecycleFilter] = useState<string>('all');
-  const [showCreateWizard, setShowCreateWizard] = useState(false);
-  const [wizardStep, setWizardStep] = useState(1);
-  const [selectedFeatures, setSelectedFeatures] = useState<string[]>(['sales', 'marketing']);
 
   const filteredTenants = (tenants || []).filter(tenant => {
     const matchesSearch = tenant.company_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -189,15 +159,6 @@ export default function AllTenants() {
     );
   };
 
-  const wizardSteps = [
-    'Company Details',
-    'Admin User',
-    'Features',
-    'Plan & Limits',
-    'Industry Setup',
-    'Review',
-  ];
-
   // Activation Command view — reachable at /admin/tenants?view=activation (no new
   // route, zero App.tsx/sidebar edits). All hooks above run unconditionally first.
   if (searchParams.get('view') === 'activation') return <AdminActivation />;
@@ -219,252 +180,19 @@ export default function AllTenants() {
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
-          <Dialog open={showCreateWizard} onOpenChange={setShowCreateWizard}>
-            <DialogTrigger asChild>
-              <Button><Plus className="h-4 w-4 mr-2" />Create Tenant</Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Create New Tenant</DialogTitle>
-                <DialogDescription>
-                  Step {wizardStep} of 6: {wizardSteps[wizardStep - 1]}
-                </DialogDescription>
-              </DialogHeader>
-              
-              {/* Progress Steps */}
-              <div className="flex items-center justify-between mb-6">
-                {wizardSteps.map((step, index) => (
-                  <div key={step} className="flex items-center">
-                    <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                      index + 1 < wizardStep ? 'bg-primary text-primary-foreground' :
-                      index + 1 === wizardStep ? 'bg-primary text-primary-foreground' :
-                      'bg-muted text-muted-foreground'
-                    }`}>
-                      {index + 1 < wizardStep ? <Check className="h-4 w-4" /> : index + 1}
-                    </div>
-                    {index < wizardSteps.length - 1 && (
-                      <div className={`h-0.5 w-8 mx-1 ${
-                        index + 1 < wizardStep ? 'bg-primary' : 'bg-muted'
-                      }`} />
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {/* Step Content */}
-              <div className="min-h-[300px]">
-                {wizardStep === 1 && (
-                  <div className="space-y-4">
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Company Name *</Label>
-                        <Input placeholder="Enter company name" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Industry *</Label>
-                        <Select>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select industry" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {industries.map(industry => (
-                              <SelectItem key={industry} value={industry.toLowerCase()}>
-                                {industry}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Company Website</Label>
-                      <Input placeholder="https://example.com" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Company Address</Label>
-                      <Input placeholder="Enter address" />
-                    </div>
-                  </div>
-                )}
-
-                {wizardStep === 2 && (
-                  <div className="space-y-4">
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Admin First Name *</Label>
-                        <Input placeholder="First name" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Admin Last Name *</Label>
-                        <Input placeholder="Last name" />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Admin Email *</Label>
-                      <Input type="email" placeholder="admin@company.com" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Phone Number</Label>
-                      <Input placeholder="+1 (555) 000-0000" />
-                    </div>
-                    <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
-                      <Checkbox id="sendInvite" defaultChecked />
-                      <Label htmlFor="sendInvite" className="text-sm">Send welcome email with login instructions</Label>
-                    </div>
-                  </div>
-                )}
-
-                {wizardStep === 3 && (
-                  <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground">Select which features to enable for this tenant:</p>
-                    <div className="grid md:grid-cols-2 gap-3">
-                      {features.map(feature => (
-                        <div key={feature.id} className="flex items-center gap-3 p-3 border rounded-lg">
-                          <Checkbox 
-                            id={feature.id}
-                            checked={selectedFeatures.includes(feature.id)}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setSelectedFeatures([...selectedFeatures, feature.id]);
-                              } else {
-                                setSelectedFeatures(selectedFeatures.filter(f => f !== feature.id));
-                              }
-                            }}
-                          />
-                          <div className="flex-1">
-                            <Label htmlFor={feature.id} className="font-medium">{feature.label}</Label>
-                            <p className="text-xs text-muted-foreground">{feature.description}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {wizardStep === 4 && (
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Subscription Plan *</Label>
-                      <Select>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select plan" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {plans.map(plan => (
-                            <SelectItem key={plan} value={plan.toLowerCase()}>
-                              {plan}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid md:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label>Max Users</Label>
-                        <Input type="number" defaultValue="25" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Monthly Messages</Label>
-                        <Input type="number" defaultValue="10000" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Monthly Voice Minutes</Label>
-                        <Input type="number" defaultValue="500" />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Trial Days</Label>
-                      <Input type="number" defaultValue="14" />
-                    </div>
-                  </div>
-                )}
-
-                {wizardStep === 5 && (
-                  <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground">Configure industry-specific settings:</p>
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label>Default Deal Stages</Label>
-                        <Select>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Use industry default" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="default">Industry Default</SelectItem>
-                            <SelectItem value="custom">Custom Stages</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Lead Scoring Model</Label>
-                        <Select>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Standard B2B" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="b2b">Standard B2B</SelectItem>
-                            <SelectItem value="b2c">B2C E-commerce</SelectItem>
-                            <SelectItem value="services">Professional Services</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <div>
-                          <Label>Enable AI Lead Scoring</Label>
-                          <p className="text-xs text-muted-foreground">Use AI to score leads automatically</p>
-                        </div>
-                        <Switch defaultChecked />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {wizardStep === 6 && (
-                  <div className="space-y-4">
-                    <div className="p-4 bg-muted/50 rounded-lg space-y-3">
-                      <h4 className="font-semibold">Review Configuration</h4>
-                      <div className="grid md:grid-cols-2 gap-2 text-sm">
-                        <div><span className="text-muted-foreground">Company:</span> New Company Inc</div>
-                        <div><span className="text-muted-foreground">Industry:</span> Technology</div>
-                        <div><span className="text-muted-foreground">Admin:</span> admin@newcompany.com</div>
-                        <div><span className="text-muted-foreground">Plan:</span> Professional</div>
-                        <div><span className="text-muted-foreground">Features:</span> {selectedFeatures.length} enabled</div>
-                        <div><span className="text-muted-foreground">Trial:</span> 14 days</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 p-3 bg-chart-2/10 border border-chart-2/30 rounded-lg">
-                      <Check className="h-5 w-5 text-chart-2" />
-                      <span className="text-sm">Everything looks good! Click create to provision the tenant.</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <DialogFooter>
-                <div className="flex justify-between w-full">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setWizardStep(Math.max(1, wizardStep - 1))}
-                    disabled={wizardStep === 1}
-                  >
-                    <ChevronLeft className="h-4 w-4 mr-2" />
-                    Back
-                  </Button>
-                  {wizardStep < 6 ? (
-                    <Button onClick={() => setWizardStep(wizardStep + 1)}>
-                      Next
-                      <ChevronRight className="h-4 w-4 ml-2" />
-                    </Button>
-                  ) : (
-                    <Button onClick={() => setShowCreateWizard(false)}>
-                      <Check className="h-4 w-4 mr-2" />
-                      Create Tenant
-                    </Button>
-                  )}
-                </div>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          {/* The previous Create Tenant control opened a 6-step mock wizard whose
+              final button only closed the dialog — nothing was provisioned. Disabled
+              until a real provisioning backend exists (tenants come via onboarding). */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span tabIndex={0}>
+                <Button disabled data-testid="create-tenant-disabled">
+                  <Plus className="h-4 w-4 mr-2" />Create Tenant
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>Coming soon — tenants are provisioned via onboarding for now</TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
@@ -644,10 +372,11 @@ export default function AllTenants() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/admin/tenants/${tenant.tenant_id}`); }}><Eye className="h-4 w-4 mr-2" />Control Panel</DropdownMenuItem>
-                          <DropdownMenuItem><UserCog className="h-4 w-4 mr-2" />Impersonate</DropdownMenuItem>
+                          {/* The items below had no handlers at all — clickable but inert. Disabled until real backends exist. */}
+                          <DropdownMenuItem disabled><UserCog className="h-4 w-4 mr-2" />Impersonate (coming soon)</DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem><Pause className="h-4 w-4 mr-2" />Suspend</DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive"><Trash2 className="h-4 w-4 mr-2" />Delete</DropdownMenuItem>
+                          <DropdownMenuItem disabled><Pause className="h-4 w-4 mr-2" />Suspend (coming soon)</DropdownMenuItem>
+                          <DropdownMenuItem disabled><Trash2 className="h-4 w-4 mr-2" />Delete (coming soon)</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>

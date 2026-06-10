@@ -560,5 +560,10 @@ export default defineConfig({
       testMatch: /rehost-permanent-verify\.spec\.ts/,
       use: { browserName: 'chromium' }, // no setup dep — fresh login; re-host permanence (Supabase storage) vs local preview (RH_BASE/HR_V6_BASE)
     },
+    {
+      name: 'phase5-audit-login',
+      testMatch: /phase5-audit-login\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — env-var creds (WELKIN/COSMIQUE), local preview via E2E_BASE_URL
+    },
   ],
 });

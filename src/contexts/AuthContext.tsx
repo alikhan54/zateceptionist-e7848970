@@ -254,6 +254,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email,
       password,
     });
+    if (!error) {
+      // Audit trail (fire-and-forget). log_audit_event derives user + tenant
+      // server-side from the JWT; this call must never block or fail a login.
+      try {
+        supabase
+          .rpc('log_audit_event', {
+            p_action: 'tenant.login',
+            p_resource: 'auth',
+            p_details: 'User logged in successfully',
+            p_level: 'success',
+          })
+          .then(undefined, () => undefined);
+      } catch {
+        // swallow — audit logging is best-effort by design
+      }
+    }
     return { error: error as Error | null };
   };
 

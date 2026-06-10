@@ -4,9 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
-import { 
+import {
   Building2, Users, Activity, Shield, Zap, TrendingUp, AlertTriangle,
-  Server, Database, Globe, Plus, Settings, RefreshCw, Eye, ArrowRight,
+  Server, Database, Globe, Plus, Settings, RefreshCw, ArrowRight,
   MessageSquare, Target
 } from 'lucide-react';
 import { useAdminStats, useAllTenants, useAuditLogs, useLifecycleSignals, useTenantUsage, LIFECYCLE_CONFIG, LifecycleStage } from '@/hooks/useAdminData';
@@ -418,48 +418,6 @@ export default function AdminPanel() {
         </CardContent>
       </Card>
 
-      {/* Recent Tenants */}
-      {tenants && tenants.length > 0 && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Recent Tenants</CardTitle>
-                <CardDescription>Newly created organizations</CardDescription>
-              </div>
-              <Button variant="outline" size="sm" onClick={() => navigate('/admin/tenants')}>
-                View All
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {tenants.slice(0, 4).map((tenant) => (
-                <div key={tenant.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <Building2 className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium">{tenant.company_name}</p>
-                      <p className="text-sm text-muted-foreground">{tenant.email || tenant.tenant_id}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Badge variant="outline">{tenant.plan || 'Starter'}</Badge>
-                    <span className="text-sm text-muted-foreground">
-                      {tenant.users_count} users
-                    </span>
-                    <Button variant="ghost" size="icon" onClick={() => navigate(`/admin/tenants/${tenant.tenant_id}`)}>
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
