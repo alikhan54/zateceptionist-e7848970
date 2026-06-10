@@ -1,16 +1,20 @@
 # CC Multi-Session Coordination
 
-**Last updated:** 2026-06-10 (Master-Admin Phase 4 IN PROGRESS — activation command + real per-tenant usage; base `a4070b3`; prior: Phase 3 `cabb6b7`, 2C `c463e32`, 2B `a079a18`, 2A `c643982`)
+**Last updated:** 2026-06-10 (Master-Admin Phase 4 MERGED — `4c58524` cherry-picked to main via isolated temp worktree; Activation Command + real per-tenant usage RPC migration 44; prior: Phase 3 `cabb6b7`, 2C `c463e32`, 2B `a079a18`, 2A `c643982`)
 
 ---
 
-## 🔭 Master-Admin Phase 4 (Activation Command + real per-tenant usage) — IN PROGRESS 2026-06-10
+## 🚢 Master-Admin Phase 4 (Activation Command + real per-tenant usage) — MERGED 2026-06-10
 
-**Session:** Master-Admin-Phase4. Branch `wt/phase4` (worktree `D:/420-system/frontend-4`), base `origin/main` @ `a4070b3`. **Additive only.**
+**Session:** Master-Admin-Phase4. Cherry-picked `4c58524` onto `origin/main` (was `b03bc1b`) via an **isolated temp worktree** (`../merge-p4`); work branch `wt/phase4` @ `5919e43` (worktree `D:/420-system/frontend-4`, both removed). **6 files, additive; ONE new read-only RPC (migration 44).**
 
-**Plan:** ONE new read-only RPC `master_admin_tenant_usage()` (migration **`44-master-admin-tenant-usage.sql`** — claimed; SECURITY DEFINER + `is_master_admin()` guard, 0 rows for non-admins, one GROUP-BY scan per usage table) feeding a new **Activation Command** view at `/admin/tenants?view=activation` (chase-list of never_activated/at_risk/churned tenants with real contact + mailto) plus a real **Platform Pulse** strip and honest **Revenue Path funnel** on `Panel.tsx`, and a **Usage (7d)** column / usage card on `Tenants.tsx` + `TenantDetail.tsx`.
+**Shipped:** NEW RPC `master_admin_tenant_usage()` (migration `44-master-admin-tenant-usage.sql`, applied to prod via 5432 — STABLE SECURITY DEFINER + `is_master_admin()` guard, 0 rows for non-admins; one GROUP-BY scan per usage table with the **sampling-verified** tenant_id format: conversations/messages = `tenant_config.id` UUID, sales_leads/appointments = `tenant_config.tenant_id` SLUG — resolves the CLAUDE.md §2-vs-§6 `messages` contradiction). `useAdminData.ts` new `useTenantUsage()`. **Activation Command** view at `/admin/tenants?view=activation` (never_activated/at_risk/churned chase-list with best owner contact + mailto/copy, days-dormant sort, stage filters, honest "No users yet"; reached via Tenants header button + clickable Panel attention cohorts — no new route). `Panel.tsx`: honest **Revenue Path** funnel (Signed up → Activated → Paying **0**, "no payment integration" truth + 8 paid-plan tenants listed as uncollected) + real **Platform Pulse** (7d conversations/messages/leads/appointments). `Tenants.tsx`: **Usage (7d)** column. `TenantDetail.tsx`: per-tenant usage summary card.
 
-**Owns (additive):** `src/hooks/useAdminData.ts` (new `useTenantUsage`), `src/pages/admin/{Panel,Tenants,TenantDetail}.tsx`, NEW `src/pages/admin/Activation.tsx`, NEW `supabase/migrations/44-master-admin-tenant-usage.sql`. **No shared-file edits** — App.tsx/NavigationSidebar/TenantContext untouched (activation reachable via `?view=activation`, zero new route). Migration **44 CLAIMED**.
+**Verification:** merged tree (origin/main `b03bc1b` + Phase 4) `tsc --noEmit` **0 errors** + `vite build` clean. DB cross-checks (`.tmp_phase4/verify_phase4.py`, auth-simulated) **22/22 PASS**: usage RPC 45 rows for master, every `rpc==raw` (zate 19/316/627/18, cosmique 0/0/4/39, tend 0s); funnel signed=45 / activated=27 / paying=0 / 8 uncollected paid plans; lifecycle 45 rows (18 never_activated / 3 at_risk / 5 churned = 26 attention, 16/26 reachable by email). **Isolation:** cosmique → `master_admin_tenant_usage` **0 rows** + `master_admin_all_tenants` 0 rows.
+
+**⚠ Gap (same as 2A/2B/2C/3):** master-admin *visual* E2E not run — `zatesystems7@gmail.com` (the only master_admin) password not in the creds file. Data + RPC + isolation are DB-proven (the exact RPC the UI calls); founder verifies the rendered panel on their own live login after Publish.
+
+**Owns:** `src/hooks/useAdminData.ts`, `src/pages/admin/{Panel,Tenants,TenantDetail,Activation}.tsx`, migration 44. No shared-file edits (App.tsx/NavigationSidebar/TenantContext untouched). **UI live after Lovable Publish.**
 
 ---
 
