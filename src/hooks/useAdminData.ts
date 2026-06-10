@@ -256,6 +256,41 @@ export function useLifecycleSignals() {
   });
 }
 
+// ============================================================================
+// Phase 4 — real per-tenant usage (read-only). Calls master_admin_tenant_usage()
+// (migration 44): SECURITY DEFINER + is_master_admin() guard — 0 rows for
+// non-admins. One row per tenant with real counts from the usage tables
+// (correct SLUG/UUID join per table verified in Phase 4.0).
+// ============================================================================
+export interface TenantUsage {
+  tenant_id: string;
+  conversations_total: number; conversations_7d: number; last_conversation_at: string | null;
+  messages_total: number; messages_7d: number; last_message_at: string | null;
+  leads_total: number; leads_7d: number; last_lead_at: string | null;
+  appointments_total: number; appointments_7d: number; last_appointment_at: string | null;
+}
+
+export function useTenantUsage() {
+  return useQuery({
+    queryKey: ['admin', 'tenant-usage'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('master_admin_tenant_usage');
+      if (error) throw error;
+      return (data || []).map((r: TenantUsage) => ({
+        ...r,
+        conversations_total: Number(r.conversations_total) || 0,
+        conversations_7d: Number(r.conversations_7d) || 0,
+        messages_total: Number(r.messages_total) || 0,
+        messages_7d: Number(r.messages_7d) || 0,
+        leads_total: Number(r.leads_total) || 0,
+        leads_7d: Number(r.leads_7d) || 0,
+        appointments_total: Number(r.appointments_total) || 0,
+        appointments_7d: Number(r.appointments_7d) || 0,
+      })) as TenantUsage[];
+    },
+  });
+}
+
 // Mutation to create audit log
 export function useCreateAuditLog() {
   const queryClient = useQueryClient();

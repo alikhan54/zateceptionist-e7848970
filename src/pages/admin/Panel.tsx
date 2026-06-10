@@ -7,9 +7,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Building2, Users, Activity, Shield, Zap, TrendingUp, AlertTriangle,
   Server, Database, Globe, Plus, Settings, RefreshCw, Eye, ArrowRight,
-  MessageSquare
+  MessageSquare, Target
 } from 'lucide-react';
-import { useAdminStats, useAllTenants, useAuditLogs, useLifecycleSignals, LIFECYCLE_CONFIG, LifecycleStage } from '@/hooks/useAdminData';
+import { useAdminStats, useAllTenants, useAuditLogs, useLifecycleSignals, useTenantUsage, LIFECYCLE_CONFIG, LifecycleStage } from '@/hooks/useAdminData';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -19,6 +19,7 @@ export default function AdminPanel() {
   const { data: tenants, isLoading: tenantsLoading } = useAllTenants();
   const { data: recentLogs, isLoading: logsLoading } = useAuditLogs({ limit: 5 });
   const { data: lifecycle } = useLifecycleSignals();
+  const { data: usage } = useTenantUsage();
 
   // Calculate plan distribution from real tenant data
   const planDistribution = tenants ? [
@@ -47,6 +48,18 @@ export default function AdminPanel() {
   // Audit logging is effectively frozen (newest event is months old) — flag it honestly.
   const newestLog = recentLogs && recentLogs.length > 0 ? new Date(recentLogs[0].created_at) : null;
   const logsAreStale = newestLog ? (Date.now() - newestLog.getTime() > 14 * 24 * 60 * 60 * 1000) : false;
+
+  // 4.C funnel — activated = has ever logged in (stage != never_activated). Honest:
+  // paying counts COLLECTED revenue; there is no payment integration yet, so 0.
+  const signedUp = lifecycleTotal;
+  const activatedCount = lifecycleTotal - (lifecycleCounts['never_activated'] || 0);
+  const payingCount = 0; // no payment integration — $0 collected (subscription rows are seed/test)
+  const paidAssigned = (tenants || []).filter((t) => (t.monthly_value || 0) > 0);
+  // 4.B pulse — real platform-wide 7d sums from master_admin_tenant_usage()
+  const pulse = (usage || []).reduce((acc, u) => ({
+    conv: acc.conv + u.conversations_7d, msg: acc.msg + u.messages_7d,
+    leads: acc.leads + u.leads_7d, appts: acc.appts + u.appointments_7d,
+  }), { conv: 0, msg: 0, leads: 0, appts: 0 });
 
   const statCards = [
     { label: 'Active Tenants', value: stats?.activeTenants || 0, icon: Building2, color: 'text-blue-500', prefix: '', suffix: '' },
@@ -124,6 +137,81 @@ export default function AdminPanel() {
         ))}
       </div>
 
+      {/* Revenue Path funnel + Platform Pulse — honest cold-start economics and
+          real platform-wide 7-day activity. */}
+      {lifecycleTotal > 0 && (
+        <div className="grid lg:grid-cols-2 gap-6">
+          {/* Revenue Path */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Revenue Path</CardTitle>
+              <CardDescription>Signup → activation → paying · the honest funnel</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                {[
+                  { label: 'Signed up', value: signedUp, pct: 100, color: '#3b82f6' },
+                  { label: 'Activated', value: activatedCount, pct: signedUp ? Math.round((activatedCount / signedUp) * 100) : 0, color: '#16a34a' },
+                  { label: 'Paying', value: payingCount, pct: 0, color: '#9ca3af' },
+                ].map((step) => (
+                  <div key={step.label}>
+                    <div className="flex items-center justify-between text-sm mb-1">
+                      <span className="font-medium">{step.label}</span>
+                      <span className="text-muted-foreground">{step.value}{step.label !== 'Signed up' ? ` · ${step.pct}%` : ''}</span>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                      <div style={{ width: `${step.pct}%`, backgroundColor: step.color }} className="h-full" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Activated = at least one user login. Paying = collected via payments — none yet (no payment integration).
+              </p>
+              {paidAssigned.length > 0 && (
+                <div className="border-t pt-3">
+                  <p className="text-xs font-medium mb-2">Assigned a paid plan · $0 collected</p>
+                  <div className="space-y-1.5">
+                    {paidAssigned.map((t) => (
+                      <div key={t.tenant_id} className="flex items-center justify-between text-sm">
+                        <span className="truncate max-w-[160px]">{t.company_name}</span>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="capitalize">{t.plan}</Badge>
+                          <span className="text-muted-foreground">${(t.monthly_value || 0).toLocaleString()}/mo</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Platform Pulse */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Platform Pulse — this week</CardTitle>
+              <CardDescription>Real platform-wide activity in the last 7 days</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  { label: 'Conversations', value: pulse.conv },
+                  { label: 'Messages', value: pulse.msg },
+                  { label: 'Leads', value: pulse.leads },
+                  { label: 'Appointments', value: pulse.appts },
+                ].map((m) => (
+                  <div key={m.label} className="rounded-lg border p-4">
+                    <p className="text-3xl font-bold">{m.value.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{m.label}</p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Tenant Lifecycle — real signals from derive_lifecycle_signals. Answers
           "who needs attention?" not just "how many tenants". */}
       {lifecycleTotal > 0 && (
@@ -134,9 +222,14 @@ export default function AdminPanel() {
                 <CardTitle>Tenant Lifecycle</CardTitle>
                 <CardDescription>Derived from real sign-in activity &amp; onboarding · who needs attention</CardDescription>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => navigate('/admin/tenants')}>
-                View tenants <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="default" size="sm" onClick={() => navigate('/admin/tenants?view=activation')} data-testid="open-activation-command">
+                  <Target className="mr-2 h-4 w-4" />Open Activation Command
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => navigate('/admin/tenants')}>
+                  View tenants <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -147,13 +240,22 @@ export default function AdminPanel() {
                 { stage: 'at_risk' as LifecycleStage, label: 'At risk' },
                 { stage: 'churned' as LifecycleStage, label: 'Churned' },
               ]).map(({ stage, label }) => (
-                <div key={stage} className="rounded-lg border p-3">
+                <button
+                  key={stage}
+                  type="button"
+                  onClick={() => navigate('/admin/tenants?view=activation')}
+                  className="group rounded-lg border p-3 text-left transition-colors hover:bg-muted/50 hover:border-primary/40"
+                  data-testid={`attention-${stage}`}
+                >
                   <div className="flex items-center gap-2">
                     <AlertTriangle className={`h-4 w-4 ${stage === 'never_activated' ? 'text-red-500' : stage === 'at_risk' ? 'text-orange-500' : 'text-muted-foreground'}`} />
                     <span className="text-2xl font-bold">{lifecycleCounts[stage] || 0}</span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">{label}</p>
-                </div>
+                  <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                    {label}
+                    <ArrowRight className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />
+                  </p>
+                </button>
               ))}
             </div>
             {/* Proportional bar across all stages */}

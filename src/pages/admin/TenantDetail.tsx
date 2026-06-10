@@ -9,10 +9,11 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Loader2, Blocks, Palette, CreditCard, Building2, ShieldAlert } from 'lucide-react';
+import { ArrowLeft, Loader2, Blocks, Palette, CreditCard, Building2, ShieldAlert, Activity, MessageSquare, Target, CalendarCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { formatDistanceToNow } from 'date-fns';
 import {
-  useTenantDetail, useUpdateTenantModules, useUpdateWhiteLabel, useUpdatePlan,
+  useTenantDetail, useUpdateTenantModules, useUpdateWhiteLabel, useUpdatePlan, useTenantUsage,
 } from '@/hooks/useAdminData';
 
 // Each product module -> the features.<X_module> flag the tenant sidebar / dashboard reads,
@@ -33,6 +34,8 @@ export default function TenantDetail() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { data: detail, isLoading } = useTenantDetail(tenantId);
+  const { data: usage } = useTenantUsage();
+  const usageRow = (usage || []).find((r) => r.tenant_id === tenantId);
 
   const updateModules = useUpdateTenantModules();
   const updateWhiteLabel = useUpdateWhiteLabel();
@@ -128,6 +131,31 @@ export default function TenantDetail() {
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Usage summary — real per-tenant activity (master_admin_tenant_usage).
+          Shows zeros honestly when the tenant has no activity yet. */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Conversations', icon: MessageSquare, total: usageRow?.conversations_total ?? 0, week: usageRow?.conversations_7d ?? 0, last: usageRow?.last_conversation_at ?? null },
+          { label: 'Messages', icon: Activity, total: usageRow?.messages_total ?? 0, week: usageRow?.messages_7d ?? 0, last: usageRow?.last_message_at ?? null },
+          { label: 'Leads', icon: Target, total: usageRow?.leads_total ?? 0, week: usageRow?.leads_7d ?? 0, last: usageRow?.last_lead_at ?? null },
+          { label: 'Appointments', icon: CalendarCheck, total: usageRow?.appointments_total ?? 0, week: usageRow?.appointments_7d ?? 0, last: usageRow?.last_appointment_at ?? null },
+        ].map((s) => (
+          <Card key={s.label}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <s.icon className="h-4 w-4 text-muted-foreground" />
+                {s.week > 0 && <span className="text-xs text-green-600">+{s.week} this week</span>}
+              </div>
+              <p className="text-2xl font-bold mt-2">{s.total.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">{s.label}</p>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                {s.last ? `last ${formatDistanceToNow(new Date(s.last), { addSuffix: true })}` : 'no activity yet'}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       <Tabs defaultValue="modules">

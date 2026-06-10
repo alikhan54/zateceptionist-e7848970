@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -46,12 +46,13 @@ import {
   Building2, Plus, Search, Filter, MoreHorizontal, Users, MessageSquare,
   Phone, Eye, UserCog, Pause, Trash2, ChevronRight, ChevronLeft, Check,
   ArrowUpDown, Download, RefreshCw, Calendar, Activity, CreditCard, Settings,
-  AlertTriangle, TrendingUp
+  AlertTriangle, TrendingUp, Target
 } from 'lucide-react';
-import { useAllTenants, useUpdateTenantStatus, useCreateAuditLog, useLifecycleSignals, LIFECYCLE_CONFIG, LifecycleStage, TenantData } from '@/hooks/useAdminData';
+import { useAllTenants, useUpdateTenantStatus, useCreateAuditLog, useLifecycleSignals, useTenantUsage, LIFECYCLE_CONFIG, LifecycleStage, TenantData } from '@/hooks/useAdminData';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
+import AdminActivation from './Activation';
 
 const industries = ['Technology', 'Healthcare', 'Retail', 'Legal', 'Education', 'Manufacturing', 'Finance', 'Real Estate'];
 const plans = ['Starter', 'Growth', 'Professional', 'Enterprise'];
@@ -71,9 +72,11 @@ const features = [
 export default function AllTenants() {
   const { authUser } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { data: tenants, isLoading, refetch } = useAllTenants();
   const { data: lifecycle } = useLifecycleSignals();
+  const { data: usage } = useTenantUsage();
   const updateStatus = useUpdateTenantStatus();
   const createLog = useCreateAuditLog();
 
@@ -81,6 +84,8 @@ export default function AllTenants() {
   // derive_lifecycle_signals RPC. Powers the real Last Activity column + the
   // Lifecycle column/filter. Tenants without a signal fall back gracefully.
   const lifecycleMap = new Map((lifecycle || []).map((l) => [l.tenant_id, l]));
+  // Map of tenant_id -> real 7d/total usage counts, from master_admin_tenant_usage.
+  const usageMap = new Map((usage || []).map((u) => [u.tenant_id, u]));
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -168,6 +173,22 @@ export default function AllTenants() {
     );
   };
 
+  // Combined 7-day activity across the four usage tables (real counts from
+  // master_admin_tenant_usage). Honest muted 0 when there's no recent activity.
+  const renderUsage7d = (tenantId: string) => {
+    const u = usageMap.get(tenantId);
+    const sum = u ? (u.conversations_7d + u.messages_7d + u.leads_7d + u.appointments_7d) : 0;
+    if (sum === 0) return <span className="text-muted-foreground">0</span>;
+    return (
+      <span
+        className="font-medium"
+        title={`Conversations ${u!.conversations_7d} · Messages ${u!.messages_7d} · Leads ${u!.leads_7d} · Appointments ${u!.appointments_7d} (last 7 days)`}
+      >
+        {sum}
+      </span>
+    );
+  };
+
   const wizardSteps = [
     'Company Details',
     'Admin User',
@@ -176,6 +197,10 @@ export default function AllTenants() {
     'Industry Setup',
     'Review',
   ];
+
+  // Activation Command view — reachable at /admin/tenants?view=activation (no new
+  // route, zero App.tsx/sidebar edits). All hooks above run unconditionally first.
+  if (searchParams.get('view') === 'activation') return <AdminActivation />;
 
   return (
     <div className="space-y-6">
@@ -186,6 +211,10 @@ export default function AllTenants() {
           <p className="text-muted-foreground mt-1">Manage all organizations on the platform</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => navigate('/admin/tenants?view=activation')} data-testid="open-activation">
+            <Target className="h-4 w-4 mr-2" />
+            Activation
+          </Button>
           <Button variant="outline">
             <Download className="h-4 w-4 mr-2" />
             Export
@@ -560,6 +589,7 @@ export default function AllTenants() {
                 <TableHead>Plan</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-center">Users</TableHead>
+                <TableHead className="text-center" title="Combined conversations, messages, leads & appointments in the last 7 days">Usage (7d)</TableHead>
                 <TableHead>Lifecycle</TableHead>
                 <TableHead>Last Activity</TableHead>
                 <TableHead className="text-right">Plan Value</TableHead>
@@ -588,6 +618,7 @@ export default function AllTenants() {
                   <TableCell><Badge variant="outline" className="capitalize">{tenant.plan}</Badge></TableCell>
                   <TableCell>{getStatusBadge(tenant.status)}</TableCell>
                   <TableCell className="text-center">{tenant.users_count || 0}</TableCell>
+                  <TableCell className="text-center">{renderUsage7d(tenant.tenant_id)}</TableCell>
                   <TableCell>{getLifecycleBadge(tenant.tenant_id)}</TableCell>
                   <TableCell>{renderLastActivity(tenant.tenant_id)}</TableCell>
                   <TableCell className="text-right font-medium">
