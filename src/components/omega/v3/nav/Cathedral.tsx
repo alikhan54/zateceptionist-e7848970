@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   BarChart3,
@@ -10,6 +10,7 @@ import {
   Megaphone,
   Phone,
   Settings,
+  ShieldCheck,
   TrendingUp,
   UserPlus,
   Users,
@@ -20,6 +21,14 @@ import {
   type PulseSection,
 } from "./sectionsRegistry";
 import { usePulseData } from "./usePulseData";
+// VERTICAL-FIRST-UI (tend pilot): telehealth-only hero card + demoted secondary
+// grid. Everything below that touches these is gated on isTelehealth — the
+// non-telehealth render path is unchanged.
+import { useTenant } from "@/contexts/TenantContext";
+import { type TendPulseStats } from "@/lib/tend/tendPulse";
+
+/** Pulse cards demoted to the "Growth & Ops · secondary" grid for telehealth. */
+const TEND_DEMOTED_IDS = new Set(["sales", "marketing", "hr", "comms"]);
 
 interface CathedralProps {
   isOpen: boolean;
@@ -261,14 +270,75 @@ function PulseCard({ section, index, cathedralOpen, onClick }: PulseCardProps) {
   );
 }
 
+// ---- Tend hero card (VERTICAL-FIRST-UI pilot — telehealth only) ----------
+
+interface TendHeroCardProps {
+  stats: TendPulseStats;
+  cathedralOpen: boolean;
+  onOpenTriage: () => void;
+}
+
+/** Dark-teal "Tend Care · Safety & Triage" hero — rendered immediately after
+ *  the OMEGA card for telehealth tenants. Links to /tend-ops/triage. */
+function TendHeroCard({ stats, cathedralOpen, onOpenTriage }: TendHeroCardProps) {
+  return (
+    <button
+      type="button"
+      className="pulse-card pulse-card-tend-hero"
+      onClick={onOpenTriage}
+      aria-label="Tend Care — Safety and Triage"
+      data-testid="tend-hero-card"
+    >
+      <span className="pulse-card-icon">
+        <ShieldCheck size={22} strokeWidth={1.6} />
+      </span>
+      <span className="pulse-card-name">Tend Care · Safety &amp; Triage</span>
+      <span className="pulse-card-meta">
+        {stats.isLive ? "live · crisis-screened on every message" : "synthetic preview · tend tables empty"}
+      </span>
+      <span className="pulse-card-divider" aria-hidden />
+      <ul className="pulse-card-metrics">
+        <li className="pulse-metric">
+          <span className="num">
+            <CountUpValue value={String(stats.triaged)} trigger={cathedralOpen} />
+          </span>
+          <span className="lbl">triaged</span>
+        </li>
+        <li className="pulse-metric warning">
+          <span className="num">
+            <CountUpValue value={String(stats.needsClinician)} trigger={cathedralOpen} />
+          </span>
+          <span className="lbl">need a clinician</span>
+        </li>
+        <li className="pulse-metric warning">
+          <span className="num">
+            <CountUpValue value={String(stats.crisis24h)} trigger={cathedralOpen} />
+          </span>
+          <span className="lbl">crisis · 24h</span>
+        </li>
+      </ul>
+      <span className="pulse-card-agentline">
+        <span className="pulse-card-agentline-dot" aria-hidden />
+        Open triage →
+      </span>
+      <span className="pulse-card-pill pulse-pill-live">your layer</span>
+    </button>
+  );
+}
+
 // ---- Cathedral ---------------------------------------------------------
 
 export function Cathedral({ isOpen, onClose }: CathedralProps) {
   const navigate = useNavigate();
 
+  // VERTICAL-FIRST-UI (tend pilot): telehealth-only gate. false for every
+  // other tenant → all tend branches below are dead and the render output
+  // is identical to before this change.
+  const { isTelehealth } = useTenant();
+
   // Phase 2B: per-tenant data via Supabase. Falls back silently to hardcoded
   // values when queries fail or columns don't exist.
-  const { sections: SECTIONS, heroStats: CATHEDRAL_STATS } = usePulseData(isOpen);
+  const { sections: SECTIONS, heroStats: CATHEDRAL_STATS, tendHero } = usePulseData(isOpen);
 
   // Lock background scroll while open (preserved from Phase 2A).
   useEffect(() => {
@@ -337,27 +407,72 @@ export function Cathedral({ isOpen, onClose }: CathedralProps) {
         {LAYER_ORDER.map((layer) => {
           const sections = grouped[layer];
           if (sections.length === 0) return null;
+
+          const renderCard = (section: PulseSection) => {
+            const idx = cardIdx++;
+            const click = () => {
+              if (!section.enabled) return;
+              navigate(section.route);
+              onClose();
+            };
+            return (
+              <PulseCard
+                key={section.id}
+                section={section}
+                index={idx}
+                cathedralOpen={isOpen}
+                onClick={click}
+              />
+            );
+          };
+
+          // VERTICAL-FIRST-UI (tend pilot): for telehealth the operations layer
+          // splits — OMEGA (+ the Tend hero card right after it) and the other
+          // primary cards first, then Sales/Marketing/HR/Comms demoted beneath a
+          // "Growth & Ops · secondary" divider. Non-telehealth: the original
+          // render below runs unchanged.
+          if (isTelehealth && layer === "operations") {
+            const primary = sections.filter((s) => !TEND_DEMOTED_IDS.has(s.id));
+            const demoted = sections.filter((s) => TEND_DEMOTED_IDS.has(s.id));
+            return (
+              <section className={`pulse-cath-layer pulse-layer-${layer}`} key={layer}>
+                <div className="pulse-layer-label">{LAYER_LABELS[layer]}</div>
+                <div className="pulse-grid">
+                  {primary.map((section) => (
+                    <Fragment key={section.id}>
+                      {renderCard(section)}
+                      {section.id === "omega" && tendHero ? (
+                        <TendHeroCard
+                          stats={tendHero}
+                          cathedralOpen={isOpen}
+                          onOpenTriage={() => {
+                            navigate("/tend-ops/triage");
+                            onClose();
+                          }}
+                        />
+                      ) : null}
+                    </Fragment>
+                  ))}
+                </div>
+                {demoted.length > 0 ? (
+                  <>
+                    <div className="pulse-layer-label pulse-tend-secondary-label">
+                      — Growth &amp; Ops · secondary
+                    </div>
+                    <div className="pulse-grid pulse-tend-secondary">
+                      {demoted.map((section) => renderCard(section))}
+                    </div>
+                  </>
+                ) : null}
+              </section>
+            );
+          }
+
           return (
             <section className={`pulse-cath-layer pulse-layer-${layer}`} key={layer}>
               <div className="pulse-layer-label">{LAYER_LABELS[layer]}</div>
               <div className="pulse-grid">
-                {sections.map((section) => {
-                  const idx = cardIdx++;
-                  const click = () => {
-                    if (!section.enabled) return;
-                    navigate(section.route);
-                    onClose();
-                  };
-                  return (
-                    <PulseCard
-                      key={section.id}
-                      section={section}
-                      index={idx}
-                      cathedralOpen={isOpen}
-                      onClick={click}
-                    />
-                  );
-                })}
+                {sections.map((section) => renderCard(section))}
               </div>
             </section>
           );

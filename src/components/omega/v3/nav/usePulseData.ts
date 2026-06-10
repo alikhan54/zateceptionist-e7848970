@@ -28,12 +28,19 @@ import {
   type SectionVital,
   type Vital,
 } from "./sectionsRegistry";
+// VERTICAL-FIRST-UI (tend pilot): telehealth-only Pulse stats. The fetch is
+// gated on industry === 'telehealth' below — non-telehealth tenants fire zero
+// telehealth queries and their PulseData is unchanged (tendHero stays undefined).
+import { fetchTendPulseStats, TEND_SYNTHETIC_STATS, type TendPulseStats } from "@/lib/tend/tendPulse";
 
 export interface PulseData {
   sections: PulseSection[];
   heroStats: CathedralStat[];
   loading: boolean;
   error: string | null;
+  /** VERTICAL-FIRST-UI: set ONLY for telehealth tenants — feeds the Tend hero
+   *  card + vertical stat row in the Cathedral. undefined for everyone else. */
+  tendHero?: TendPulseStats;
 }
 
 // ---------- helpers --------------------------------------------------------
@@ -872,6 +879,28 @@ function applyUpdates(
   }));
 }
 
+// ---------- VERTICAL-FIRST-UI (tend pilot) ---------------------------------
+
+/** Telehealth hero stat row: intakes today · needs a clinician · crisis 24h ·
+ *  agents healthy (the 4th slot is passed through from the platform's computed
+ *  heroStats so its behavior — "—"/notConfigured until CORTEX is wired — stays
+ *  identical to every other tenant). Synthetic fallback mirrors the cockpit. */
+function buildTendHeroStats(
+  tend: TendPulseStats,
+  base: CathedralStat[],
+): CathedralStat[] {
+  const agents = base.find((s) => s.label === "Agents healthy") ?? {
+    label: "Agents healthy", value: "—", delta: "—", notConfigured: true,
+  };
+  const liveDelta = tend.isLive ? "live · tend" : "synthetic preview";
+  return [
+    { label: "Intakes today", value: String(tend.intakesToday), delta: liveDelta },
+    { label: "Needs a clinician", value: String(tend.needsClinician), delta: tend.isLive ? "surfaced live" : "synthetic preview" },
+    { label: "Crisis · 24h", value: String(tend.crisis24h), delta: tend.isLive ? "last 24h" : "synthetic preview" },
+    agents,
+  ];
+}
+
 // ---------- the hook -------------------------------------------------------
 
 export function usePulseData(isOpen: boolean): PulseData {
@@ -902,12 +931,30 @@ export function usePulseData(isOpen: boolean): PulseData {
     const channelsCount = deriveChannelsActive(tenantConfig); // Phase 2B.1
     const currency = tenantConfig?.currency || ""; // Batch 1 — savings vital (no AED fallback; fmtMoney handles empty)
 
-    fetchAllMetrics({ tenantSlug, tenantUuid, tenantIndustry, channelsCount, currency })
-      .then(({ updates, heroStats, batch1 }) => {
+    // VERTICAL-FIRST-UI (tend pilot): telehealth tenants ALSO fetch their
+    // vertical stats, in parallel with the main batch. fetchTendPulseStats
+    // never rejects (internal catch → cockpit-parity synthetic fallback), so
+    // it cannot break the main pipeline. Everyone else: resolves null, zero queries.
+    const tendPromise: Promise<TendPulseStats | null> =
+      tenantIndustry === "telehealth"
+        ? withTimeout(fetchTendPulseStats(tenantSlug), TIMEOUT_MS).catch(() => null)
+        : Promise.resolve(null);
+
+    Promise.all([
+      fetchAllMetrics({ tenantSlug, tenantUuid, tenantIndustry, channelsCount, currency }),
+      tendPromise,
+    ])
+      .then(([{ updates, heroStats: baseHeroStats, batch1 }, tendStats]) => {
         // Batch 1: overlay the count-based metrics, THEN enrich operations/omega/
         // analytics with their resolved SectionVitals (headline/vitals/agentLine/pill).
         const sections = applyBatch1(applyUpdates(FALLBACK_SECTIONS, updates), batch1);
-        setData({ sections, heroStats, loading: false, error: null });
+        // Telehealth: vertical-relevant hero stat row (intakes / needs-a-clinician /
+        // crisis 24h) + keep the platform's "Agents healthy" slot as-is. Built here,
+        // bypassing the label-matching block (its labels don't exist for tend).
+        const heroStats = tendStats
+          ? buildTendHeroStats(tendStats, baseHeroStats)
+          : baseHeroStats;
+        setData({ sections, heroStats, tendHero: tendStats ?? undefined, loading: false, error: null });
         console.info(
           `[Pulse] fetched — ${updates.length}/${updates.length + (FALLBACK_SECTIONS.reduce((n, s) => n + s.metrics.length, 0) - updates.length)} metrics overlaid; rest fell back to hardcoded.`,
         );
@@ -917,9 +964,16 @@ export function usePulseData(isOpen: boolean): PulseData {
           "[Pulse] fetch batch failed, using full hardcoded fallback:",
           err instanceof Error ? err.message : String(err),
         );
+        // VERTICAL-FIRST-UI: telehealth keeps its vertical hero labels even on a
+        // total batch failure (cockpit-parity synthetic) — never "Active leads".
+        const tendFallback =
+          tenantIndustry === "telehealth" ? TEND_SYNTHETIC_STATS : undefined;
         setData({
           sections: FALLBACK_SECTIONS,
-          heroStats: FALLBACK_STATS,
+          heroStats: tendFallback
+            ? buildTendHeroStats(tendFallback, FALLBACK_STATS)
+            : FALLBACK_STATS,
+          tendHero: tendFallback,
           loading: false,
           error: err instanceof Error ? err.message : "fetch failed",
         });

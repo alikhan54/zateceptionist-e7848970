@@ -992,6 +992,17 @@ export function NavigationSidebar() {
     </SidebarGroup>
   );
 
+  // VERTICAL-FIRST-UI (tend pilot): open/force-open state for the telehealth
+  // "Growth & Ops" group. Fresh sectionKey ("growth-ops" — NOT in the route
+  // auto-expand map) → collapsed by default; force-opens (like every existing
+  // section) when the current route lives inside it. Computed only for
+  // telehealth; zero impact elsewhere.
+  const growthOpsUrls = isTelehealth
+    ? [salesSection, marketingSection, hrSection, operationsSection, communicationsSection]
+        .flatMap((s) => s.items.flatMap((i) => [i.url, ...(i.children?.map((c) => c.url) || [])]))
+    : [];
+  const growthOpsOpen = isTelehealth && (openSections["growth-ops"] || isInSection(growthOpsUrls));
+
   return (
     <Sidebar collapsible="icon" className="border-r" style={accentStyle}>
       {/* Header */}
@@ -1069,7 +1080,85 @@ export function NavigationSidebar() {
           </>
         )}
 
-        {!isMasterAdmin && !renderAccountingMinimal && (
+        {/* ============================================================
+            VERTICAL-FIRST-UI (tend pilot) — telehealth-ONLY sidebar order:
+            the tenant's vertical leads. 1· pinned Tend section (distinct
+            teal "your layer" container) → 2· OMEGA → 3· MAIN → 4· Growth &
+            Ops (Sales/Marketing/HR/Operations/Communications, ONE group,
+            collapsed by default; the five sections keep their own labels,
+            featureKeys and canAccessSection gates inside it) → 5· Analytics/
+            Settings at the bottom as before. Nothing is deleted or renamed;
+            non-telehealth tenants take the unchanged branch below.
+            ============================================================ */}
+        {!isMasterAdmin && !renderAccountingMinimal && isTelehealth && (
+        <>
+        {/* Staff Section - Only for staff (same gates as the standard path) */}
+        {authUser?.role === "staff" && <StaticSection section={staffSection} />}
+        {authUser?.role === "staff" && <CollapsibleSection section={myHRSection} sectionKey="my-hr" />}
+
+        {/* 1 · PINNED VERTICAL — Tend Operators, the tenant's own layer */}
+        {canAccessSection(tendOpsSection) && (
+          <div
+            className="rounded-lg border border-teal-500/35 bg-teal-500/10 pb-1"
+            data-testid="tend-pinned-vertical"
+          >
+            <StaticSection section={tendOpsSection} />
+          </div>
+        )}
+
+        {/* 2 · OMEGA — prominent, immediately after the vertical */}
+        <StaticSection section={{
+          label: "AI Command",
+          items: [{ title: "OMEGA", url: "/omega", icon: Brain }],
+        }} />
+
+        {/* 3 · MAIN */}
+        {authUser?.role !== "staff" && <CollapsibleSection section={mainSection} sectionKey="main" />}
+
+        {/* 4 · GROWTH & OPS — one collapsed group holding the five AI/dept sections */}
+        {collapsed ? (
+          /* icon rail: group chrome is meaningless at 3rem — render the five
+             sections exactly as the standard path does */
+          <>
+            {canAccessSection(salesSection) && <CollapsibleSection section={salesSection} sectionKey="sales" />}
+            {canAccessSection(marketingSection) && <CollapsibleSection section={marketingSection} sectionKey="marketing" />}
+            {canAccessSection(hrSection) && <CollapsibleSection section={hrSection} sectionKey="hr" />}
+            {canAccessSection(operationsSection) && <CollapsibleSection section={operationsSection} sectionKey="operations" />}
+            {canAccessSection(communicationsSection) && <CollapsibleSection section={communicationsSection} sectionKey="communications" />}
+          </>
+        ) : (
+          <Collapsible open={growthOpsOpen} onOpenChange={() => toggleSection("growth-ops")}>
+            <SidebarGroup>
+              <CollapsibleTrigger
+                className="block w-full text-left min-h-[44px] md:min-h-0 outline-none rounded-md focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+                data-testid="growth-ops-trigger"
+              >
+                <SidebarGroupLabel className="cursor-pointer hover:bg-sidebar-accent/50 rounded-md px-2 py-1.5 flex items-center justify-between transition-colors">
+                  <span className="text-xs font-semibold uppercase tracking-wider">Growth &amp; Ops</span>
+                  <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", growthOpsOpen && "rotate-180")} />
+                </SidebarGroupLabel>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="animate-accordion-down">
+                <div className="ml-2 border-l border-sidebar-border/60 pl-1">
+                  {canAccessSection(salesSection) && <CollapsibleSection section={salesSection} sectionKey="sales" />}
+                  {canAccessSection(marketingSection) && <CollapsibleSection section={marketingSection} sectionKey="marketing" />}
+                  {canAccessSection(hrSection) && <CollapsibleSection section={hrSection} sectionKey="hr" />}
+                  {canAccessSection(operationsSection) && <CollapsibleSection section={operationsSection} sectionKey="operations" />}
+                  {canAccessSection(communicationsSection) && <CollapsibleSection section={communicationsSection} sectionKey="communications" />}
+                </div>
+              </CollapsibleContent>
+            </SidebarGroup>
+          </Collapsible>
+        )}
+
+        {/* 5 · bottom — unchanged */}
+        {canAccessSection(analyticsSection) && <CollapsibleSection section={analyticsSection} sectionKey="analytics" />}
+        <CollapsibleSection section={settingsSection} sectionKey="settings" />
+        {canAccessSection(adminSection) && <CollapsibleSection section={adminSection} sectionKey="admin" />}
+        </>
+        )}
+
+        {!isMasterAdmin && !renderAccountingMinimal && !isTelehealth && (
         <>
         {/* Staff Section - Only for staff */}
         {authUser?.role === "staff" && <StaticSection section={staffSection} />}

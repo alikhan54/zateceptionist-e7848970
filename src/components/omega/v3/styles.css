@@ -1387,3 +1387,63 @@ body.cathedral-open .omega-shell-v3 .v3-wordmark {
   0%, 100% { opacity: 0.35; }
   50% { opacity: 0.75; }
 }
+
+/* ============================================================
+ * VERTICAL-FIRST-UI (tend pilot) — telehealth-only additions.
+ * These classes are only ever attached to DOM rendered behind the
+ * isTelehealth gate in Cathedral.tsx; for every other tenant they are
+ * dead CSS (zero DOM impact).
+ * ============================================================ */
+
+/* Dark-teal "Tend Care · Safety & Triage" hero card (after OMEGA). */
+.pulse-cathedral .pulse-card.pulse-card-tend-hero {
+  --card-color: var(--pulse-teal);
+  background: linear-gradient(150deg, #0b3b36 0%, #0d4a43 55%, #10564d 100%);
+  border-color: rgba(20, 184, 166, 0.45);
+  color: #e7fffb;
+}
+.pulse-cathedral .pulse-card.pulse-card-tend-hero::before {
+  opacity: 0.22;
+}
+.pulse-cathedral .pulse-card.pulse-card-tend-hero .pulse-card-name {
+  color: #f0fffc;
+}
+.pulse-cathedral .pulse-card.pulse-card-tend-hero .pulse-card-meta {
+  color: rgba(204, 251, 241, 0.75);
+}
+.pulse-cathedral .pulse-card.pulse-card-tend-hero .pulse-card-icon {
+  background: rgba(20, 184, 166, 0.18);
+  color: #5eead4;
+}
+.pulse-cathedral .pulse-card.pulse-card-tend-hero .pulse-metric .num {
+  color: #ffffff;
+}
+.pulse-cathedral .pulse-card.pulse-card-tend-hero .pulse-metric .lbl {
+  color: rgba(204, 251, 241, 0.7);
+}
+.pulse-cathedral .pulse-card.pulse-card-tend-hero .pulse-card-divider {
+  background: rgba(94, 234, 212, 0.25);
+}
+.pulse-cathedral .pulse-card.pulse-card-tend-hero .pulse-card-agentline {
+  color: #5eead4;
+  font-weight: 600;
+}
+.pulse-cathedral .pulse-card.pulse-card-tend-hero .pulse-card-pill {
+  background: rgba(20, 184, 166, 0.25);
+  color: #ccfbf1;
+}
+
+/* Demoted "Growth & Ops · secondary" grid — visually quieter. */
+.pulse-cathedral .pulse-tend-secondary-label {
+  border-top: 1px solid rgba(148, 163, 184, 0.25);
+  margin-top: 28px;
+}
+.pulse-cathedral .pulse-grid.pulse-tend-secondary .pulse-card {
+  opacity: 0.78;
+  min-height: 230px;
+  transition: opacity 200ms, transform 200ms cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 200ms, box-shadow 200ms;
+}
+.pulse-cathedral .pulse-grid.pulse-tend-secondary .pulse-card:hover:not(.disabled) {
+  opacity: 1;
+}
