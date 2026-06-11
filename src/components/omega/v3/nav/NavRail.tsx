@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { Home, LayoutGrid } from "lucide-react";
+import { Home, LayoutGrid, Network } from "lucide-react";
 
 interface NavRailProps {
   onOpenSpotlight: () => void; // unused for now; Spotlight opens via ⌘K. Kept for future affordance.
@@ -10,7 +10,8 @@ interface NavRailProps {
 interface RailItem {
   id: string;
   label: string;
-  shortcut: string;
+  /** Optional — only shown when a real global binding exists (useNavOverlay). */
+  shortcut?: string;
   Icon: typeof Home;
   /** Either route (navigation) or action (overlay open). Mutually exclusive. */
   route?: string;
@@ -19,6 +20,7 @@ interface RailItem {
 
 const ITEMS: RailItem[] = [
   { id: "home",      label: "OMEGA",    shortcut: "⌘1", Icon: Home,        route: "/dashboard" },
+  { id: "brain",     label: "Brain",                    Icon: Network,     route: "/brain" },
   { id: "all-apps",  label: "All apps", shortcut: "⌘K", Icon: LayoutGrid,  action: "cathedral" },
 ];
 
@@ -64,7 +66,7 @@ export function NavRail({ onOpenCathedral, currentPath }: NavRailProps) {
               <Icon size={18} strokeWidth={1.8} />
               <span className="v3-rail-tooltip">
                 <span className="lbl">{item.label}</span>
-                <kbd>{item.shortcut}</kbd>
+                {item.shortcut ? <kbd>{item.shortcut}</kbd> : null}
               </span>
             </button>
           </div>

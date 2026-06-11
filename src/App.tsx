@@ -23,6 +23,9 @@ const TendIntakePage = lazy(() => import("./pages/tend/TendIntakePage")); // Ten
 const TendSafetyTriage = lazy(() => import("./pages/tend-ops/SafetyTriage")); // Tend operator cockpit (telehealth-gated nav; data-isolated)
 const NeuralDashboard = lazy(() => import("./pages/NeuralDashboard"));
 const NeuralDashboardV3 = lazy(() => import("./pages/NeuralDashboardV3"));
+// Phase F — Organization Brain (3D living system map). Own lazy chunk: the 3D
+// engine must never enter the main bundle.
+const OrganizationBrain = lazy(() => import("./pages/OrganizationBrain"));
 const CustomersPage = lazy(() => import("./pages/Customers"));
 const InboxPage = lazy(() => import("./pages/Inbox"));
 const AppointmentsPage = lazy(() => import("./pages/Appointments"));
@@ -532,6 +535,16 @@ const App = () => (
                     element={
                       <LazyPage>
                         <DashboardRouter />
+                      </LazyPage>
+                    }
+                  />
+
+                  {/* Phase F — Organization Brain: full-screen 3D system map */}
+                  <Route
+                    path="/brain"
+                    element={
+                      <LazyPage>
+                        <OrganizationBrain />
                       </LazyPage>
                     }
                   />

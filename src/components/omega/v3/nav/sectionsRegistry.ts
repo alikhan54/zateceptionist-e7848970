@@ -223,6 +223,28 @@ export const SECTIONS: PulseSection[] = [
     // Batch 3 — resolver surfaces real competitor_tracking; placeholders dropped.
     metrics: [],
   },
+  {
+    id: "organization-brain",
+    name: "Organization Brain",
+    meta: "living system map",
+    route: "/brain",
+    icon: "Brain",
+    color: "violet",
+    layer: "intelligence",
+    enabled: true,
+    pillType: "live",
+    pillText: "live",
+    // Phase F — SYSTEM CONSTANTS from the generated brain manifest (platform
+    // topology, identical for all tenants — like the OMEGA card, deliberately
+    // NOT per-tenant and NOT notConfigured). Values = BRAIN_NODE_COUNT /
+    // BRAIN_LINK_COUNT, hardcoded so the manifest stays out of the main bundle.
+    metrics: [
+      { value: "367", label: "entities" },
+      { value: "378", label: "connections" },
+      { value: "8", label: "departments" },
+      { value: "live", label: "streaming" },
+    ],
+  },
 
   // ===== Layer 3 — REACH (who & where) =====
   {
@@ -358,6 +380,7 @@ export const SPOTLIGHT_ROWS: SpotlightRow[] = [
   // Intelligence Layer · NEW in Phase 2A.5
   { id: "in-knowledge", group: "Intelligence Layer · 12 agents", name: "Knowledge base", sub: "/settings/business-profile/knowledge · docs + RAG", icon: "Brain",    color: "violet", route: "/settings/business-profile/knowledge", enabled: true },
   { id: "in-training",  group: "Intelligence Layer · 12 agents", name: "AI training",    sub: "/settings/business-profile/training · agent tuning", icon: "Sparkles", color: "violet", route: "/settings/business-profile/training",  enabled: true },
+  { id: "in-brain",     group: "Intelligence Layer · 12 agents", name: "Organization Brain", sub: "/brain · live 3D system map",                    icon: "Brain",    color: "violet", route: "/brain",                               enabled: true },
 
   // Industry Verticals · NEW in Phase 2A.5
   { id: "iv-company", group: "Industry Verticals", name: "Tenant info", sub: "/settings/business-profile/company · industry + brand", icon: "Building2", color: "rose", route: "/settings/business-profile/company", enabled: true },
