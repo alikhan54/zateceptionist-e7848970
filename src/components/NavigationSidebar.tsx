@@ -1003,6 +1003,19 @@ export function NavigationSidebar() {
     : [];
   const growthOpsOpen = isTelehealth && (openSections["growth-ops"] || isInSection(growthOpsUrls));
 
+  // VERTICAL-FIRST-P2 (telehealth only): MAIN renders as "Home", and OMEGA folds
+  // into Analytics & AI as its FIRST item (the standalone AI Command section is
+  // removed — the OMEGA floating orb is on every screen anyway). The shared
+  // section objects are NOT mutated — these are isTelehealth-gated copies. The
+  // "Analytics & AI" label is kept verbatim so the STAFF_RESTRICTED_SECTIONS
+  // label match (and featureKey gating via the spread) behave exactly as before.
+  const tendHomeSection: NavSection = isTelehealth
+    ? { ...mainSection, label: "Home" }
+    : mainSection;
+  const tendAnalyticsSection: NavSection = isTelehealth
+    ? { ...analyticsSection, items: [{ title: "OMEGA", url: "/omega", icon: Brain }, ...analyticsSection.items] }
+    : analyticsSection;
+
   return (
     <Sidebar collapsible="icon" className="border-r" style={accentStyle}>
       {/* Header */}
@@ -1106,16 +1119,12 @@ export function NavigationSidebar() {
           </div>
         )}
 
-        {/* 2 · OMEGA — prominent, immediately after the vertical */}
-        <StaticSection section={{
-          label: "AI Command",
-          items: [{ title: "OMEGA", url: "/omega", icon: Brain }],
-        }} />
+        {/* 2 · HOME (P2: was "Main"; the standalone AI COMMAND section is removed —
+            OMEGA now leads the Analytics & AI section below, and the floating orb
+            remains on every screen) */}
+        {authUser?.role !== "staff" && <CollapsibleSection section={tendHomeSection} sectionKey="main" />}
 
-        {/* 3 · MAIN */}
-        {authUser?.role !== "staff" && <CollapsibleSection section={mainSection} sectionKey="main" />}
-
-        {/* 4 · GROWTH & OPS — one collapsed group holding the five AI/dept sections */}
+        {/* 3 · GROWTH & OPS — one collapsed group holding the five AI/dept sections */}
         {collapsed ? (
           /* icon rail: group chrome is meaningless at 3rem — render the five
              sections exactly as the standard path does */
@@ -1151,8 +1160,8 @@ export function NavigationSidebar() {
           </Collapsible>
         )}
 
-        {/* 5 · bottom — unchanged */}
-        {canAccessSection(analyticsSection) && <CollapsibleSection section={analyticsSection} sectionKey="analytics" />}
+        {/* 4 · bottom — Analytics & AI (OMEGA first, P2) → Settings → Admin */}
+        {canAccessSection(tendAnalyticsSection) && <CollapsibleSection section={tendAnalyticsSection} sectionKey="analytics" />}
         <CollapsibleSection section={settingsSection} sectionKey="settings" />
         {canAccessSection(adminSection) && <CollapsibleSection section={adminSection} sectionKey="admin" />}
         </>

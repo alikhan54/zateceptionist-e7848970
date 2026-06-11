@@ -4,6 +4,12 @@
 
 ---
 
+## 🚢 VERTICAL-FIRST-P2 (sidebar polish: fold AI COMMAND + MAIN→HOME, telehealth-gated) — MERGED 2026-06-11
+
+**Session:** VERTICAL-FIRST-P2 (follow-up to the 2a128ce pilot). ONE file: `src/components/NavigationSidebar.tsx`, inside the EXISTING isTelehealth branch only (+20/−11; `!isTelehealth` JSX byte-identical — single AI-Command/analyticsSection renders remain only in the standard branch). Removed the standalone "AI Command" section for telehealth; OMEGA is now the FIRST item of "Analytics & AI" via an isTelehealth-gated COPY (`tendAnalyticsSection` — label kept verbatim so STAFF_RESTRICTED_SECTIONS matching + featureKey gating are unchanged; shared object NOT mutated); "Main" renders as "Home" via gated copy (`tendHomeSection`, sectionKey "main" unchanged). Resulting telehealth order: pinned TEND OPERATORS → HOME → GROWTH & OPS (collapsed) → ANALYTICS & AI (OMEGA first) → SETTINGS. Known consequence: telehealth STAFF users lose the sidebar OMEGA link (Analytics & AI is staff-restricted; previously the AI Command section rendered for staff) — the OMEGA floating orb remains on every screen. Evidence: tsc 0 + vite build clean + production-bundle Playwright **9/9** as tend@ (`frontend-p2/.vertfirst_p2_evidence/`). Backup: `NavigationSidebar.tsx.backup-pre-vertfirst-p2`. **Rollout note:** hospital/jewellery vertical-first layouts should adopt this same final order (vertical → HOME → Growth & Ops → Analytics & AI w/ OMEGA → Settings).
+
+---
+
 ## 🚢 Master-Admin Phase 5 (closing: audit-login pipeline + dupe card + honest buttons) — MERGED 2026-06-10
 
 **Session:** Master-Admin-Phase5. Cherry-picked `c4d119b` onto `origin/main` (`b0bf37d`) via an **isolated temp worktree** (`.merge-p5`); work branch `wt/phase5` @ `f4aa6b1` (worktree `D:/420-system/frontend-5`, both removed). **6 files modified + migration 45 + 1 new spec. Master-admin lane CLOSED — the master admin is COMPLETE; no further admin phases planned. Next session needing a migration: take 46.**
