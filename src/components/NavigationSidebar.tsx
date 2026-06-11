@@ -648,6 +648,7 @@ export function NavigationSidebar() {
     collapsible: true,
     items: [
       { title: "Safety & Triage", url: "/tend-ops/triage", icon: ShieldCheck },
+      { title: "Conversations", url: "/tend-ops/conversations", icon: MessageSquare },
     ],
   };
 

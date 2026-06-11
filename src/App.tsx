@@ -21,6 +21,8 @@ import TendPreviewGate from "./components/tend/PreviewGate"; // REMOVE AT PUBLIC
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const TendIntakePage = lazy(() => import("./pages/tend/TendIntakePage")); // Tend member intake (patient surface, public)
 const TendSafetyTriage = lazy(() => import("./pages/tend-ops/SafetyTriage")); // Tend operator cockpit (telehealth-gated nav; data-isolated)
+const TendMemberChat = lazy(() => import("./pages/tend/TendMemberChat")); // Tend member chat (login-gated, standalone calm layout — NOT operator Layout)
+const TendConversations = lazy(() => import("./pages/tend-ops/TendConversations")); // Tend staff conversations inbox (telehealth-gated nav)
 const NeuralDashboard = lazy(() => import("./pages/NeuralDashboard"));
 const NeuralDashboardV3 = lazy(() => import("./pages/NeuralDashboardV3"));
 // Phase F — Organization Brain (3D living system map). Own lazy chunk: the 3D
@@ -519,6 +521,20 @@ const App = () => (
                         <TendIntakePage />
                       </LazyPage>
                     </TendPreviewGate>
+                  }
+                />
+
+                {/* Tend member chat — login is the gate (no PreviewGate; no self-registration
+                    path exists anywhere). ProtectedRoute WITHOUT Layout: members are
+                    auth.users-only identities (no public.users row) and never see operator chrome. */}
+                <Route
+                  path="/tend/me"
+                  element={
+                    <ProtectedRoute>
+                      <LazyPage>
+                        <TendMemberChat />
+                      </LazyPage>
+                    </ProtectedRoute>
                   }
                 />
 
@@ -1591,6 +1607,7 @@ const App = () => (
                   {/* Tend Operators — telehealth industry only (nav-gated; data-isolated by tenant_id + RLS) */}
                   <Route path="/tend-ops" element={<Navigate to="/tend-ops/triage" replace />} />
                   <Route path="/tend-ops/triage" element={<LazyPage><TendSafetyTriage /></LazyPage>} />
+                  <Route path="/tend-ops/conversations" element={<LazyPage><TendConversations /></LazyPage>} />
 
                   {/* UK Accounting Practice — Smart Ledger Phase 1 */}
                   <Route path="/accounting" element={<Navigate to="/accounting/dashboard" replace />} />

@@ -122,3 +122,14 @@
 /* generating state */
 .tend-gen{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:30px;background:linear-gradient(180deg,#fff,#FBFAF6);}
 .tend-gen .gtext{font-size:15px;color:var(--ink-soft);text-align:center;max-width:280px;line-height:1.5;}
+
+/* ===== TEND-CHAT (member /tend/me) — additive ===== */
+.tend-msg.tend-staff{background:#EAF0F6;border:1px solid #D7E2EC;color:#1d3242;}
+.tend-msg.tend-system{align-self:center;background:var(--sand);border:none;color:var(--ink-soft);font-size:12px;padding:6px 14px;border-radius:99px;max-width:92%;text-align:center;}
+.tend-nextstep-mini{flex:none;font-size:12.5px;color:var(--teal-deep);background:var(--mint);border-bottom:1px solid var(--mint-line);padding:9px 16px;text-align:center;}
+.tend-careteam-note{flex:none;font-size:12.5px;color:#33414a;background:#EAF0F6;border-bottom:1px solid #D7E2EC;padding:9px 16px;text-align:center;}
+.tend-retrybar{flex:none;display:flex;align-items:center;justify-content:center;gap:12px;font-size:12.5px;color:var(--clay);background:var(--clay-soft);border-bottom:1px solid #ECD9D2;padding:8px 14px;}
+.tend-retry{border:none;border-radius:99px;background:var(--teal);color:#fff;font-size:12.5px;font-weight:680;padding:6px 14px;cursor:pointer;font-family:inherit;}
+.tend-retry:disabled{opacity:.5;cursor:default;}
+.tend-memberwait{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:30px;text-align:center;color:var(--ink);font-size:15.5px;}
+.tend-memberwait .sub{font-size:13px;color:var(--ink-soft);max-width:300px;line-height:1.5;}

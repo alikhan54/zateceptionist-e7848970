@@ -7,9 +7,18 @@
 import React, { useEffect, useRef, useState } from "react";
 
 export interface TendMessage {
-  role: "thera" | "me";
+  // "staff" / "system" are ADDITIVE (member chat /tend/me); the intake surface
+  // only ever passes "thera" | "me" and renders byte-identically.
+  role: "thera" | "me" | "staff" | "system";
   content: string;
 }
+
+const ROLE_CLASS: Record<TendMessage["role"], string> = {
+  thera: "tend-thera",
+  me: "tend-me",
+  staff: "tend-thera tend-staff",
+  system: "tend-system",
+};
 
 interface Props {
   messages: TendMessage[];
@@ -49,7 +58,7 @@ export default function TheraIntakeChat({ messages, sending, onSend, onSeeNextSt
       <div className="tend-chat" ref={scrollRef}>
         <div className="tend-day">Today</div>
         {messages.map((m, i) => (
-          <div key={i} className={`tend-msg ${m.role === "me" ? "tend-me" : "tend-thera"}`}>
+          <div key={i} className={`tend-msg ${ROLE_CLASS[m.role] || "tend-thera"}`}>
             {m.content}
           </div>
         ))}
