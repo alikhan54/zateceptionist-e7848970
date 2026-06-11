@@ -500,6 +500,23 @@ export async function parseSchedule(
 }
 
 /**
+ * Extract material tags printed inside rooms on a finish/floor plan (pure geometry,
+ * Gemini-free): tag spans land in detected room polygons → estimation_room_finishes
+ * rows (source='spatial_plan'). Requires Detect Rooms to have run on the page.
+ */
+export async function extractPlanMaterials(
+  projectId: string,
+  tenantSlug: string,
+  pageNumber: number,
+) {
+  return callWebhookWithTimeout(WEBHOOKS.ESTIMATION_V2_ACTION, {
+    action: "extract_plan_materials",
+    project_id: projectId,
+    page_number: pageNumber,
+  }, tenantSlug, 240000);
+}
+
+/**
  * Match parsed finishes to rooms and seed takeoff items. dryRun=true (default)
  * returns the plan only; the UI always shows the plan before a real apply.
  */
