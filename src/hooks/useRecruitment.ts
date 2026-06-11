@@ -325,6 +325,7 @@ export type RecruitmentActivityItem = {
   ai_score?: number | null;
   recommendation?: string | null;
   duration_seconds?: number | null;
+  outreach_id?: string | null;
 };
 
 function outreachToActivity(r: any, name?: string, role?: string): RecruitmentActivityItem {
@@ -337,6 +338,7 @@ function outreachToActivity(r: any, name?: string, role?: string): RecruitmentAc
     status: r.status || 'sent',
     timestamp: r.sent_at || r.created_at || null,
     body: r.body || null,
+    outreach_id: r.id,
   };
 }
 function interviewToActivity(r: any, name?: string, role?: string): RecruitmentActivityItem {
@@ -993,5 +995,111 @@ export function useArchiveCandidate() {
       toast.success(archive ? 'Candidate archived' : 'Candidate restored');
     },
     onError: () => toast.error('Failed to update candidate'),
+  });
+}
+
+// ── Tier-0: approve a pending outreach (B6) ─────────────────────────────
+// POSTs /hr/recruitment/approve-outreach {outreach_id}; the workflow loads the
+// 'pending' hr_recruitment_outreach row, sends via the manual-email engine and
+// PATCHes status='sent'. Optimistically flips the row to 'sent' in both outreach
+// caches, with rollback on error.
+export function useApproveOutreach() {
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
+  const queryClient = useQueryClient();
+
+  const flipStatus = (outreachId: string, status: string) => {
+    queryClient.setQueriesData({ queryKey: ['outreach_by_application'] }, (old: any) => {
+      if (!(old instanceof Map)) return old;
+      const next = new Map(old);
+      for (const [aid, row] of next) {
+        if (row?.id === outreachId) next.set(aid, { ...row, status, sent_at: row.sent_at || new Date().toISOString() });
+      }
+      return next;
+    });
+    queryClient.setQueriesData({ queryKey: ['recruitment_outreach_feed'] }, (old: any) => {
+      if (!Array.isArray(old)) return old;
+      return old.map((it: any) => (it?.outreach_id === outreachId ? { ...it, status } : it));
+    });
+  };
+
+  return useMutation({
+    mutationFn: async ({ outreachId }: { outreachId: string }) => {
+      if (!tenantUuid) throw new Error('No tenant');
+      const res = await callWebhook('/hr/recruitment/approve-outreach', { outreach_id: outreachId }, tenantUuid);
+      const body = res.data as { success?: boolean; error?: string } | undefined;
+      if (!res.success || (body && body.success === false)) {
+        throw new Error((body && body.error) || res.error || 'Approve failed');
+      }
+      return res;
+    },
+    onMutate: async ({ outreachId }) => {
+      await queryClient.cancelQueries({ queryKey: ['outreach_by_application'] });
+      await queryClient.cancelQueries({ queryKey: ['recruitment_outreach_feed'] });
+      flipStatus(outreachId, 'sent');
+    },
+    onError: (e: any, { outreachId }) => {
+      flipStatus(outreachId, 'pending');
+      toast.error(`Send failed: ${e?.message || 'unknown error'}`);
+    },
+    onSuccess: () => toast.success('Outreach approved — email sent'),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['outreach_by_application'] });
+      queryClient.invalidateQueries({ queryKey: ['recruitment_outreach_feed'] });
+      queryClient.invalidateQueries({ queryKey: ['hr_job_applications'] });
+    },
+  });
+}
+
+// ── Tier-0: per-tenant recruitment automation dials (B6) ────────────────
+// Reads/writes the three opt-in tenant_config flags. All default OFF (null);
+// the n8n gates treat anything !== true as off, so false/null are equivalent.
+export type RecruitmentAutomationFlags = {
+  recruitment_auto_outreach: boolean | null;
+  recruitment_voice_screen: boolean | null;
+  recruitment_auto_onboard: boolean | null;
+};
+
+export function useRecruitmentAutomation() {
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
+  return useQuery({
+    queryKey: ['recruitment_automation_flags', tenantUuid],
+    queryFn: async (): Promise<RecruitmentAutomationFlags> => {
+      const { data, error } = await supabase
+        .from('tenant_config')
+        .select('recruitment_auto_outreach, recruitment_voice_screen, recruitment_auto_onboard')
+        .eq('id', tenantUuid!)
+        .single();
+      if (error) throw error;
+      return data as RecruitmentAutomationFlags;
+    },
+    enabled: !!tenantUuid,
+  });
+}
+
+export function useSetRecruitmentAutomation() {
+  const { tenantConfig } = useTenant();
+  const tenantUuid = tenantConfig?.id;
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ flag, value }: { flag: keyof RecruitmentAutomationFlags; value: boolean }) => {
+      if (!tenantUuid) throw new Error('No tenant');
+      const { error } = await supabase
+        .from('tenant_config')
+        .update({ [flag]: value })
+        .eq('id', tenantUuid);
+      if (error) throw error;
+    },
+    onSuccess: (_d, { flag, value }) => {
+      queryClient.invalidateQueries({ queryKey: ['recruitment_automation_flags'] });
+      const names: Record<string, string> = {
+        recruitment_auto_outreach: 'Autonomous outreach',
+        recruitment_voice_screen: 'AI voice phone-screen',
+        recruitment_auto_onboard: 'Auto-onboard hires',
+      };
+      toast.success(`${names[flag] || flag} ${value ? 'enabled' : 'disabled'}`);
+    },
+    onError: (e: any) => toast.error(`Could not update automation: ${e?.message || 'permission denied'}`),
   });
 }

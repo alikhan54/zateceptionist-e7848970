@@ -565,5 +565,10 @@ export default defineConfig({
       testMatch: /phase5-audit-login\.spec\.ts/,
       use: { browserName: 'chromium' }, // no setup dep — env-var creds (WELKIN/COSMIQUE), local preview via E2E_BASE_URL
     },
+    {
+      name: 'hr-tier0-b6',
+      testMatch: /hr-tier0-b6\.spec\.ts/,
+      use: { browserName: 'chromium' }, // no setup dep — fresh login per test; creds via env (skips without)
+    },
   ],
 });

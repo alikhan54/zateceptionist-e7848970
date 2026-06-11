@@ -2,14 +2,19 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import {
   Mail, Phone, MessageCircle, MessageSquare, ChevronDown, Play,
-  Sparkles, Inbox, Clock,
+  Sparkles, Inbox, Clock, Send, Loader2,
 } from 'lucide-react';
 import { formatDistanceToNow, format, parseISO } from 'date-fns';
 import {
-  useCandidateActivity, useOutreachFeed, type RecruitmentActivityItem,
+  useCandidateActivity, useOutreachFeed, useApproveOutreach, type RecruitmentActivityItem,
 } from '@/hooks/useRecruitment';
 
 const CHANNEL = {
@@ -82,6 +87,45 @@ function parseTranscript(t: unknown): { speaker: string; text: string }[] {
 }
 const isAISpeaker = (s: string) => /^(ai|assistant|bot)$/i.test(s);
 
+// Tier-0 B6: one-tap (with confirm) approval for a 'pending' outreach row.
+// POSTs /hr/recruitment/approve-outreach; the row flips to 'sent' optimistically.
+export function ApproveOutreachButton({ outreachId, candidateName, compact }: {
+  outreachId: string;
+  candidateName?: string;
+  compact?: boolean;
+}) {
+  const approve = useApproveOutreach();
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button
+          size="sm"
+          className={cn('gap-1.5', compact ? 'h-5 px-1.5 text-[10px]' : 'h-7 text-xs')}
+          disabled={approve.isPending}
+          onClick={(e) => e.stopPropagation()}
+          data-testid={`approve-outreach-${outreachId}`}
+        >
+          {approve.isPending ? <Loader2 className={cn(compact ? 'h-2.5 w-2.5' : 'h-3 w-3', 'animate-spin')} /> : <Send className={compact ? 'h-2.5 w-2.5' : 'h-3 w-3'} />}
+          Approve & send
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Send this outreach email?</AlertDialogTitle>
+          <AlertDialogDescription>
+            The prepared email{candidateName ? ` to ${candidateName}` : ''} will be sent immediately from your
+            company mailbox. This can&apos;t be unsent.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={() => approve.mutate({ outreachId })}>Send now</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 function ActivityCard({ item, showCandidate }: { item: RecruitmentActivityItem; showCandidate?: boolean }) {
   const [open, setOpen] = useState(false);
   const ch = CHANNEL[item.kind] ?? CHANNEL.email;
@@ -134,6 +178,13 @@ function ActivityCard({ item, showCandidate }: { item: RecruitmentActivityItem; 
         )}
         {hasDetail && <ChevronDown className={cn('h-4 w-4 mt-1 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} />}
       </button>
+
+      {item.kind !== 'call' && item.status === 'pending' && item.outreach_id && (
+        <div className="px-3 pb-3 pl-[3.75rem] flex items-center gap-2">
+          <ApproveOutreachButton outreachId={item.outreach_id} candidateName={item.candidate_name} />
+          <span className="text-xs text-muted-foreground">Prepared and awaiting your approval{hasDetail ? ' — tap the card to read it first' : ''}</span>
+        </div>
+      )}
 
       {open && hasDetail && (
         <div className="px-3 pb-3 pt-0 pl-[3.75rem]">

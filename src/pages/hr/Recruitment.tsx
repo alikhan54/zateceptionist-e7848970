@@ -5,7 +5,7 @@ import { useTenant } from "@/contexts/TenantContext";
 import { AskAIButton } from "@/components/hr/AskAIButton";
 import { SourceBadge } from "@/components/hr/SourceBadge";
 import AIInterviewsTab from "@/components/hr/AIInterviewsTab";
-import { OutreachFeed, CandidateActivity } from "@/components/hr/OutreachActivity";
+import { OutreachFeed, CandidateActivity, ApproveOutreachButton } from "@/components/hr/OutreachActivity";
 import { PipelineFunnel } from "@/components/hr/PipelineFunnel";
 import { CandidateBoard } from "@/components/hr/CandidateBoard";
 import { useAutoMode } from "@/hooks/useAutoMode";
@@ -105,6 +105,8 @@ import {
   useCandidates,
   useArchiveCandidate,
   useOutreachByApplication,
+  useRecruitmentAutomation,
+  useSetRecruitmentAutomation,
   useAIInterviews,
   useSourcingRuns,
   useInterviewSchedules,
@@ -388,6 +390,8 @@ export default function RecruitmentPage() {
   const addCandidate = useAddCandidate();
   const archiveCandidate = useArchiveCandidate();
   const outreachByApp = useOutreachByApplication();
+  const automationFlags = useRecruitmentAutomation();
+  const setAutomationFlag = useSetRecruitmentAutomation();
   const scheduleInterview = useScheduleInterview();
   const applyToJob = useApplyToJob();
   const makeOffer = useMakeOffer();
@@ -850,7 +854,8 @@ export default function RecruitmentPage() {
         employment_type: 'full_time',
         start_date: new Date().toISOString().split('T')[0],
         salary: app.offer_salary || null,
-        source: 'recruitment',
+        // no `source`: hr_employees has no such column and the onboarding-v2 webhook
+        // forwards body.source into the INSERT verbatim -> PostgREST 400 (verified live).
       }, tenantUuid);
 
       if (result.success) {
@@ -1675,7 +1680,8 @@ export default function RecruitmentPage() {
                               )}
                               {(() => {
                                 const es = app.candidate?.enrichment_status;
-                                const ob = outreachBadge(outreachByApp.data?.get(app.id));
+                                const obRow = outreachByApp.data?.get(app.id);
+                                const ob = outreachBadge(obRow);
                                 if (!es && !ob) return null;
                                 return (
                                   <div className="flex flex-wrap items-center gap-1 mb-2">
@@ -1696,6 +1702,13 @@ export default function RecruitmentPage() {
                                       <Badge variant="outline" className={cn("h-5 px-1.5 text-[10px]", ob.cls)}>
                                         {ob.label}
                                       </Badge>
+                                    )}
+                                    {obRow?.status === "pending" && obRow?.id && (
+                                      <ApproveOutreachButton
+                                        outreachId={obRow.id}
+                                        candidateName={app.candidate?.full_name || app.candidate?.first_name}
+                                        compact
+                                      />
                                     )}
                                   </div>
                                 );
@@ -1949,7 +1962,60 @@ export default function RecruitmentPage() {
         </TabsContent>
 
         {/* ===== OUTREACH TAB ===== */}
-        <TabsContent value="outreach">
+        <TabsContent value="outreach" className="space-y-4">
+          {/* Tier-0 B6: per-tenant automation dials. All three default OFF (null in
+              tenant_config); the n8n gates only act on === true, so simple users can
+              ignore this card entirely. */}
+          <Card data-testid="recruitment-automation-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Zap className="h-4 w-4 text-primary" />
+                Automation
+              </CardTitle>
+              <CardDescription>
+                Everything below is off by default — outreach waits for your approval. Flip a dial to let the AI run that step on its own.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-1">
+              {([
+                {
+                  flag: "recruitment_auto_outreach" as const,
+                  icon: Send,
+                  label: "Autonomous outreach",
+                  desc: "Send shortlisted candidates their outreach email automatically — no approval step.",
+                },
+                {
+                  flag: "recruitment_voice_screen" as const,
+                  icon: PhoneCall,
+                  label: "AI voice phone-screen",
+                  desc: "When a candidate reaches Phone screen, an AI voice agent calls them for a first-round screening interview.",
+                },
+                {
+                  flag: "recruitment_auto_onboard" as const,
+                  icon: UserCheck,
+                  label: "Auto-onboard hires",
+                  desc: "When a candidate is hired, create their employee record and onboarding (incl. leave balances) automatically.",
+                },
+              ]).map(({ flag, icon: RowIcon, label, desc }) => (
+                <div key={flag} className="flex items-center justify-between gap-4 rounded-lg border bg-card/40 p-3">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <RowIcon className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">{label}</p>
+                      <p className="text-xs text-muted-foreground">{desc}</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={automationFlags.data?.[flag] === true}
+                    disabled={!automationFlags.data || setAutomationFlag.isPending}
+                    onCheckedChange={(v) => setAutomationFlag.mutate({ flag, value: v })}
+                    data-testid={`automation-${flag}`}
+                  />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
