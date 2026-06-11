@@ -158,6 +158,15 @@ The sphere, Pulse, Spotlight and all existing pages are untouched by rollback.
 - Manifest auto-refresh from a nightly read-only inventory export (closes the
   246-vs-298 snapshot gap and keeps names current).
 
+### Scheduled next step — manifest refresh for the ~52 post-May workflows
+
+Run AFTER the N8N-REVIVAL session restores n8n health (do NOT query n8n before
+that): ONE read-only `name + active` query (REST `GET /api/v1/workflows` or a
+6543 TX-pooler SELECT on `n8n.workflow_entity`), re-run
+`D:/420-system/.tmp_brain/gen_workflows.py` on the fresh list, re-inject the
+`WORKFLOWS` array into `brainManifest.ts`, update the two Pulse-card literals in
+`sectionsRegistry.ts` (entities/connections), and ship as a single commit.
+
 ---
 
 ## Raw → display mapping (reference; rendered strings are the right column)

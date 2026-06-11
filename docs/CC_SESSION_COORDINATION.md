@@ -1,6 +1,28 @@
 # CC Multi-Session Coordination
 
-**Last updated:** 2026-06-10 (Master-Admin Phase 5 MERGED — `c4d119b`; **master-admin lane CLOSED** (no further admin phases planned); migration 45 used — **next free migration: 46**; prior: Phase 4 `4c58524`, Phase 3 `cabb6b7`, 2C `c463e32`, 2B `a079a18`, 2A `c643982`)
+**Last updated:** 2026-06-11 (Organization Brain Phase F MERGED — `/brain` route; **next free migration: 46** (Phase F used none); prior: Master-Admin Phase 5 `c4d119b` (master-admin lane CLOSED), Phase 4 `4c58524`, Phase 3 `cabb6b7`, 2C `c463e32`, 2B `a079a18`, 2A `c643982`)
+
+---
+
+## 🚢 Organization Brain — Phase F (/brain 3D living system map) — MERGED 2026-06-11
+
+**Session:** ORG-BRAIN-F. Rebased `feat/org-brain` onto `origin/main` (`03d3217`) in an **isolated temp worktree** (`frontend-brain-merge`, removed); 4 feature commits + this docs commit, ff-merged to main. **Files vs base: 3 allowed edits (App.tsx — ONE `/brain` lazy route; NavRail.tsx — 3rd rail icon, `shortcut` made optional; sectionsRegistry.ts — 13th Pulse card + Spotlight row) + package.json/lock (+`react-force-graph-3d@1.24.0` +`three-spritetext@1.10.0` + overrides `3d-force-graph@1.73.0`/`three-render-objects@1.29.5` — `three` STAYS 0.160.0, `npm ls three` = single dedupe; 1.30.0 imports `three/webgpu` → build break, 1.31+ peer ≥0.168 — do NOT bump without the matrix in docs/ORGANIZATION_BRAIN.md) + 4 new files (`src/pages/OrganizationBrain.tsx`, `src/components/brain/{BrainGraph.tsx,brainManifest.ts,useBrainData.ts}`).** Backups: `*.backup-pre-brain`. Bundle: own lazy chunk 238KB (71KB gz); main +0.35KB; shared lazy three chunk 459→667KB (examples/jsm hoist — documented).
+
+**Verified 18/18** (production preview + headed Playwright, zate + cosmique): 367-node/378-link topology identical cross-tenant; live chips tenant-scoped (zate 627/19/19/18 vs cosmique 4/1/0/39, real Supabase counts); all 3 doors open /brain; Esc exits; mobile 380px; sphere/`?ui=legacy`/inbox regressions clean. Evidence: `tests/screenshots/brain/` + `docs/ORGANIZATION_BRAIN.md` (incl. FULL raw→display sanitization mapping — rendered names de-codenamed AND de-tenanted, leak-check CLEAN; topology is deliberately platform-wide per approved product decision).
+
+**Owns (coordinate):** `src/components/brain/*`, `src/pages/OrganizationBrain.tsx`; additive blocks in the 3 door files. **UI live after Adeel push + Lovable Publish.** Deferred (queued): manifest refresh for the ~52 post-2026-05-01-snapshot workflows — run AFTER N8N-REVIVAL restores n8n health: single read-only name+active query → re-run `.tmp_brain/gen_workflows.py` → one-commit update (recipe in ORGANIZATION_BRAIN.md). Known pre-existing bug (NOT Phase F, queued separately, untouched): a Radix dialog auto-mounts open over /dashboard and traps keyboard focus in its own input — eats ⌘K Spotlight typing, source of the long-standing `DialogTitle` console warning.
+
+---
+
+## 🚢 HR Tier-0 — recruiting loop closed (B6 UI on branch, n8n live) — BUILT 2026-06-10, FE AWAITING ADEEL FF
+
+**Session:** HR-TIER0-LOOP. FE on **branch `feature/hr-tier0-b6` @ `697a219`** (pushed to origin as a branch; base `6c7dbea`; worktree `frontend-hr-tier0`). **Autonomous main-push denied by policy — Adeel ships (INSTRUCTION UPDATED 06-11, main moved past the branch base so FF is no longer possible):** from main with a clean tree, `git -C frontend fetch && git -C frontend merge origin/feature/hr-tier0-b6 && git -C frontend push` (5 B6 files are disjoint from the hospital/admin/est-v2 commits that landed — clean merge expected) + Lovable Publish. n8n + DDL changes are LIVE now (not git). Full context: `docs/.hr-tier0-context.md`.
+
+**FE (5 files, additive, tsc clean pre+post):** `src/hooks/useRecruitment.ts` (+useApproveOutreach optimistic/rollback, +useRecruitmentAutomation/+useSetRecruitmentAutomation, +outreach_id), `src/components/hr/OutreachActivity.tsx` (ApproveOutreachButton + pending strip), `src/pages/hr/Recruitment.tsx` (kanban approve button, Automation card w/ 3 default-off dials, Start-Onboarding `source` fix — the button was 400-broken in prod, verified), `tests/hr-tier0-b6.spec.ts`, `playwright.config.ts` (+project). **Playwright-proven:** toggle round-trip UI->DB (zate only), approve click -> confirm -> row `sent`+provider_message_id, "Replied: Interested" badge from the new reply_sentiment col, cosmique isolation (0 leak, dials off). Fixtures cleaned; zate exact baseline.
+
+**Live backend (n8n, not git):** Auto-Pipeline `GoLKFQ3raVFyDg40` — B1 outreach fire FIXED (passed UUID where the webhook expects SLUG -> silent no-op since 06-08), + tenant-gated voice-screen auto-dial fire (real answered VAPI call proven), + gated/deduped hired->`/hr/employee-onboarding-v2` handoff. Onboarding v2 `i39PJEW8Z7IkFkUY` — leave balances un-broken (slug->UUID + ghost `remaining_days` col; 0 ever created before, 7/7 now). New tenant_config flags `recruitment_voice_screen`/`recruitment_auto_onboard` (+`hr_recruitment_outreach.reply_sentiment`) — nullable, ALL tenants OFF. B5 reply-classify STOPPED on a verified inbox race (sales bridges mark all UNSEEN mail Seen pre-match) -> recruiting@ alias proposed.
+
+**Owns (coordinate):** `src/hooks/useRecruitment.ts`, `src/pages/hr/Recruitment.tsx`, `src/components/hr/OutreachActivity.tsx` (shared with prior recruitment sessions — my changes additive on `6c7dbea`).
 
 ---
 
@@ -23,18 +45,6 @@
 **Verification (all gates):** RPC guards **7/7** (own-tenant write; spoof neutralized → caller's own tenant; master override; phantom auth.uid → false/no row; anon EXECUTE denied; action clamp + level whitelist; master SELECT). E2E **13/13** (`.tmp_phase5/verify_phase5.py`): real **welkin + cosmique Playwright logins** vs local preview each fired `/rpc/log_audit_event` (200) and wrote real rows (correct tenant `saif-7b33fce7`/`cosmique`, email, `tenant.login`, success, real user_id); master "Today" = 2 ≥ 1 via the exact Logs.tsx queries (simulated JWT — master browser E2E self-skips per pattern); newest-log age 0d → banner self-heals; cosmique SELECT sees only own tenant; cosmique master RPC 0 rows; bundle checks (dupe card gone, fake toast/wizard strings gone, tooltips present). Merged tree: tsc 0 errors + build clean. The 2 new audit rows are REAL logins (kept, not fixtures). Screenshots: `.tmp_phase5/results/`.
 
 **Owns:** `src/contexts/AuthContext.tsx` (login audit call ONLY — 1 additive block), `src/hooks/useAdminData.ts`, `src/pages/admin/{Panel,Users,Tenants}.tsx`, migration 45, `tests/phase5-audit-login.spec.ts`, `playwright.config.ts` (+project, additive). **UI live after Lovable Publish.**
-
----
-
-## 🚢 HR Tier-0 — recruiting loop closed (B6 UI on branch, n8n live) — BUILT 2026-06-10, FE AWAITING ADEEL FF
-
-**Session:** HR-TIER0-LOOP. FE on **branch `feature/hr-tier0-b6` @ `697a219`** (pushed to origin as a branch; base `6c7dbea`; worktree `frontend-hr-tier0`). **Autonomous main-push denied by policy — Adeel ships (INSTRUCTION UPDATED 06-11, main moved past the branch base so FF is no longer possible):** from main with a clean tree, `git -C frontend fetch && git -C frontend merge origin/feature/hr-tier0-b6 && git -C frontend push` (5 B6 files are disjoint from the hospital/admin/est-v2 commits that landed — clean merge expected) + Lovable Publish. n8n + DDL changes are LIVE now (not git). Full context: `docs/.hr-tier0-context.md`.
-
-**FE (5 files, additive, tsc clean pre+post):** `src/hooks/useRecruitment.ts` (+useApproveOutreach optimistic/rollback, +useRecruitmentAutomation/+useSetRecruitmentAutomation, +outreach_id), `src/components/hr/OutreachActivity.tsx` (ApproveOutreachButton + pending strip), `src/pages/hr/Recruitment.tsx` (kanban approve button, Automation card w/ 3 default-off dials, Start-Onboarding `source` fix — the button was 400-broken in prod, verified), `tests/hr-tier0-b6.spec.ts`, `playwright.config.ts` (+project). **Playwright-proven:** toggle round-trip UI->DB (zate only), approve click -> confirm -> row `sent`+provider_message_id, "Replied: Interested" badge from the new reply_sentiment col, cosmique isolation (0 leak, dials off). Fixtures cleaned; zate exact baseline.
-
-**Live backend (n8n, not git):** Auto-Pipeline `GoLKFQ3raVFyDg40` — B1 outreach fire FIXED (passed UUID where the webhook expects SLUG -> silent no-op since 06-08), + tenant-gated voice-screen auto-dial fire (real answered VAPI call proven), + gated/deduped hired->`/hr/employee-onboarding-v2` handoff. Onboarding v2 `i39PJEW8Z7IkFkUY` — leave balances un-broken (slug->UUID + ghost `remaining_days` col; 0 ever created before, 7/7 now). New tenant_config flags `recruitment_voice_screen`/`recruitment_auto_onboard` (+`hr_recruitment_outreach.reply_sentiment`) — nullable, ALL tenants OFF. B5 reply-classify STOPPED on a verified inbox race (sales bridges mark all UNSEEN mail Seen pre-match) -> recruiting@ alias proposed.
-
-**Owns (coordinate):** `src/hooks/useRecruitment.ts`, `src/pages/hr/Recruitment.tsx`, `src/components/hr/OutreachActivity.tsx` (shared with prior recruitment sessions — my changes additive on `6c7dbea`).
 
 ---
 
