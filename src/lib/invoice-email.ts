@@ -45,7 +45,7 @@ export function renderInvoiceEmailHtml(
     : terms
       ? `due in <strong>${terms} days</strong>`
       : "due on receipt";
-  // Email header band is navy → the white logo (settings.logo_url) renders correctly on it.
+  // R2: header is now WHITE/CREAM → the full-colour logo (settings.logo_url) renders on it.
   const headerLogo = settings?.logo_url ?? null;
 
   const bacs =
@@ -85,8 +85,8 @@ export function renderInvoiceEmailHtml(
 <html><body style="margin:0;padding:0;background:${cream};font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#222;">
   <table cellspacing="0" cellpadding="0" border="0" width="100%" style="padding:28px 0;"><tr><td align="center">
     <table cellspacing="0" cellpadding="0" border="0" width="600" style="background:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 3px 10px rgba(0,0,0,0.07);">
-      <tr><td style="background:${navy};padding:22px 32px;" align="center">
-        ${headerLogo ? `<img src="${headerLogo}" alt="${firm}" height="56" style="height:56px;display:inline-block;" />` : `<span style="color:#fff;font-size:20px;font-weight:bold;letter-spacing:1px;">${firm}</span>`}
+      <tr><td style="background:#ffffff;padding:24px 32px 18px;border-bottom:3px solid ${green};" align="center">
+        ${headerLogo ? `<img src="${headerLogo}" alt="${firm}" height="60" style="height:60px;display:inline-block;" />` : `<span style="color:${navy};font-size:22px;font-weight:bold;letter-spacing:1px;">${firm}</span>`}
       </td></tr>
       <tr><td style="padding:30px 32px 10px;">
         <h1 style="margin:0 0 14px;font-size:21px;color:${navy};">Invoice ${invoice.invoice_no}</h1>

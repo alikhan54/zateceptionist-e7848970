@@ -450,9 +450,12 @@ export default function AccountingJobs() {
       if (editingJob) {
         await updateJob.mutateAsync({ id: editingJob.id, patch: payload });
         toast({ title: "Job updated", description: form.title.trim() });
-        // Phase C: the edit dialog can also move a job INTO "Invoice to send" —
-        // same idempotent auto-draft as the quick-status path.
-        if (payload.status === "invoice_sent" && editingJob.status !== "invoice_sent") {
+        // R6: the edit dialog can also move a job into "Submitted" (or "Invoice to send")
+        // — same idempotent auto-draft as the quick-status path.
+        if (
+          (payload.status === "submitted" || payload.status === "invoice_sent") &&
+          editingJob.status !== payload.status
+        ) {
           await ensureDraftInvoiceForJob({ ...editingJob, ...payload } as AccountingJob);
         }
       } else {
@@ -572,8 +575,10 @@ export default function AccountingJobs() {
         title: "Status changed",
         description: `${job.title} → ${statusMeta(next).label}`,
       });
-      // Phase C: entering "Invoice to send" auto-drafts the invoice (idempotent).
-      if (next === "invoice_sent" && job.status !== "invoice_sent") {
+      // R6: auto-draft fires when work is FINISHED — entering "Submitted". The
+      // "Invoice to send" transition stays as an idempotent safety net (uq_acc_inv_tenant_job
+      // guarantees ONE invoice regardless of which fires first / re-fires).
+      if ((next === "submitted" || next === "invoice_sent") && job.status !== next) {
         await ensureDraftInvoiceForJob(job);
       }
     } catch (err) {

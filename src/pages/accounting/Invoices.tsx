@@ -112,11 +112,16 @@ const VAT_MODES: Array<{ code: VatMode; label: string; rate: number }> = [
   { code: "outside", label: "Outside scope", rate: 0 },
 ];
 
+type DiscountMode = "amount" | "percent";
+
 interface InvoiceFormState {
   client_id: string;
   invoice_no: string;
-  subtotal: string;       // user-entered net amount as string for input control
+  subtotal: string;       // user-entered net (gross, pre-discount) amount as string
   vatMode: VatMode;
+  // R4: discount — fixed £ amount or % of subtotal.
+  discountMode: DiscountMode;
+  discountValue: string;
   description: string;
   due_at: string;         // YYYY-MM-DD
   status: InvoiceStatus;
@@ -126,7 +131,9 @@ const EMPTY_FORM: InvoiceFormState = {
   client_id: "",
   invoice_no: "",
   subtotal: "",
-  vatMode: "standard",
+  vatMode: "standard", // R5: Standard 20% pre-selected on every new invoice
+  discountMode: "amount",
+  discountValue: "",
   description: "",
   due_at: "",
   status: "draft",
@@ -268,16 +275,20 @@ export default function AccountingInvoices() {
   const [paymentInvoice, setPaymentInvoice] = useState<AccountingInvoice | null>(null);
   const [paymentForm, setPaymentForm] = useState({ amount: "", date: "", ref: "", notes: "" });
 
-  // Hydrate edit form
+  // Hydrate edit form. Prefer the persisted breakdown (migration 42); else reverse at 20%.
   useEffect(() => {
     if (!editingInvoice) return;
-    // Best-effort VAT reverse: assume Standard rate at first
     const total = Number(editingInvoice.amount) || 0;
+    const persistedSub = editingInvoice.subtotal != null ? Number(editingInvoice.subtotal) : null;
+    const persistedDisc = editingInvoice.discount_amount != null ? Number(editingInvoice.discount_amount) : null;
+    const sub = persistedSub ?? (total ? total / 1.2 : 0);
     setForm({
       client_id: editingInvoice.client_id,
       invoice_no: editingInvoice.invoice_no,
-      subtotal: total ? String((total / 1.2).toFixed(2)) : "",
+      subtotal: sub ? String(sub.toFixed(2)) : "",
       vatMode: "standard",
+      discountMode: "amount",
+      discountValue: persistedDisc && persistedDisc > 0 ? String(persistedDisc.toFixed(2)) : "",
       description: editingInvoice.description ?? "",
       due_at: editingInvoice.due_at ?? "",
       status: editingInvoice.status,
@@ -307,14 +318,20 @@ export default function AccountingInvoices() {
     };
   }, [invoices]);
 
-  // VAT calculator
+  // VAT + discount calculator (R4): subtotal − discount = net → VAT on net → total.
   const vatPreview = useMemo(() => {
     const sub = Number(form.subtotal) || 0;
     const mode = VAT_MODES.find((m) => m.code === form.vatMode) ?? VAT_MODES[0];
-    const vat = sub * mode.rate;
-    const total = sub + vat;
-    return { subtotal: sub, vat, total, modeLabel: mode.label };
-  }, [form.subtotal, form.vatMode]);
+    const rawDisc = Number(form.discountValue) || 0;
+    const discount =
+      form.discountMode === "percent"
+        ? Math.max(0, Math.min(sub, sub * (rawDisc / 100)))
+        : Math.max(0, Math.min(sub, rawDisc));
+    const net = Math.max(0, sub - discount);
+    const vat = net * mode.rate;
+    const total = net + vat;
+    return { subtotal: sub, discount, net, vat, total, modeLabel: mode.label };
+  }, [form.subtotal, form.vatMode, form.discountMode, form.discountValue]);
 
   async function openCreate() {
     setForm(EMPTY_FORM);
@@ -355,6 +372,10 @@ export default function AccountingInvoices() {
       status: form.status,
       description: form.description.trim() || null,
       due_at: form.due_at || null,
+      // R4: persist the breakdown so the PDF/email render real Subtotal/Discount/VAT rows.
+      subtotal: vatPreview.subtotal,
+      discount_amount: vatPreview.discount > 0 ? vatPreview.discount : null,
+      vat_amount: vatPreview.vat,
     };
     try {
       if (editingInvoice) {
@@ -790,11 +811,44 @@ export default function AccountingInvoices() {
               </div>
             </div>
 
+            {/* R4: Discount — fixed £ or % of subtotal */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="invoice-discount">Discount</Label>
+                <Input
+                  id="invoice-discount"
+                  data-testid="invoice-form-discount"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={form.discountValue}
+                  onChange={(e) => setForm({ ...form, discountValue: e.target.value })}
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Discount type</Label>
+                <Select value={form.discountMode} onValueChange={(v) => setForm({ ...form, discountMode: v as DiscountMode })}>
+                  <SelectTrigger data-testid="invoice-form-discount-mode"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="amount">Fixed amount (£)</SelectItem>
+                    <SelectItem value="percent">Percentage (%)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <div className="rounded-md border bg-muted/40 p-3 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Subtotal</span>
                 <span className="font-mono">{formatGBP(vatPreview.subtotal)}</span>
               </div>
+              {vatPreview.discount > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Discount{form.discountMode === "percent" ? ` (${Number(form.discountValue) || 0}%)` : ""}</span>
+                  <span className="font-mono" data-testid="invoice-form-discount-preview">− {formatGBP(vatPreview.discount)}</span>
+                </div>
+              )}
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">VAT ({vatPreview.modeLabel})</span>
                 <span className="font-mono">{formatGBP(vatPreview.vat)}</span>

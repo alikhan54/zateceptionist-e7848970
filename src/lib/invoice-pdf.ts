@@ -23,8 +23,9 @@ import type { InvoiceSettings } from "@/hooks/useInvoiceSettings";
 import jetbrainsMonoUrl from "@/assets/fonts/JetBrainsMono-Regular.ttf?url";
 
 export interface InvoicePdfOptions {
-  /** Explicit VAT breakdown; when absent, reverse-computes at standard 20%. */
+  /** Explicit VAT breakdown; when absent, reads invoice.* columns then reverse-computes at 20%. */
   subtotal?: number;
+  discount?: number;
   vatAmount?: number;
   vatLabel?: string;
   /** Total already paid (drives Balance Due). Default 0. */
@@ -121,47 +122,39 @@ export async function buildInvoicePdf(
     monoFont = "JetBrainsMono";
   }
 
-  // ---------- Header band (navy) ----------
-  const bandH = 32;
-  doc.setFillColor(navy.r, navy.g, navy.b);
-  doc.rect(0, 0, pageW, bandH, "F");
-
-  // White logo on the band (left)
+  // ---------- Header (WHITE/CREAM — full-colour logo, matching the #1877 look) ----------
+  // The brand logo includes the "SMARTLEDGER SOLUTIONS" wordmark, so it doubles as the
+  // firm identity; no separate firm-name text is printed beside it.
   const logoData = settings?.logo_url ? await loadImageDataUrl(settings.logo_url) : null;
+  let leftY = 18;
   if (logoData) {
-    // source 263x209 — keep aspect ratio at 24mm height
-    const logoH = 24;
+    const logoH = 26; // source 263x209, keep aspect
     const logoW = (263 / 209) * logoH;
-    doc.addImage(logoData, "PNG", margin, (bandH - logoH) / 2, logoW, logoH);
-  } else if (settings?.firm_display_name) {
-    doc.setTextColor(255, 255, 255);
+    doc.addImage(logoData, "PNG", margin, 12, logoW, logoH);
+    leftY = 12 + logoH + 5;
+  } else {
+    doc.setTextColor(navy.r, navy.g, navy.b);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.text(settings.firm_display_name, margin, bandH / 2 + 2);
+    doc.setFontSize(18);
+    doc.text(settings?.firm_display_name ?? "SMARTLEDGER SOLUTIONS", margin, 24);
+    leftY = 32;
   }
-
-  // "INVOICE" (right, white)
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(26);
-  doc.text("INVOICE", pageW - margin, bandH / 2 + 3, { align: "right" });
-
-  // ---------- Firm block (left) + meta block (right) ----------
-  let y = bandH + 12;
-  doc.setTextColor(navy.r, navy.g, navy.b);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(13);
-  doc.text(settings?.firm_display_name ?? "SMARTLEDGER SOLUTIONS", margin, y);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(GREY.r, GREY.g, GREY.b);
-  let firmY = y + 5;
+  // Optional firm address under the logo (small, grey)
   if (settings?.firm_address) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(GREY.r, GREY.g, GREY.b);
     for (const line of settings.firm_address.split(/\n|, ?/).slice(0, 3)) {
-      doc.text(line, margin, firmY);
-      firmY += 4.2;
+      doc.text(line, margin, leftY);
+      leftY += 4;
     }
   }
+
+  // "INVOICE" (right, navy) + meta block
+  doc.setTextColor(navy.r, navy.g, navy.b);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(28);
+  doc.text("INVOICE", pageW - margin, 22, { align: "right" });
 
   const terms = settings?.payment_terms_days ?? 30;
   const metaRows: Array<[string, string, boolean]> = [
@@ -170,21 +163,27 @@ export async function buildInvoicePdf(
     ["PAYMENT TERMS", `Due in ${terms} days`, false],
   ];
   if (invoice.due_at) metaRows.push(["DUE DATE", fmtDateUK(invoice.due_at), false]);
-  let metaY = y;
+  let metaY = 32;
   for (const [label, value, mono] of metaRows) {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
     doc.setTextColor(GREY.r, GREY.g, GREY.b);
     doc.text(label, pageW - margin - 58, metaY);
-    doc.setFont(mono ? monoFont : "helvetica", mono ? "normal" : "normal");
+    doc.setFont(mono ? monoFont : "helvetica", "normal");
     doc.setFontSize(10);
     doc.setTextColor(navy.r, navy.g, navy.b);
     doc.text(value, pageW - margin, metaY, { align: "right" });
     metaY += 6;
   }
 
+  // Green divider rule under the header
+  let y = Math.max(leftY, metaY) + 4;
+  doc.setDrawColor(green.r, green.g, green.b);
+  doc.setLineWidth(0.8);
+  doc.line(margin, y, pageW - margin, y);
+  y += 8;
+
   // ---------- BILL TO (cream chip) ----------
-  y = Math.max(firmY, metaY) + 8;
   doc.setFillColor(cream.r, cream.g, cream.b);
   doc.roundedRect(margin, y - 5, 92, 22, 1.5, 1.5, "F");
   doc.setFont("helvetica", "bold");
@@ -201,12 +200,19 @@ export async function buildInvoicePdf(
     doc.setTextColor(GREY.r, GREY.g, GREY.b);
     doc.text(invoice.accounting_clients.contact_email, margin + 4, y + 11.5);
   }
+  y += 28; // clear the BILL TO chip before the line-items table
 
   // ---------- Line items ----------
-  y += 26;
+  // R4: prefer the PERSISTED breakdown (subtotal/discount_amount/vat_amount columns);
+  // fall back to opts, then to reverse-at-20% for legacy rows with only `amount`.
   const total = Number(invoice.amount) || 0;
-  const subtotal = opts.subtotal ?? total / 1.2;
-  const vatAmount = opts.vatAmount ?? total - subtotal;
+  const persistedSub = invoice.subtotal != null ? Number(invoice.subtotal) : null;
+  const persistedDisc = invoice.discount_amount != null ? Number(invoice.discount_amount) : null;
+  const persistedVat = invoice.vat_amount != null ? Number(invoice.vat_amount) : null;
+  const subtotal = persistedSub ?? opts.subtotal ?? total / 1.2;
+  const discount = persistedDisc ?? opts.discount ?? 0;
+  const net = Math.max(0, subtotal - discount);
+  const vatAmount = persistedVat ?? opts.vatAmount ?? Math.max(0, total - net);
   const vatLabel = opts.vatLabel ?? "VAT (20%)";
   const paid = opts.amountPaid ?? 0;
   const balanceDue = Math.max(0, total - paid);
@@ -234,15 +240,15 @@ export async function buildInvoicePdf(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   y = (doc as any).lastAutoTable.finalY + 8;
 
-  // ---------- Totals (right column) ----------
+  // ---------- Totals (right column) — DISCOUNT row only when there's a discount ----------
   const totalsX = pageW - margin - 62;
   const rows: Array<[string, string, "normal" | "bold" | "balance"]> = [
     ["Subtotal", gbp(subtotal), "normal"],
-    ["Discount", gbp(0), "normal"],
-    [vatLabel, gbp(vatAmount), "normal"],
-    ["Total", gbp(total), "bold"],
-    ["Balance Due", gbp(balanceDue), "balance"],
   ];
+  if (discount > 0) rows.push(["Discount", `- ${gbp(discount)}`, "normal"]);
+  rows.push([vatLabel, gbp(vatAmount), "normal"]);
+  rows.push(["Total", gbp(total), "bold"]);
+  rows.push(["Balance Due", gbp(balanceDue), "balance"]);
   for (const [label, value, style] of rows) {
     if (style === "balance") {
       doc.setFillColor(green.r, green.g, green.b);
@@ -264,29 +270,30 @@ export async function buildInvoicePdf(
     y += style === "balance" ? 9 : 6.5;
   }
 
-  // ---------- BACS block (left, aligned with totals) ----------
-  let bacsY = y - rows.length * 6.5 - 2;
+  // ---------- BACS block — R1: BOTTOM-LEFT, just above the footer band (#1877 layout) ----------
   if (settings?.bank_name || settings?.account_number || settings?.sort_code) {
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.setTextColor(navy.r, navy.g, navy.b);
-    doc.text("BACS To:", margin, bacsY);
-    bacsY += 6;
     const bacsRows: Array<[string, string | null]> = [
       ["Bank", settings?.bank_name ?? null],
       ["Account number", settings?.account_number ?? null],
       ["Sort code", settings?.sort_code ?? null],
       ["IBAN", settings?.iban ?? null],
-    ];
+    ].filter((r) => r[1]) as Array<[string, string | null]>;
+    // Anchor the block so its last line sits ~6mm above the footer band (pageH-18).
+    const blockH = 6 + bacsRows.length * 5.5;
+    let bacsY = pageH - 18 - 6 - blockH + 6;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(navy.r, navy.g, navy.b);
+    doc.text("BACS To:", margin, bacsY);
+    bacsY += 6;
     for (const [label, value] of bacsRows) {
-      if (!value) continue;
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
       doc.setTextColor(GREY.r, GREY.g, GREY.b);
       doc.text(`${label}:`, margin, bacsY);
       doc.setFont(monoFont, "normal");
       doc.setTextColor(navy.r, navy.g, navy.b);
-      doc.text(value, margin + 34, bacsY);
+      doc.text(value as string, margin + 34, bacsY);
       bacsY += 5.5;
     }
   }

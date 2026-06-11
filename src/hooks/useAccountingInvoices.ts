@@ -25,6 +25,11 @@ export interface AccountingInvoice {
   due_at: string | null;
   paid_at: string | null;
   pdf_url: string | null;
+  // Refinements (migration 42): persisted VAT breakdown for the #1877 totals block.
+  // NULL on legacy rows → PDF/email reverse-compute at standard 20%.
+  subtotal: number | null;        // gross net before discount
+  discount_amount: number | null; // resolved £ discount
+  vat_amount: number | null;      // VAT on (subtotal - discount)
   /**
    * Wave 1 Phase E (migration 38): FK to accounting_jobs.id. Populated when a
    * draft invoice is auto-created on job-create-with-owner-and-fee. NULL for
@@ -110,6 +115,10 @@ export function useAccountingInvoices(filters: UseAccountingInvoicesFilters = {}
         status: (inv.status ?? "draft") as InvoiceStatus,
         description: inv.description ?? null,
         due_at: inv.due_at ?? null,
+        // Refinements (migration 42): persist the VAT breakdown when supplied.
+        subtotal: inv.subtotal ?? null,
+        discount_amount: inv.discount_amount ?? null,
+        vat_amount: inv.vat_amount ?? null,
         created_by: userId,
         updated_by: userId,
       };
