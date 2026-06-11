@@ -63,6 +63,7 @@
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",
+    "react-force-graph-3d": "1.24.0",
     "react-hook-form": "^7.61.1",
     "react-leaflet": "^4.2.1",
     "react-resizable-panels": "^2.1.9",
@@ -72,9 +73,14 @@
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "three": "^0.160.0",
+    "three-spritetext": "1.10.0",
     "vaul": "^0.9.9",
     "xlsx": "^0.18.5",
     "zod": "^3.25.76"
+  },
+  "overrides": {
+    "3d-force-graph": "1.73.0",
+    "three-render-objects": "1.29.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
