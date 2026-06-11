@@ -467,6 +467,25 @@ export async function syncToV1(
   }, tenantSlug, 120000);
 }
 
+/**
+ * QA check for one drawing page (scale truth + area sanity). Gemini-free.
+ * applyFixes=true repairs polygon areas + provably-synced v1 rooms; the service
+ * refuses to apply low-confidence scales.
+ */
+export async function qaCheck(
+  projectId: string,
+  tenantSlug: string,
+  pageNumber: number,
+  applyFixes: boolean = false,
+) {
+  return callWebhookWithTimeout(WEBHOOKS.ESTIMATION_V2_ACTION, {
+    action: "qa_check",
+    project_id: projectId,
+    page_number: pageNumber,
+    apply_fixes: applyFixes,
+  }, tenantSlug, 120000);
+}
+
 export async function recalculateWaste(
   projectId: string,
   tenantId: string,

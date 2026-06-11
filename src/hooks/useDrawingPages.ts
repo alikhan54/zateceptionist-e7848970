@@ -16,6 +16,13 @@ export interface DrawingPage {
   markup_url: string | null;
   processing_status: string | null;
   text_blocks_count: number | null;
+  qa_flags: {
+    chosen_scale?: number | null;
+    confidence?: string;
+    flags?: string[];
+    labels_on_page?: number;
+    area_median_after?: number | null;
+  } | null;
 }
 
 export interface DrawingRoom {
@@ -41,7 +48,7 @@ export function useDrawingPages(projectId?: string, opts?: { poll?: boolean }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("estimation_drawing_pages" as any)
-        .select("id,tenant_id,project_id,page_number,page_type,sheet_number,sheet_title,classification_confidence,rooms_detected,room_detection_status,markup_url,processing_status,text_blocks_count")
+        .select("id,tenant_id,project_id,page_number,page_type,sheet_number,sheet_title,classification_confidence,rooms_detected,room_detection_status,markup_url,processing_status,text_blocks_count,qa_flags")
         .eq("tenant_id", tenantId)
         .eq("project_id", projectId)
         .order("page_number");
