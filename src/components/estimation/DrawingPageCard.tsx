@@ -2,9 +2,9 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { detectRoomsV2, renderMarkupV2, qaCheck } from "@/lib/api/estimationApi";
+import { detectRoomsV2, renderMarkupV2, qaCheck, parseSchedule } from "@/lib/api/estimationApi";
 import { useDrawingRooms, PLAN_TYPES, type DrawingPage } from "@/hooks/useDrawingPages";
-import { Loader2, ScanSearch, Paintbrush, ExternalLink, ChevronDown, ChevronUp, ShieldCheck } from "lucide-react";
+import { Loader2, ScanSearch, Paintbrush, ExternalLink, ChevronDown, ChevronUp, ShieldCheck, Table2 } from "lucide-react";
 import { toast } from "sonner";
 
 const TYPE_BADGES: Record<string, { label: string; cls: string }> = {
@@ -40,12 +40,15 @@ interface Props {
   onChanged: () => void;
   /** From DrawingsTab: detected/unsynced polygon counts for this page. */
   syncState?: { detected: number; unsynced: number };
+  /** From DrawingsTab: parsed finish-schedule rows stored for this page. */
+  finishesCount?: number;
 }
 
-export default function DrawingPageCard({ page, projectId, tenantId, onChanged, syncState }: Props) {
+export default function DrawingPageCard({ page, projectId, tenantId, onChanged, syncState, finishesCount }: Props) {
   const [detecting, setDetecting] = useState(false);
   const [rendering, setRendering] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [parsing, setParsing] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [lastDetect, setLastDetect] = useState<{ rooms: number; sf: number } | null>(null);
 
@@ -124,6 +127,34 @@ export default function DrawingPageCard({ page, projectId, tenantId, onChanged, 
       toast.error("QA check timed out — please try again.");
     } finally {
       setVerifying(false);
+    }
+  };
+
+  const isSchedule = page.page_type === "finish_schedule" || page.page_type === "door_schedule";
+
+  const handleParse = async () => {
+    setParsing(true);
+    try {
+      const resp = await parseSchedule(projectId, tenantId, page.page_number);
+      const d = ((resp as any)?.data || resp) as any;
+      if (!d?.success) {
+        toast.error(String(d?.error || (resp as any)?.error || "Schedule parsing failed — please try again."));
+        return;
+      }
+      if (d.rooms_extracted > 0) {
+        const unmatched = (d.tags_not_in_catalog || []).length;
+        toast.success(
+          `${d.rooms_extracted} rooms, ${(d.distinct_tags || []).length} material tags` +
+          (unmatched ? ` (${unmatched} not in catalog — review needed)` : ""),
+        );
+      } else {
+        toast.info("No room rows found — this page looks like a materials legend, not a room schedule.");
+      }
+      onChanged();
+    } catch {
+      toast.error("Schedule parsing timed out — please try again.");
+    } finally {
+      setParsing(false);
     }
   };
 
@@ -247,6 +278,23 @@ export default function DrawingPageCard({ page, projectId, tenantId, onChanged, 
                 </table>
               )
             )}
+          </div>
+        ) : isSchedule ? (
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button size="sm" variant="outline" onClick={handleParse} disabled={parsing}>
+                {parsing ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Table2 className="mr-1 h-3 w-3" />}
+                {parsing ? "Parsing..." : "Parse Schedule"}
+              </Button>
+              {(finishesCount ?? 0) > 0 && (
+                <Badge variant="outline" className="text-emerald-700 border-emerald-300">
+                  Parsed ✓ {finishesCount} rooms
+                </Badge>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              AI reads the schedule table into room-by-room material assignments.
+            </p>
           </div>
         ) : (
           <p className="text-xs text-muted-foreground">

@@ -486,6 +486,35 @@ export async function qaCheck(
   }, tenantSlug, 120000);
 }
 
+/** Parse a finish-schedule page's stored text into room→material rows (one Gemini text call). */
+export async function parseSchedule(
+  projectId: string,
+  tenantSlug: string,
+  pageNumber: number,
+) {
+  return callWebhookWithTimeout(WEBHOOKS.ESTIMATION_V2_ACTION, {
+    action: "parse_schedule",
+    project_id: projectId,
+    page_number: pageNumber,
+  }, tenantSlug, 240000);
+}
+
+/**
+ * Match parsed finishes to rooms and seed takeoff items. dryRun=true (default)
+ * returns the plan only; the UI always shows the plan before a real apply.
+ */
+export async function applyFinishes(
+  projectId: string,
+  tenantSlug: string,
+  dryRun: boolean = true,
+) {
+  return callWebhookWithTimeout(WEBHOOKS.ESTIMATION_V2_ACTION, {
+    action: "apply_finishes",
+    project_id: projectId,
+    dry_run: dryRun,
+  }, tenantSlug, 120000);
+}
+
 export async function recalculateWaste(
   projectId: string,
   tenantId: string,
