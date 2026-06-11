@@ -18,7 +18,12 @@ import { VITAL_FIELDS, classifyVital, summarizeVitals, DEFAULT_THRESHOLDS, type 
 import { HospitalAdmitDialog } from "@/components/hospital/HospitalAdmitDialog";
 import { VitalsCaptureDialog } from "@/components/hospital/VitalsCaptureDialog";
 import { useToast } from "@/hooks/use-toast";
-import { HospitalGate, EcgLine, fetchMedicaBrief, fetchMedicaRecommendations, type MedRec } from "./hospitalShared";
+import {
+  HospitalGate, EcgLine, fetchMedicaBrief, fetchMedicaRecommendations, type MedRec,
+  useHxCollapse, HxCollapseToggle, HxPickInput,
+} from "./hospitalShared";
+import { CARDIAC_MEDS, LAB_PANELS, IMAGING_STUDIES } from "@/lib/hospital/pickLists";
+import { PatientChartBar } from "./PatientChartBar";
 import { ConsultationSummaryBox } from "./ConsultationSummary";
 import { PrescriptionPanel } from "./Prescription";
 import { OperationTheatrePanel, statusChipClass } from "./OperationTheatre";
@@ -179,6 +184,8 @@ function PatientJourneyInner() {
   const [brief, setBrief] = useState<string>("");
   const [briefErr, setBriefErr] = useState<string>("");
   useEffect(() => { setBriefState("idle"); setBrief(""); setBriefErr(""); }, [selectedId]);
+  // Collapsible MEDICA panel [Brief 8 · B] — persisted like hx-lang/hx-ecg
+  const { collapsed: medicaCollapsed, toggle: toggleMedica } = useHxCollapse("hx-collapse-medica");
 
   // ---- Doctor's diagnosis + remarks → clinic_visits.diagnosis / .doctor_notes [FIX2/FIX3] ----
   const qc = useQueryClient();
@@ -389,36 +396,19 @@ function PatientJourneyInner() {
         </div>
       </div>
 
+      {/* PATIENT RECORDS chart bar [HOSPITAL-CHART · Brief 8] — one click, present + historical,
+          read-only aggregation, never a route change */}
+      <div className="mt-4">
+        <PatientChartBar patient={patient} currentBed={currentBed as any} />
+      </div>
+
       {/* ---------- GRID ---------- */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mt-4">
-        {/* LEFT: spine + vitals */}
+        {/* LEFT: vitals + diagnosis & remarks (Care Pathway panel retired — addendum (b); it
+            duplicated the header stepper. Component kept below for potential re-mount.) */}
         <div className="lg:col-span-5 space-y-4">
-          {/* journey spine */}
+          {/* vitals — above Diagnosis & Remarks (addendum (c)) */}
           <div className="hx-panel hx-rise" style={{ animationDelay: "80ms" }}>
-            <div className="hx-panel-h"><Activity className="h-4 w-4" style={{ color: "var(--hx-accent2)" }} /><span className="font-semibold">{t("spine.title")}</span></div>
-            <div className="hx-panel-b">
-              <div className="hx-spine">
-                <SpineNode done={!!patient} active={false} icon={UserPlus} title={t("spine.admitted")}
-                  sub={patient.created_at ? new Date(patient.created_at).toLocaleDateString() : t("spine.registered")} />
-                <SpineNode done={!!latestVisit?.vitals_completed} active={stageIndex === 1} icon={HeartPulse} title={t("spine.nurseVitals")}
-                  sub={latestVisit?.vitals_completed
-                    ? (vitalsSummary.worst === "critical" ? t("spine.criticalFlag") : vitalsSummary.worst === "warning" ? t("spine.watchFlag") : t("spine.withinRange"))
-                    : t("spine.awaitingVitals")} tone={vitalsSummary.worst} />
-                <SpineNode done={briefState === "done"} active={stageIndex === 2} icon={Stethoscope} title={t("spine.consult")}
-                  sub={briefState === "done" ? t("spine.briefReviewed") : t("spine.previsit")} />
-                <SpineNode done={orders.length > 0} active={stageIndex === 3} icon={ClipboardList} title={t("spine.orders")}
-                  sub={orders.length ? ti("spine.ordersPlaced", { n: orders.length }) : t("spine.noOrders")} />
-                <SpineNode done={orders.some((o) => ["resulted", "dispensed", "reviewed"].includes(o.status))} active={stageIndex >= 4}
-                  icon={Pill} title={t("spine.pharmacyDiag")}
-                  sub={orders.filter((o) => ["resulted", "dispensed", "reviewed"].includes(o.status)).length
-                    ? ti("spine.fulfilled", { n: orders.filter((o) => ["resulted", "dispensed", "reviewed"].includes(o.status)).length })
-                    : t("spine.routing")} />
-              </div>
-            </div>
-          </div>
-
-          {/* vitals */}
-          <div className="hx-panel hx-rise" style={{ animationDelay: "160ms" }}>
             <div className="hx-panel-h">
               <HeartPulse className="h-4 w-4" style={{ color: "var(--hx-accent2)" }} />
               <span className="font-semibold">{t("vitals.title")}</span>
@@ -454,12 +444,9 @@ function PatientJourneyInner() {
               )}
             </div>
           </div>
-        </div>
 
-        {/* RIGHT: doctor's remarks + MEDICA brief + order entry + queues */}
-        <div className="lg:col-span-7 space-y-4">
-          {/* Doctor's Remarks — ABOVE the MEDICA panel [FIX2] */}
-          <div className="hx-panel hx-rise" style={{ animationDelay: "100ms" }} data-testid="hx-remarks">
+          {/* Diagnosis & Remarks — BELOW vitals in the LEFT column (addendum (c)) */}
+          <div className="hx-panel hx-rise" style={{ animationDelay: "140ms" }} data-testid="hx-remarks">
             <div className="hx-panel-h">
               <ClipboardList className="h-4 w-4" style={{ color: "var(--hx-accent2)" }} />
               <span className="font-semibold">{t("remarks.title")}</span>
@@ -490,16 +477,26 @@ function PatientJourneyInner() {
               )}
             </div>
           </div>
+        </div>
 
-          {/* MEDICA brief */}
-          <div className="hx-panel hx-panel--accent hx-rise" style={{ animationDelay: "120ms" }}>
-            <div className="hx-panel-h">
+        {/* RIGHT: MEDICA brief + consultation + order entry + queues */}
+        <div className="lg:col-span-7 space-y-4">
+          {/* MEDICA brief — collapsible [Brief 8 · B]: pure presentational; the brief content/logic
+              is unchanged. Collapsed = one-line header + expand control; state persists. */}
+          <div className="hx-panel hx-panel--accent hx-rise" style={{ animationDelay: "120ms" }} data-testid="hx-medica-panel" data-collapsed={medicaCollapsed ? "1" : "0"}>
+            <div className="hx-panel-h" style={medicaCollapsed ? { borderBottom: "none" } : undefined}>
               <Sparkles className="h-4 w-4" style={{ color: "var(--hx-accent)" }} />
               <span className="font-semibold">{t("medica.title")}</span>
-              <button className="hx-btn hx-btn--primary ml-auto" style={{ padding: "0.4rem 0.85rem" }} onClick={askMedica} disabled={briefState === "loading"} data-testid="hx-ask-medica">
-                {briefState === "loading" ? <><Loader2 className="h-4 w-4 animate-spin" /> {t("medica.analysing")}</> : <><Sparkles className="h-4 w-4" /> {t("medica.ask")}</>}
-              </button>
+              {!medicaCollapsed && (
+                <button className="hx-btn hx-btn--primary ml-auto" style={{ padding: "0.4rem 0.85rem" }} onClick={askMedica} disabled={briefState === "loading"} data-testid="hx-ask-medica">
+                  {briefState === "loading" ? <><Loader2 className="h-4 w-4 animate-spin" /> {t("medica.analysing")}</> : <><Sparkles className="h-4 w-4" /> {t("medica.ask")}</>}
+                </button>
+              )}
+              <span className={medicaCollapsed ? "ml-auto" : "ml-2"}>
+                <HxCollapseToggle collapsed={medicaCollapsed} onToggle={toggleMedica} testid="hx-medica-collapse" />
+              </span>
             </div>
+            {!medicaCollapsed && (
             <div className="hx-panel-b">
               {briefState === "idle" && (
                 <p className="hx-dim text-sm">{ti("medica.idle", { name: patient.full_name })}</p>
@@ -520,6 +517,7 @@ function PatientJourneyInner() {
                 </div>
               )}
             </div>
+            )}
           </div>
 
           {/* Consultation Summary — directly BELOW the MEDICA brief panel. Manual (doctor writes) or
@@ -599,9 +597,12 @@ function PatientJourneyInner() {
                 </div>
                 <div className="sm:col-span-4">
                   <label className="hx-label">{orderType === "medication" ? t("order.drugDose") : orderType === "lab" ? t("order.test") : t("order.study")}</label>
-                  <input className="hx-input" value={orderDetail} onChange={(e) => setOrderDetail(e.target.value)}
+                  {/* [Brief 8 · C] type-ahead over a STATIC in-code pick-list (no DB catalog);
+                      free text always allowed — Enter without a highlighted suggestion still places */}
+                  <HxPickInput value={orderDetail} onChange={setOrderDetail}
+                    options={orderType === "medication" ? CARDIAC_MEDS : orderType === "lab" ? LAB_PANELS : IMAGING_STUDIES}
                     placeholder={orderType === "medication" ? t("order.phMed") : orderType === "lab" ? t("order.phLab") : t("order.phImaging")}
-                    onKeyDown={(e) => e.key === "Enter" && placeOrder()} data-testid="hx-order-detail" />
+                    onEnter={placeOrder} testid="hx-order-detail" />
                 </div>
                 <div className="sm:col-span-2">
                   <button className="hx-btn hx-btn--primary w-full" onClick={placeOrder} disabled={(orderType === "medication" ? (meds.length === 0 && !orderDetail.trim()) : !orderDetail.trim()) || createOrder.isPending} data-testid="hx-place-order">
@@ -690,6 +691,40 @@ function PatientJourneyInner() {
 
       <HospitalAdmitDialog open={admitOpen} onOpenChange={setAdmitOpen} onAdmitted={(r) => setSelectedId(r.patient_id)} />
       <VitalsCaptureDialog open={vitalsOpen} onOpenChange={setVitalsOpen} patientId={selectedId} patientName={patient?.full_name} visitId={latestVisit?.id} />
+    </div>
+  );
+}
+
+/**
+ * RETIRED 2026-06-11 (Brief 8 addendum (b)) — the left "Care Pathway" spine panel duplicated the
+ * journey stepper in the header (above the ECG line), so it is no longer mounted. Kept (exported)
+ * for a potential re-mount; rendering logic unchanged.
+ */
+export function CarePathwayPanel({ patient, latestVisit, stageIndex, orders, briefState, vitalsSummary }: {
+  patient: any; latestVisit: any; stageIndex: number; orders: any[];
+  briefState: string; vitalsSummary: { worst: VitalStatus };
+}) {
+  const { t, ti } = useHospitalT();
+  const fulfilled = orders.filter((o) => ["resulted", "dispensed", "reviewed"].includes(o.status)).length;
+  return (
+    <div className="hx-panel hx-rise" style={{ animationDelay: "80ms" }}>
+      <div className="hx-panel-h"><Activity className="h-4 w-4" style={{ color: "var(--hx-accent2)" }} /><span className="font-semibold">{t("spine.title")}</span></div>
+      <div className="hx-panel-b">
+        <div className="hx-spine">
+          <SpineNode done={!!patient} active={false} icon={UserPlus} title={t("spine.admitted")}
+            sub={patient.created_at ? new Date(patient.created_at).toLocaleDateString() : t("spine.registered")} />
+          <SpineNode done={!!latestVisit?.vitals_completed} active={stageIndex === 1} icon={HeartPulse} title={t("spine.nurseVitals")}
+            sub={latestVisit?.vitals_completed
+              ? (vitalsSummary.worst === "critical" ? t("spine.criticalFlag") : vitalsSummary.worst === "warning" ? t("spine.watchFlag") : t("spine.withinRange"))
+              : t("spine.awaitingVitals")} tone={vitalsSummary.worst} />
+          <SpineNode done={briefState === "done"} active={stageIndex === 2} icon={Stethoscope} title={t("spine.consult")}
+            sub={briefState === "done" ? t("spine.briefReviewed") : t("spine.previsit")} />
+          <SpineNode done={orders.length > 0} active={stageIndex === 3} icon={ClipboardList} title={t("spine.orders")}
+            sub={orders.length ? ti("spine.ordersPlaced", { n: orders.length }) : t("spine.noOrders")} />
+          <SpineNode done={fulfilled > 0} active={stageIndex >= 4} icon={Pill} title={t("spine.pharmacyDiag")}
+            sub={fulfilled ? ti("spine.fulfilled", { n: fulfilled }) : t("spine.routing")} />
+        </div>
+      </div>
     </div>
   );
 }

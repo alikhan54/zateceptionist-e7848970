@@ -16,6 +16,7 @@ import { useHospitalT } from "./i18n";
 import { useHospitalMode, HospitalModeToggle } from "./hospitalMode";
 import {
   fetchConsultationSummary, captureStyleDeltas, useDoctorStyleCount,
+  useHxCollapse, HxCollapseToggle,
   type ConsultationSummary as Summary, type StyleDelta,
 } from "./hospitalShared";
 
@@ -113,19 +114,25 @@ export function ConsultationSummaryBox({
   }
 
   const noEncounter = !visitId;
+  // Collapsible panel [Brief 8 addendum (a)] — same pattern as the MEDICA collapse; presentational only
+  const { collapsed, toggle } = useHxCollapse("hx-collapse-consult");
 
   return (
-    <div className="hx-panel hx-rise" style={{ animationDelay: "140ms" }} data-testid="hx-consult">
-      <div className="hx-panel-h">
+    <div className="hx-panel hx-rise" style={{ animationDelay: "140ms" }} data-testid="hx-consult" data-collapsed={collapsed ? "1" : "0"}>
+      <div className="hx-panel-h" style={collapsed ? { borderBottom: "none" } : undefined}>
         <FileText className="h-4 w-4" style={{ color: "var(--hx-accent2)" }} />
         <span className="font-semibold">{t("consult.title")}</span>
-        {isAssisted && styleCount > 0 && (
+        {!collapsed && isAssisted && styleCount > 0 && (
           <span className="hx-chip hx-chip--accent" style={{ padding: "0.1rem 0.5rem" }} data-testid="hx-style-marker" title={t("style.learnedTitle")}>
             <Brain className="h-3 w-3" /> {ti("style.learned", { n: styleCount })}
           </span>
         )}
-        <span className="ml-auto"><HospitalModeToggle /></span>
+        <span className="ml-auto flex items-center gap-2">
+          {!collapsed && <HospitalModeToggle />}
+          <HxCollapseToggle collapsed={collapsed} onToggle={toggle} testid="hx-consult-collapse" />
+        </span>
       </div>
+      {!collapsed && (
       <div className="hx-panel-b">
         {noEncounter ? (
           <p className="hx-dim text-sm" data-testid="hx-consult-empty">{t("consult.empty")}</p>
@@ -194,6 +201,7 @@ export function ConsultationSummaryBox({
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }

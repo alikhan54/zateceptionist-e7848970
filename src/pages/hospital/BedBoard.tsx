@@ -2,7 +2,7 @@
 // The inpatient command surface: instant occupancy truth, LOS at a glance, the foundation the MEDICA
 // discharge-readiness flag + the AM/PM vitals early-warning will sit on top of.
 import { useState } from "react";
-import { BedDouble, ArrowRightLeft, LogOut, Sparkles, AlertTriangle, UserPlus, Activity } from "lucide-react";
+import { BedDouble, ArrowRightLeft, LogOut, Sparkles, AlertTriangle, UserPlus, Activity, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useHospitalBeds, type BedRow, LONG_STAY_DAYS } from "@/hooks/useHospitalBeds";
 import { usePostopBoard, isAlertState } from "@/hooks/useHospitalPostop";
@@ -135,10 +135,18 @@ function BedBoardInner() {
                         })()}
                       </div>
                       {transferFor === b.id ? (
-                        <select className="hx-select mt-2" value="" onChange={(e) => doTransfer(b, e.target.value)} data-testid="hx-bed-transfer-select">
-                          <option value="">{t("beds.transferTo")}</option>
-                          {availableBeds.map((ab) => <option key={ab.id} value={ab.id}>{ab.ward} · {ab.bed_label}</option>)}
-                        </select>
+                        // [Brief 8 addendum (d)] opening Transfer must be escapable — visible Cancel + Esc
+                        <div className="flex items-center gap-1.5 mt-2">
+                          <select className="hx-select" value="" onChange={(e) => doTransfer(b, e.target.value)}
+                            onKeyDown={(e) => e.key === "Escape" && setTransferFor(null)} data-testid="hx-bed-transfer-select">
+                            <option value="">{t("beds.transferTo")}</option>
+                            {availableBeds.map((ab) => <option key={ab.id} value={ab.id}>{ab.ward} · {ab.bed_label}</option>)}
+                          </select>
+                          <button className="hx-btn hx-btn--ghost" style={{ padding: "0.3rem 0.55rem", fontSize: "0.72rem" }}
+                            onClick={() => setTransferFor(null)} data-testid="hx-bed-transfer-cancel">
+                            <X className="h-3 w-3" /> {t("common.cancel")}
+                          </button>
+                        </div>
                       ) : (
                         <div className="flex items-center gap-1.5 mt-2">
                           <button className="hx-btn hx-btn--ghost" style={{ padding: "0.25rem 0.55rem", fontSize: "0.72rem" }} onClick={() => setTransferFor(b.id)} disabled={!availableBeds.length} data-testid="hx-bed-transfer-btn"><ArrowRightLeft className="h-3 w-3" /> {t("beds.transfer")}</button>

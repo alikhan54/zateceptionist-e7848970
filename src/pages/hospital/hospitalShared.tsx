@@ -1,6 +1,7 @@
 // Shared hospital-vertical primitives: the industry gate + dark shell, the ECG motif,
 // and the medica-brief Edge Function client. Importing this also loads the scoped theme.
-import React, { useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
@@ -601,6 +602,121 @@ export async function loadDoctorStyleBlock(doctorId: string | null | undefined, 
   } catch {
     return ""; // fail-open to no-style; drafting must never break on the memory layer
   }
+}
+
+// ===========================================================================================
+// HOSPITAL-CHART [Brief 8 · B] — collapsible-panel primitive. Pure presentational: a panel's
+// content/logic is untouched; collapsed shows the one-line header + an expand control. The
+// state persists per panel in localStorage (mirrors the hx-lang / hx-ecg persist pattern).
+// ===========================================================================================
+
+export function useHxCollapse(storageKey: string, defaultCollapsed = false) {
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    try {
+      const v = localStorage.getItem(storageKey);
+      return v === null ? defaultCollapsed : v === "1";
+    } catch { return defaultCollapsed; }
+  });
+  const toggle = () => setCollapsed((c) => {
+    const next = !c;
+    try { localStorage.setItem(storageKey, next ? "1" : "0"); } catch { /* storage blocked */ }
+    return next;
+  });
+  return { collapsed, toggle };
+}
+
+/** The chevron expand/collapse control for a panel header. */
+export function HxCollapseToggle({ collapsed, onToggle, testid }: { collapsed: boolean; onToggle: () => void; testid?: string }) {
+  const { t } = useHospitalT();
+  return (
+    <button type="button" className="hx-btn hx-btn--ghost" style={{ padding: "0.22rem 0.5rem" }}
+      onClick={onToggle} data-testid={testid} aria-expanded={!collapsed}
+      title={collapsed ? t("common.expand") : t("common.collapse")}>
+      {collapsed ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
+    </button>
+  );
+}
+
+// ===========================================================================================
+// HOSPITAL-CHART [Brief 8 · C] — type-ahead pick-list input. A convenience layer over a plain
+// input: suggestions come from a STATIC in-code list (src/lib/hospital/pickLists.ts — NOT a
+// DB catalog); free text is ALWAYS allowed and a custom entry is never blocked. Enter with a
+// highlighted suggestion picks it; Enter otherwise falls through to `onEnter` (so the order
+// placement flow is unchanged).
+// ===========================================================================================
+
+export interface HxPickOption { value: string; hint?: string }
+
+export function HxPickInput({ value, onChange, options, placeholder, onEnter, testid }: {
+  value: string;
+  onChange: (v: string) => void;
+  options: HxPickOption[];
+  placeholder?: string;
+  onEnter?: () => void;
+  testid?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [hi, setHi] = useState(-1);          // highlighted suggestion index (-1 = none)
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const q = value.trim().toLowerCase();
+  const matches = (q
+    ? options.filter((o) => o.value.toLowerCase().includes(q) || (o.hint || "").toLowerCase().includes(q))
+    : options
+  ).slice(0, 8);
+
+  // close on an outside click (blur alone would race the suggestion onMouseDown)
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) { setOpen(false); setHi(-1); }
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  const pick = (v: string) => { onChange(v); setOpen(false); setHi(-1); };
+
+  return (
+    <div ref={wrapRef} style={{ position: "relative" }} data-testid={testid ? `${testid}-wrap` : undefined}>
+      <input
+        className="hx-input"
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => { onChange(e.target.value); setOpen(true); setHi(-1); }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowDown" && matches.length) { e.preventDefault(); setOpen(true); setHi((h) => Math.min(h + 1, matches.length - 1)); }
+          else if (e.key === "ArrowUp" && matches.length) { e.preventDefault(); setHi((h) => Math.max(h - 1, -1)); }
+          else if (e.key === "Escape") { setOpen(false); setHi(-1); }
+          else if (e.key === "Enter") {
+            if (open && hi >= 0 && matches[hi]) { e.preventDefault(); pick(matches[hi].value); }
+            else { setOpen(false); onEnter?.(); }
+          }
+        }}
+        data-testid={testid}
+        autoComplete="off"
+      />
+      {open && matches.length > 0 && (
+        <div className="hx-pick-menu" data-testid={testid ? `${testid}-menu` : undefined} role="listbox">
+          {matches.map((o, i) => (
+            <button
+              type="button"
+              key={o.value}
+              role="option"
+              aria-selected={i === hi}
+              className={`hx-pick-item ${i === hi ? "is-hi" : ""}`}
+              onMouseDown={(e) => { e.preventDefault(); pick(o.value); }}
+              onMouseEnter={() => setHi(i)}
+              data-testid={testid ? `${testid}-option` : undefined}
+            >
+              <span>{o.value}</span>
+              {o.hint && <span className="hx-pick-hint">{o.hint}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 /** This doctor's learned-correction count — drives the "MEDICA has learned N of your preferences" marker. */
