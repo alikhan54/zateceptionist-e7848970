@@ -20,6 +20,18 @@
 
 ---
 
+## 🚢 HR Tier-0 — recruiting loop closed (B6 UI on branch, n8n live) — BUILT 2026-06-10, FE AWAITING ADEEL FF
+
+**Session:** HR-TIER0-LOOP. FE on **branch `feature/hr-tier0-b6` @ `697a219`** (pushed to origin as a branch; base `6c7dbea`; worktree `frontend-hr-tier0`). **Autonomous main-push denied by policy — Adeel ships (INSTRUCTION UPDATED 06-11, main moved past the branch base so FF is no longer possible):** from main with a clean tree, `git -C frontend fetch && git -C frontend merge origin/feature/hr-tier0-b6 && git -C frontend push` (5 B6 files are disjoint from the hospital/admin/est-v2 commits that landed — clean merge expected) + Lovable Publish. n8n + DDL changes are LIVE now (not git). Full context: `docs/.hr-tier0-context.md`.
+
+**FE (5 files, additive, tsc clean pre+post):** `src/hooks/useRecruitment.ts` (+useApproveOutreach optimistic/rollback, +useRecruitmentAutomation/+useSetRecruitmentAutomation, +outreach_id), `src/components/hr/OutreachActivity.tsx` (ApproveOutreachButton + pending strip), `src/pages/hr/Recruitment.tsx` (kanban approve button, Automation card w/ 3 default-off dials, Start-Onboarding `source` fix — the button was 400-broken in prod, verified), `tests/hr-tier0-b6.spec.ts`, `playwright.config.ts` (+project). **Playwright-proven:** toggle round-trip UI->DB (zate only), approve click -> confirm -> row `sent`+provider_message_id, "Replied: Interested" badge from the new reply_sentiment col, cosmique isolation (0 leak, dials off). Fixtures cleaned; zate exact baseline.
+
+**Live backend (n8n, not git):** Auto-Pipeline `GoLKFQ3raVFyDg40` — B1 outreach fire FIXED (passed UUID where the webhook expects SLUG -> silent no-op since 06-08), + tenant-gated voice-screen auto-dial fire (real answered VAPI call proven), + gated/deduped hired->`/hr/employee-onboarding-v2` handoff. Onboarding v2 `i39PJEW8Z7IkFkUY` — leave balances un-broken (slug->UUID + ghost `remaining_days` col; 0 ever created before, 7/7 now). New tenant_config flags `recruitment_voice_screen`/`recruitment_auto_onboard` (+`hr_recruitment_outreach.reply_sentiment`) — nullable, ALL tenants OFF. B5 reply-classify STOPPED on a verified inbox race (sales bridges mark all UNSEEN mail Seen pre-match) -> recruiting@ alias proposed.
+
+**Owns (coordinate):** `src/hooks/useRecruitment.ts`, `src/pages/hr/Recruitment.tsx`, `src/components/hr/OutreachActivity.tsx` (shared with prior recruitment sessions — my changes additive on `6c7dbea`).
+
+---
+
 ## 🚢 Master-Admin Phase 4 (Activation Command + real per-tenant usage) — MERGED 2026-06-10
 
 **Session:** Master-Admin-Phase4. Cherry-picked `4c58524` onto `origin/main` (was `b03bc1b`) via an **isolated temp worktree** (`../merge-p4`); work branch `wt/phase4` @ `5919e43` (worktree `D:/420-system/frontend-4`, both removed). **6 files, additive; ONE new read-only RPC (migration 44).**
