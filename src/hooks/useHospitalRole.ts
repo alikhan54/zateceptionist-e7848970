@@ -31,8 +31,8 @@ export const HOSPITAL_ROLE_PAGES: Record<HospitalRole, string[]> = {
 // Roles whose portal home has SHIPPED land on /hospital/home; the rest keep their existing landing
 // (flipped per checkpoint as each home ships).
 export const HOSPITAL_ROLE_HOME: Record<HospitalRole, string> = {
-  doctor: "/hospital/home", nurse: "/hospital/nurse", lab: "/hospital/lab", pharmacy: "/hospital/pharmacy",
-  opd_nurse: "/hospital/home", ward_nurse: "/hospital/beds", ot_nurse: "/hospital/ot", surgeon: "/hospital/ot",
+  doctor: "/hospital/home", nurse: "/hospital/nurse", lab: "/hospital/home", pharmacy: "/hospital/home",
+  opd_nurse: "/hospital/home", ward_nurse: "/hospital/home", ot_nurse: "/hospital/ot", surgeon: "/hospital/ot",
   admin: "/hospital/journey",
 };
 const RESTRICTED = ["doctor", "nurse", "lab", "pharmacy", "opd_nurse", "ward_nurse", "ot_nurse", "surgeon"] as const;

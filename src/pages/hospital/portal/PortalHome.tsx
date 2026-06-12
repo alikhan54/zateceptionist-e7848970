@@ -8,9 +8,11 @@ import { HospitalGate } from "../hospitalShared";
 import { useHospitalT } from "../i18n";
 import { FrontDeskHome } from "./FrontDeskHome";
 import { DoctorHome } from "./DoctorHome";
+import { WardHome } from "./WardHome";
+import { PharmacyHome, LabHome } from "./PharmacyLabHomes";
 
-type PortalKey = "frontdesk" | "doctor";
-const BUILT: PortalKey[] = ["frontdesk", "doctor"];
+type PortalKey = "frontdesk" | "doctor" | "ward" | "pharmacy" | "lab";
+const BUILT: PortalKey[] = ["frontdesk", "doctor", "ward", "pharmacy", "lab"];
 
 function PortalBody() {
   const { hospitalRole, hrEmployeeId, loading } = useHospitalRole();
@@ -24,12 +26,17 @@ function PortalBody() {
         {BUILT.map((k) => <option key={k} value={k}>{t(`portal.name.${k}`)}</option>)}
       </select>
     );
-    return adminPick === "doctor"
-      ? <DoctorHome hrEmployeeId={hrEmployeeId} switcher={switcher} />
-      : <FrontDeskHome switcher={switcher} />;
+    if (adminPick === "doctor") return <DoctorHome hrEmployeeId={hrEmployeeId} switcher={switcher} />;
+    if (adminPick === "ward") return <WardHome switcher={switcher} />;
+    if (adminPick === "pharmacy") return <PharmacyHome switcher={switcher} />;
+    if (adminPick === "lab") return <LabHome switcher={switcher} />;
+    return <FrontDeskHome switcher={switcher} />;
   }
   if (hospitalRole === "doctor") return <DoctorHome hrEmployeeId={hrEmployeeId} />;
   if (hospitalRole === "opd_nurse") return <FrontDeskHome />;
+  if (hospitalRole === "ward_nurse") return <WardHome />;
+  if (hospitalRole === "pharmacy") return <PharmacyHome />;
+  if (hospitalRole === "lab") return <LabHome />;
   // home not built yet for this role → its existing first page (never a dead end)
   const fallback = HOSPITAL_ROLE_PAGES[hospitalRole as HospitalRole]?.[0] || "/hospital/journey";
   return <Navigate to={fallback} replace />;
