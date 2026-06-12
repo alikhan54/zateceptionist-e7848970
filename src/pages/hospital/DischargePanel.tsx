@@ -14,6 +14,7 @@ import { useHospitalT } from "./i18n";
 import { useHospitalMode, HospitalModeToggle } from "./hospitalMode";
 import { fetchDischargeSummary, hxPrintCss, printHxBlock, type RxItem, type DischargeNarrative } from "./hospitalShared";
 import { useHospitalDischarge } from "@/hooks/useHospitalDischarge";
+import { DischargeBill } from "./HospitalPos";
 import { computeReadiness, type ReadyCheck } from "@/lib/hospital/dischargeReadiness";
 
 const EMPTY: DischargeNarrative = { reason_for_admission: "", procedure_performed: "", hospital_course: "", follow_up: "", danger_signs: "" };
@@ -231,6 +232,10 @@ export function DischargePanel({ patient }: { patient: any }) {
             )}
           </div>
         )}
+
+        {/* [Brief 11 · A] the thin discharge bill — STRICTLY post-sign (renders only on a signed
+            row; the sign flow above is untouched) */}
+        {isSigned && saved && <DischargeBill patient={patient} discharge={saved} />}
 
         {/* ---- the printable bilingual paper (the 3rd #hx-*-print block) ---- */}
         {isSigned && (
