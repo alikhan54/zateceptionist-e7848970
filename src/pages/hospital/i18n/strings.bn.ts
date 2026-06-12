@@ -786,4 +786,12 @@ export const BN: Record<string, string> = {
   "summary.meds": "ওষুধ (স্বাক্ষরিত প্রেসক্রিপশন)",
   "summary.procedures": "প্রসিডিউর",
   "summary.footer": "লাইভ রোগী-রেকর্ড থেকে সংকলিত",
+  // DRAFT BN — pending native review (Brief 11 · C)
+  "send.btn": "রোগীকে পাঠান",
+  "send.email": "ইমেইল",
+  "send.whatsapp": "হোয়াটসঅ্যাপ",
+  "send.needTo": "আগে প্রাপক লিখুন",
+  "send.sent": "পাঠানো হয়েছে",
+  "send.fail": "ব্যর্থ",
+  "send.waNote": "২৪ ঘণ্টার খোলা হোয়াটসঅ্যাপ সেশন দরকার (রোগী আগে মেসেজ করেছেন)",
 };

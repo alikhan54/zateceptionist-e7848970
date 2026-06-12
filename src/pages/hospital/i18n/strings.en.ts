@@ -535,6 +535,13 @@ export const EN: Record<string, string> = {
   "summary.meds": "Medications (signed prescription)",
   "summary.procedures": "Procedures",
   "summary.footer": "Composed from the live patient record",
+  "send.btn": "Send to patient",
+  "send.email": "Email",
+  "send.whatsapp": "WhatsApp",
+  "send.needTo": "Enter a recipient first",
+  "send.sent": "Sent",
+  "send.fail": "Failed",
+  "send.waNote": "Needs an open 24h WhatsApp session (patient messaged first)",
 
   // ---- order status labels ----
   "ostatus.ordered": "Ordered",

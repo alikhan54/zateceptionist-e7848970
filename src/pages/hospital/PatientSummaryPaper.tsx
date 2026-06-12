@@ -19,6 +19,37 @@ const S: Record<string, React.CSSProperties> = {
   faint: { color: "#6b7280" },
 };
 
+/** [Brief 11 · C] the compact TEXT rendition the delivery webhook carries (the paper stays the PDF path). */
+export function composeSummaryText(patient: any, chart: ChartData): string {
+  const L: string[] = [];
+  L.push(`Bangladesh Specialized Hospital — Full Journey Summary`);
+  L.push(`Patient: ${patient.full_name} · MRN ${patient.file_number || String(patient.id).slice(0, 8).toUpperCase()}`);
+  const adm = chart.admissions.find((a) => a.status === "admitted") || chart.admissions[0];
+  if (adm) L.push(`Admitted ${d(adm.created_at)} · ${adm.department_name || "—"}${adm.attending_name ? ` · ${adm.attending_name}` : ""}`);
+  const groups = groupConsultations(chart);
+  if (groups.length) {
+    L.push(`\nConsultations:`);
+    for (const g of groups)
+      for (const doc of g.doctors)
+        for (const e of doc.entries)
+          L.push(`- ${d(e.visit.visit_date || e.visit.created_at)} · ${g.department} · ${doc.doctor}${e.visit.diagnosis ? ` — ${e.visit.diagnosis}` : ""}`);
+  }
+  const rx = signedRx(chart)[0];
+  if (rx) {
+    L.push(`\nMedications (signed prescription):`);
+    (rx.items || []).forEach((m: any) => L.push(`- ${m.name} ${m.dose} — ${[m.frequency, m.duration, m.route].filter(Boolean).join(" · ")}`));
+  }
+  if (chart.labs.length) {
+    L.push(`\nLab reports:`);
+    chart.labs.forEach((l) => L.push(`- ${d(l.created_at)} ${l.file_name || "report"}${l.takeaway ? ` — ${l.takeaway}` : ""}`));
+  }
+  if (chart.otCases.length) {
+    L.push(`\nProcedures:`);
+    chart.otCases.forEach((o) => L.push(`- ${d(o.scheduled_at || o.created_at)} ${o.procedure_name} (${o.status})`));
+  }
+  return L.join("\n").slice(0, 3400);
+}
+
 /** The print button — mounts in the chart bar; the paper renders hidden alongside. */
 export function SummaryPrintButton({ patient, chart }: { patient: any; chart?: ChartData }) {
   const { t } = useHospitalT();

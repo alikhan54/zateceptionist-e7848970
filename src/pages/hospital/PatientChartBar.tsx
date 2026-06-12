@@ -18,7 +18,8 @@ import {
   type ChartData, type ChartVisit,
 } from "@/hooks/useHospitalChart";
 import { statusChipClass } from "./OperationTheatre";
-import { SummaryPrintButton } from "./PatientSummaryPaper";
+import { SummaryPrintButton, composeSummaryText } from "./PatientSummaryPaper";
+import { SendDocControl } from "./SendDoc";
 
 type TabKey = "overview" | "consultations" | "labs" | "reports" | "medications" | "surgery" | "vitals" | "documents";
 
@@ -100,8 +101,16 @@ export function PatientChartBar({ patient, currentBed }: { patient: any; current
             </span>
           ))}
           {flags.length > 2 && <span className="hx-chip hx-chip--warn" style={{ padding: "0.05rem 0.5rem" }}>+{flags.length - 2}</span>}
-          {/* [Brief 11 · B] the Full Journey Summary paper — composed from this SAME chart data */}
-          <span className="ml-auto"><SummaryPrintButton patient={patient} chart={chart} /></span>
+          {/* [Brief 11 · B/C] the Full Journey Summary paper + Send-to-patient delivery */}
+          <span className="ml-auto inline-flex items-center gap-1.5">
+            <SummaryPrintButton patient={patient} chart={chart} />
+            {chart && (
+              <SendDocControl testid="hx-send-summary"
+                defaultPhone={patient.phone} defaultEmail={patient.email}
+                subject="Bangladesh Specialized Hospital — your journey summary"
+                composeText={() => composeSummaryText(patient, chart)} />
+            )}
+          </span>
         </div>
         <div className="hx-chartbar-tabs" role="tablist">
           {TABS.map(({ key, labelKey, icon: Icon }) => (

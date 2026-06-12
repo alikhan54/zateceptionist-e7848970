@@ -19,6 +19,7 @@ import { useClinicPatients } from "@/hooks/useClinicPatients";
 import { useHospitalOrders } from "@/hooks/useHospitalOrders";
 import { priceForMed, WARD_DAILY_RATES, DEFAULT_WARD_RATE } from "@/lib/hospital/pickLists";
 import { hxPrintCss, printHxBlock } from "./hospitalShared";
+import { SendDocControl } from "./SendDoc";
 import { useHospitalT } from "./i18n";
 import type { DischargeRow } from "@/hooks/useHospitalDischarge";
 
@@ -52,10 +53,24 @@ function useRecordSale() {
   });
 }
 
+/** [Brief 11 · C] compact receipt text for the delivery webhook. */
+function composeReceiptText(sale: SaleRow, patientName: string | null): string {
+  const L = [
+    `Bangladesh Specialized Hospital — receipt (${sale.context})`,
+    `${patientName || "Walk-in"} · ${new Date(sale.billed_at).toLocaleString()}`,
+    "",
+    ...sale.items.map((l) => `${l.label} × ${l.qty} @ ${l.unit_price} = ${l.line_total}`),
+    "",
+    `TOTAL: BDT ${sale.total} (${sale.paid_method})`,
+  ];
+  return L.join("\n").slice(0, 3400);
+}
+
 /** The shared line editor + total + record/print controls. */
-function PosEditor({ lines, setLines, context, patientId, patientName, onRecorded, testid }: {
+function PosEditor({ lines, setLines, context, patientId, patientName, patientPhone, patientEmail, onRecorded, testid }: {
   lines: PosLine[]; setLines: (f: (p: PosLine[]) => PosLine[]) => void;
   context: "pharmacy" | "discharge"; patientId: string | null; patientName: string | null;
+  patientPhone?: string | null; patientEmail?: string | null;
   onRecorded?: (s: SaleRow) => void; testid: string;
 }) {
   const { t } = useHospitalT();
@@ -116,6 +131,12 @@ function PosEditor({ lines, setLines, context, patientId, patientName, onRecorde
             <Printer className="h-4 w-4" /> {t("pos.printReceipt")}
           </button>
         )}
+        {sale && (
+          <SendDocControl testid={`${testid}-senddoc`}
+            defaultPhone={patientPhone} defaultEmail={patientEmail}
+            subject="Bangladesh Specialized Hospital — your receipt"
+            composeText={() => composeReceiptText(sale, patientName)} />
+        )}
       </div>
       {sale && <span className="hx-chip hx-chip--ok mt-2" style={{ display: "inline-flex" }} data-testid={`${testid}-recorded-chip`}><CheckCircle2 className="h-3 w-3" /> {t("pos.recordedChip")} · {fmtBDT(sale.total)}</span>}
       {sale && <ReceiptPaper sale={sale} patientName={patientName} />}
@@ -172,7 +193,8 @@ export function PharmacyPos() {
   const { orders } = useHospitalOrders({ orderType: "medication" });
   const [patientId, setPatientId] = useState<string>("");   // "" = walk-in
   const [lines, setLines] = useState<PosLine[]>([]);
-  const patientName = useMemo(() => (patients as any[]).find((p) => p.id === patientId)?.full_name ?? null, [patients, patientId]);
+  const patient = useMemo(() => (patients as any[]).find((p) => p.id === patientId) ?? null, [patients, patientId]);
+  const patientName = patient?.full_name ?? null;
 
   // patient picked → their dispensable/dispensed med orders become lines with prefilled prices
   useEffect(() => {
@@ -200,7 +222,7 @@ export function PharmacyPos() {
       <div className="hx-panel-b">
         {lines.length === 0 && !patientId && <p className="hx-faint text-xs mb-2">{t("pos.walkInHint")}</p>}
         <PosEditor lines={lines} setLines={setLines} context="pharmacy" patientId={patientId || null}
-          patientName={patientName} testid="hx-pos" />
+          patientName={patientName} patientPhone={patient?.phone ?? null} patientEmail={patient?.email ?? null} testid="hx-pos" />
       </div>
     </div>
   );
@@ -267,7 +289,8 @@ export function DischargeBill({ patient, discharge }: { patient: any; discharge:
           </div>
           {lines === null ? <p className="hx-dim text-sm">{t("common.loading")}</p> : (
             <PosEditor lines={lines} setLines={(f) => setLines((p) => f(p || []))} context="discharge"
-              patientId={patient?.id ?? null} patientName={patient?.full_name ?? null} testid="hx-dpos" />
+              patientId={patient?.id ?? null} patientName={patient?.full_name ?? null}
+              patientPhone={patient?.phone ?? null} patientEmail={patient?.email ?? null} testid="hx-dpos" />
           )}
         </div>
       )}
