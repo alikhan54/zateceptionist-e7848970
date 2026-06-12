@@ -10,6 +10,7 @@ import { useTenant } from "@/contexts/TenantContext";
 import { useClinicPatients } from "@/hooks/useClinicPatients";
 import { useClinicVisits } from "@/hooks/useClinicVisits";
 import { useHospitalRole } from "@/hooks/useHospitalRole";
+import { useDoctorQueue, useDoctorQueueAccess, type DoctorQueueRow } from "@/hooks/useHospitalDoctorQueue";
 import {
   useHospitalOrders, useHospitalDepartments, ORDER_TYPE_LABEL, STATUS_LABEL, NEXT_STATUS,
   type HospitalOrderType,
@@ -86,10 +87,19 @@ function PatientJourneyInner() {
     },
     enabled: doctorScoped && !!tenantId,
   });
-  const allowPatient = (id?: string | null) => !doctorScoped || (!!id && (attendingSet?.has(id) ?? false));
+  // HOSPITAL-FLOW [Brief 9] — HISTORY-ON-REFERRAL: a queue row (triage forward or referral) for THIS
+  // doctor grants access to that patient, COMPOSED on top of the attending filter (attending OR
+  // queue-row — the attending rule itself is untouched). A doctor with neither sees nothing.
+  const { data: queueAccessSet } = useDoctorQueueAccess(hrEmployeeId, doctorScoped);
+  const accessSet = useMemo(() => {
+    if (!doctorScoped) return undefined;
+    if (!attendingSet && !queueAccessSet) return undefined;   // still resolving → keep today's "empty until loaded"
+    return new Set<string>([...(attendingSet ?? []), ...(queueAccessSet ?? [])]);
+  }, [doctorScoped, attendingSet, queueAccessSet]);
+  const allowPatient = (id?: string | null) => !doctorScoped || (!!id && (accessSet?.has(id) ?? false));
   const visiblePatients = useMemo(
-    () => (doctorScoped ? (patients as any[]).filter((p) => attendingSet?.has(p.id)) : patients),
-    [patients, doctorScoped, attendingSet],
+    () => (doctorScoped ? (patients as any[]).filter((p) => accessSet?.has(p.id)) : patients),
+    [patients, doctorScoped, accessSet],
   );
 
   const [searchParams] = useSearchParams();
@@ -114,10 +124,10 @@ function PatientJourneyInner() {
 
   // RBAC guard: if a doctor's selected patient isn't one of theirs (e.g. a stale deep-link), fall back to their first.
   useEffect(() => {
-    if (doctorScoped && attendingSet && selectedId && !attendingSet.has(selectedId)) {
+    if (doctorScoped && accessSet && selectedId && !accessSet.has(selectedId)) {
       setSelectedId(visiblePatients[0]?.id || "");
     }
-  }, [doctorScoped, attendingSet, selectedId, visiblePatients]);
+  }, [doctorScoped, accessSet, selectedId, visiblePatients]);
 
   const inList = useMemo(() => visiblePatients.some((p: any) => p.id === selectedId), [visiblePatients, selectedId]);
 
@@ -135,8 +145,10 @@ function PatientJourneyInner() {
   const patient = useMemo(
     () => (!allowPatient(selectedId) ? undefined
       : (visiblePatients as any[]).find((p: any) => p.id === selectedId) || (directPatient && (directPatient as any).id === selectedId ? (directPatient as any) : undefined)),
-    [visiblePatients, selectedId, directPatient, doctorScoped, attendingSet],
+    [visiblePatients, selectedId, directPatient, doctorScoped, accessSet],
   );
+  // HOSPITAL-FLOW [Brief 9] — this doctor's waiting queue (triage forwards + referrals)
+  const { queue, markSeen } = useDoctorQueue(doctorScoped ? hrEmployeeId : null);
   const { orders, createOrder, updateOrderStatus } = useHospitalOrders({ patientId: selectedId || undefined });
 
   // HOSPITAL-OT: the patient's latest operation case — drives the additive OT status chip in the
@@ -396,6 +408,13 @@ function PatientJourneyInner() {
         </div>
       </div>
 
+      {/* the doctor's WAITING QUEUE [HOSPITAL-FLOW · Brief 9] — his rows only (triage forwards +
+          referrals); one-click open marks waiting → seen. Admin has no queue (no hr identity). */}
+      {doctorScoped && (
+        <DoctorWaitingStrip queue={queue} patients={patients as any[]}
+          onOpen={(row) => { setSelectedId(row.patient_id); if (row.status === "waiting") markSeen.mutate(row.id); }} />
+      )}
+
       {/* PATIENT RECORDS chart bar [HOSPITAL-CHART · Brief 8] — one click, present + historical,
           read-only aggregation, never a route change */}
       <div className="mt-4">
@@ -521,8 +540,10 @@ function PatientJourneyInner() {
           </div>
 
           {/* Consultation Summary — directly BELOW the MEDICA brief panel. Manual (doctor writes) or
-              Assisted (MEDICA drafts from notes → doctor approves) via the reusable autonomy toggle. */}
-          <ConsultationSummaryBox patientId={selectedId} patientName={patient.full_name} visitId={latestVisit?.id ?? null} />
+              Assisted (MEDICA drafts from notes → doctor approves) via the reusable autonomy toggle.
+              [Brief 9] + structured intake + plan disposition (Admit reuses the existing admit flow). */}
+          <ConsultationSummaryBox patientId={selectedId} patientName={patient.full_name} visitId={latestVisit?.id ?? null}
+            onAdmitPatient={() => setAdmitOpen(true)} />
 
           {/* MEDICA — Medication Suggestions [13]: suggest → doctor approves → pre-fills order entry */}
           <div className="hx-panel hx-rise" style={{ animationDelay: "160ms" }} data-testid="hx-medrec">
@@ -691,6 +712,50 @@ function PatientJourneyInner() {
 
       <HospitalAdmitDialog open={admitOpen} onOpenChange={setAdmitOpen} onAdmitted={(r) => setSelectedId(r.patient_id)} />
       <VitalsCaptureDialog open={vitalsOpen} onOpenChange={setVitalsOpen} patientId={selectedId} patientName={patient?.full_name} visitId={latestVisit?.id} />
+    </div>
+  );
+}
+
+/** HOSPITAL-FLOW [Brief 9] — the doctor's compact waiting strip: HIS queue only (triage forwards +
+ *  referrals), waiting first; one-click Open selects the patient and marks the row seen. */
+function DoctorWaitingStrip({ queue, patients, onOpen }: {
+  queue: DoctorQueueRow[]; patients: any[]; onOpen: (row: DoctorQueueRow) => void;
+}) {
+  const { t, ti } = useHospitalT();
+  const waiting = queue.filter((q) => q.status === "waiting");
+  const nameById = useMemo(() => new Map(patients.map((p) => [p.id, p.full_name as string])), [patients]);
+  return (
+    <div className="hx-panel hx-rise mt-4" style={{ animationDelay: "20ms" }} data-testid="hx-waiting-strip">
+      <div className="hx-panel-h" style={{ padding: "0.6rem 0.9rem" }}>
+        <Clock className="h-4 w-4" style={{ color: "var(--hx-warn)" }} />
+        <span className="font-semibold text-sm" data-testid="hx-waiting-count">{ti("flow.waitingN", { n: waiting.length })}</span>
+      </div>
+      <div className="hx-panel-b" style={{ padding: "0.7rem 0.9rem" }}>
+        {waiting.length === 0 ? (
+          <p className="hx-faint text-xs" data-testid="hx-waiting-empty">{t("flow.queueEmpty")}</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {waiting.map((q) => (
+              <div key={q.id} className="hx-entry flex items-center gap-2.5" style={{ padding: "0.45rem 0.65rem" }} data-testid="hx-waiting-row" data-patient={q.patient_id}>
+                <div className="min-w-0">
+                  <div className="font-medium text-sm truncate" data-testid="hx-waiting-name">{nameById.get(q.patient_id) || "—"}</div>
+                  <div className="hx-faint text-xs">
+                    <span className={`hx-chip ${q.source === "referral" ? "hx-chip--accent" : "hx-chip--warn"}`} style={{ padding: "0 0.4rem", marginRight: 6 }}>
+                      {t(`flow.src.${q.source}`)}
+                    </span>
+                    {q.referred_by_name ? `${t("flow.by")} ${q.referred_by_name} · ` : ""}
+                    {new Date(q.queued_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                    {q.reason ? ` · ${q.reason}` : ""}
+                  </div>
+                </div>
+                <button className="hx-btn hx-btn--primary" style={{ padding: "0.3rem 0.7rem" }} onClick={() => onOpen(q)} data-testid="hx-waiting-open">
+                  {t("flow.open")}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
