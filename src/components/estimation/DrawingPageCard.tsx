@@ -2,9 +2,9 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { detectRoomsV2, renderMarkupV2, qaCheck } from "@/lib/api/estimationApi";
+import { detectRoomsV2, renderMarkupV2, qaCheck, parseSchedule, extractPlanMaterials } from "@/lib/api/estimationApi";
 import { useDrawingRooms, PLAN_TYPES, type DrawingPage } from "@/hooks/useDrawingPages";
-import { Loader2, ScanSearch, Paintbrush, ExternalLink, ChevronDown, ChevronUp, ShieldCheck } from "lucide-react";
+import { Loader2, ScanSearch, Paintbrush, ExternalLink, ChevronDown, ChevronUp, ShieldCheck, Table2, Tags } from "lucide-react";
 import { toast } from "sonner";
 
 const TYPE_BADGES: Record<string, { label: string; cls: string }> = {
@@ -40,12 +40,16 @@ interface Props {
   onChanged: () => void;
   /** From DrawingsTab: detected/unsynced polygon counts for this page. */
   syncState?: { detected: number; unsynced: number };
+  /** From DrawingsTab: parsed finish-schedule rows stored for this page. */
+  finishesCount?: number;
 }
 
-export default function DrawingPageCard({ page, projectId, tenantId, onChanged, syncState }: Props) {
+export default function DrawingPageCard({ page, projectId, tenantId, onChanged, syncState, finishesCount }: Props) {
   const [detecting, setDetecting] = useState(false);
   const [rendering, setRendering] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [parsing, setParsing] = useState(false);
+  const [extracting, setExtracting] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [lastDetect, setLastDetect] = useState<{ rooms: number; sf: number } | null>(null);
 
@@ -127,8 +131,71 @@ export default function DrawingPageCard({ page, projectId, tenantId, onChanged, 
     }
   };
 
+  const isSchedule = page.page_type === "finish_schedule" || page.page_type === "door_schedule";
+
+  const handleParse = async () => {
+    setParsing(true);
+    try {
+      const resp = await parseSchedule(projectId, tenantId, page.page_number);
+      const d = ((resp as any)?.data || resp) as any;
+      if (!d?.success) {
+        toast.error(String(d?.error || (resp as any)?.error || "Schedule parsing failed — please try again."));
+        return;
+      }
+      if (d.rooms_extracted > 0) {
+        const unmatched = (d.tags_not_in_catalog || []).length;
+        toast.success(
+          `${d.rooms_extracted} rooms, ${(d.distinct_tags || []).length} material tags` +
+          (unmatched ? ` (${unmatched} not in catalog — review needed)` : ""),
+        );
+      } else {
+        toast.info("No room rows found — this page looks like a materials legend, not a room schedule.");
+      }
+      onChanged();
+    } catch {
+      toast.error("Schedule parsing timed out — please try again.");
+    } finally {
+      setParsing(false);
+    }
+  };
+
+  const handleExtractMaterials = async () => {
+    setExtracting(true);
+    try {
+      const resp = await extractPlanMaterials(projectId, tenantId, page.page_number);
+      const d = ((resp as any)?.data || resp) as any;
+      if (!d?.success) {
+        const raw = String(d?.error || (resp as any)?.error || "");
+        toast.error(raw.includes("no detected room polygons")
+          ? "No rooms detected on this page yet — click Detect Rooms first."
+          : raw.includes("no stored text")
+            ? "No text is stored for this page — re-run drawing analysis first."
+            : "Material extraction failed — please try again.");
+        return;
+      }
+      if (d.rooms_tagged > 0) {
+        toast.success(
+          `${d.tags_assigned} material tags → ${d.rooms_tagged} rooms` +
+          (d.tags_unassigned ? ` (${d.tags_unassigned} tags outside detected rooms)` : ""),
+        );
+      } else {
+        toast.info(
+          d.tag_candidates > 0
+            ? `${d.tag_candidates} material tags found, but none fall inside detected rooms — the rooms carrying them weren't vector-detectable.`
+            : "No material tags found on this page.",
+        );
+      }
+      onChanged();
+    } catch {
+      toast.error("Material extraction timed out — please try again.");
+    } finally {
+      setExtracting(false);
+    }
+  };
+
   const qa = page.qa_flags;
   const qaFlags: string[] = qa?.flags || [];
+  const spatial = qa?.spatial_materials;
   const roomsCount = lastDetect?.rooms ?? page.rooms_detected;
 
   return (
@@ -147,6 +214,12 @@ export default function DrawingPageCard({ page, projectId, tenantId, onChanged, 
             <Badge className={badge.cls}>{badge.label}</Badge>
             {syncState && syncState.detected > 0 && syncState.unsynced === 0 && (
               <Badge variant="outline" className="text-emerald-700 border-emerald-300">Synced ✓</Badge>
+            )}
+            {spatial && spatial.rooms_tagged > 0 && (
+              <Badge variant="outline" className="text-emerald-700 border-emerald-300"
+                data-testid={`materials-badge-${page.page_number}`}>
+                Materials: {spatial.rooms_tagged} rooms tagged
+              </Badge>
             )}
           </div>
         </div>
@@ -200,6 +273,14 @@ export default function DrawingPageCard({ page, projectId, tenantId, onChanged, 
                 {verifying ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <ShieldCheck className="mr-1 h-3 w-3" />}
                 {verifying ? "Verifying..." : "Verify Scale & Areas"}
               </Button>
+              {page.page_type === "finish_plan" && (
+                <Button size="sm" variant="outline" onClick={handleExtractMaterials}
+                  disabled={detecting || rendering || extracting}
+                  data-testid={`extract-materials-${page.page_number}`}>
+                  {extracting ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Tags className="mr-1 h-3 w-3" />}
+                  {extracting ? "Extracting..." : "Extract Materials"}
+                </Button>
+              )}
               {page.markup_url && (
                 <Button size="sm" asChild>
                   <a href={page.markup_url} target="_blank" rel="noreferrer">
@@ -247,6 +328,23 @@ export default function DrawingPageCard({ page, projectId, tenantId, onChanged, 
                 </table>
               )
             )}
+          </div>
+        ) : isSchedule ? (
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button size="sm" variant="outline" onClick={handleParse} disabled={parsing}>
+                {parsing ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Table2 className="mr-1 h-3 w-3" />}
+                {parsing ? "Parsing..." : "Parse Schedule"}
+              </Button>
+              {(finishesCount ?? 0) > 0 && (
+                <Badge variant="outline" className="text-emerald-700 border-emerald-300">
+                  Parsed ✓ {finishesCount} rooms
+                </Badge>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              AI reads the schedule table into room-by-room material assignments.
+            </p>
           </div>
         ) : (
           <p className="text-xs text-muted-foreground">

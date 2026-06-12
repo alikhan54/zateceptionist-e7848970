@@ -22,6 +22,12 @@ export interface DrawingPage {
     flags?: string[];
     labels_on_page?: number;
     area_median_after?: number | null;
+    spatial_materials?: {
+      rooms_tagged: number;
+      tags_assigned: number;
+      tags_unassigned: number;
+      at?: string;
+    } | null;
   } | null;
 }
 
