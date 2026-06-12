@@ -1,0 +1,106 @@
+/* HOSPITAL-PORTAL — the additive portal layer's look, per the demo design spec:
+   dark clinical navy ground #04101c, panels #0a1c2e, teal #2ee6c8 accent,
+   amber #f5b942 = MONEY ONLY, red #ff5d73 = critical, Space Grotesk numerals,
+   IBM Plex Sans body + IBM Plex Mono token chips, 15.5px base, MEDICA = one
+   teal-tinged strip, ECG hairline under the header. Scoped under .hxp — the
+   existing .hx surface and every existing page are untouched. */
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap");
+
+.hxp {
+  --hxp-bg: #04101c;
+  --hxp-panel: #0a1c2e;
+  --hxp-border: rgba(46, 230, 200, 0.13);
+  --hxp-border-strong: rgba(46, 230, 200, 0.32);
+  --hxp-teal: #2ee6c8;
+  --hxp-money: #f5b942;     /* amber — money ONLY */
+  --hxp-crit: #ff5d73;
+  --hxp-text: #e8f0f8;
+  --hxp-dim: #8fa6bd;
+  --hxp-faint: #5c7189;
+  font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  font-size: 15.5px;
+  color: var(--hxp-text);
+  background:
+    radial-gradient(1100px 480px at 85% -10%, rgba(46, 230, 200, 0.06), transparent 60%),
+    var(--hxp-bg);
+  border: 1px solid var(--hxp-border);
+  border-radius: 18px;
+  overflow: hidden;
+  min-height: calc(100vh - 9rem);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---- topbar ---- */
+.hxp-top { display: flex; align-items: center; gap: 1rem; padding: 0.85rem 1.25rem 0.7rem; flex-wrap: wrap; }
+.hxp-brand { font-family: "Space Grotesk", sans-serif; font-weight: 700; font-size: 1.18rem; letter-spacing: 0.04em; color: var(--hxp-text); }
+.hxp-brand b { color: var(--hxp-teal); }
+.hxp-identity { font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--hxp-teal); font-weight: 600; }
+.hxp-top .hxp-right { margin-left: auto; display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+
+/* ---- tab nav ---- */
+.hxp-tabs { display: flex; gap: 0.35rem; flex-wrap: wrap; padding: 0 1.25rem 0.65rem; }
+.hxp-tab { font-family: "IBM Plex Mono", monospace; font-size: 0.72rem; font-weight: 500; letter-spacing: 0.05em;
+  padding: 0.3rem 0.7rem; border: 1px solid var(--hxp-border); border-radius: 999px; color: var(--hxp-dim);
+  background: rgba(255,255,255,0.02); cursor: pointer; text-decoration: none; transition: color .15s, border-color .15s; }
+.hxp-tab:hover { color: var(--hxp-teal); border-color: var(--hxp-border-strong); }
+.hxp-tab.active { color: var(--hxp-teal); border-color: var(--hxp-border-strong); background: rgba(46,230,200,0.07); }
+
+/* ---- ECG hairline under the header ---- */
+.hxp-ecg { height: 24px; opacity: 0.55; border-bottom: 1px solid var(--hxp-border); }
+
+/* ---- MEDICA day-line strip (one sentence, teal-tinged) ---- */
+.hxp-medica { display: flex; align-items: center; gap: 0.6rem; margin: 0.9rem 1.25rem 0;
+  padding: 0.55rem 0.9rem; border: 1px solid var(--hxp-border-strong); border-radius: 12px;
+  background: linear-gradient(90deg, rgba(46,230,200,0.10), rgba(46,230,200,0.02)); font-size: 0.88rem; }
+.hxp-medica .tag { font-family: "IBM Plex Mono", monospace; font-size: 0.66rem; letter-spacing: 0.16em;
+  color: var(--hxp-teal); font-weight: 500; }
+
+/* ---- body: rail + main ---- */
+.hxp-body { display: flex; gap: 1rem; padding: 1rem 1.25rem 1.25rem; flex: 1; align-items: stretch; }
+.hxp-rail { width: 264px; min-width: 264px; display: flex; flex-direction: column; gap: 0.6rem;
+  border: 1px solid var(--hxp-border); border-radius: 14px; background: var(--hxp-panel); padding: 0.8rem; }
+.hxp-rail-h { font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--hxp-faint); font-weight: 600; }
+.hxp-rail-list { display: flex; flex-direction: column; gap: 0.35rem; overflow-y: auto; flex: 1; }
+.hxp-rail-row { display: block; padding: 0.45rem 0.6rem; border: 1px solid var(--hxp-border); border-radius: 10px;
+  background: rgba(255,255,255,0.015); text-decoration: none; color: var(--hxp-text); font-size: 0.84rem; }
+.hxp-rail-row:hover { border-color: var(--hxp-border-strong); }
+.hxp-rail-row .sub { font-size: 0.72rem; color: var(--hxp-dim); }
+.hxp-rail-foot { border-top: 1px solid var(--hxp-border); padding-top: 0.6rem; font-size: 0.76rem; color: var(--hxp-dim); }
+.hxp-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1rem; }
+@media (max-width: 880px) { .hxp-body { flex-direction: column; } .hxp-rail { width: 100%; min-width: 0; } }
+
+/* ---- stat cards ---- */
+.hxp-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.8rem; }
+.hxp-stat { border: 1px solid var(--hxp-border); border-radius: 14px; background: var(--hxp-panel); padding: 0.85rem 1rem; }
+.hxp-stat .l { font-size: 0.66rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--hxp-faint); font-weight: 600; }
+.hxp-stat .v { font-family: "Space Grotesk", sans-serif; font-weight: 700; font-size: 2.1rem; line-height: 1.15; color: var(--hxp-text); }
+.hxp-stat .s { font-size: 0.74rem; color: var(--hxp-dim); }
+.hxp-stat.money { border-color: rgba(245,185,66,0.35); }
+.hxp-stat.money .v { color: var(--hxp-money); }
+.hxp-stat.crit { border-color: rgba(255,93,115,0.4); }
+.hxp-stat.crit .v { color: var(--hxp-crit); }
+
+/* ---- panels & lists ---- */
+.hxp-panel { border: 1px solid var(--hxp-border); border-radius: 14px; background: var(--hxp-panel); }
+.hxp-panel-h { display: flex; align-items: center; gap: 0.5rem; padding: 0.7rem 1rem; border-bottom: 1px solid var(--hxp-border);
+  font-weight: 600; font-size: 0.92rem; }
+.hxp-panel-b { padding: 0.8rem 1rem; }
+.hxp-row { display: flex; align-items: center; gap: 0.7rem; padding: 0.45rem 0; border-bottom: 1px dashed rgba(255,255,255,0.05); font-size: 0.86rem; }
+.hxp-row:last-child { border-bottom: none; }
+.hxp-mono { font-family: "IBM Plex Mono", monospace; font-size: 0.7rem; letter-spacing: 0.04em; color: var(--hxp-teal);
+  border: 1px solid var(--hxp-border); border-radius: 6px; padding: 0.08rem 0.4rem; white-space: nowrap; }
+.hxp-mono.money { color: var(--hxp-money); border-color: rgba(245,185,66,0.35); }
+.hxp-mono.crit { color: var(--hxp-crit); border-color: rgba(255,93,115,0.4); }
+.hxp-time { margin-left: auto; font-size: 0.72rem; color: var(--hxp-faint); white-space: nowrap; }
+
+/* ---- link buttons (into the existing pages) ---- */
+.hxp-links { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+.hxp-link { display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.5rem 0.95rem; border-radius: 10px;
+  border: 1px solid var(--hxp-border-strong); color: var(--hxp-teal); background: rgba(46,230,200,0.06);
+  font-size: 0.86rem; font-weight: 600; text-decoration: none; }
+.hxp-link:hover { background: rgba(46,230,200,0.12); }
+
+/* portal switcher (admin) */
+.hxp-switch { font-family: "IBM Plex Mono", monospace; font-size: 0.74rem; color: var(--hxp-teal);
+  background: var(--hxp-panel); border: 1px solid var(--hxp-border-strong); border-radius: 8px; padding: 0.3rem 0.5rem; }

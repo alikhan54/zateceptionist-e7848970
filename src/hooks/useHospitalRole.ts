@@ -15,20 +15,24 @@ export type HospitalRole =
   | "opd_nurse" | "ward_nurse" | "ot_nurse" | "surgeon";
 
 // Per-role allowed /hospital pages (admin = all). Home = where a wrong role is redirected.
+// HOSPITAL-PORTAL — "/hospital/home" is ADDITIVE on every role (the portal renders the role's own
+// home or falls through to its first page); existing page entries are untouched.
 export const HOSPITAL_ROLE_PAGES: Record<HospitalRole, string[]> = {
-  doctor: ["/hospital/journey", "/hospital/patients", "/hospital/pharmacy", "/hospital/lab", "/hospital/diagnostics", "/hospital/routines"],
-  nurse: ["/hospital/nurse", "/hospital/beds"],
-  lab: ["/hospital/lab"],
-  pharmacy: ["/hospital/pharmacy"],
-  opd_nurse: ["/hospital/nurse"],
-  ward_nurse: ["/hospital/nurse", "/hospital/beds", "/hospital/routines"],
-  ot_nurse: ["/hospital/ot"],
-  surgeon: ["/hospital/journey", "/hospital/ot"],
-  admin: ["/hospital/journey", "/hospital/patients", "/hospital/nurse", "/hospital/beds", "/hospital/pharmacy", "/hospital/lab", "/hospital/diagnostics", "/hospital/ot", "/hospital/routines"],
+  doctor: ["/hospital/journey", "/hospital/patients", "/hospital/pharmacy", "/hospital/lab", "/hospital/diagnostics", "/hospital/routines", "/hospital/home"],
+  nurse: ["/hospital/nurse", "/hospital/beds", "/hospital/home"],
+  lab: ["/hospital/lab", "/hospital/home"],
+  pharmacy: ["/hospital/pharmacy", "/hospital/home"],
+  opd_nurse: ["/hospital/nurse", "/hospital/home"],
+  ward_nurse: ["/hospital/nurse", "/hospital/beds", "/hospital/routines", "/hospital/home"],
+  ot_nurse: ["/hospital/ot", "/hospital/home"],
+  surgeon: ["/hospital/journey", "/hospital/ot", "/hospital/home"],
+  admin: ["/hospital/journey", "/hospital/patients", "/hospital/nurse", "/hospital/beds", "/hospital/pharmacy", "/hospital/lab", "/hospital/diagnostics", "/hospital/ot", "/hospital/routines", "/hospital/home"],
 };
+// Roles whose portal home has SHIPPED land on /hospital/home; the rest keep their existing landing
+// (flipped per checkpoint as each home ships).
 export const HOSPITAL_ROLE_HOME: Record<HospitalRole, string> = {
-  doctor: "/hospital/journey", nurse: "/hospital/nurse", lab: "/hospital/lab", pharmacy: "/hospital/pharmacy",
-  opd_nurse: "/hospital/nurse", ward_nurse: "/hospital/beds", ot_nurse: "/hospital/ot", surgeon: "/hospital/ot",
+  doctor: "/hospital/home", nurse: "/hospital/nurse", lab: "/hospital/lab", pharmacy: "/hospital/pharmacy",
+  opd_nurse: "/hospital/home", ward_nurse: "/hospital/beds", ot_nurse: "/hospital/ot", surgeon: "/hospital/ot",
   admin: "/hospital/journey",
 };
 const RESTRICTED = ["doctor", "nurse", "lab", "pharmacy", "opd_nurse", "ward_nurse", "ot_nurse", "surgeon"] as const;

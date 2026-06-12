@@ -8,8 +8,10 @@ import { useHospitalT } from "./i18n";
 // allow-list the page always had — OrderQueueView itself is untouched for Lab/Diagnostics).
 export default function PharmacyQueue() {
   const { t } = useHospitalT();
+  // HOSPITAL-PORTAL: + "pharmacy" — the pharmacy ROLE's own page (the Laboratory allow-list
+  // pattern). Without it the role redirect-loops onto itself and renders blank.
   return (
-    <HospitalGate allow={["doctor", "admin"]}>
+    <HospitalGate allow={["doctor", "pharmacy", "admin"]}>
       <OrderQueueInner type="medication" title={t("page.pharmacy.title")} eyebrow={t("page.pharmacy.eyebrow")} icon={Pill} actionLabel={t("page.pharmacy.action")} />
       <PharmacyPos />
     </HospitalGate>
