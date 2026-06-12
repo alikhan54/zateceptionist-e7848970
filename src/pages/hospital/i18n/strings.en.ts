@@ -14,7 +14,7 @@ export const EN: Record<string, string> = {
 
   // ---- hospital nav section (shared sidebar; hospital-gated) ----
   "nav.section": "Hospital",
-  "nav.journey": "Patient Journey",
+  "nav.journey": "Patient Profile",
   "nav.admissions": "Admissions",
   "nav.nurse": "Nurse Station",
   "nav.pharmacy": "Pharmacy",
@@ -28,7 +28,7 @@ export const EN: Record<string, string> = {
   "surface.loading": "Loading clinical surface…",
 
   // ---- patient journey ----
-  "journey.eyebrow": "Hospital · Patient Journey",
+  "journey.eyebrow": "Hospital · Patient Profile",
   "journey.emptyTitle": "No patients admitted yet",
   "journey.emptySub": "Admit the first patient to begin the cardio pathway.",
   "journey.admitPatient": "Admit a Patient",
@@ -363,6 +363,14 @@ export const EN: Record<string, string> = {
   "chart.noWatch": "No active watch flags",
   "chart.close": "Close",
   "chart.empty": "Nothing recorded yet.",
+  "chart.empty.overview": "Activity appears here as soon as anything is recorded for this patient.",
+  "chart.empty.consultations": "No consultations yet — saved consultation summaries will appear here.",
+  "chart.empty.labs": "No lab reports yet — orders from the consult will appear here once resulted.",
+  "chart.empty.reports": "No reports or imaging yet — signed op-notes, consents, discharges and imaging land here.",
+  "chart.empty.medications": "No medications yet — placed med orders and signed prescriptions appear here.",
+  "chart.empty.surgery": "No theatre cases yet — planned OT cases and their consents appear here.",
+  "chart.empty.vitals": "No vitals captured yet — the nurse's captures appear here with flags.",
+  "chart.empty.documents": "No documents yet — every paper generated for this patient collects here.",
   "chart.by": "By",
   "chart.remark": "Remark",
   "chart.tab.overview": "Overview",
@@ -599,7 +607,7 @@ export const EN: Record<string, string> = {
   "portal.tab.beds": "Bed Board",
   "portal.tab.pharmacy": "Pharmacy",
   "portal.tab.patients": "Patients",
-  "portal.tab.journey": "Patient Journey",
+  "portal.tab.journey": "Patient Profile",
   "portal.tab.lab": "Laboratory",
   "portal.tab.routines": "Care Routines",
   "portal.fd.identity": "Front Desk · OPD",
@@ -630,7 +638,7 @@ export const EN: Record<string, string> = {
   "portal.dr.signedRx": "Signed Rx",
   "portal.dr.consults": "Consults",
   "portal.dr.queueTitle": "My queue",
-  "portal.dr.goJourney": "Open Patient Journey",
+  "portal.dr.goJourney": "Open Patient Profile",
   "portal.name.ward": "Ward",
   "portal.name.pharmacy": "Pharmacy",
   "portal.name.lab": "Laboratory",
@@ -747,7 +755,7 @@ export const EN: Record<string, string> = {
   "patients.thMrn": "MRN",
   "patients.thAgeSex": "Age / Sex",
   "patients.thPhone": "Phone",
-  "patients.journey": "Journey",
+  "patients.journey": "Profile",
 
   // ---- order queue (pharmacy/lab/diagnostics worklist) ----
   "page.pharmacy.title": "Pharmacy",

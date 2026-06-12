@@ -223,7 +223,8 @@ function PatientJourneyInner() {
   const [briefErr, setBriefErr] = useState<string>("");
   useEffect(() => { setBriefState("idle"); setBrief(""); setBriefErr(""); }, [selectedId]);
   // Collapsible MEDICA panel [Brief 8 · B] — persisted like hx-lang/hx-ecg
-  const { collapsed: medicaCollapsed, toggle: toggleMedica } = useHxCollapse("hx-collapse-medica");
+  // [FIX-1] default-collapsed (fresh key so stale localStorage from older sessions can't re-open it)
+  const { collapsed: medicaCollapsed, toggle: toggleMedica } = useHxCollapse("hx-collapse-medica.v2", true);
 
   // ---- Doctor's diagnosis + remarks → clinic_visits.diagnosis / .doctor_notes [FIX2/FIX3] ----
   const qc = useQueryClient();
@@ -460,22 +461,17 @@ function PatientJourneyInner() {
             duplicated the header stepper. Component kept below for potential re-mount.) */}
         <div className="lg:col-span-5 space-y-4">
           {/* vitals — above Diagnosis & Remarks (addendum (c)) */}
-          <StageSection title={t("vitals.title")} open={inConsult} testid="hx-stage-vitals" icon={HeartPulse}>
-          <div className="hx-panel hx-rise" style={{ animationDelay: "80ms" }}>
-            <div className="hx-panel-h">
-              <HeartPulse className="h-4 w-4" style={{ color: "var(--hx-accent2)" }} />
-              <span className="font-semibold">{t("vitals.title")}</span>
-              <button className="hx-btn hx-btn--ghost ml-auto" style={{ padding: "0.25rem 0.6rem" }} onClick={() => setVitalsOpen(true)} data-testid="hx-capture-vitals">
+          <StageSection title={t("vitals.title")} open={inConsult} testid="hx-stage-vitals" icon={HeartPulse}
+            actions={<>
+              <button className="hx-btn hx-btn--ghost" style={{ padding: "0.25rem 0.6rem" }} onClick={() => setVitalsOpen(true)} data-testid="hx-capture-vitals">
                 <HeartPulse className="h-3.5 w-3.5" /> {t("vitals.capture")}
               </button>
-              <span className="ml-2">
-                {vitalsSummary.worst === "critical" && <span className="hx-chip hx-chip--crit" data-testid="hx-vitals-critical"><AlertTriangle className="h-3 w-3" /> {t("vitals.critical")}</span>}
-                {vitalsSummary.worst === "warning" && <span className="hx-chip hx-chip--warn" data-testid="hx-vitals-warning"><AlertTriangle className="h-3 w-3" /> {t("vitals.watch")}</span>}
-                {vitalsSummary.worst === "normal" && <span className="hx-chip hx-chip--ok"><CheckCircle2 className="h-3 w-3" /> {t("vitals.stable")}</span>}
-                {vitalsSummary.worst === "empty" && <span className="hx-chip">{t("vitals.noData")}</span>}
-              </span>
-            </div>
-            <div className="hx-panel-b">
+              {vitalsSummary.worst === "critical" && <span className="hx-chip hx-chip--crit" data-testid="hx-vitals-critical"><AlertTriangle className="h-3 w-3" /> {t("vitals.critical")}</span>}
+              {vitalsSummary.worst === "warning" && <span className="hx-chip hx-chip--warn" data-testid="hx-vitals-warning"><AlertTriangle className="h-3 w-3" /> {t("vitals.watch")}</span>}
+              {vitalsSummary.worst === "normal" && <span className="hx-chip hx-chip--ok"><CheckCircle2 className="h-3 w-3" /> {t("vitals.stable")}</span>}
+              {vitalsSummary.worst === "empty" && <span className="hx-chip">{t("vitals.noData")}</span>}
+            </>}>
+            <div>
               {!latestVisit ? (
                 <p className="hx-dim text-sm">{t("vitals.empty")}</p>
               ) : (
@@ -496,23 +492,16 @@ function PatientJourneyInner() {
                 </div>
               )}
             </div>
-          </div>
-
           </StageSection>
 
           {/* Diagnosis & Remarks — BELOW vitals in the LEFT column (addendum (c)) */}
-          <StageSection title={t("remarks.title")} open={inConsult} testid="hx-stage-remarks" icon={ClipboardList}>
-          <div className="hx-panel hx-rise" style={{ animationDelay: "140ms" }} data-testid="hx-remarks">
-            <div className="hx-panel-h">
-              <ClipboardList className="h-4 w-4" style={{ color: "var(--hx-accent2)" }} />
-              <span className="font-semibold">{t("remarks.title")}</span>
-              {latestVisit && (
-                <button className="hx-btn hx-btn--primary ml-auto" style={{ padding: "0.35rem 0.8rem" }} onClick={saveRemarks} disabled={savingRemarks || (!remarksDirty && !diagnosisDirty)} data-testid="hx-remarks-save">
-                  {savingRemarks ? <><Loader2 className="h-4 w-4 animate-spin" /> {t("common.saving")}</> : <>{t("common.save")}</>}
-                </button>
-              )}
-            </div>
-            <div className="hx-panel-b">
+          <StageSection title={t("remarks.title")} open={inConsult} testid="hx-stage-remarks" icon={ClipboardList}
+            actions={latestVisit && (
+              <button className="hx-btn hx-btn--primary" style={{ padding: "0.35rem 0.8rem" }} onClick={saveRemarks} disabled={savingRemarks || (!remarksDirty && !diagnosisDirty)} data-testid="hx-remarks-save">
+                {savingRemarks ? <><Loader2 className="h-4 w-4 animate-spin" /> {t("common.saving")}</> : <>{t("common.save")}</>}
+              </button>
+            )}>
+            <div data-testid="hx-remarks">
               {latestVisit ? (
                 <div className="space-y-2.5">
                   <div>
@@ -532,7 +521,6 @@ function PatientJourneyInner() {
                 <p className="hx-dim text-sm">{t("remarks.empty")}</p>
               )}
             </div>
-          </div>
           </StageSection>
         </div>
 
@@ -540,7 +528,6 @@ function PatientJourneyInner() {
         <div className="lg:col-span-7 space-y-4">
           {/* MEDICA brief — collapsible [Brief 8 · B]: pure presentational; the brief content/logic
               is unchanged. Collapsed = one-line header + expand control; state persists. */}
-          <StageSection title={t("medica.title")} open={false} testid="hx-stage-medica" icon={Sparkles}>
           <div className="hx-panel hx-panel--accent hx-rise" style={{ animationDelay: "120ms" }} data-testid="hx-medica-panel" data-collapsed={medicaCollapsed ? "1" : "0"}>
             <div className="hx-panel-h" style={medicaCollapsed ? { borderBottom: "none" } : undefined}>
               <Sparkles className="h-4 w-4" style={{ color: "var(--hx-accent)" }} />
@@ -578,27 +565,18 @@ function PatientJourneyInner() {
             )}
           </div>
 
-          {/* Consultation Summary — directly BELOW the MEDICA brief panel. Manual (doctor writes) or
-              Assisted (MEDICA drafts from notes → doctor approves) via the reusable autonomy toggle.
-              [Brief 9] + structured intake + plan disposition (Admit reuses the existing admit flow). */}
-          </StageSection>
-
-          <StageSection title={t("consult.title", "Consultation Summary")} open={false} testid="hx-stage-consult" icon={ClipboardList}>
-            <ConsultationSummaryBox patientId={selectedId} patientName={patient.full_name} visitId={latestVisit?.id ?? null}
-              onAdmitPatient={() => setAdmitOpen(true)} />
-          </StageSection>
+          {/* Consultation Summary — its own native collapse is the single layer (default-collapsed) */}
+          <ConsultationSummaryBox patientId={selectedId} patientName={patient.full_name} visitId={latestVisit?.id ?? null}
+            onAdmitPatient={() => setAdmitOpen(true)} />
 
           {/* MEDICA — Medication Suggestions [13]: suggest → doctor approves → pre-fills order entry */}
-          <StageSection title={t("rec.title")} open={false} testid="hx-stage-medrec" icon={Pill}>
-          <div className="hx-panel hx-rise" style={{ animationDelay: "160ms" }} data-testid="hx-medrec">
-            <div className="hx-panel-h">
-              <Pill className="h-4 w-4" style={{ color: "var(--hx-accent)" }} />
-              <span className="font-semibold">{t("rec.title")}</span>
-              <button className="hx-btn hx-btn--ghost ml-auto" style={{ padding: "0.4rem 0.8rem" }} onClick={askRecommend} disabled={recState === "loading"} data-testid="hx-rec-ask">
+          <StageSection title={t("rec.title")} open={false} testid="hx-stage-medrec" icon={Pill}
+            actions={
+              <button className="hx-btn hx-btn--ghost" style={{ padding: "0.4rem 0.8rem" }} onClick={askRecommend} disabled={recState === "loading"} data-testid="hx-rec-ask">
                 {recState === "loading" ? <><Loader2 className="h-4 w-4 animate-spin" /> {t("medica.analysing")}</> : <><Sparkles className="h-4 w-4" /> {t("rec.ask")}</>}
               </button>
-            </div>
-            <div className="hx-panel-b">
+            }>
+            <div data-testid="hx-medrec">
               {recState === "idle" && <p className="hx-dim text-sm">{t("rec.idle")}</p>}
               {recState === "loading" && (
                 <div className="hx-analysing" data-testid="hx-rec-loading">
@@ -638,15 +616,12 @@ function PatientJourneyInner() {
                 </div>
               )}
             </div>
-          </div>
-
           </StageSection>
 
           {/* order entry + live queues — the TREATMENT stage panel */}
-          <StageSection title={t("order.title")} open={inTreatment || inConsult} testid="hx-stage-orders" icon={Plus}>
-          <div className="hx-panel hx-rise" style={{ animationDelay: "200ms" }}>
-            <div className="hx-panel-h"><Plus className="h-4 w-4" style={{ color: "var(--hx-accent2)" }} /><span className="font-semibold">{t("order.title")}</span><span className="hx-faint text-xs ml-auto">{t("order.subtitle")}</span></div>
-            <div className="hx-panel-b">
+          <StageSection title={t("order.title")} open={inTreatment || inConsult} testid="hx-stage-orders" icon={Plus}
+            actions={<span className="hx-faint text-xs">{t("order.subtitle")}</span>}>
+            <div>
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
                 <div className="sm:col-span-3">
                   <label className="hx-label">{t("order.type")}</label>
@@ -695,10 +670,9 @@ function PatientJourneyInner() {
                 </div>
               )}
             </div>
-          </div>
 
           {/* routed queues (this patient) */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-3">
             {queues.map((q, qi) => {
               const items = orders.filter((o) => o.order_type === q.type);
               const Icon = q.icon;
@@ -742,13 +716,13 @@ function PatientJourneyInner() {
           </StageSection>
 
           {/* Prescription — collapsed until clicked (or the closing stage) [ZATEOS B1] */}
-          <StageSection title={t("rx.title", "Prescription")} open={closing} testid="hx-stage-rx" icon={Pill}>
+          <StageSection bare title={t("rx.title", "Prescription")} open={closing} testid="hx-stage-rx" icon={Pill}>
             <PrescriptionPanel patient={patient} visitId={latestVisit?.id ?? null} placedMeds={rxMeds} />
           </StageSection>
 
           {/* Operation Theatre — gated bilingual consent + the surgeon's signed operative note
               [HOSPITAL-OT]; status also chips in the patient header */}
-          <StageSection title={t("ot.title", "Operation Theatre")} open={!!otCase && otCase.status !== "completed"} testid="hx-stage-ot" icon={Slice}>
+          <StageSection bare title={t("ot.title", "Operation Theatre")} open={!!otCase && otCase.status !== "completed"} testid="hx-stage-ot" icon={Slice}>
             <OperationTheatrePanel patient={patient} visitId={latestVisit?.id ?? null} />
           </StageSection>
 
@@ -758,7 +732,7 @@ function PatientJourneyInner() {
 
           {/* Discharge — deterministic readiness + grounded bilingual signed summary (med reconciliation
               off the signed Rx); sign closes the episode + frees the bed via existing flows [HOSPITAL-DISCHARGE] */}
-          <StageSection title={t("discharge.title")} open={closing || dischargeHash} testid="hx-stage-discharge" icon={LogOut}>
+          <StageSection bare title={t("discharge.title")} open={closing || dischargeHash} testid="hx-stage-discharge" icon={LogOut}>
             <DischargePanel patient={patient} />
           </StageSection>
         </div>

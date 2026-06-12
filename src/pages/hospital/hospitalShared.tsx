@@ -1,6 +1,7 @@
 // Shared hospital-vertical primitives: the industry gate + dark shell, the ECG motif,
 // and the medica-brief Edge Function client. Importing this also loads the scoped theme.
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -625,8 +626,14 @@ export async function loadDoctorStyleBlock(doctorId: string | null | undefined, 
 /** [ZATEOS B1] Stage-focused section: the patient profile shows ONLY the current stage's panel
  *  expanded — every other section is a one-line header until clicked. `open` is the stage-driven
  *  default and re-drives when the stage (or patient) changes; the user can still toggle freely. */
-export function StageSection({ title, open, children, testid, icon: Icon }: {
+/** [FIX-1] ONE collapse layer. Collapsed = a one-line header. Expanded:
+ *  - default: the wrapper renders the FULL header (title + optional `actions`) and the children
+ *    render HEADERLESS inside it (inner panels drop their own header row);
+ *  - `bare`: for children that keep their own native titled header (Prescription/OT/Discharge),
+ *    the wrapper renders only a slim chevron-strip — no duplicate title, one chevron total. */
+export function StageSection({ title, open, children, testid, icon: Icon, actions, bare }: {
   title: string; open: boolean; children: React.ReactNode; testid: string; icon?: any;
+  actions?: React.ReactNode; bare?: boolean;
 }) {
   const [expanded, setExpanded] = useState(open);
   useEffect(() => { setExpanded(open); }, [open]);
@@ -639,14 +646,29 @@ export function StageSection({ title, open, children, testid, icon: Icon }: {
       </button>
     );
   }
+  if (bare) {
+    return (
+      <div data-testid={`${testid}-open`}>
+        <button type="button" className="hx-stage-strip" onClick={() => setExpanded(false)} data-testid={`${testid}-collapse`}
+          title={title} aria-label={title}>
+          <ChevronUp className="h-3.5 w-3.5" />
+        </button>
+        {children}
+      </div>
+    );
+  }
   return (
-    <div data-testid={`${testid}-open`}>
-      <button type="button" className="hx-stage-row hx-stage-row--open" onClick={() => setExpanded(false)} data-testid={`${testid}-collapse`}>
+    <div className="hx-panel hx-rise" data-testid={`${testid}-open`}>
+      <div className="hx-panel-h">
         {Icon && <Icon className="h-4 w-4" style={{ color: "var(--hx-accent2)" }} />}
         <span className="font-semibold">{title}</span>
-        <ChevronUp className="h-4 w-4 ml-auto hx-dim" />
-      </button>
-      {children}
+        {actions && <span className="ml-auto flex items-center gap-2" onClick={(e) => e.stopPropagation()}>{actions}</span>}
+        <button type="button" className={actions ? "ml-2" : "ml-auto"} onClick={() => setExpanded(false)} data-testid={`${testid}-collapse`}
+          style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--hx-dim)", display: "inline-flex" }}>
+          <ChevronUp className="h-4 w-4" />
+        </button>
+      </div>
+      <div className="hx-panel-b">{children}</div>
     </div>
   );
 }
@@ -699,6 +721,14 @@ export function HxPickInput({ value, onChange, options, placeholder, onEnter, te
   const [open, setOpen] = useState(false);
   const [hi, setHi] = useState(-1);          // highlighted suggestion index (-1 = none)
   const wrapRef = useRef<HTMLDivElement>(null);
+  // [FIX-3] the menu PORTALS to <body> (fixed, z 70) so it floats above every panel/tab/drawer
+  // stacking context — same body-portal pattern as the chart drawers (.hx-portal carries the vars).
+  const [rect, setRect] = useState<{ top: number; left: number; width: number } | null>(null);
+  const measure = () => {
+    const r = wrapRef.current?.getBoundingClientRect();
+    if (r) setRect({ top: r.bottom + 4, left: r.left, width: r.width });
+  };
+  useEffect(() => { if (open) measure(); }, [open, value]);
   const q = value.trim().toLowerCase();
   const matches = (q
     ? options.filter((o) => o.value.toLowerCase().includes(q) || (o.hint || "").toLowerCase().includes(q))
@@ -709,7 +739,8 @@ export function HxPickInput({ value, onChange, options, placeholder, onEnter, te
   useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) { setOpen(false); setHi(-1); }
+      const t = e.target as HTMLElement;
+      if (wrapRef.current && !wrapRef.current.contains(t) && !t.closest?.(".hx-pick-menu")) { setOpen(false); setHi(-1); }
     };
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
@@ -737,8 +768,10 @@ export function HxPickInput({ value, onChange, options, placeholder, onEnter, te
         data-testid={testid}
         autoComplete="off"
       />
-      {open && matches.length > 0 && (
-        <div className="hx-pick-menu" data-testid={testid ? `${testid}-menu` : undefined} role="listbox">
+      {open && matches.length > 0 && rect && createPortal(
+        <div className="hx-portal">
+        <div className="hx-pick-menu hx-pick-menu--portal" style={{ position: "fixed", top: rect.top, left: rect.left, width: rect.width, zIndex: 70 }}
+          data-testid={testid ? `${testid}-menu` : undefined} role="listbox">
           {matches.map((o, i) => (
             <button
               type="button"
@@ -755,6 +788,8 @@ export function HxPickInput({ value, onChange, options, placeholder, onEnter, te
             </button>
           ))}
         </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

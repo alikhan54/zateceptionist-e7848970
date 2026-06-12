@@ -15,7 +15,7 @@ export const BN: Record<string, string> = {
 
   // ---- hospital nav section ----
   "nav.section": "হাসপাতাল",
-  "nav.journey": "রোগীর যাত্রা",
+  "nav.journey": "রোগীর প্রোফাইল",
   "nav.admissions": "ভর্তি",
   "nav.nurse": "নার্স স্টেশন",
   "nav.pharmacy": "ফার্মেসি",
@@ -29,7 +29,7 @@ export const BN: Record<string, string> = {
   "surface.loading": "ক্লিনিক্যাল সারফেস লোড হচ্ছে…",
 
   // ---- patient journey ----
-  "journey.eyebrow": "হাসপাতাল · রোগীর যাত্রা",
+  "journey.eyebrow": "হাসপাতাল · রোগীর প্রোফাইল",
   "journey.emptyTitle": "এখনও কোনো রোগী ভর্তি হয়নি",
   "journey.emptySub": "কার্ডিও পথ শুরু করতে প্রথম রোগীকে ভর্তি করুন।",
   "journey.admitPatient": "রোগী ভর্তি করুন",
@@ -385,7 +385,7 @@ export const BN: Record<string, string> = {
   "patients.thMrn": "এমআরএন",
   "patients.thAgeSex": "বয়স / লিঙ্গ",
   "patients.thPhone": "ফোন",
-  "patients.journey": "যাত্রা",
+  "patients.journey": "প্রোফাইল",
 
   // ---- order queue ----
   "page.pharmacy.title": "ফার্মেসি",
@@ -851,7 +851,7 @@ export const BN: Record<string, string> = {
   "portal.tab.beds": "বেড বোর্ড",
   "portal.tab.pharmacy": "ফার্মেসি",
   "portal.tab.patients": "রোগীরা",
-  "portal.tab.journey": "রোগীর যাত্রা",
+  "portal.tab.journey": "রোগীর প্রোফাইল",
   "portal.tab.lab": "ল্যাবরেটরি",
   "portal.tab.routines": "কেয়ার রুটিন",
   "portal.fd.identity": "ফ্রন্ট ডেস্ক · ওপিডি",
@@ -882,7 +882,7 @@ export const BN: Record<string, string> = {
   "portal.dr.signedRx": "স্বাক্ষরিত প্রেসক্রিপশন",
   "portal.dr.consults": "কনসালটেশন",
   "portal.dr.queueTitle": "আমার সারি",
-  "portal.dr.goJourney": "রোগীর যাত্রা খুলুন",
+  "portal.dr.goJourney": "রোগীর প্রোফাইল খুলুন",
   "portal.name.ward": "ওয়ার্ড",
   "portal.name.pharmacy": "ফার্মেসি",
   "portal.name.lab": "ল্যাবরেটরি",
@@ -960,4 +960,12 @@ export const BN: Record<string, string> = {
   "portal.hod.collections": "আজকের আদায়",
   "portal.hod.ewsTitle": "সংকটাপন্ন — ইডব্লিউএস ≥ ৭",
   "portal.hod.wardsTitle": "ওয়ার্ড দখল",
+  "chart.empty.overview": "এই রোগীর জন্য কিছু রেকর্ড হলেই এখানে কার্যক্রম দেখা যাবে।",
+  "chart.empty.consultations": "এখনো কোনো কনসালটেশন নেই — সংরক্ষিত সারাংশ এখানে আসবে।",
+  "chart.empty.labs": "এখনো কোনো ল্যাব রিপোর্ট নেই — ফলাফল এলে এখানে দেখা যাবে।",
+  "chart.empty.reports": "এখনো কোনো রিপোর্ট বা ইমেজিং নেই — স্বাক্ষরিত নথি এখানে জমা হবে।",
+  "chart.empty.medications": "এখনো কোনো ওষুধ নেই — অর্ডার ও স্বাক্ষরিত প্রেসক্রিপশন এখানে আসবে।",
+  "chart.empty.surgery": "এখনো কোনো থিয়েটার কেস নেই — পরিকল্পিত ওটি কেস এখানে আসবে।",
+  "chart.empty.vitals": "এখনো ভাইটাল নেওয়া হয়নি — নার্সের ক্যাপচার এখানে দেখা যাবে।",
+  "chart.empty.documents": "এখনো কোনো ডকুমেন্ট নেই — রোগীর সব কাগজ এখানে জমা হয়।",
 };

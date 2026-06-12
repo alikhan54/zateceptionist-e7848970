@@ -216,7 +216,8 @@ export function ConsultationSummaryBox({
 
   const noEncounter = !visitId;
   // Collapsible panel [Brief 8 addendum (a)] — same pattern as the MEDICA collapse; presentational only
-  const { collapsed, toggle } = useHxCollapse("hx-collapse-consult");
+  // [FIX-1] default-collapsed; fresh key so stale localStorage cannot re-open it
+  const { collapsed, toggle } = useHxCollapse("hx-collapse-consult.v2", true);
 
   return (
     <div className="hx-panel hx-rise" style={{ animationDelay: "140ms" }} data-testid="hx-consult" data-collapsed={collapsed ? "1" : "0"}>

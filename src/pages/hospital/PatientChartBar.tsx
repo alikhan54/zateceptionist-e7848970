@@ -146,9 +146,9 @@ export function PatientChartBar({ patient, currentBed }: { patient: any; current
                   {patient.full_name}{patient.file_number ? ` · ${patient.file_number}` : ""}
                 </div>
               </div>
-              <button type="button" className="hx-btn hx-btn--ghost" style={{ padding: "0.3rem 0.55rem" }}
-                onClick={() => setOpenTab(null)} data-testid="hx-chart-close" aria-label={t("chart.close")}>
-                <X className="h-4 w-4" />
+              <button type="button" className="hx-btn hx-btn--ghost" style={{ padding: "0.35rem 0.8rem" }}
+                onClick={() => setOpenTab(null)} data-testid="hx-chart-close" aria-label={t("common.back")}>
+                <X className="h-4 w-4" /> {t("common.back")}
               </button>
             </div>
             <div className="hx-drawer-b">
@@ -173,10 +173,17 @@ export function PatientChartBar({ patient, currentBed }: { patient: any; current
 
 // ============================== tab bodies ==============================
 
-function Empty() {
+function Empty({ k }: { k?: TabKey }) {
   const { t } = useHospitalT();
-  return <p className="hx-dim text-sm" data-testid="hx-chart-empty">{t("chart.empty")}</p>;
+  return (
+    <div className="hx-tab-empty" data-testid="hx-chart-empty">
+      <Folder className="h-7 w-7" style={{ color: "var(--hx-faint)" }} />
+      <p className="font-medium mt-2">{t("chart.empty")}</p>
+      {k && <p className="hx-dim text-sm mt-1" data-testid="hx-chart-empty-hint">{t(`chart.empty.${k}`)}</p>}
+    </div>
+  );
 }
+
 
 function OverviewTab({ chart, allergies, flags }: { chart: ChartData; allergies: string[]; flags: ReturnType<typeof watchFlags> }) {
   const { t } = useHospitalT();
@@ -201,7 +208,7 @@ function OverviewTab({ chart, allergies, flags }: { chart: ChartData; allergies:
 
       <div>
         <div className="hx-group-h"><Activity className="h-3.5 w-3.5" /> {t("chart.recent")}</div>
-        {activity.length === 0 ? <Empty /> : (
+        {activity.length === 0 ? <Empty k="overview" /> : (
           <ul className="space-y-1.5" data-testid="hx-chart-activity">
             {activity.map((e, i) => (
               <li key={i} className="flex items-center gap-2 text-sm" data-testid="hx-chart-activity-row">
@@ -235,7 +242,7 @@ function OverviewTab({ chart, allergies, flags }: { chart: ChartData; allergies:
 function ConsultationsTab({ chart }: { chart: ChartData }) {
   const { t } = useHospitalT();
   const groups = groupConsultations(chart);
-  if (groups.length === 0) return <Empty />;
+  if (groups.length === 0) return <Empty k="consultations" />;
   return (
     <div className="space-y-4" data-testid="hx-chart-consults">
       {groups.map((g) => (
@@ -272,7 +279,7 @@ function ConsultationsTab({ chart }: { chart: ChartData }) {
 
 function LabsTab({ chart }: { chart: ChartData }) {
   const { t, ti } = useHospitalT();
-  if (chart.labs.length === 0) return <Empty />;
+  if (chart.labs.length === 0) return <Empty k="labs" />;
   const flagClass = (f?: string) => {
     const x = (f || "").toUpperCase();
     return ["CRITICAL", "CRIT"].includes(x) ? "hx-chip--crit" : ["H", "L", "HIGH", "LOW", "ABN", "*", "A"].includes(x) ? "hx-chip--warn" : "";
@@ -316,7 +323,7 @@ function ReportsTab({ chart }: { chart: ChartData }) {
   const opnotes = signedOpNotes(chart);
   const imaging = imagingResults(chart);
   const any = opnotes.length + chart.consents.length + chart.discharges.length + imaging.length > 0;
-  if (!any) return <Empty />;
+  if (!any) return <Empty k="reports" />;
   return (
     <div className="space-y-4" data-testid="hx-chart-reports">
       {opnotes.length > 0 && (
@@ -387,7 +394,7 @@ function ReportsTab({ chart }: { chart: ChartData }) {
 function MedicationsTab({ chart }: { chart: ChartData }) {
   const { t, ti } = useHospitalT();
   const medOrders = medicationOrders(chart);
-  if (chart.prescriptions.length === 0 && medOrders.length === 0) return <Empty />;
+  if (chart.prescriptions.length === 0 && medOrders.length === 0) return <Empty k="medications" />;
   return (
     <div className="space-y-4" data-testid="hx-chart-meds">
       {chart.prescriptions.map((p) => (
@@ -438,7 +445,7 @@ function MedicationsTab({ chart }: { chart: ChartData }) {
 function SurgeryTab({ chart }: { chart: ChartData }) {
   const { t } = useHospitalT();
   const { byId } = useHospitalStaff();
-  if (chart.otCases.length === 0) return <Empty />;
+  if (chart.otCases.length === 0) return <Empty k="surgery" />;
   return (
     <div className="space-y-3" data-testid="hx-chart-surgery">
       {chart.otCases.map((o) => (
@@ -493,7 +500,7 @@ function VitalsTab({ chart }: { chart: ChartData }) {
   const { t, ti } = useHospitalT();
   const withVitals = chart.visits.filter(visitHasVitals);
   const ep = chart.episodes.find((e) => e.status === "active") || chart.episodes[0];
-  if (withVitals.length === 0 && !ep) return <Empty />;
+  if (withVitals.length === 0 && !ep) return <Empty k="vitals" />;
   return (
     <div className="space-y-3" data-testid="hx-chart-vitals">
       {ep && Array.isArray(ep.score_history) && ep.score_history.length > 0 && (
@@ -516,7 +523,7 @@ function VitalsTab({ chart }: { chart: ChartData }) {
 function DocumentsTab({ chart }: { chart: ChartData }) {
   const { t, ti } = useHospitalT();
   const docs = chartDocuments(chart);
-  if (docs.length === 0) return <Empty />;
+  if (docs.length === 0) return <Empty k="documents" />;
   return (
     <ul className="space-y-2" data-testid="hx-chart-docs">
       {docs.map((d, i) => (

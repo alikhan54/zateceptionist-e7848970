@@ -307,3 +307,18 @@
 .hx-vitals-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 0.65rem; }
 .hx-vitals-grid .hx-vital { min-width: 0; overflow: hidden; }
 .hx-vitals-grid .hx-vital .v { font-size: clamp(1rem, 1.4vw, 1.4rem); line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* [FIX-1] bare collapse strip: one slim chevron, no duplicate title */
+.hx-stage-strip { display: flex; justify-content: flex-end; width: 100%; background: transparent; border: none;
+  color: var(--hx-dim); cursor: pointer; padding: 0 0.4rem 0.15rem; }
+.hx-stage-strip:hover { color: var(--hx-text); }
+/* [FIX-2] chart tabs = TRUE full-screen views; inner content centered at the 1160 law */
+.hx-drawer { left: 0; width: 100%; border-left: none; }
+.hx-drawer-h > * { max-width: 1160px; }
+.hx-drawer-h { justify-content: center; gap: 2rem; }
+.hx-drawer-h > .min-w-0 { flex: 1; max-width: 1020px; }
+.hx-drawer-b > * { max-width: 1160px; margin-left: auto; margin-right: auto; }
+.hx-tab-empty { display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; padding: 3.5rem 1rem; border: 1px dashed var(--hx-border); border-radius: 14px; }
+/* [FIX-3] portaled pick menu (fixed positioning set inline) */
+.hx-pick-menu--portal { right: auto; }
