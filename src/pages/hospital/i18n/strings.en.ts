@@ -545,6 +545,7 @@ export const EN: Record<string, string> = {
 
   // ---- portal homes (HOSPITAL-PORTAL) ----
   "portal.suite": "Hospital",
+  "portal.glance": "your day at a glance",
   "portal.signedIn": "Signed in",
   "portal.today": "today",
   "portal.recent": "Recent activity",

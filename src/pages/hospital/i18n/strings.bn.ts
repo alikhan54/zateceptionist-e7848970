@@ -797,6 +797,7 @@ export const BN: Record<string, string> = {
 
   // ---- portal homes (HOSPITAL-PORTAL) — DRAFT BN, pending native review ----
   "portal.suite": "হাসপাতাল",
+  "portal.glance": "আজকের এক নজরে",
   "portal.signedIn": "সাইন ইন",
   "portal.today": "আজ",
   "portal.recent": "সাম্প্রতিক কার্যক্রম",
