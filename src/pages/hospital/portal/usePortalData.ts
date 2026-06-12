@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { displayName } from "../hospitalShared";
 
 /** Local midnight as ISO — "today" everywhere in the portal. */
 export function todayStartIso(): string {
@@ -100,7 +101,7 @@ export function usePatientNames() {
         .select("id,full_name").eq("tenant_id", tenantId);
       if (error) throw error;
       const m = new Map<string, string>();
-      ((data as any[]) || []).forEach((p) => m.set(p.id, p.full_name));
+      ((data as any[]) || []).forEach((p) => m.set(p.id, displayName(p.full_name)));
       return m;
     },
     enabled: !!tenantId, staleTime: 120_000,

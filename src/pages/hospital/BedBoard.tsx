@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useHospitalBeds, type BedRow, LONG_STAY_DAYS } from "@/hooks/useHospitalBeds";
 import { usePostopBoard, isAlertState } from "@/hooks/useHospitalPostop";
 import { useDischargeReadyMap } from "@/hooks/useHospitalRoutines";
-import { HospitalGate } from "./hospitalShared";
+import { HospitalGate, displayName } from "./hospitalShared";
 import { useHospitalT } from "./i18n";
 
 const STATUS_CLASS: Record<string, string> = {
@@ -89,7 +89,7 @@ function BedBoardInner() {
             {unassigned.map((p) => (
               <div key={p.admission_id} className="flex flex-wrap items-center gap-2" data-testid="hx-bed-unassigned-row">
                 <Activity className="h-3.5 w-3.5" style={{ color: "var(--hx-accent)" }} />
-                <span className="font-medium text-sm">{p.patient_name}</span>
+                <span className="font-medium text-sm">{displayName(p.patient_name)}</span>
                 {p.department_name && <span className="hx-dim text-xs">· {p.department_name}</span>}
                 {p.attending_name && <span className="hx-dim text-xs">· {p.attending_name}</span>}
                 <span className="hx-chip text-xs">{ti("beds.losDays", { n: p.los_days })}</span>
@@ -129,7 +129,7 @@ function BedBoardInner() {
                       {/* [Brief 10 · C] click-through: the patient opens their care-routines view */}
                       <button type="button" className="font-medium text-sm hover:underline text-left" style={{ color: "var(--hx-text)" }}
                         onClick={() => navigate(`/hospital/routines?patient=${b.patient_id}`)} data-testid="hx-bed-patient">
-                        {b.patient_name}
+                        {displayName(b.patient_name)}
                       </button>
                       {b.attending_name && <div className="hx-dim text-xs">{b.attending_name}</div>}
                       <div className="flex items-center gap-1.5 mt-1">
@@ -148,8 +148,9 @@ function BedBoardInner() {
                           );
                         })()}
                       </div>
-                      {/* [Brief 10 · D] readiness chip + deep-link to the journey's EXISTING discharge
-                          panel (the board never signs; the bed Discharge button below is untouched) */}
+                      {/* [Brief 10 · D + ZATEOS A6] readiness chip + ONE Discharge action (the
+                          deep-link into the profile's discharge section). On a ready tile the
+                          legacy bed-level button is hidden — one discharge control per tile. */}
                       {b.patient_id && readyMap?.get(b.patient_id) && (
                         <div className="flex items-center gap-1.5 mt-1.5" data-testid="hx-bed-ready">
                           <span className="hx-chip hx-chip--ok text-xs"><CheckCircle2 className="h-3 w-3" /> {t("discharge.ready")}</span>
@@ -175,7 +176,9 @@ function BedBoardInner() {
                       ) : (
                         <div className="flex items-center gap-1.5 mt-2">
                           <button className="hx-btn hx-btn--ghost" style={{ padding: "0.25rem 0.55rem", fontSize: "0.72rem" }} onClick={() => setTransferFor(b.id)} disabled={!availableBeds.length} data-testid="hx-bed-transfer-btn"><ArrowRightLeft className="h-3 w-3" /> {t("beds.transfer")}</button>
-                          <button className="hx-btn hx-btn--ghost" style={{ padding: "0.25rem 0.55rem", fontSize: "0.72rem" }} onClick={() => doDischarge(b)} disabled={discharge.isPending} data-testid="hx-bed-discharge-btn"><LogOut className="h-3 w-3" /> {t("beds.discharge")}</button>
+                          {!(b.patient_id && readyMap?.get(b.patient_id)) && (
+                            <button className="hx-btn hx-btn--ghost" style={{ padding: "0.25rem 0.55rem", fontSize: "0.72rem" }} onClick={() => doDischarge(b)} disabled={discharge.isPending} data-testid="hx-bed-discharge-btn"><LogOut className="h-3 w-3" /> {t("beds.discharge")}</button>
+                          )}
                         </div>
                       )}
                     </div>

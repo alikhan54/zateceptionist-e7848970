@@ -7,7 +7,7 @@ import { useTenant } from "@/contexts/TenantContext";
 import { useClinicPatients } from "@/hooks/useClinicPatients";
 import { useHospitalRole } from "@/hooks/useHospitalRole";
 import { HospitalAdmitDialog } from "@/components/hospital/HospitalAdmitDialog";
-import { HospitalGate } from "./hospitalShared";
+import { HospitalGate, displayName } from "./hospitalShared";
 import { useHospitalT } from "./i18n";
 
 function ageFrom(dob?: string) {
@@ -79,7 +79,7 @@ function HospitalPatientsInner() {
                 <tbody>
                   {visiblePatients.map((p: any) => (
                     <tr key={p.id} className="border-t" style={{ borderColor: "var(--hx-border)" }} data-testid="hx-patient-row">
-                      <td className="py-2.5 font-medium">{p.full_name}</td>
+                      <td className="py-2.5 font-medium">{displayName(p.full_name)}</td>
                       <td className="hx-mono hx-dim" data-testid="hx-patient-mrn">{p.file_number || String(p.id).slice(0, 8).toUpperCase()}</td>
                       <td className="hx-dim">{ageFrom(p.date_of_birth) ?? "—"}{p.gender ? ` · ${p.gender}` : ""}</td>
                       <td className="hx-mono hx-dim">{p.phone || "—"}</td>

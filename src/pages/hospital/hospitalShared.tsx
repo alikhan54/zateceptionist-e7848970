@@ -16,6 +16,18 @@ import "./hospital.css";
  * route-level guard), so a non-hospital tenant is HARD-REDIRECTED out. A hospital
  * tenant gets the dark `.hx` command surface wrapping the page.
  */
+/** [ZATEOS A5] Proper-case patient names for DISPLAY everywhere (adeel → Adeel, rahul → Rahul).
+ *  Short ALL-CAPS tokens (≤4 chars, e.g. UPS) are treated as acronyms and left alone.
+ *  Display-level only — stored data is never mutated. */
+export function displayName(name?: string | null): string {
+  if (!name) return "";
+  return name.split(/\s+/).map((w) =>
+    w.length <= 4 && w === w.toUpperCase() && /[A-Z]/.test(w)
+      ? w
+      : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(),
+  ).join(" ");
+}
+
 export function HospitalGate({ children, allow }: { children: React.ReactNode; allow?: HospitalRole[] }) {
   const { isHospital, isLoading, tenantConfig } = useTenant();
   const { t } = useHospitalT();

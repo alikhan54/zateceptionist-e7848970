@@ -41,6 +41,11 @@
   background-size: 44px 44px; mask-image: radial-gradient(circle at 50% 0%, #000 30%, transparent 80%);
 }
 .hx > * { position: relative; z-index: 1; }
+/* [ZATEOS A4] the reference's page law: centered ~1160px content + 15.5px base on every hospital
+   page — no edge-to-edge sprawl. The portal (.hxp) manages its own grid; print papers are
+   absolutely positioned offscreen and keep their fixed widths. */
+.hx { font-size: 15.5px; }
+.hx > :not(.hxp) { max-width: 1160px; margin-left: auto; margin-right: auto; }
 
 .hx-h1 { font-size: clamp(1.4rem, 2.4vw, 2rem); font-weight: 650; letter-spacing: -0.02em; }
 .hx-mono { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
@@ -68,11 +73,14 @@
 
 /* ---- pathway stepper ---- */
 .hx-path { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
-.hx-path-step { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 0.74rem; color: var(--hx-faint); white-space: nowrap; }
+/* [ZATEOS A3] stepper CONTRAST: future steps clearly readable (dim, not faint), completed =
+   solid teal + weight, current = bright + glow. Vars adapt to light mode automatically. */
+.hx-path-step { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 0.78rem; color: var(--hx-dim); white-space: nowrap; }
 .hx-path-step .dot { width: 9px; height: 9px; border-radius: 999px; background: currentColor; box-shadow: 0 0 0 3px rgba(255,255,255,0.03); }
-.hx-path-step.done { color: var(--hx-accent2); }
-.hx-path-step.active { color: var(--hx-accent); }
-.hx-path-step.active .dot { box-shadow: 0 0 0 3px rgba(34,211,238,0.18), 0 0 16px rgba(34,211,238,0.7); animation: hx-blink 1.6s ease-in-out infinite; }
+.hx-path-step.done { color: var(--hx-accent2); font-weight: 600; }
+.hx-path-step.done .dot { box-shadow: 0 0 0 3px rgba(45,212,191,0.18); }
+.hx-path-step.active { color: var(--hx-accent); font-weight: 700; text-shadow: 0 0 14px rgba(34,211,238,0.45); }
+.hx-path-step.active .dot { box-shadow: 0 0 0 3px rgba(34,211,238,0.22), 0 0 18px rgba(34,211,238,0.85); animation: hx-blink 1.6s ease-in-out infinite; }
 .hx-path-sep { color: var(--hx-faint); opacity: 0.5; }
 
 /* ---- journey spine ---- */

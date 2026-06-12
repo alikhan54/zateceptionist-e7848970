@@ -17,6 +17,7 @@ import { useClinicPatients } from "@/hooks/useClinicPatients";
 import { useClinicVisits } from "@/hooks/useClinicVisits";
 import { summarizeVitals, DEFAULT_THRESHOLDS } from "@/lib/clinic/vitalsThresholds";
 import { PortalShell, Stat, type RailItem } from "./PortalShell";
+import { displayName } from "../hospitalShared";
 import { useSalesToday, usePatientNames, todayStartIso } from "./usePortalData";
 import { useHospitalT } from "../i18n";
 
@@ -126,7 +127,7 @@ export function TriageHome({ switcher }: { switcher?: React.ReactNode }) {
   }, [patients, visits]);
 
   const rail: RailItem[] = flow.awaiting.map((r) => ({
-    key: r.p.id, title: r.p.full_name, sub: t("portal.tr.noVitals"), to: "/hospital/nurse",
+    key: r.p.id, title: displayName(r.p.full_name), sub: t("portal.tr.noVitals"), to: "/hospital/nurse",
   }));
   const medica = ti("portal.tr.medica", { a: flow.awaiting.length, f: flow.rows.length });
 
@@ -178,8 +179,9 @@ export function HodHome({ switcher }: { switcher?: React.ReactNode }) {
   return (
     <PortalShell testid="hxp-hod" identity={t("portal.hod.identity")} switcher={switcher}
       tabs={[
+        // [ZATEOS A7] command views only — never another role's WORK surface (the Nurse Station
+        // tab opened the nurses' worklist for the HOD; wrong audience, removed)
         { label: t("portal.tab.beds"), to: "/hospital/beds" },
-        { label: t("portal.tab.worklist"), to: "/hospital/nurse" },
         { label: t("portal.tab.theatre"), to: "/hospital/ot" },
         { label: t("portal.tab.journey"), to: "/hospital/journey" },
       ]}
@@ -222,7 +224,7 @@ export function HodHome({ switcher }: { switcher?: React.ReactNode }) {
 
       <div className="hxp-links">
         <Link className="hxp-link" to="/hospital/beds"><BedDouble className="h-4 w-4" />{t("portal.tab.beds")}</Link>
-        <Link className="hxp-link" to="/hospital/nurse"><ClipboardList className="h-4 w-4" />{t("portal.tab.worklist")}</Link>
+        <Link className="hxp-link" to="/hospital/ot"><ClipboardList className="h-4 w-4" />{t("portal.tab.theatre")}</Link>
       </div>
     </PortalShell>
   );

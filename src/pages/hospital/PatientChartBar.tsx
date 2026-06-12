@@ -18,6 +18,7 @@ import {
   type ChartData, type ChartVisit,
 } from "@/hooks/useHospitalChart";
 import { statusChipClass } from "./OperationTheatre";
+import { displayName } from "./hospitalShared";
 import { SummaryPrintButton, composeSummaryText } from "./PatientSummaryPaper";
 import { SendDocControl } from "./SendDoc";
 
@@ -77,7 +78,7 @@ export function PatientChartBar({ patient, currentBed }: { patient: any; current
       <div className="hx-panel hx-chartbar hx-rise" style={{ animationDelay: "40ms" }} data-testid="hx-chart-bar">
         <div className="hx-chartbar-id">
           <span className="hx-eyebrow" style={{ whiteSpace: "nowrap" }}>{t("chart.eyebrow")}</span>
-          <span className="font-semibold text-sm" data-testid="hx-chart-name">{patient.full_name}</span>
+          <span className="font-semibold text-sm" data-testid="hx-chart-name">{displayName(patient.full_name)}</span>
           {activeAdmission && (
             <span className="hx-chip hx-chip--accent" style={{ padding: "0.05rem 0.5rem" }} data-testid="hx-chart-admitted">
               <BedDouble className="h-3 w-3" />

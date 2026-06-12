@@ -10,7 +10,7 @@ import { useForwardToDoctor, useWaitingMap } from "@/hooks/useHospitalDoctorQueu
 import { useHospitalStaff } from "@/hooks/useHospitalStaff";
 import { useToast } from "@/hooks/use-toast";
 import { summarizeVitals, DEFAULT_THRESHOLDS, type VitalStatus } from "@/lib/clinic/vitalsThresholds";
-import { HospitalGate, EcgLine } from "./hospitalShared";
+import { HospitalGate, EcgLine, displayName } from "./hospitalShared";
 import { NurseWorklist } from "./NurseWorklist";
 import { useHospitalT } from "./i18n";
 import { HospitalAdmitDialog } from "@/components/hospital/HospitalAdmitDialog";
@@ -120,7 +120,7 @@ function NurseStationInner() {
                   <div className="flex items-center gap-3">
                     <div className="grid place-items-center rounded-xl shrink-0" style={{ width: 38, height: 38, background: "rgba(34,211,238,0.1)", border: "1px solid var(--hx-border-strong)", fontWeight: 700, fontSize: 13 }}>{initials(p.full_name)}</div>
                     <div className="min-w-0 flex-1">
-                      <div className="font-medium truncate">{p.full_name}</div>
+                      <div className="font-medium truncate">{displayName(p.full_name)}</div>
                       <div className="hx-faint text-xs hx-mono">{t("journey.mrn")} {p.file_number || String(p.id).slice(0, 8).toUpperCase()}{p.phone ? ` · ${p.phone}` : ""}</div>
                     </div>
                     {waitingMap?.has(p.id) && (

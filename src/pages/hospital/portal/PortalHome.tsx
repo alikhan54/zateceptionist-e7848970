@@ -1,8 +1,7 @@
 // HOSPITAL-PORTAL — /hospital/home: picks the role's home. Restricted roles land on THEIR home
 // (composed on the existing walls — never weakened); admin gets a portal switcher. Roles whose
 // portal home hasn't shipped yet are sent to their existing first page — nothing breaks mid-rollout.
-import { useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useSearchParams } from "react-router-dom";
 import { useHospitalRole, HOSPITAL_ROLE_PAGES, type HospitalRole } from "@/hooks/useHospitalRole";
 import { HospitalGate } from "../hospitalShared";
 import { useHospitalT } from "../i18n";
@@ -12,13 +11,20 @@ import { WardHome } from "./WardHome";
 import { PharmacyHome, LabHome } from "./PharmacyLabHomes";
 import { OtHome, TriageHome, HodHome } from "./OtTriageHodHomes";
 
-type PortalKey = "frontdesk" | "doctor" | "ward" | "pharmacy" | "lab" | "ot" | "triage" | "hod";
-const BUILT: PortalKey[] = ["hod", "frontdesk", "doctor", "ward", "pharmacy", "lab", "ot", "triage"];
+// THE PATIENT JOURNEY IS THE PORTAL SEQUENCE — switcher in journey order, HOD LAST (end of the
+// chain). Front Desk is the demo's opening stage and the admin default.
+type PortalKey = "frontdesk" | "triage" | "doctor" | "pharmacy" | "lab" | "ward" | "ot" | "hod";
+const BUILT: PortalKey[] = ["frontdesk", "triage", "doctor", "pharmacy", "lab", "ward", "ot", "hod"];
 
 function PortalBody() {
   const { hospitalRole, hrEmployeeId, loading } = useHospitalRole();
   const { t } = useHospitalT();
-  const [adminPick, setAdminPick] = useState<PortalKey>("frontdesk");
+  // the picked portal lives in the URL (?portal=hod) so router HISTORY keeps the stage —
+  // Back from a sub-page (e.g. HOD → Bed Board → Back) returns to the SAME portal, never Front Desk
+  const [params, setParams] = useSearchParams();
+  const raw = params.get("portal") as PortalKey | null;
+  const adminPick: PortalKey = raw && BUILT.includes(raw) ? raw : "frontdesk";
+  const setAdminPick = (k: PortalKey) => setParams(k === "frontdesk" ? {} : { portal: k });
   if (loading || !hospitalRole) return null;
 
   if (hospitalRole === "admin") {

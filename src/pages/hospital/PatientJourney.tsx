@@ -21,7 +21,7 @@ import { VitalsCaptureDialog } from "@/components/hospital/VitalsCaptureDialog";
 import { useToast } from "@/hooks/use-toast";
 import {
   HospitalGate, EcgLine, fetchMedicaBrief, fetchMedicaRecommendations, type MedRec,
-  useHxCollapse, HxCollapseToggle, HxPickInput,
+  useHxCollapse, HxCollapseToggle, HxPickInput, displayName,
 } from "./hospitalShared";
 import { CARDIAC_MEDS, LAB_PANELS, IMAGING_STUDIES } from "@/lib/hospital/pickLists";
 import { PatientChartBar } from "./PatientChartBar";
@@ -395,7 +395,7 @@ function PatientJourneyInner() {
               </div>
               <div>
                 <div className="hx-eyebrow">{t("journey.eyebrow")}</div>
-                <div className="hx-h1" data-testid="hx-patient-name">{patient.full_name}</div>
+                <div className="hx-h1" data-testid="hx-patient-name">{displayName(patient.full_name)}</div>
                 <div className="flex flex-wrap items-center gap-2 mt-1 text-sm hx-dim">
                   <span className="hx-mono" data-testid="hx-journey-mrn">{t("journey.mrn")} {patient.file_number || String(patient.id).slice(0, 8).toUpperCase()}</span>
                   {age != null && <><span className="hx-faint">·</span><span>{age}y</span></>}
@@ -409,7 +409,7 @@ function PatientJourneyInner() {
             <div className="flex items-center gap-2">
               {visiblePatients.length > 1 && (
                 <select className="hx-select" style={{ width: "auto", minWidth: 180 }} value={selectedId} onChange={(e) => setSelectedId(e.target.value)} data-testid="hx-patient-select">
-                  {visiblePatients.map((p: any) => <option key={p.id} value={p.id}>{p.full_name}</option>)}
+                  {visiblePatients.map((p: any) => <option key={p.id} value={p.id}>{displayName(p.full_name)}</option>)}
                 </select>
               )}
               <EcgToggle />
