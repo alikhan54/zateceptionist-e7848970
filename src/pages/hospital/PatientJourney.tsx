@@ -78,6 +78,11 @@ function PatientJourneyInner() {
   // Filtered HERE in the page — useClinicPatients stays byte-identical (shared with the clinic floor).
   const { hospitalRole, hrEmployeeId } = useHospitalRole();
   const doctorScoped = hospitalRole === "doctor" && !!hrEmployeeId;
+  // HOSPITAL-ROLES [Brief 10] — the SURGEON sees his SURGICAL patients' journeys: patients with an
+  // OT case where he is the surgeon (plus any queue rows, like every scoped clinician). Composed the
+  // same way as Brief 9 — the attending/doctor logic is untouched.
+  const surgeonScoped = hospitalRole === "surgeon" && !!hrEmployeeId;
+  const scoped = doctorScoped || surgeonScoped;
   const { data: attendingSet } = useQuery({
     queryKey: ["hx-doctor-attending", tenantId, hrEmployeeId],
     queryFn: async () => {
@@ -87,19 +92,29 @@ function PatientJourneyInner() {
     },
     enabled: doctorScoped && !!tenantId,
   });
+  const { data: surgeonSet } = useQuery({
+    queryKey: ["hx-surgeon-cases", tenantId, hrEmployeeId],
+    queryFn: async () => {
+      const { data } = await supabase.from("hospital_ot_cases" as any)
+        .select("patient_id").eq("tenant_id", tenantId).eq("surgeon_id", hrEmployeeId);
+      return new Set(((data as any[]) || []).map((r) => r.patient_id as string));
+    },
+    enabled: surgeonScoped && !!tenantId,
+  });
   // HOSPITAL-FLOW [Brief 9] — HISTORY-ON-REFERRAL: a queue row (triage forward or referral) for THIS
-  // doctor grants access to that patient, COMPOSED on top of the attending filter (attending OR
-  // queue-row — the attending rule itself is untouched). A doctor with neither sees nothing.
-  const { data: queueAccessSet } = useDoctorQueueAccess(hrEmployeeId, doctorScoped);
+  // clinician grants access to that patient, COMPOSED on top of the base filter (attending/surgical
+  // OR queue-row — the base rule itself is untouched). A clinician with neither sees nothing.
+  const { data: queueAccessSet } = useDoctorQueueAccess(hrEmployeeId, scoped);
   const accessSet = useMemo(() => {
-    if (!doctorScoped) return undefined;
-    if (!attendingSet && !queueAccessSet) return undefined;   // still resolving → keep today's "empty until loaded"
-    return new Set<string>([...(attendingSet ?? []), ...(queueAccessSet ?? [])]);
-  }, [doctorScoped, attendingSet, queueAccessSet]);
-  const allowPatient = (id?: string | null) => !doctorScoped || (!!id && (accessSet?.has(id) ?? false));
+    if (!scoped) return undefined;
+    const base = doctorScoped ? attendingSet : surgeonSet;
+    if (!base && !queueAccessSet) return undefined;   // still resolving → keep today's "empty until loaded"
+    return new Set<string>([...(base ?? []), ...(queueAccessSet ?? [])]);
+  }, [scoped, doctorScoped, attendingSet, surgeonSet, queueAccessSet]);
+  const allowPatient = (id?: string | null) => !scoped || (!!id && (accessSet?.has(id) ?? false));
   const visiblePatients = useMemo(
-    () => (doctorScoped ? (patients as any[]).filter((p) => accessSet?.has(p.id)) : patients),
-    [patients, doctorScoped, accessSet],
+    () => (scoped ? (patients as any[]).filter((p) => accessSet?.has(p.id)) : patients),
+    [patients, scoped, accessSet],
   );
 
   const [searchParams] = useSearchParams();
@@ -122,12 +137,12 @@ function PatientJourneyInner() {
     }
   }, [urlPatientId, visiblePatients, selectedId]);
 
-  // RBAC guard: if a doctor's selected patient isn't one of theirs (e.g. a stale deep-link), fall back to their first.
+  // RBAC guard: if a clinician's selected patient isn't one of theirs (e.g. a stale deep-link), fall back to their first.
   useEffect(() => {
-    if (doctorScoped && accessSet && selectedId && !accessSet.has(selectedId)) {
+    if (scoped && accessSet && selectedId && !accessSet.has(selectedId)) {
       setSelectedId(visiblePatients[0]?.id || "");
     }
-  }, [doctorScoped, accessSet, selectedId, visiblePatients]);
+  }, [scoped, accessSet, selectedId, visiblePatients]);
 
   const inList = useMemo(() => visiblePatients.some((p: any) => p.id === selectedId), [visiblePatients, selectedId]);
 
@@ -147,8 +162,19 @@ function PatientJourneyInner() {
       : (visiblePatients as any[]).find((p: any) => p.id === selectedId) || (directPatient && (directPatient as any).id === selectedId ? (directPatient as any) : undefined)),
     [visiblePatients, selectedId, directPatient, doctorScoped, accessSet],
   );
-  // HOSPITAL-FLOW [Brief 9] — this doctor's waiting queue (triage forwards + referrals)
-  const { queue, markSeen } = useDoctorQueue(doctorScoped ? hrEmployeeId : null);
+  // HOSPITAL-FLOW [Brief 9] — this clinician's waiting queue (triage forwards + referrals)
+  const { queue, markSeen } = useDoctorQueue(scoped ? hrEmployeeId : null);
+
+  // [Brief 10 · D] the bed board's discharge deep-link (#discharge) scrolls to the EXISTING
+  // discharge panel once the journey renders — the panel itself is untouched.
+  useEffect(() => {
+    if (window.location.hash !== "#discharge" || !patient) return;
+    const tm = setTimeout(() => {
+      document.querySelector('[data-testid="hx-discharge"]')?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 900);
+    return () => clearTimeout(tm);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patient?.id]);
   const { orders, createOrder, updateOrderStatus } = useHospitalOrders({ patientId: selectedId || undefined });
 
   // HOSPITAL-OT: the patient's latest operation case — drives the additive OT status chip in the
@@ -408,9 +434,9 @@ function PatientJourneyInner() {
         </div>
       </div>
 
-      {/* the doctor's WAITING QUEUE [HOSPITAL-FLOW · Brief 9] — his rows only (triage forwards +
+      {/* the clinician's WAITING QUEUE [HOSPITAL-FLOW · Brief 9] — his rows only (triage forwards +
           referrals); one-click open marks waiting → seen. Admin has no queue (no hr identity). */}
-      {doctorScoped && (
+      {scoped && (
         <DoctorWaitingStrip queue={queue} patients={patients as any[]}
           onOpen={(row) => { setSelectedId(row.patient_id); if (row.status === "waiting") markSeen.mutate(row.id); }} />
       )}
@@ -839,5 +865,5 @@ function EcgToggle() {
 }
 
 export default function PatientJourney() {
-  return <HospitalGate allow={["doctor", "admin"]}><PatientJourneyInner /></HospitalGate>;
+  return <HospitalGate allow={["doctor", "surgeon", "admin"]}><PatientJourneyInner /></HospitalGate>;
 }

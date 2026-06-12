@@ -191,5 +191,6 @@ function NurseStationInner() {
 }
 
 export default function NurseStation() {
-  return <HospitalGate allow={["nurse", "admin"]}><NurseStationInner /></HospitalGate>;
+  // [Brief 10] opd_nurse + ward_nurse ADDED (additive); legacy nurse unchanged
+  return <HospitalGate allow={["nurse", "opd_nurse", "ward_nurse", "admin"]}><NurseStationInner /></HospitalGate>;
 }

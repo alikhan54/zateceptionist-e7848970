@@ -1,11 +1,13 @@
 // HOSPITAL-BEDS [Phase 2] — the live inpatient bed board. Role-gated to ward-ops (nurse + admin).
 // The inpatient command surface: instant occupancy truth, LOS at a glance, the foundation the MEDICA
 // discharge-readiness flag + the AM/PM vitals early-warning will sit on top of.
-import { useState } from "react";
-import { BedDouble, ArrowRightLeft, LogOut, Sparkles, AlertTriangle, UserPlus, Activity, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { BedDouble, ArrowRightLeft, LogOut, Sparkles, AlertTriangle, UserPlus, Activity, X, CheckCircle2, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useHospitalBeds, type BedRow, LONG_STAY_DAYS } from "@/hooks/useHospitalBeds";
 import { usePostopBoard, isAlertState } from "@/hooks/useHospitalPostop";
+import { useDischargeReadyMap } from "@/hooks/useHospitalRoutines";
 import { HospitalGate } from "./hospitalShared";
 import { useHospitalT } from "./i18n";
 
@@ -16,9 +18,17 @@ const STATUS_CLASS: Record<string, string> = {
 function BedBoardInner() {
   const { t, ti } = useHospitalT();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { wards, unassigned, availableBeds, kpis, isLoading, assign, transfer, discharge, setStatus } = useHospitalBeds();
   // HOSPITAL-POSTOP (additive, read-only): patient → early-warning state for the occupied-tile flag
   const { data: ewsByPatient } = usePostopBoard();
+  // HOSPITAL-ROLES [Brief 10 · D] (additive, read-only): discharge-readiness per occupied patient —
+  // the chip + deep-link only; the existing bed Discharge button + the sign flow are untouched.
+  const occupiedIds = useMemo(
+    () => Array.from(new Set(wards.flatMap((w) => w.beds).map((b) => b.patient_id).filter(Boolean))) as string[],
+    [wards],
+  );
+  const { data: readyMap } = useDischargeReadyMap(occupiedIds);
   const [assignSel, setAssignSel] = useState<Record<string, string>>({});
   const [transferFor, setTransferFor] = useState<string | null>(null);
 
@@ -116,7 +126,11 @@ function BedBoardInner() {
                   <div className="hx-faint text-xs mt-0.5">{t(`beds.type.${b.bed_type}`, b.bed_type)}</div>
                   {b.status === "occupied" ? (
                     <div className="mt-1.5">
-                      <div className="font-medium text-sm" data-testid="hx-bed-patient">{b.patient_name}</div>
+                      {/* [Brief 10 · C] click-through: the patient opens their care-routines view */}
+                      <button type="button" className="font-medium text-sm hover:underline text-left" style={{ color: "var(--hx-text)" }}
+                        onClick={() => navigate(`/hospital/routines?patient=${b.patient_id}`)} data-testid="hx-bed-patient">
+                        {b.patient_name}
+                      </button>
                       {b.attending_name && <div className="hx-dim text-xs">{b.attending_name}</div>}
                       <div className="flex items-center gap-1.5 mt-1">
                         <span className="hx-chip text-xs" data-testid="hx-bed-los">{ti("beds.losDays", { n: b.los_days ?? 0 })}</span>
@@ -134,6 +148,17 @@ function BedBoardInner() {
                           );
                         })()}
                       </div>
+                      {/* [Brief 10 · D] readiness chip + deep-link to the journey's EXISTING discharge
+                          panel (the board never signs; the bed Discharge button below is untouched) */}
+                      {b.patient_id && readyMap?.get(b.patient_id) && (
+                        <div className="flex items-center gap-1.5 mt-1.5" data-testid="hx-bed-ready">
+                          <span className="hx-chip hx-chip--ok text-xs"><CheckCircle2 className="h-3 w-3" /> {t("discharge.ready")}</span>
+                          <button className="hx-btn hx-btn--ghost" style={{ padding: "0.2rem 0.5rem", fontSize: "0.7rem" }}
+                            onClick={() => navigate(`/hospital/journey?patient=${b.patient_id}#discharge`)} data-testid="hx-bed-discharge-link">
+                            {t("discharge.title")} <ArrowRight className="h-3 w-3" />
+                          </button>
+                        </div>
+                      )}
                       {transferFor === b.id ? (
                         // [Brief 8 addendum (d)] opening Transfer must be escapable — visible Cancel + Esc
                         <div className="flex items-center gap-1.5 mt-2">
@@ -170,5 +195,6 @@ function BedBoardInner() {
 }
 
 export default function BedBoard() {
-  return <HospitalGate allow={["nurse", "admin"]}><BedBoardInner /></HospitalGate>;
+  // [Brief 10] ward_nurse ADDED (additive); legacy nurse unchanged
+  return <HospitalGate allow={["nurse", "ward_nurse", "admin"]}><BedBoardInner /></HospitalGate>;
 }

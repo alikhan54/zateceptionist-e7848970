@@ -7,24 +7,38 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
 import { supabase } from "@/integrations/supabase/client";
 
-export type HospitalRole = "doctor" | "nurse" | "lab" | "pharmacy" | "admin";
+// HOSPITAL-ROLES [Brief 10] — ADDITIVE nurse split (opd/ward/ot) + the SURGEON role. The legacy
+// 'nurse' and 'doctor' entries are BYTE-IDENTICAL (Farzana's login behaves exactly as before);
+// the new values only ADD pages. Same default-deny posture: unknown markers never restrict.
+export type HospitalRole =
+  | "doctor" | "nurse" | "lab" | "pharmacy" | "admin"
+  | "opd_nurse" | "ward_nurse" | "ot_nurse" | "surgeon";
 
 // Per-role allowed /hospital pages (admin = all). Home = where a wrong role is redirected.
 export const HOSPITAL_ROLE_PAGES: Record<HospitalRole, string[]> = {
-  doctor: ["/hospital/journey", "/hospital/patients", "/hospital/pharmacy", "/hospital/lab", "/hospital/diagnostics"],
+  doctor: ["/hospital/journey", "/hospital/patients", "/hospital/pharmacy", "/hospital/lab", "/hospital/diagnostics", "/hospital/routines"],
   nurse: ["/hospital/nurse", "/hospital/beds"],
   lab: ["/hospital/lab"],
   pharmacy: ["/hospital/pharmacy"],
-  admin: ["/hospital/journey", "/hospital/patients", "/hospital/nurse", "/hospital/beds", "/hospital/pharmacy", "/hospital/lab", "/hospital/diagnostics"],
+  opd_nurse: ["/hospital/nurse"],
+  ward_nurse: ["/hospital/nurse", "/hospital/beds", "/hospital/routines"],
+  ot_nurse: ["/hospital/ot"],
+  surgeon: ["/hospital/journey", "/hospital/ot"],
+  admin: ["/hospital/journey", "/hospital/patients", "/hospital/nurse", "/hospital/beds", "/hospital/pharmacy", "/hospital/lab", "/hospital/diagnostics", "/hospital/ot", "/hospital/routines"],
 };
 export const HOSPITAL_ROLE_HOME: Record<HospitalRole, string> = {
-  doctor: "/hospital/journey", nurse: "/hospital/nurse", lab: "/hospital/lab", pharmacy: "/hospital/pharmacy", admin: "/hospital/journey",
+  doctor: "/hospital/journey", nurse: "/hospital/nurse", lab: "/hospital/lab", pharmacy: "/hospital/pharmacy",
+  opd_nurse: "/hospital/nurse", ward_nurse: "/hospital/beds", ot_nurse: "/hospital/ot", surgeon: "/hospital/ot",
+  admin: "/hospital/journey",
 };
-export const isRestrictedHospitalRole = (r: HospitalRole | null | undefined): r is "doctor" | "nurse" | "lab" | "pharmacy" =>
-  r === "doctor" || r === "nurse" || r === "lab" || r === "pharmacy";
+const RESTRICTED = ["doctor", "nurse", "lab", "pharmacy", "opd_nurse", "ward_nurse", "ot_nurse", "surgeon"] as const;
+export const isRestrictedHospitalRole = (r: HospitalRole | null | undefined): r is (typeof RESTRICTED)[number] =>
+  !!r && (RESTRICTED as readonly string[]).includes(r);
 
 // the explicit, restrictable markers — anything NOT in this set falls through to full-access 'admin'
-const KNOWN_RESTRICTED = new Set(["doctor", "nurse", "lab", "pharmacy"]);
+// (the Brief-6 loadMarker leak class: a marker missing from this accept-list must NEVER restrict-or-admin
+// by accident — new roles are added HERE in the same change that defines their pages)
+const KNOWN_RESTRICTED = new Set<string>(RESTRICTED);
 
 interface Marker { hospitalRole: HospitalRole; hrEmployeeId: string | null; }
 const cache = new Map<string, Marker>();          // dedup across the sidebar / gate / layout / pages

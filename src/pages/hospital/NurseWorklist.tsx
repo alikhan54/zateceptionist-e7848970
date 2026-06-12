@@ -1,8 +1,8 @@
-// HOSPITAL-NURSE — the nursing worklist section on the Nurse Station. The doctor's orders become
+﻿// HOSPITAL-NURSE â€” the nursing worklist section on the Nurse Station. The doctor's orders become
 // her tasks; AM/PM vitals rounds generate deterministically (idempotent); the deteriorating post-op
 // patient sorts to the TOP via the EWS band. Mark-done records who + when (the accountability trail).
 // Read-only context: the doctor's orders + OT case status for her patients (visible, never writable).
-// MEDICA shift brief (Assisted) summarizes the deterministic list — decides nothing. Additive; hx-*.
+// MEDICA shift brief (Assisted) summarizes the deterministic list â€” decides nothing. Additive; hx-*.
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ClipboardList, Sparkles, Loader2, AlertTriangle, CheckCircle2, Clock, Activity, Pill, Slice } from "lucide-react";
@@ -18,7 +18,9 @@ import { usePostopBoard, isAlertState } from "@/hooks/useHospitalPostop";
 import { bandChipClass } from "./PostOpPanel";
 
 const BAND_RANK: Record<string, number> = { high: 3, medium: 2, low: 1 };
-const TASK_ICON = { med_admin: Pill, vitals_round: Activity, order_prep: ClipboardList } as const;
+// [Brief 10] + routine (care-routine items derive through this same engine); unknown-type
+// fallback below so a future task_type can never render an undefined component (React #130)
+const TASK_ICON: Record<string, any> = { med_admin: Pill, vitals_round: Activity, order_prep: ClipboardList, routine: ClipboardList };
 
 export function NurseWorklist() {
   const { t, ti, lang } = useHospitalT();
@@ -120,7 +122,7 @@ export function NurseWorklist() {
         <span className="ml-auto"><HospitalModeToggle /></span>
       </div>
       <div className="hx-panel-b space-y-3">
-        {/* MEDICA shift brief — Assisted only; the list stands alone in Manual */}
+        {/* MEDICA shift brief â€” Assisted only; the list stands alone in Manual */}
         {isAssisted && (
           <div className="space-y-2">
             <button type="button" className="hx-btn hx-btn--ghost" style={{ padding: "0.35rem 0.75rem" }} onClick={shiftBrief} disabled={briefState === "loading" || groups.length === 0} data-testid="hx-shift-brief-btn">
@@ -146,14 +148,14 @@ export function NurseWorklist() {
               <div className="flex flex-wrap items-center gap-2 px-3 py-2" style={{ borderBottom: "1px solid var(--hx-border)" }}>
                 <span className="font-medium text-sm" style={{ color: "var(--hx-strong)" }} data-testid="hx-worklist-patient">{g.name}</span>
                 {g.ews && isAlertState(g.ews.band, g.ews.trend) && (
-                  <span className={`hx-chip ${bandChipClass(g.ews.band)}`} style={{ padding: "0.05rem 0.45rem" }} data-testid="hx-worklist-ews"><Activity className="h-3 w-3" /> EWS {g.ews.score ?? "—"}{g.ews.trend === "deteriorating" ? " ↑" : ""}</span>
+                  <span className={`hx-chip ${bandChipClass(g.ews.band)}`} style={{ padding: "0.05rem 0.45rem" }} data-testid="hx-worklist-ews"><Activity className="h-3 w-3" /> EWS {g.ews.score ?? "â€”"}{g.ews.trend === "deteriorating" ? " â†‘" : ""}</span>
                 )}
-                {otStatus && <span className="hx-chip" style={{ padding: "0.05rem 0.45rem" }} data-testid="hx-worklist-ot"><Slice className="h-3 w-3" /> OT · {t(`ot.status.${otStatus}`)}</span>}
+                {otStatus && <span className="hx-chip" style={{ padding: "0.05rem 0.45rem" }} data-testid="hx-worklist-ot"><Slice className="h-3 w-3" /> OT Â· {t(`ot.status.${otStatus}`)}</span>}
                 {g.overdue > 0 && <span className="hx-chip hx-chip--crit" style={{ padding: "0.05rem 0.45rem" }}>{ti("nurse.overdueN", { n: g.overdue })}</span>}
               </div>
               <div className="px-3 py-2 space-y-1.5">
                 {g.tasks.sort((a, b) => +new Date(a.due_at || 0) - +new Date(b.due_at || 0)).map((tk) => {
-                  const Icon = TASK_ICON[tk.task_type]; const over = isOverdue(tk);
+                  const Icon = TASK_ICON[tk.task_type] ?? ClipboardList; const over = isOverdue(tk);
                   return (
                     <div key={tk.id} className="flex items-center gap-2" data-testid="hx-worklist-task" data-overdue={over ? "1" : "0"}>
                       <Icon className="h-3.5 w-3.5 shrink-0" style={{ color: over ? "var(--hx-crit)" : "var(--hx-accent2)" }} />
