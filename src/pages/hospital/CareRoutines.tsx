@@ -9,7 +9,7 @@
 // description in the hx design language.)
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Sun, Sunset, Moon, ClipboardList, Loader2, CheckCircle2, Plus, Activity } from "lucide-react";
+import { Sun, Sunset, Moon, ClipboardList, Loader2, CheckCircle2, Plus, Activity, ChevronDown, ChevronUp } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
@@ -20,7 +20,8 @@ import {
   usePatientRoutineTemplates, usePatientRoutineTasks, useDeriveRoutineTasks,
   type RoutineBlock, type RoutineItem,
 } from "@/hooks/useHospitalRoutines";
-import { HospitalGate, EcgLine } from "./hospitalShared";
+import { HospitalGate, EcgLine, displayName } from "./hospitalShared";
+import { useHospitalNurseTasks } from "@/hooks/useHospitalNurseTasks";
 import { useHospitalT } from "./i18n";
 
 const BLOCKS: { key: RoutineBlock; icon: any; labelKey: string }[] = [
@@ -61,12 +62,13 @@ function CareRoutinesInner() {
 
   const [selected, setSelected] = useState(urlPatient);
   useEffect(() => { if (urlPatient && urlPatient !== selected) setSelected(urlPatient); }, [urlPatient]);
-  useEffect(() => { if (!selected && inpatients.length) setSelected(inpatients[0].id); }, [inpatients, selected]);
   const patient = inpatients.find((p) => p.id === selected);
   const hasActiveAdmission = !!patient;
 
   const { data: templates = [] } = usePatientRoutineTemplates(selected || undefined);
   const { data: tasks = [] } = usePatientRoutineTasks(selected || undefined);
+  // [ZATEOS B3] tenant-wide tasks for the per-patient collapsed counts (read-only)
+  const { tasks: allTasks } = useHospitalNurseTasks();
   const derive = useDeriveRoutineTasks();
   const { data: ews } = usePostopBoard();
 
@@ -150,22 +152,37 @@ function CareRoutinesInner() {
                   <Activity className="h-3 w-3" /> {ti("postop.bedFlag", { n: e.score ?? "—" })}{e.trend === "deteriorating" ? " ↑" : ""}
                 </span>
               )}
-              {inpatients.length > 1 && (
-                <select className="hx-select" style={{ width: "auto", minWidth: 170 }} value={selected}
-                  onChange={(ev) => { setSelected(ev.target.value); setParams({ patient: ev.target.value }, { replace: true }); }}
-                  data-testid="hx-routines-select">
-                  {inpatients.map((p) => <option key={p.id} value={p.id}>{p.full_name}</option>)}
-                </select>
-              )}
+
             </div>
           </div>
           <EcgLine className="mt-3" />
         </div>
       </div>
 
-      {!patient ? (
-        <div className="hx-panel mt-4"><div className="hx-panel-b"><p className="hx-dim text-sm" data-testid="hx-routines-empty">{t("routine.noInpatient")}</p></div></div>
-      ) : (
+      {/* [ZATEOS B3] one COLLAPSED row per inpatient (due/overdue counts); the clicked patient
+          expands to their full routine blocks below. */}
+      <div className="hx-panel hx-rise mt-4" data-testid="hx-routines-patients">
+        <div className="hx-panel-b" style={{ display: "grid", gap: "0.45rem" }}>
+          {inpatients.length === 0 && <p className="hx-dim text-sm" data-testid="hx-routines-empty">{t("routine.noInpatient")}</p>}
+          {inpatients.map((p) => {
+            const mine = allTasks.filter((x: any) => x.patient_id === p.id && x.task_type === "routine" && x.status === "pending");
+            const over = mine.filter((x: any) => x.due_at && +new Date(x.due_at) < Date.now()).length;
+            const isSel = selected === p.id;
+            return (
+              <button key={p.id} type="button" className="hx-stage-row" style={isSel ? { borderColor: "var(--hx-border-strong)" } : undefined}
+                onClick={() => { setSelected(isSel ? "" : p.id); if (!isSel) setParams({ patient: p.id }, { replace: true }); }}
+                data-testid="hx-routine-patient-row" data-expanded={isSel ? "1" : "0"}>
+                <span className="font-semibold">{displayName(p.full_name)}</span>
+                <span className="hx-chip text-xs">{ti("routine.pendingN", { n: mine.length })}</span>
+                {over > 0 && <span className="hx-chip hx-chip--crit text-xs">{ti("routine.overdueN", { n: over })}</span>}
+                {isSel ? <ChevronUp className="h-4 w-4 ml-auto hx-dim" /> : <ChevronDown className="h-4 w-4 ml-auto hx-dim" />}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {!patient ? null : (
         <>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4" data-testid="hx-routine-blocks">
             {BLOCKS.map(({ key, icon: Icon, labelKey }, bi) => (

@@ -1,7 +1,7 @@
 // Nurse Station (/hospital/nurse) — the nurse's own screen: register/admit a patient,
 // see the live patient queue, and capture vitals (flags light live). Additive; reuses
 // clinic_patients + clinic_visits. Same dark .hx surface as the rest of the vertical.
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { UserPlus, HeartPulse, Stethoscope, Clock, CheckCircle2, AlertTriangle, ArrowRight, ArrowRightLeft, Inbox, Loader2, X } from "lucide-react";
 import { useClinicPatients } from "@/hooks/useClinicPatients";
@@ -11,6 +11,7 @@ import { useHospitalStaff } from "@/hooks/useHospitalStaff";
 import { useToast } from "@/hooks/use-toast";
 import { summarizeVitals, DEFAULT_THRESHOLDS, type VitalStatus } from "@/lib/clinic/vitalsThresholds";
 import { HospitalGate, EcgLine, displayName } from "./hospitalShared";
+import { useHospitalRole, HOSPITAL_ROLE_PAGES } from "@/hooks/useHospitalRole";
 import { NurseWorklist } from "./NurseWorklist";
 import { useHospitalT } from "./i18n";
 import { HospitalAdmitDialog } from "@/components/hospital/HospitalAdmitDialog";
@@ -25,6 +26,12 @@ const STATUS_CHIP: Record<string, { cls: string; label: string }> = {
   in_progress: { cls: "hx-chip--accent", label: "In progress" },
   completed: { cls: "hx-chip--ok", label: "Completed" },
 };
+
+// [ZATEOS B3] the Nurse Station is TABBED by nursing context (the reference's tab pattern):
+// Overview · OPD (register/vitals/forward) · Ward (worklist) — plus OT / Care Routines links for
+// roles whose walls already allow those pages (composed, never weakened). Role-scoped landing:
+// ward_nurse → Ward, opd_nurse/legacy nurse → OPD. Same page, same data — access byte-identical.
+type NurseTab = "overview" | "opd" | "ward";
 
 function NurseStationInner() {
   const navigate = useNavigate();
@@ -80,6 +87,15 @@ function NurseStationInner() {
 
   const waiting = rows.filter((r) => r.v && r.v.current_status !== "completed");
 
+  const { hospitalRole } = useHospitalRole();
+  const [tab, setTab] = useState<NurseTab>(hospitalRole === "ward_nurse" ? "ward" : "opd");
+  useEffect(() => { if (hospitalRole === "ward_nurse") setTab("ward"); }, [hospitalRole]);
+  const allowed = hospitalRole ? HOSPITAL_ROLE_PAGES[hospitalRole] ?? [] : [];
+  const TabBtn = ({ k, label }: { k: NurseTab; label: string }) => (
+    <button type="button" className={`hx-btn ${tab === k ? "hx-btn--primary" : "hx-btn--ghost"}`}
+      style={{ padding: "0.35rem 0.9rem" }} onClick={() => setTab(k)} data-testid={`hx-nurse-tab-${k}`}>{label}</button>
+  );
+
   return (
     <div data-testid="hx-nurse">
       {/* hero */}
@@ -101,13 +117,38 @@ function NurseStationInner() {
             </div>
           </div>
           <EcgLine className="mt-3" />
+          <div className="flex items-center gap-2 flex-wrap mt-3" data-testid="hx-nurse-tabs">
+            <TabBtn k="overview" label={t("nurse.tab.overview", "Overview")} />
+            <TabBtn k="opd" label={t("nurse.tab.opd", "OPD")} />
+            <TabBtn k="ward" label={t("nurse.tab.ward", "Ward")} />
+            {allowed.includes("/hospital/ot") && (
+              <button type="button" className="hx-btn hx-btn--ghost" style={{ padding: "0.35rem 0.9rem" }}
+                onClick={() => navigate("/hospital/ot")} data-testid="hx-nurse-tab-ot">{t("nurse.tab.ot", "OT")}</button>
+            )}
+            {allowed.includes("/hospital/routines") && (
+              <button type="button" className="hx-btn hx-btn--ghost" style={{ padding: "0.35rem 0.9rem" }}
+                onClick={() => navigate("/hospital/routines")} data-testid="hx-nurse-tab-routines">{t("nurse.tab.routines", "Care Routines")}</button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* HOSPITAL-NURSE worklist — orders→tasks + AM/PM rounds + accountability + MEDICA shift brief */}
-      <NurseWorklist />
+      {/* OVERVIEW — counts only, one glance */}
+      {tab === "overview" && (
+        <div className="hx-panel hx-rise mt-4" data-testid="hx-nurse-overview">
+          <div className="hx-panel-b grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="hx-vital"><div className="v">{waiting.length}</div><div className="l">{t("nurse.ovActive", "patients in flow")}</div></div>
+            <div className="hx-vital"><div className="v">{rows.filter((r) => r.worst === "empty").length}</div><div className="l">{t("nurse.ovAwaiting", "awaiting vitals")}</div></div>
+            <div className="hx-vital"><div className="v">{rows.filter((r) => r.worst === "critical").length}</div><div className="l">{t("nurse.ovCritical", "critical flags")}</div></div>
+          </div>
+        </div>
+      )}
 
-      {/* patient queue */}
+      {/* WARD — HOSPITAL-NURSE worklist — orders→tasks + AM/PM rounds + accountability + MEDICA shift brief */}
+      {tab === "ward" && <NurseWorklist />}
+
+      {/* OPD — patient queue (register / vitals / forward) */}
+      {tab === "opd" && (
       <div className="hx-panel hx-rise mt-4" style={{ animationDelay: "80ms" }}>
         <div className="hx-panel-h"><Stethoscope className="h-4 w-4" style={{ color: "var(--hx-accent)" }} /><span className="font-semibold">{t("nurse.patientQueue")}</span><span className="hx-faint text-xs ml-auto">{t("nurse.queueHint")}</span></div>
         <div className="hx-panel-b">
@@ -183,6 +224,7 @@ function NurseStationInner() {
           )}
         </div>
       </div>
+      )}
 
       <HospitalAdmitDialog open={admitOpen} onOpenChange={setAdmitOpen} onAdmitted={(r) => navigate(`/hospital/journey?patient=${r.patient_id}`)} />
       <VitalsCaptureDialog open={!!vitalsFor} onOpenChange={(v) => !v && setVitalsFor(null)} patientId={vitalsFor?.id} patientName={vitalsFor?.name} visitId={vitalsFor?.visitId} />

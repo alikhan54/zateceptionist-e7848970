@@ -3,7 +3,7 @@ import { useSearchParams, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Activity, HeartPulse, Stethoscope, FlaskConical, Pill, ScanLine, Sparkles, Plus,
+  Activity, HeartPulse, Stethoscope, FlaskConical, Pill, ScanLine, Sparkles, Plus, Slice, LogOut,
   ClipboardList, CheckCircle2, Clock, Loader2, UserPlus, AlertTriangle, BedDouble,
 } from "lucide-react";
 import { useTenant } from "@/contexts/TenantContext";
@@ -21,7 +21,7 @@ import { VitalsCaptureDialog } from "@/components/hospital/VitalsCaptureDialog";
 import { useToast } from "@/hooks/use-toast";
 import {
   HospitalGate, EcgLine, fetchMedicaBrief, fetchMedicaRecommendations, type MedRec,
-  useHxCollapse, HxCollapseToggle, HxPickInput, displayName,
+  useHxCollapse, HxCollapseToggle, HxPickInput, displayName, StageSection,
 } from "./hospitalShared";
 import { CARDIAC_MEDS, LAB_PANELS, IMAGING_STUDIES } from "@/lib/hospital/pickLists";
 import { PatientChartBar } from "./PatientChartBar";
@@ -349,6 +349,13 @@ function PatientJourneyInner() {
     return 0;
   }, [patient, orders, latestVisit]);
 
+  // [ZATEOS B1] STAGE FOCUS — only the current stage's panel opens; everything else is a
+  // one-line header until clicked. consult ≤2 · treatment 3-4 · closing ≥5 (deep-link forces discharge).
+  const inConsult = stageIndex <= 2;
+  const inTreatment = stageIndex === 3 || stageIndex === 4;
+  const closing = stageIndex >= 5;
+  const dischargeHash = typeof window !== "undefined" && window.location.hash.includes("discharge");
+
   const queues: { type: HospitalOrderType; titleKey: string; icon: any }[] = [
     { type: "medication", titleKey: "queue.pharmacy", icon: Pill },
     { type: "lab", titleKey: "queue.laboratory", icon: FlaskConical },
@@ -453,6 +460,7 @@ function PatientJourneyInner() {
             duplicated the header stepper. Component kept below for potential re-mount.) */}
         <div className="lg:col-span-5 space-y-4">
           {/* vitals — above Diagnosis & Remarks (addendum (c)) */}
+          <StageSection title={t("vitals.title")} open={inConsult} testid="hx-stage-vitals" icon={HeartPulse}>
           <div className="hx-panel hx-rise" style={{ animationDelay: "80ms" }}>
             <div className="hx-panel-h">
               <HeartPulse className="h-4 w-4" style={{ color: "var(--hx-accent2)" }} />
@@ -471,7 +479,7 @@ function PatientJourneyInner() {
               {!latestVisit ? (
                 <p className="hx-dim text-sm">{t("vitals.empty")}</p>
               ) : (
-                <div className="grid grid-cols-3 gap-2.5">
+                <div className="hx-vitals-grid">
                   {/* BP combined */}
                   <BpCell sys={latestVisit.blood_pressure_systolic} dia={latestVisit.blood_pressure_diastolic} thresholds={thresholds} />
                   {KEY_VITALS.map((k) => {
@@ -490,7 +498,10 @@ function PatientJourneyInner() {
             </div>
           </div>
 
+          </StageSection>
+
           {/* Diagnosis & Remarks — BELOW vitals in the LEFT column (addendum (c)) */}
+          <StageSection title={t("remarks.title")} open={inConsult} testid="hx-stage-remarks" icon={ClipboardList}>
           <div className="hx-panel hx-rise" style={{ animationDelay: "140ms" }} data-testid="hx-remarks">
             <div className="hx-panel-h">
               <ClipboardList className="h-4 w-4" style={{ color: "var(--hx-accent2)" }} />
@@ -522,12 +533,14 @@ function PatientJourneyInner() {
               )}
             </div>
           </div>
+          </StageSection>
         </div>
 
         {/* RIGHT: MEDICA brief + consultation + order entry + queues */}
         <div className="lg:col-span-7 space-y-4">
           {/* MEDICA brief — collapsible [Brief 8 · B]: pure presentational; the brief content/logic
               is unchanged. Collapsed = one-line header + expand control; state persists. */}
+          <StageSection title={t("medica.title")} open={false} testid="hx-stage-medica" icon={Sparkles}>
           <div className="hx-panel hx-panel--accent hx-rise" style={{ animationDelay: "120ms" }} data-testid="hx-medica-panel" data-collapsed={medicaCollapsed ? "1" : "0"}>
             <div className="hx-panel-h" style={medicaCollapsed ? { borderBottom: "none" } : undefined}>
               <Sparkles className="h-4 w-4" style={{ color: "var(--hx-accent)" }} />
@@ -568,10 +581,15 @@ function PatientJourneyInner() {
           {/* Consultation Summary — directly BELOW the MEDICA brief panel. Manual (doctor writes) or
               Assisted (MEDICA drafts from notes → doctor approves) via the reusable autonomy toggle.
               [Brief 9] + structured intake + plan disposition (Admit reuses the existing admit flow). */}
-          <ConsultationSummaryBox patientId={selectedId} patientName={patient.full_name} visitId={latestVisit?.id ?? null}
-            onAdmitPatient={() => setAdmitOpen(true)} />
+          </StageSection>
+
+          <StageSection title={t("consult.title", "Consultation Summary")} open={false} testid="hx-stage-consult" icon={ClipboardList}>
+            <ConsultationSummaryBox patientId={selectedId} patientName={patient.full_name} visitId={latestVisit?.id ?? null}
+              onAdmitPatient={() => setAdmitOpen(true)} />
+          </StageSection>
 
           {/* MEDICA — Medication Suggestions [13]: suggest → doctor approves → pre-fills order entry */}
+          <StageSection title={t("rec.title")} open={false} testid="hx-stage-medrec" icon={Pill}>
           <div className="hx-panel hx-rise" style={{ animationDelay: "160ms" }} data-testid="hx-medrec">
             <div className="hx-panel-h">
               <Pill className="h-4 w-4" style={{ color: "var(--hx-accent)" }} />
@@ -622,7 +640,10 @@ function PatientJourneyInner() {
             </div>
           </div>
 
-          {/* order entry */}
+          </StageSection>
+
+          {/* order entry + live queues — the TREATMENT stage panel */}
+          <StageSection title={t("order.title")} open={inTreatment || inConsult} testid="hx-stage-orders" icon={Plus}>
           <div className="hx-panel hx-rise" style={{ animationDelay: "200ms" }}>
             <div className="hx-panel-h"><Plus className="h-4 w-4" style={{ color: "var(--hx-accent2)" }} /><span className="font-semibold">{t("order.title")}</span><span className="hx-faint text-xs ml-auto">{t("order.subtitle")}</span></div>
             <div className="hx-panel-b">
@@ -718,13 +739,18 @@ function PatientJourneyInner() {
             })}
           </div>
 
-          {/* Prescription — patient-facing take-home Rx (manual or MEDICA-drafted from the placed meds +
-              consultation); doctor-signed, printable, Bangla [HOSPITAL-RX] */}
-          <PrescriptionPanel patient={patient} visitId={latestVisit?.id ?? null} placedMeds={rxMeds} />
+          </StageSection>
+
+          {/* Prescription — collapsed until clicked (or the closing stage) [ZATEOS B1] */}
+          <StageSection title={t("rx.title", "Prescription")} open={closing} testid="hx-stage-rx" icon={Pill}>
+            <PrescriptionPanel patient={patient} visitId={latestVisit?.id ?? null} placedMeds={rxMeds} />
+          </StageSection>
 
           {/* Operation Theatre — gated bilingual consent + the surgeon's signed operative note
               [HOSPITAL-OT]; status also chips in the patient header */}
-          <OperationTheatrePanel patient={patient} visitId={latestVisit?.id ?? null} />
+          <StageSection title={t("ot.title", "Operation Theatre")} open={!!otCase && otCase.status !== "completed"} testid="hx-stage-ot" icon={Slice}>
+            <OperationTheatrePanel patient={patient} visitId={latestVisit?.id ?? null} />
+          </StageSection>
 
           {/* Post-op monitoring — deterministic partial-NEWS2 early-warning (renders only when an
               active episode exists; MEDICA narrates, never scores) [HOSPITAL-POSTOP] */}
@@ -732,7 +758,9 @@ function PatientJourneyInner() {
 
           {/* Discharge — deterministic readiness + grounded bilingual signed summary (med reconciliation
               off the signed Rx); sign closes the episode + frees the bed via existing flows [HOSPITAL-DISCHARGE] */}
-          <DischargePanel patient={patient} />
+          <StageSection title={t("discharge.title")} open={closing || dischargeHash} testid="hx-stage-discharge" icon={LogOut}>
+            <DischargePanel patient={patient} />
+          </StageSection>
         </div>
       </div>
 

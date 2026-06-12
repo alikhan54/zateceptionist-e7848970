@@ -239,7 +239,8 @@
 /* the slide-over covers the whole viewport INCLUDING the global app header */
 .hx-drawer-backdrop { position: fixed; inset: 0; z-index: 58; background: rgba(2,6,14,0.55); backdrop-filter: blur(2px);
   animation: hx-fade 0.18s ease both; }
-.hx-drawer { position: fixed; top: 0; right: 0; bottom: 0; z-index: 59; width: min(580px, 94vw);
+/* [ZATEOS B1] chart tabs open as FULL-SCREEN views (the reference law), not cramped sheets */
+.hx-drawer { position: fixed; top: 0; right: 0; bottom: 0; z-index: 59; width: min(1160px, 96vw);
   display: flex; flex-direction: column; background: var(--hx-panel-solid); border-left: 1px solid var(--hx-border-strong);
   box-shadow: -28px 0 70px -30px rgba(0,0,0,0.75); animation: hx-slide-in 0.22s cubic-bezier(0.2, 0.7, 0.2, 1) both;
   color: var(--hx-text); }
@@ -295,3 +296,14 @@
 .hx-chip--muted { color: var(--hx-dim); border-color: var(--hx-border); background: transparent; }
 .hx-panel--crit { border-color: rgba(251,113,133,0.45); box-shadow: 0 0 0 1px rgba(251,113,133,0.08); }
 .light .hx-stat { background: rgba(15,23,42,0.025); }
+
+/* [ZATEOS B1] stage-focused profile: collapsed sections are one-line headers */
+.hx-stage-row { display: flex; align-items: center; gap: 0.6rem; width: 100%; text-align: left;
+  border: 1px solid var(--hx-border); border-radius: 14px; background: var(--hx-panel);
+  padding: 0.7rem 1rem; color: var(--hx-text); cursor: pointer; font-size: 0.92rem; }
+.hx-stage-row:hover { border-color: var(--hx-border-strong); }
+.hx-stage-row--open { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: none; margin-bottom: -0.4rem; background: transparent; border-color: transparent; padding: 0.35rem 0.4rem; }
+/* [ZATEOS B1] vitals grid: responsive cells, values clipped never overlapped (1024–1920 safe) */
+.hx-vitals-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 0.65rem; }
+.hx-vitals-grid .hx-vital { min-width: 0; overflow: hidden; }
+.hx-vitals-grid .hx-vital .v { font-size: clamp(1rem, 1.4vw, 1.4rem); line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

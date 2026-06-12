@@ -622,6 +622,35 @@ export async function loadDoctorStyleBlock(doctorId: string | null | undefined, 
 // state persists per panel in localStorage (mirrors the hx-lang / hx-ecg persist pattern).
 // ===========================================================================================
 
+/** [ZATEOS B1] Stage-focused section: the patient profile shows ONLY the current stage's panel
+ *  expanded — every other section is a one-line header until clicked. `open` is the stage-driven
+ *  default and re-drives when the stage (or patient) changes; the user can still toggle freely. */
+export function StageSection({ title, open, children, testid, icon: Icon }: {
+  title: string; open: boolean; children: React.ReactNode; testid: string; icon?: any;
+}) {
+  const [expanded, setExpanded] = useState(open);
+  useEffect(() => { setExpanded(open); }, [open]);
+  if (!expanded) {
+    return (
+      <button type="button" className="hx-stage-row hx-rise" onClick={() => setExpanded(true)} data-testid={`${testid}-collapsed`}>
+        {Icon && <Icon className="h-4 w-4" style={{ color: "var(--hx-accent2)" }} />}
+        <span className="font-semibold">{title}</span>
+        <ChevronDown className="h-4 w-4 ml-auto hx-dim" />
+      </button>
+    );
+  }
+  return (
+    <div data-testid={`${testid}-open`}>
+      <button type="button" className="hx-stage-row hx-stage-row--open" onClick={() => setExpanded(false)} data-testid={`${testid}-collapse`}>
+        {Icon && <Icon className="h-4 w-4" style={{ color: "var(--hx-accent2)" }} />}
+        <span className="font-semibold">{title}</span>
+        <ChevronUp className="h-4 w-4 ml-auto hx-dim" />
+      </button>
+      {children}
+    </div>
+  );
+}
+
 export function useHxCollapse(storageKey: string, defaultCollapsed = false) {
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     try {
