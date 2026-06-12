@@ -17,7 +17,11 @@ import {
   chartDocuments, medicationOrders, imagingResults, signedOpNotes, visitHasVitals,
   type ChartData, type ChartVisit,
 } from "@/hooks/useHospitalChart";
-import { statusChipClass } from "./OperationTheatre";
+import { statusChipClass, OperationTheatrePanel } from "./OperationTheatre";
+import { ConsultationSummaryBox } from "./ConsultationSummary";
+import { PrescriptionPanel } from "./Prescription";
+import { VitalsCaptureDialog } from "@/components/hospital/VitalsCaptureDialog";
+import { HeartPulse as HeartPulseIcon } from "lucide-react";
 import { displayName } from "./hospitalShared";
 import { SummaryPrintButton, composeSummaryText } from "./PatientSummaryPaper";
 import { SendDocControl } from "./SendDoc";
@@ -70,6 +74,16 @@ export function PatientChartBar({ patient, currentBed }: { patient: any; current
   const activeAdmission = chart?.admissions.find((a) => a.status === "admitted") || null;
 
   if (!patient) return null;
+  // [FIX-B] the LIVE working panels mount inside the tabs — same shared components as the profile
+  const latestVisit = useMemo(() => {
+    const vs = (chart?.visits || []) as any[];
+    return [...vs].sort((a, b) => +new Date(b.visit_date || b.created_at) - +new Date(a.visit_date || a.created_at))[0] || null;
+  }, [chart]);
+  const placedMeds = useMemo(() => ((chart?.orders || []) as any[])
+    .filter((o) => o.order_type === "medication" && (!latestVisit?.id || o.visit_id === latestVisit.id || !o.visit_id))
+    .map((o) => (o.details as any)?.item).filter(Boolean) as string[], [chart, latestVisit?.id]);
+  const [vitalsOpen, setVitalsOpen] = useState(false);
+
   const badge = (k: TabKey): number | null => (!counts || k === "overview" ? null : (counts as any)[k === "labs" ? "labs" : k] ?? null);
 
   return (
@@ -155,18 +169,44 @@ export function PatientChartBar({ patient, currentBed }: { patient: any; current
               {!chart ? (
                 <p className="hx-dim text-sm">{t("common.loading")}</p>
               ) : openTab === "overview" ? <OverviewTab chart={chart} allergies={allergies} flags={flags} />
-                : openTab === "consultations" ? <ConsultationsTab chart={chart} />
+                : openTab === "consultations" ? (
+                  <div className="space-y-4" data-testid="hx-tab-live-consult">
+                    <ConsultationSummaryBox patientId={patient.id} patientName={patient.full_name} visitId={latestVisit?.id ?? null} startOpen />
+                    <div className="hx-eyebrow">{t("chart.history", "History")}</div>
+                    <ConsultationsTab chart={chart} />
+                  </div>
+                )
                 : openTab === "labs" ? <LabsTab chart={chart} />
                 : openTab === "reports" ? <ReportsTab chart={chart} />
-                : openTab === "medications" ? <MedicationsTab chart={chart} />
-                : openTab === "surgery" ? <SurgeryTab chart={chart} />
-                : openTab === "vitals" ? <VitalsTab chart={chart} />
+                : openTab === "medications" ? (
+                  <div className="space-y-4" data-testid="hx-tab-live-rx">
+                    <PrescriptionPanel patient={patient} visitId={latestVisit?.id ?? null} placedMeds={placedMeds} />
+                    <div className="hx-eyebrow">{t("chart.history", "History")}</div>
+                    <MedicationsTab chart={chart} />
+                  </div>
+                )
+                : openTab === "surgery" ? (
+                  <div className="space-y-4" data-testid="hx-tab-live-ot">
+                    <OperationTheatrePanel patient={patient} visitId={latestVisit?.id ?? null} />
+                    <div className="hx-eyebrow">{t("chart.history", "History")}</div>
+                    <SurgeryTab chart={chart} />
+                  </div>
+                )
+                : openTab === "vitals" ? (
+                  <div className="space-y-4" data-testid="hx-tab-live-vitals">
+                    <button className="hx-btn hx-btn--primary" style={{ padding: "0.4rem 0.9rem" }} onClick={() => setVitalsOpen(true)} data-testid="hx-tab-capture-vitals">
+                      <HeartPulseIcon className="h-4 w-4" /> {t("vitals.capture")}
+                    </button>
+                    <VitalsTab chart={chart} />
+                  </div>
+                )
                 : <DocumentsTab chart={chart} />}
             </div>
           </aside>
         </div>,
         document.body,
       )}
+      <VitalsCaptureDialog open={vitalsOpen} onOpenChange={setVitalsOpen} patientId={patient?.id} patientName={patient?.full_name} visitId={latestVisit?.id} />
     </div>
   );
 }

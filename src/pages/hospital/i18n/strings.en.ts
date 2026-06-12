@@ -15,7 +15,7 @@ export const EN: Record<string, string> = {
   // ---- hospital nav section (shared sidebar; hospital-gated) ----
   "nav.section": "Hospital",
   "nav.journey": "Patient Profile",
-  "nav.admissions": "Admissions",
+  "nav.admissions": "Admissions & Beds",
   "nav.nurse": "Nurse Station",
   "nav.pharmacy": "Pharmacy",
   "nav.laboratory": "Laboratory",
@@ -973,4 +973,12 @@ export const EN: Record<string, string> = {
   // journey bed-context
   "beds.journeyBed": "Bed",
   "beds.journeyNoBed": "No bed assigned",
+  "portal.tab.admissions": "Admissions & Beds",
+  "chart.history": "History",
+  "adm.title": "Admission & Bed",
+  "adm.dept": "Department",
+  "adm.attending": "Attending",
+  "adm.bed": "Ward · Bed",
+  "adm.admitted": "Admitted",
+  "postop.title": "Post-op Monitoring",
 };

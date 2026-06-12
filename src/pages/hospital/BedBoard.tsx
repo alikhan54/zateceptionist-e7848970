@@ -80,34 +80,8 @@ function BedBoardInner() {
         </div>
       </div>
 
-      {/* unassigned inpatients */}
-      {unassigned.length > 0 && (
-        <div className="hx-panel hx-rise mt-4" style={{ animationDelay: "60ms" }}>
-          <div className="hx-panel-h"><UserPlus className="h-4 w-4 hx-dim" /> <span className="hx-eyebrow">{t("beds.unassignedTitle")}</span>
-            <span className="ml-auto hx-chip hx-chip--warn">{unassigned.length}</span></div>
-          <div className="hx-panel-b" style={{ display: "grid", gap: "0.5rem" }}>
-            {unassigned.map((p) => (
-              <div key={p.admission_id} className="flex flex-wrap items-center gap-2" data-testid="hx-bed-unassigned-row">
-                <Activity className="h-3.5 w-3.5" style={{ color: "var(--hx-accent)" }} />
-                <span className="font-medium text-sm">{displayName(p.patient_name)}</span>
-                {p.department_name && <span className="hx-dim text-xs">· {p.department_name}</span>}
-                {p.attending_name && <span className="hx-dim text-xs">· {p.attending_name}</span>}
-                <span className="hx-chip text-xs">{ti("beds.losDays", { n: p.los_days })}</span>
-                <div className="flex items-center gap-1.5 ml-auto">
-                  <select className="hx-select" style={{ width: "auto", minWidth: 150 }} value={assignSel[p.admission_id] || ""} onChange={(e) => setAssignSel((s) => ({ ...s, [p.admission_id]: e.target.value }))} data-testid="hx-bed-assign-select">
-                    <option value="">{t("beds.selectBed")}</option>
-                    {availableBeds.map((b) => <option key={b.id} value={b.id}>{b.ward} · {b.bed_label}</option>)}
-                  </select>
-                  <button className="hx-btn hx-btn--primary" style={{ padding: "0.3rem 0.7rem" }} onClick={() => doAssign(p.admission_id, p.patient_id)} disabled={assign.isPending} data-testid="hx-bed-assign-btn">
-                    <BedDouble className="h-3.5 w-3.5" /> {t("beds.assign")}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
+      {/* unassigned inpatients — shared strip (also mounted on Admissions & Beds, FIX-C) */}
+      <AwaitingBedStrip />
       {/* ward grids */}
       {isLoading ? <p className="hx-dim text-sm mt-4">{t("common.loading")}</p> : wards.map((w, wi) => (
         <div key={w.ward} className="hx-panel hx-rise mt-4" style={{ animationDelay: `${100 + wi * 50}ms` }} data-testid="hx-ward-section">
@@ -200,4 +174,47 @@ function BedBoardInner() {
 export default function BedBoard() {
   // [Brief 10] ward_nurse ADDED (additive); legacy nurse unchanged
   return <HospitalGate allow={["nurse", "ward_nurse", "admin"]}><BedBoardInner /></HospitalGate>;
+}
+
+
+/** [FIX-C] Inpatients awaiting a bed — self-contained (own hook + assign state). Mounted on the
+ *  Bed Board AND the Admissions & Beds surface; one source, two mounts. */
+export function AwaitingBedStrip() {
+  const { t, ti } = useHospitalT();
+  const { toast } = useToast();
+  const { unassigned, availableBeds, assign } = useHospitalBeds();
+  const [sel, setSel] = useState<Record<string, string>>({});
+  if (unassigned.length === 0) return null;
+  const doAssign = async (admissionId: string, patientId: string) => {
+    const bedId = sel[admissionId];
+    if (!bedId) { toast({ title: t("beds.pickBed"), variant: "destructive" }); return; }
+    try { await assign.mutateAsync({ admissionId, patientId, bedId, reason: "admit" }); toast({ title: t("beds.assigned") }); setSel((x) => ({ ...x, [admissionId]: "" })); }
+    catch (e: any) { toast({ title: t("beds.actionFail"), description: e?.message, variant: "destructive" }); }
+  };
+  return (
+    <div className="hx-panel hx-rise mt-4" style={{ animationDelay: "60ms" }} data-testid="hx-awaiting-strip">
+      <div className="hx-panel-h"><UserPlus className="h-4 w-4 hx-dim" /> <span className="hx-eyebrow">{t("beds.unassignedTitle")}</span>
+        <span className="ml-auto hx-chip hx-chip--warn">{unassigned.length}</span></div>
+      <div className="hx-panel-b" style={{ display: "grid", gap: "0.5rem" }}>
+        {unassigned.map((p) => (
+          <div key={p.admission_id} className="flex flex-wrap items-center gap-2" data-testid="hx-bed-unassigned-row">
+            <Activity className="h-3.5 w-3.5" style={{ color: "var(--hx-accent)" }} />
+            <span className="font-medium text-sm">{displayName(p.patient_name)}</span>
+            {p.department_name && <span className="hx-dim text-xs">· {p.department_name}</span>}
+            {p.attending_name && <span className="hx-dim text-xs">· {p.attending_name}</span>}
+            <span className="hx-chip text-xs">{ti("beds.losDays", { n: p.los_days })}</span>
+            <div className="flex items-center gap-1.5 ml-auto">
+              <select className="hx-select" style={{ width: "auto", minWidth: 150 }} value={sel[p.admission_id] || ""} onChange={(e) => setSel((x) => ({ ...x, [p.admission_id]: e.target.value }))} data-testid="hx-bed-assign-select">
+                <option value="">{t("beds.selectBed")}</option>
+                {availableBeds.map((b) => <option key={b.id} value={b.id}>{b.ward} · {b.bed_label}</option>)}
+              </select>
+              <button className="hx-btn hx-btn--primary" style={{ padding: "0.3rem 0.7rem" }} onClick={() => doAssign(p.admission_id, p.patient_id)} disabled={assign.isPending} data-testid="hx-bed-assign-btn">
+                <BedDouble className="h-3.5 w-3.5" /> {t("beds.assign")}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }

@@ -16,7 +16,7 @@ export const BN: Record<string, string> = {
   // ---- hospital nav section ----
   "nav.section": "হাসপাতাল",
   "nav.journey": "রোগীর প্রোফাইল",
-  "nav.admissions": "ভর্তি",
+  "nav.admissions": "ভর্তি ও বেড",
   "nav.nurse": "নার্স স্টেশন",
   "nav.pharmacy": "ফার্মেসি",
   "nav.laboratory": "ল্যাবরেটরি",
@@ -968,4 +968,12 @@ export const BN: Record<string, string> = {
   "chart.empty.surgery": "এখনো কোনো থিয়েটার কেস নেই — পরিকল্পিত ওটি কেস এখানে আসবে।",
   "chart.empty.vitals": "এখনো ভাইটাল নেওয়া হয়নি — নার্সের ক্যাপচার এখানে দেখা যাবে।",
   "chart.empty.documents": "এখনো কোনো ডকুমেন্ট নেই — রোগীর সব কাগজ এখানে জমা হয়।",
+  "portal.tab.admissions": "ভর্তি ও বেড",
+  "chart.history": "ইতিহাস",
+  "adm.title": "ভর্তি ও বেড",
+  "adm.dept": "বিভাগ",
+  "adm.attending": "চিকিৎসক",
+  "adm.bed": "ওয়ার্ড · বেড",
+  "adm.admitted": "ভর্তি",
+  "postop.title": "পোস্ট-অপ মনিটরিং",
 };

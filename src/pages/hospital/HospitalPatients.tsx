@@ -9,6 +9,8 @@ import { useHospitalBeds } from "@/hooks/useHospitalBeds";
 import { useHospitalRole } from "@/hooks/useHospitalRole";
 import { HospitalAdmitDialog } from "@/components/hospital/HospitalAdmitDialog";
 import { HospitalGate, displayName } from "./hospitalShared";
+import { AwaitingBedStrip } from "./BedBoard";
+import { BedDouble } from "lucide-react";
 import { useHospitalT } from "./i18n";
 
 function ageFrom(dob?: string) {
@@ -72,11 +74,19 @@ function HospitalPatientsInner() {
             <div className="hx-eyebrow">{t("patients.eyebrow")}</div>
             <h1 className="hx-h1">{t("patients.title")}</h1>
           </div>
-          <button className="hx-btn hx-btn--primary" onClick={() => setAdmitOpen(true)} data-testid="hx-admit-patient">
-            <UserPlus className="h-4 w-4" /> {t("patients.admit")}
-          </button>
+          <div className="flex items-center gap-2">
+            <button className="hx-btn hx-btn--ghost" onClick={() => navigate("/hospital/beds")} data-testid="hx-admissions-bedboard">
+              <BedDouble className="h-4 w-4" /> {t("portal.tab.beds", "Bed Board")}
+            </button>
+            <button className="hx-btn hx-btn--primary" onClick={() => setAdmitOpen(true)} data-testid="hx-admit-patient">
+              <UserPlus className="h-4 w-4" /> {t("patients.admit")}
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* [FIX-C] awaiting-bed assign lives HERE too — admission + deposit is the front desk's job */}
+      <AwaitingBedStrip />
 
       <div className="hx-panel hx-rise mt-4" style={{ animationDelay: "80ms" }}>
         <div className="hx-panel-h">

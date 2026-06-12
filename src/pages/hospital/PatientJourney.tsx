@@ -29,6 +29,7 @@ import { ConsultationSummaryBox } from "./ConsultationSummary";
 import { PrescriptionPanel } from "./Prescription";
 import { OperationTheatrePanel, statusChipClass } from "./OperationTheatre";
 import { PostOpPanel } from "./PostOpPanel";
+import { usePostopEpisode } from "@/hooks/useHospitalPostop";
 import { DischargePanel } from "./DischargePanel";
 import { useHospitalOT } from "@/hooks/useHospitalOT";
 import { useHospitalT } from "./i18n";
@@ -182,6 +183,20 @@ function PatientJourneyInner() {
   const { otCase } = useHospitalOT(selectedId || undefined);
 
   // HOSPITAL-BEDS [Phase 2]: read-only ward/bed context for the current patient (additive).
+  // [FIX-D] latest admission detail for the collapsible Admission & Bed section
+  const { data: admDetail } = useQuery({
+    queryKey: ["hx-adm-detail", tenantId, selectedId],
+    queryFn: async () => {
+      const { data } = await supabase.from("hospital_admissions" as any)
+        .select("department_name,attending_name,created_at,admitting_complaint,status")
+        .eq("tenant_id", tenantId).eq("patient_id", selectedId)
+        .order("created_at", { ascending: false }).limit(1);
+      return (data as any[])?.[0] || null;
+    },
+    enabled: !!tenantId && !!selectedId,
+  });
+  const { data: postopEp } = usePostopEpisode(selectedId);
+
   const { data: currentBed } = useQuery({
     queryKey: ["hx-patient-bed", tenantId, selectedId],
     queryFn: async () => {
@@ -460,6 +475,25 @@ function PatientJourneyInner() {
         {/* LEFT: vitals + diagnosis & remarks (Care Pathway panel retired — addendum (b); it
             duplicated the header stepper. Component kept below for potential re-mount.) */}
         <div className="lg:col-span-5 space-y-4">
+          {/* [FIX-D] Admission & Bed — one-line collapsed summary, expand for full detail */}
+          {(admDetail || currentBed) && (
+            <StageSection title={t("adm.title", "Admission & Bed")} open={false} testid="hx-stage-admission" icon={BedDouble}
+              summary={[
+                currentBed ? `${currentBed.ward} · ${currentBed.bed_label}` : null,
+                admDetail?.attending_name || null,
+                admDetail?.created_at ? `${Math.max(0, Math.floor((Date.now() - +new Date(admDetail.created_at)) / 86400000))}d` : null,
+              ].filter(Boolean).join(" · ")}>
+              <div className="space-y-1 text-sm" data-testid="hx-admission-detail">
+                {admDetail?.department_name && <div><b>{t("adm.dept", "Department")}:</b> {admDetail.department_name}</div>}
+                {admDetail?.attending_name && <div><b>{t("adm.attending", "Attending")}:</b> {admDetail.attending_name}</div>}
+                {currentBed && <div><b>{t("adm.bed", "Ward · Bed")}:</b> {currentBed.ward} · {currentBed.bed_label}</div>}
+                {admDetail?.created_at && <div><b>{t("adm.admitted", "Admitted")}:</b> {new Date(admDetail.created_at).toLocaleString()} ({Math.max(0, Math.floor((Date.now() - +new Date(admDetail.created_at)) / 86400000))}d)</div>}
+                {admDetail?.admitting_complaint && <div className="hx-dim">{admDetail.admitting_complaint}</div>}
+                {admDetail?.status && <div><span className={`hx-chip ${admDetail.status === "admitted" ? "hx-chip--accent" : "hx-chip--ok"} text-xs`}>{admDetail.status}</span></div>}
+              </div>
+            </StageSection>
+          )}
+
           {/* vitals — above Diagnosis & Remarks (addendum (c)) */}
           <StageSection title={t("vitals.title")} open={inConsult} testid="hx-stage-vitals" icon={HeartPulse}
             actions={<>
@@ -728,7 +762,11 @@ function PatientJourneyInner() {
 
           {/* Post-op monitoring — deterministic partial-NEWS2 early-warning (renders only when an
               active episode exists; MEDICA narrates, never scores) [HOSPITAL-POSTOP] */}
-          <PostOpPanel patient={patient} />
+          {postopEp && (
+            <StageSection bare title={t("postop.title", "Post-op Monitoring")} open={postopEp.status === "active"} testid="hx-stage-postop" icon={Activity}>
+              <PostOpPanel patient={patient} />
+            </StageSection>
+          )}
 
           {/* Discharge — deterministic readiness + grounded bilingual signed summary (med reconciliation
               off the signed Rx); sign closes the episode + frees the bed via existing flows [HOSPITAL-DISCHARGE] */}

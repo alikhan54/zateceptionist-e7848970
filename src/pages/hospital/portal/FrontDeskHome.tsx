@@ -59,7 +59,7 @@ export function FrontDeskHome({ switcher }: { switcher?: React.ReactNode }) {
         { label: t("portal.tab.nurse"), to: "/hospital/nurse" },
         { label: t("portal.tab.beds"), to: "/hospital/beds" },
         { label: t("portal.tab.pharmacy"), to: "/hospital/pharmacy" },
-        { label: t("portal.tab.patients"), to: "/hospital/patients" },
+        { label: t("portal.tab.admissions", "Admissions & Beds"), to: "/hospital/patients" },
       ]}
       railTitle={t("portal.fd.rail")} railItems={rail} railEmpty={t("portal.fd.railEmpty")} medicaLine={medica}>
       <div className="hxp-stats">

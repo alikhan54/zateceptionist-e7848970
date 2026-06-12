@@ -631,9 +631,9 @@ export async function loadDoctorStyleBlock(doctorId: string | null | undefined, 
  *    render HEADERLESS inside it (inner panels drop their own header row);
  *  - `bare`: for children that keep their own native titled header (Prescription/OT/Discharge),
  *    the wrapper renders only a slim chevron-strip — no duplicate title, one chevron total. */
-export function StageSection({ title, open, children, testid, icon: Icon, actions, bare }: {
+export function StageSection({ title, open, children, testid, icon: Icon, actions, bare, summary }: {
   title: string; open: boolean; children: React.ReactNode; testid: string; icon?: any;
-  actions?: React.ReactNode; bare?: boolean;
+  actions?: React.ReactNode; bare?: boolean; summary?: string;
 }) {
   const [expanded, setExpanded] = useState(open);
   useEffect(() => { setExpanded(open); }, [open]);
@@ -642,6 +642,7 @@ export function StageSection({ title, open, children, testid, icon: Icon, action
       <button type="button" className="hx-stage-row hx-rise" onClick={() => setExpanded(true)} data-testid={`${testid}-collapsed`}>
         {Icon && <Icon className="h-4 w-4" style={{ color: "var(--hx-accent2)" }} />}
         <span className="font-semibold">{title}</span>
+        {summary && <span className="hx-dim text-sm truncate" data-testid={`${testid}-summary`}>{summary}</span>}
         <ChevronDown className="h-4 w-4 ml-auto hx-dim" />
       </button>
     );

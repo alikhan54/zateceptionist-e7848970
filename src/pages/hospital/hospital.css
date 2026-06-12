@@ -44,7 +44,8 @@
 /* [ZATEOS A4] the reference's page law: centered ~1160px content + 15.5px base on every hospital
    page — no edge-to-edge sprawl. The portal (.hxp) manages its own grid; print papers are
    absolutely positioned offscreen and keep their fixed widths. */
-.hx { font-size: 15.5px; }
+/* [FIX-B] comfortable reading scale per the reference */
+.hx { font-size: 16px; }
 .hx > :not(.hxp) { max-width: 1160px; margin-left: auto; margin-right: auto; }
 
 .hx-h1 { font-size: clamp(1.4rem, 2.4vw, 2rem); font-weight: 650; letter-spacing: -0.02em; }
@@ -322,3 +323,8 @@
   text-align: center; padding: 3.5rem 1rem; border: 1px dashed var(--hx-border); border-radius: 14px; }
 /* [FIX-3] portaled pick menu (fixed positioning set inline) */
 .hx-pick-menu--portal { right: auto; }
+
+/* [FIX-B] tab pages + profile panels read one notch larger; section headers clearly larger */
+.hx-drawer-b { font-size: 1rem; }
+.hx-panel-h .font-semibold, .hx-panel-h > span.font-semibold { font-size: 1.05rem; }
+.hx-stage-row { font-size: 1rem; }

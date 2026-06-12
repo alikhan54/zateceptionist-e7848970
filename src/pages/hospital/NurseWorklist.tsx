@@ -5,7 +5,7 @@
 // MEDICA shift brief (Assisted) summarizes the deterministic list â€” decides nothing. Additive; hx-*.
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ClipboardList, Sparkles, Loader2, AlertTriangle, CheckCircle2, Clock, Activity, Pill, Slice } from "lucide-react";
+import { ClipboardList, Sparkles, Loader2, AlertTriangle, CheckCircle2, Clock, Activity, Pill, Slice, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -88,6 +88,14 @@ export function NurseWorklist() {
     return { pending: pending.length, overdue: pending.filter(isOverdue).length };
   }, [tasks]);
 
+  // [FIX-A] per-patient COLLAPSED-by-default worklist groups (the Care Routines pattern)
+  const [openPids, setOpenPids] = useState<Set<string>>(new Set());
+  const togglePid = (pid: string) => setOpenPids((prev) => {
+    const next = new Set(prev);
+    if (next.has(pid)) next.delete(pid); else next.add(pid);
+    return next;
+  });
+
   // ---- mark done (with optional note) ----
   const [noteFor, setNoteFor] = useState<string | null>(null);
   const [noteVal, setNoteVal] = useState("");
@@ -144,16 +152,21 @@ export function NurseWorklist() {
           const orders = (ctx?.orders[g.pid] || []);
           const otStatus = ctx?.ot[g.pid];
           return (
-            <div key={g.pid} className="rounded-lg" style={{ border: "1px solid var(--hx-border)" }} data-testid="hx-worklist-group" data-patient={g.pid}>
-              <div className="flex flex-wrap items-center gap-2 px-3 py-2" style={{ borderBottom: "1px solid var(--hx-border)" }}>
+            <div key={g.pid} className="rounded-lg" style={{ border: g.ews && isAlertState(g.ews.band, g.ews.trend) ? "1px solid rgba(251,113,133,0.55)" : "1px solid var(--hx-border)", boxShadow: g.ews && isAlertState(g.ews.band, g.ews.trend) ? "0 0 0 1px rgba(251,113,133,0.18)" : undefined }} data-testid="hx-worklist-group" data-patient={g.pid}>
+              <button type="button" className="flex flex-wrap items-center gap-2 px-3 py-2 w-full text-left"
+                style={{ background: "transparent", border: "none", cursor: "pointer", borderBottom: openPids.has(g.pid) ? "1px solid var(--hx-border)" : "none" }}
+                onClick={() => togglePid(g.pid)} data-testid="hx-worklist-patient-row" data-expanded={openPids.has(g.pid) ? "1" : "0"}>
                 <span className="font-medium text-sm" style={{ color: "var(--hx-strong)" }} data-testid="hx-worklist-patient">{g.name}</span>
                 {g.ews && isAlertState(g.ews.band, g.ews.trend) && (
                   <span className={`hx-chip ${bandChipClass(g.ews.band)}`} style={{ padding: "0.05rem 0.45rem" }} data-testid="hx-worklist-ews"><Activity className="h-3 w-3" /> EWS {g.ews.score ?? "â€”"}{g.ews.trend === "deteriorating" ? " â†‘" : ""}</span>
                 )}
                 {otStatus && <span className="hx-chip" style={{ padding: "0.05rem 0.45rem" }} data-testid="hx-worklist-ot"><Slice className="h-3 w-3" /> OT Â· {t(`ot.status.${otStatus}`)}</span>}
+                <span className="hx-chip" style={{ padding: "0.05rem 0.45rem" }} data-testid="hx-worklist-pendingn">{ti("nurse.pendingN", { n: g.tasks.length })}</span>
                 {g.overdue > 0 && <span className="hx-chip hx-chip--crit" style={{ padding: "0.05rem 0.45rem" }}>{ti("nurse.overdueN", { n: g.overdue })}</span>}
-              </div>
-              <div className="px-3 py-2 space-y-1.5">
+                {openPids.has(g.pid) ? <ChevronUp className="h-4 w-4 ml-auto hx-dim" /> : <ChevronDown className="h-4 w-4 ml-auto hx-dim" />}
+              </button>
+              {openPids.has(g.pid) && (
+              <div className="px-3 py-2 space-y-1.5" data-testid="hx-worklist-tasks">
                 {g.tasks.sort((a, b) => +new Date(a.due_at || 0) - +new Date(b.due_at || 0)).map((tk) => {
                   const Icon = TASK_ICON[tk.task_type] ?? ClipboardList; const over = isOverdue(tk);
                   return (
@@ -179,6 +192,7 @@ export function NurseWorklist() {
                   </div>
                 )}
               </div>
+              )}
             </div>
           );
         })}

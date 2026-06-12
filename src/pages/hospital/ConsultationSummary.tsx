@@ -55,8 +55,8 @@ const TEXT_KEYS: { key: keyof IntakeAnswers; labelKey: string; phKey: string }[]
 ];
 
 export function ConsultationSummaryBox({
-  patientId, patientName, visitId, onAdmitPatient,
-}: { patientId?: string; patientName?: string; visitId?: string | null; onAdmitPatient?: () => void }) {
+  patientId, patientName, visitId, onAdmitPatient, startOpen,
+}: { patientId?: string; patientName?: string; visitId?: string | null; onAdmitPatient?: () => void; startOpen?: boolean }) {
   const { t, ti, lang } = useHospitalT();
   const { toast } = useToast();
   const { isAssisted } = useHospitalMode();
@@ -217,7 +217,8 @@ export function ConsultationSummaryBox({
   const noEncounter = !visitId;
   // Collapsible panel [Brief 8 addendum (a)] — same pattern as the MEDICA collapse; presentational only
   // [FIX-1] default-collapsed; fresh key so stale localStorage cannot re-open it
-  const { collapsed, toggle } = useHxCollapse("hx-collapse-consult.v2", true);
+  // [FIX-B] startOpen = the chart-tab mount (the tab IS the consultation page → open by default)
+  const { collapsed, toggle } = useHxCollapse(startOpen ? "hx-collapse-consult.tab" : "hx-collapse-consult.v2", !startOpen);
 
   return (
     <div className="hx-panel hx-rise" style={{ animationDelay: "140ms" }} data-testid="hx-consult" data-collapsed={collapsed ? "1" : "0"}>
