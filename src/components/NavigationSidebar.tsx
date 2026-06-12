@@ -290,6 +290,15 @@ export function NavigationSidebar() {
     // Master admin sees EVERYTHING
     if (isMasterAdmin) return true;
 
+    // HOSPITAL-PORTAL trim — the hospital TENANT's chrome is the clinical portal: ONLY the
+    // hospital section + Analytics & AI + Settings. ADDITIVE tenant-scoped condition, evaluated
+    // AFTER master_admin (control plane untouched) and ONLY when isHospital — every other tenant
+    // falls straight through to the existing logic below, byte-identically.
+    if (isHospital) {
+      return !!section.items?.some((it) => it.url?.startsWith("/hospital/"))
+        || section.label === "Analytics & AI" || section.label === "Settings";
+    }
+
     // CRITICAL FIX: adminOnly sections (like Master Admin) are ONLY for master_admin
     // Regular admins should NOT see these sections
     if (section.adminOnly) return false;
@@ -647,6 +656,7 @@ export function NavigationSidebar() {
     collapsible: true,
     // HOSPITAL-RBAC [8]: restrict the sub-items to the role's allowed pages (admin/unrestricted = all).
     items: [
+      { title: hospT("nav.home"), url: "/hospital/home", icon: LayoutDashboard },
       { title: hospT("nav.journey"), url: "/hospital/journey", icon: Activity },
       { title: hospT("nav.admissions"), url: "/hospital/patients", icon: Stethoscope },
       { title: hospT("nav.nurse"), url: "/hospital/nurse", icon: UserPlus },
@@ -1172,14 +1182,16 @@ export function NavigationSidebar() {
 
         {!isMasterAdmin && !renderAccountingMinimal && !isTelehealth && (
         <>
-        {/* Staff Section - Only for staff */}
-        {authUser?.role === "staff" && <StaticSection section={staffSection} />}
+        {/* Staff Section - Only for staff. HOSPITAL-PORTAL trim: hidden for the hospital tenant
+            (its chrome = Hospital + AI + Settings only; master_admin path is the telehealth-style
+            branch above and stays untouched). */}
+        {authUser?.role === "staff" && (!isHospital || isMasterAdmin) && <StaticSection section={staffSection} />}
 
         {/* My HR Section - Staff self-service (Issue 3) */}
-        {authUser?.role === "staff" && <CollapsibleSection section={myHRSection} sectionKey="my-hr" />}
+        {authUser?.role === "staff" && (!isHospital || isMasterAdmin) && <CollapsibleSection section={myHRSection} sectionKey="my-hr" />}
 
         {/* Main Section - For non-staff or if not showing staff section */}
-        {authUser?.role !== "staff" && <CollapsibleSection section={mainSection} sectionKey="main" />}
+        {authUser?.role !== "staff" && (!isHospital || isMasterAdmin) && <CollapsibleSection section={mainSection} sectionKey="main" />}
 
         {/* Sales AI Section */}
         {canAccessSection(salesSection) && <CollapsibleSection section={salesSection} sectionKey="sales" />}
