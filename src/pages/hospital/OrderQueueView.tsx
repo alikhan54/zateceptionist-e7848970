@@ -1,5 +1,9 @@
 import { useMemo, useState } from "react";
-import { CheckCircle2, Clock, Inbox, CreditCard, Loader2 } from "lucide-react";
+import { CheckCircle2, Clock, Inbox, CreditCard, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useTenant } from "@/contexts/TenantContext";
+import { priceForMed } from "@/lib/hospital/pickLists";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useClinicPatients } from "@/hooks/useClinicPatients";
@@ -7,7 +11,7 @@ import { useHospitalStaff } from "@/hooks/useHospitalStaff";
 import {
   useHospitalOrders, STATUS_LABEL, NEXT_STATUS, type HospitalOrderType,
 } from "@/hooks/useHospitalOrders";
-import { HospitalGate, EcgLine } from "./hospitalShared";
+import { HospitalGate, EcgLine, displayName } from "./hospitalShared";
 import { useHospitalT } from "./i18n";
 
 const PENDING = ["ordered", "routed", "in_progress"];
@@ -50,12 +54,44 @@ export function OrderQueueInner({ type, title, eyebrow, icon: Icon, actionLabel,
   }
   const nameById = useMemo(() => {
     const m: Record<string, string> = {};
-    (patients as any[]).forEach((p) => { m[p.id] = p.full_name; });
+    (patients as any[]).forEach((p) => { m[p.id] = displayName(p.full_name); });
     return m;
   }, [patients]);
 
+  // [ZATEOS C1] the SIGNED-Rx instruction detail per patient (dose - frequency - duration) --
+  // joined read-only onto the med order lines so the pharmacist sees how/when/for-how-long.
+  const { tenantId } = useTenant();
+  const { data: rxByPatient } = useQuery({
+    queryKey: ["hx-queue-rxmap", tenantId],
+    queryFn: async () => {
+      const { data } = await supabase.from("hospital_prescriptions" as any)
+        .select("patient_id,items,status,signed_at").eq("tenant_id", tenantId).eq("status", "signed")
+        .order("signed_at", { ascending: false });
+      const m = new Map<string, any[]>();
+      ((data as any[]) || []).forEach((r) => { if (!m.has(r.patient_id)) m.set(r.patient_id, r.items || []); });
+      return m;
+    },
+    enabled: !!tenantId && type === "medication",
+  });
+  const rxDetail = (o: any): string | null => {
+    const items = rxByPatient?.get(o.patient_id);
+    const label = String((o.details as any)?.item || "").toLowerCase();
+    const hit = (items || []).find((it: any) => it.name && label.includes(String(it.name).toLowerCase().split(" ")[0]));
+    if (!hit) return null;
+    return [hit.dose, hit.frequency, hit.duration, hit.route].filter(Boolean).join(" · ");
+  };
+  // static in-code availability vs the Brief-8 pick-list (unavailable = amber, still POS-billable)
+  const isAvailable = (o: any) => type !== "medication" || priceForMed(String((o.details as any)?.item || "")) != null;
+
   const pending = orders.filter((o) => PENDING.includes(o.status));
   const fulfilled = orders.filter((o) => FULFILLED.includes(o.status));
+  // [ZATEOS C1] pending GROUPED BY PATIENT, collapsed by default -- one expanded at a time
+  const [openPatient, setOpenPatient] = useState<string | null>(null);
+  const groups = useMemo(() => {
+    const m = new Map<string, any[]>();
+    pending.forEach((o) => { const k = o.patient_id || "walkin"; if (!m.has(k)) m.set(k, []); m.get(k)!.push(o); });
+    return Array.from(m.entries()).map(([pid, os]) => ({ pid, os }));
+  }, [pending]);
 
   const Row = ({ o, done }: { o: any; done: boolean }) => (
     <li className="flex items-center gap-3 py-2.5 border-t" style={{ borderColor: "var(--hx-border)" }} data-testid="hx-queue-row">
@@ -63,8 +99,10 @@ export function OrderQueueInner({ type, title, eyebrow, icon: Icon, actionLabel,
         {done ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}{t(`ostatus.${o.status}`, STATUS_LABEL[o.status])}
       </span>
       <div className="min-w-0 flex-1">
-        <div className="font-medium truncate">{(o.details as any)?.item || "—"}</div>
-        <div className="hx-faint text-xs truncate">{nameById[o.patient_id] || t("queue.unknownPatient")} · {new Date(o.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
+        <div className="font-medium truncate">{(o.details as any)?.item || "—"}{done ? " ×1" : ""}</div>
+        <div className="hx-faint text-xs truncate">
+          {done && rxDetail(o) ? `${rxDetail(o)} — ` : ""}{nameById[o.patient_id] || t("queue.unknownPatient")} · {new Date(o.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        </div>
       </div>
       {!done && NEXT_STATUS[type] && (
         <button className="hx-btn hx-btn--ghost" style={{ padding: "0.35rem 0.7rem" }}
@@ -115,7 +153,51 @@ export function OrderQueueInner({ type, title, eyebrow, icon: Icon, actionLabel,
           <div className="hx-panel-b">
             {pending.length === 0 ? (
               <div className="text-center py-8 hx-faint"><Inbox className="h-6 w-6 mx-auto mb-2 opacity-60" /><p className="text-sm">{t("queue.clear")}</p></div>
-            ) : <ul>{pending.map((o) => <Row key={o.id} o={o} done={false} />)}</ul>}
+            ) : (
+              <div className="space-y-2" data-testid="hx-queue-groups">
+                {groups.map(({ pid, os }) => {
+                  const open = openPatient === pid;
+                  const avail = os.filter(isAvailable).length;
+                  return (
+                    <div key={pid}>
+                      <button type="button" className="hx-stage-row" onClick={() => setOpenPatient(open ? null : pid)}
+                        data-testid="hx-queue-patient-row" data-expanded={open ? "1" : "0"}>
+                        <span className="font-semibold">{nameById[pid] || t("queue.unknownPatient")}</span>
+                        <span className="hx-chip text-xs">{ti("queue.pendingCount", { n: os.length })}</span>
+                        {type === "medication" && avail < os.length && (
+                          <span className="hx-chip hx-chip--warn text-xs">{ti("queue.unavailableN", { n: os.length - avail })}</span>
+                        )}
+                        {open ? <ChevronUp className="h-4 w-4 ml-auto hx-dim" /> : <ChevronDown className="h-4 w-4 ml-auto hx-dim" />}
+                      </button>
+                      {open && (
+                        <ul className="mt-1 ml-2" data-testid="hx-queue-group-items">
+                          {os.map((o) => (
+                            <li key={o.id} className="flex items-center gap-3 py-2.5 border-t" style={{ borderColor: "var(--hx-border)" }} data-testid="hx-queue-row">
+                              <span className={`hx-chip ${isAvailable(o) ? "hx-chip--ok" : "hx-chip--warn"}`} style={{ padding: "0.1rem 0.5rem" }}>
+                                {isAvailable(o) ? t("queue.available", "Available") : t("queue.unavailable", "Unavailable")}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <div className="font-medium truncate">{(o.details as any)?.item || "—"}</div>
+                                <div className="hx-faint text-xs truncate" data-testid="hx-queue-rxdetail">
+                                  {rxDetail(o) || t(`ostatus.${o.status}`, STATUS_LABEL[o.status])} · {new Date(o.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                </div>
+                                {!isAvailable(o) && <div className="hx-faint text-xs">{t("queue.unavailableNote", "Out of stock here — billable in POS so the patient knows")}</div>}
+                              </div>
+                              {NEXT_STATUS[type] && (
+                                <button className="hx-btn hx-btn--ghost" style={{ padding: "0.35rem 0.7rem" }}
+                                  onClick={() => (type === "medication" ? openPay(o) : updateOrderStatus.mutate({ id: o.id, status: NEXT_STATUS[type]! }))} data-testid="hx-queue-action">
+                                  {actionLabel}
+                                </button>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
         <div className="hx-panel hx-rise" style={{ animationDelay: "140ms" }}>

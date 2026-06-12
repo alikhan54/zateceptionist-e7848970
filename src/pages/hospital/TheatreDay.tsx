@@ -3,7 +3,7 @@
 // the SURGEON sees his own cases with the checklist READ-ONLY. RECORDS readiness only — the
 // consent DB trigger remains the sole gate; nothing here changes case status.
 import { useMemo, useState } from "react";
-import { Slice, ClipboardCheck, Loader2, CheckCircle2, CalendarClock, FileText } from "lucide-react";
+import { Slice, ClipboardCheck, Loader2, CheckCircle2, CalendarClock, FileText, ChevronDown, ChevronUp, Activity } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
@@ -11,7 +11,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useHospitalRole } from "@/hooks/useHospitalRole";
 import { useHospitalStaff } from "@/hooks/useHospitalStaff";
 import { useHospitalPreop, useTheatreCases, PREOP_ITEMS, type PreopItems, type TheatreCase } from "@/hooks/useHospitalPreop";
-import { HospitalGate, EcgLine } from "./hospitalShared";
+import { HospitalGate, EcgLine, displayName } from "./hospitalShared";
+import { usePostopEpisode } from "@/hooks/useHospitalPostop";
 import { statusChipClass } from "./OperationTheatre";
 import { useHospitalT } from "./i18n";
 
@@ -86,6 +87,26 @@ function PreopChecklist({ otCase, patientName, readOnly }: { otCase: TheatreCase
   );
 }
 
+/** [ZATEOS C4] read-only POST-OP context on a completed case — the existing episode/EWS data. */
+function PostopSummary({ patientId }: { patientId: string }) {
+  const { t } = useHospitalT();
+  const { data: ep } = usePostopEpisode(patientId);
+  if (!ep) return <p className="hx-faint text-xs mt-2">{t("theatre.noPostop", "No post-op episode recorded")}</p>;
+  return (
+    <div className="hx-intake mt-2.5" data-testid="hx-theatre-postop">
+      <div className="flex items-center gap-2 flex-wrap text-sm">
+        <Activity className="h-3.5 w-3.5" style={{ color: "var(--hx-accent2)" }} />
+        <span className="hx-label" style={{ margin: 0 }}>{t("theatre.postop", "Post-op")}</span>
+        <span className={`hx-chip ${ep.latest_band === "high" ? "hx-chip--crit" : ep.latest_band === "medium" ? "hx-chip--warn" : "hx-chip--ok"}`} style={{ padding: "0 0.45rem" }}>
+          EWS {ep.latest_score ?? "—"} · {ep.latest_band || "—"}
+        </span>
+        {ep.trend && <span className="hx-chip text-xs">{ep.trend}</span>}
+        <span className="hx-chip text-xs">{ep.status}</span>
+      </div>
+    </div>
+  );
+}
+
 function TheatreDayInner() {
   const { t, ti } = useHospitalT();
   const { tenantId } = useTenant();
@@ -93,6 +114,7 @@ function TheatreDayInner() {
   const surgeonView = hospitalRole === "surgeon";
   const { data: cases = [], isLoading } = useTheatreCases(surgeonView ? hrEmployeeId : null);
   const { byId } = useHospitalStaff();
+  const [openCase, setOpenCase] = useState<string | null>(null);
 
   const patientIds = useMemo(() => Array.from(new Set(cases.map((c) => c.patient_id))), [cases]);
   const { data: names } = useQuery({
@@ -124,28 +146,43 @@ function TheatreDayInner() {
         </div>
       </div>
 
-      <div className="space-y-3 mt-4">
+      {/* [ZATEOS C4] in-theatre-now + next-up first; each case is a COLLAPSIBLE patient card —
+          header row only until clicked; expanding reveals PRE-OP + POST-OP (completed cases). */}
+      <div className="space-y-2 mt-4">
         {isLoading ? <p className="hx-dim text-sm">{t("common.loading")}</p>
           : cases.length === 0 ? (
             <div className="hx-panel"><div className="hx-panel-b"><p className="hx-dim text-sm" data-testid="hx-theatre-empty">{t("theatre.empty")}</p></div></div>
-          ) : cases.map((c, i) => (
-            <div key={c.id} className="hx-panel hx-rise" style={{ animationDelay: `${60 + i * 40}ms` }} data-testid="hx-theatre-case" data-status={c.status}>
-              <div className="hx-panel-h">
+          ) : [...cases].sort((a, b) => {
+              const rank = (x: any) => (x.status === "in_theatre" ? 0 : x.status === "consented" ? 1 : x.status === "planned" ? 2 : 3);
+              return rank(a) - rank(b) || +new Date(a.scheduled_at || a.created_at) - +new Date(b.scheduled_at || b.created_at);
+            }).map((c) => {
+            const open = openCase === c.id;
+            return (
+            <div key={c.id} data-testid="hx-theatre-case" data-status={c.status} data-expanded={open ? "1" : "0"}>
+              <button type="button" className="hx-stage-row" onClick={() => setOpenCase(open ? null : c.id)} data-testid="hx-theatre-case-row">
                 <CalendarClock className="h-4 w-4" style={{ color: "var(--hx-accent2)" }} />
-                <span className="font-semibold" data-testid="hx-theatre-patient">{names?.get(c.patient_id) || "—"}</span>
+                <span className="font-semibold" data-testid="hx-theatre-patient">{displayName(names?.get(c.patient_id)) || "—"}</span>
                 <span className="hx-dim text-sm">· {c.procedure_name}</span>
+                <span className="hx-dim text-xs">· {(c.surgeon_id && byId[c.surgeon_id]?.name) || "—"}</span>
                 <span className={`hx-chip ${statusChipClass(c.status as any)}`} style={{ padding: "0.05rem 0.5rem" }}>{t(`ot.status.${c.status}`, c.status)}</span>
                 <span className="ml-auto hx-mono hx-faint text-xs">{fmt(c.scheduled_at)}</span>
-              </div>
+                {open ? <ChevronUp className="h-4 w-4 hx-dim" /> : <ChevronDown className="h-4 w-4 hx-dim" />}
+              </button>
+              {open && (
+              <div className="hx-panel" style={{ borderTopLeftRadius: 0, borderTopRightRadius: 0 }}>
               <div className="hx-panel-b" style={{ paddingTop: "0.7rem" }}>
                 <div className="hx-dim text-xs flex items-center gap-2 flex-wrap">
                   <span>{t("ot.surgeon")}: {(c.surgeon_id && byId[c.surgeon_id]?.name) || "—"}</span>
                   {c.op_note_signed_at && <span className="hx-chip hx-chip--ok" style={{ padding: "0 0.45rem" }}><FileText className="h-3 w-3" /> {t("rx.signedChip")}</span>}
                 </div>
                 <PreopChecklist otCase={c} patientName={names?.get(c.patient_id) || ""} readOnly={surgeonView} />
+                {c.status === "completed" && <PostopSummary patientId={c.patient_id} />}
               </div>
+              </div>
+              )}
             </div>
-          ))}
+            );
+          })}
       </div>
     </div>
   );

@@ -2,7 +2,7 @@
 // per-case pre-op completeness from hospital_preop_checklists. TRIAGE (opd_nurse): the Nurse
 // Station's own in-flow/awaiting-vitals derivation. HOD (admin): occupancy, EWS ≥ 7, today's
 // vitals-round compliance, collections split. Every number a real row; no source → omitted.
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Slice, UserPlus, Gauge, Siren, ClipboardList, BedDouble } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -15,6 +15,8 @@ import { usePostopBoard } from "@/hooks/useHospitalPostop";
 import { useHospitalNurseTasks, shiftsForToday } from "@/hooks/useHospitalNurseTasks";
 import { useClinicPatients } from "@/hooks/useClinicPatients";
 import { useClinicVisits } from "@/hooks/useClinicVisits";
+import { useHospitalOrders } from "@/hooks/useHospitalOrders";
+import { useWaitingAll } from "./usePortalData";
 import { summarizeVitals, DEFAULT_THRESHOLDS } from "@/lib/clinic/vitalsThresholds";
 import { PortalShell, Stat, type RailItem } from "./PortalShell";
 import { displayName } from "../hospitalShared";
@@ -153,19 +155,55 @@ export function HodHome({ switcher }: { switcher?: React.ReactNode }) {
   const { tasks } = useHospitalNurseTasks();
   const { data: sales } = useSalesToday();
   const { data: names } = usePatientNames();
+  const { data: cases = [] } = useTheatreCases();
+  const { byId } = useHospitalStaff();
+  const { data: waiting = [] } = useWaitingAll();
+  const { orders: labOrders } = useHospitalOrders({ orderType: "lab" });
+  const { tenantId } = useTenant();
+  const [tab, setTab] = useState<"overview" | "wards" | "theatre" | "finance">("overview");
+
+  // admissions + discharges TODAY (real rows; read-only)
+  const { data: flowToday } = useQuery({
+    queryKey: ["hxp-hod-flow", tenantId],
+    queryFn: async () => {
+      const since = todayStartIso();
+      const [adm, dis] = await Promise.all([
+        supabase.from("hospital_admissions" as any).select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).gte("created_at", since),
+        supabase.from("hospital_discharges" as any).select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).eq("status", "signed").gte("signed_at", since),
+      ]);
+      return { admissions: adm.count ?? 0, discharges: dis.count ?? 0 };
+    },
+    enabled: !!tenantId, refetchInterval: 60_000,
+  });
 
   const sevenPlus = useMemo(() => {
     const out: { pid: string; score: number; band: string | null; trend: string | null }[] = [];
     ews?.forEach((v, pid) => { if ((v.score ?? 0) >= 7) out.push({ pid, score: v.score!, band: v.band, trend: v.trend }); });
     return out.sort((a, b) => b.score - a.score);
   }, [ews]);
-
-  // rounds compliance = done/total of TODAY's vitals_round tasks (the Brief-10 shift keys)
   const rounds = useMemo(() => {
-    const keys = new Set(shiftsForToday().map((s) => s.key));
+    const keys = new Set(shiftsForToday().map((x) => x.key));
     const todays = tasks.filter((tk) => tk.task_type === "vitals_round" && tk.shift_key && keys.has(tk.shift_key));
     return { done: todays.filter((tk) => tk.status === "done").length, total: todays.length };
   }, [tasks]);
+  const otToday = useMemo(() => {
+    const start = todayStartIso();
+    const today = cases.filter((c) => c.status === "in_theatre" || (c.scheduled_at && c.scheduled_at >= start) || c.created_at >= start);
+    return {
+      inTheatre: today.filter((c) => c.status === "in_theatre").length,
+      next: today.filter((c) => c.status === "planned" || c.status === "consented").length,
+      done: today.filter((c) => c.status === "completed").length,
+      list: today,
+    };
+  }, [cases]);
+  const labPending = labOrders.filter((o) => !["resulted", "reviewed", "cancelled"].includes(o.status));
+  const oldestLabH = labPending.length ? Math.round((Date.now() - Math.min(...labPending.map((o) => +new Date(o.created_at)))) / 3_600_000) : 0;
+  const byDoctor = useMemo(() => {
+    const m = new Map<string, number>();
+    waiting.forEach((w) => m.set(w.doctor_name || "—", (m.get(w.doctor_name || "—") || 0) + 1));
+    return Array.from(m.entries()).sort((a, b) => b[1] - a[1]);
+  }, [waiting]);
+  const referrals = waiting.filter((w) => w.source === "referral");
 
   const rail: RailItem[] = wards.map((w) => ({
     key: w.ward, title: w.ward, sub: `${w.occupied}/${w.total} · ${w.occupancyPct}%`, to: "/hospital/beds",
@@ -175,57 +213,120 @@ export function HodHome({ switcher }: { switcher?: React.ReactNode }) {
     r: rounds.total ? `${rounds.done}/${rounds.total}` : "0/0",
     money: (sales?.total ?? 0).toLocaleString(),
   });
+  const TabBtn = ({ k, label }: { k: typeof tab; label: string }) => (
+    <button type="button" className={`hxp-tab${tab === k ? " active" : ""}`} onClick={() => setTab(k)} data-testid={`hxp-hod-tab-${k}`}>{label}</button>
+  );
+  // CLICKABLE overview cards — each clicks through to its detail (the reference law)
+  const Card = ({ onClick, ...props }: any) => (
+    <div role="button" tabIndex={0} style={{ cursor: "pointer" }} onClick={onClick}
+      onKeyDown={(e: any) => e.key === "Enter" && onClick()}>
+      <Stat {...props} />
+    </div>
+  );
 
   return (
     <PortalShell testid="hxp-hod" identity={t("portal.hod.identity")} switcher={switcher}
       tabs={[
-        // [ZATEOS A7] command views only — never another role's WORK surface (the Nurse Station
-        // tab opened the nurses' worklist for the HOD; wrong audience, removed)
         { label: t("portal.tab.beds"), to: "/hospital/beds" },
         { label: t("portal.tab.theatre"), to: "/hospital/ot" },
         { label: t("portal.tab.journey"), to: "/hospital/journey" },
       ]}
       railTitle={t("portal.hod.rail")} railItems={rail} railEmpty={t("portal.hod.railEmpty")} medicaLine={medica}>
-      <div className="hxp-stats">
-        <Stat testid="hxp-hod-occ" label={t("portal.hod.occupancy")} value={`${kpis.occupancyPct}%`} sub={`${kpis.occupied}/${kpis.total} ${t("portal.fd.occupied")}`} />
-        <Stat testid="hxp-hod-ews" label={t("portal.hod.ews7")} value={sevenPlus.length} kind={sevenPlus.length > 0 ? "crit" : undefined} sub={t("portal.hod.reviewNow")} />
-        <Stat testid="hxp-hod-rounds" label={t("portal.hod.rounds")} value={rounds.total ? `${rounds.done}/${rounds.total}` : "—"} sub={t("portal.hod.roundsSub")} />
-        <Stat testid="hxp-hod-money" kind="money" label={t("portal.hod.collections")} value={`৳${(sales?.total ?? 0).toLocaleString()}`}
-          sub={`${t("pos.ctx.pharmacy")} ৳${(sales?.pharmacy ?? 0).toLocaleString()} · ${t("pos.ctx.discharge")} ৳${(sales?.discharge ?? 0).toLocaleString()}`} />
+
+      <div className="flex items-center gap-4 flex-wrap" data-testid="hxp-hod-innertabs" style={{ borderBottom: "1px solid var(--hxp-border)", paddingBottom: "0.2rem" }}>
+        <TabBtn k="overview" label={t("portal.hod.tabOverview", "Overview")} />
+        <TabBtn k="wards" label={t("portal.hod.tabWards", "Wards")} />
+        <TabBtn k="theatre" label={t("portal.hod.tabTheatre", "Theatre")} />
+        <TabBtn k="finance" label={t("portal.hod.tabFinance", "Finance")} />
       </div>
 
-      {sevenPlus.length > 0 && (
+      {tab === "overview" && (<>
+        <div className="hxp-stats">
+          <Card onClick={() => setTab("wards")} testid="hxp-hod-occ" label={t("portal.hod.occupancy")} value={`${kpis.occupancyPct}%`} sub={`${kpis.occupied}/${kpis.total} ${t("portal.fd.occupied")}`} />
+          <Card onClick={() => setTab("theatre")} testid="hxp-hod-ot" label={t("portal.hod.otToday", "OT today")} value={`${otToday.done}/${otToday.inTheatre}/${otToday.next}`} kind={otToday.inTheatre > 0 ? "crit" : undefined} sub={t("portal.hod.otSub", "done / in theatre / next")} />
+          <Card onClick={() => setTab("finance")} testid="hxp-hod-money" kind="money" label={t("portal.hod.collections")} value={`৳${(sales?.total ?? 0).toLocaleString()}`} sub={`${t("pos.ctx.pharmacy")} ৳${(sales?.pharmacy ?? 0).toLocaleString()} · ${t("pos.ctx.discharge")} ৳${(sales?.discharge ?? 0).toLocaleString()}`} />
+          <Stat testid="hxp-hod-rounds" label={t("portal.hod.rounds")} value={rounds.total ? `${rounds.done}/${rounds.total}` : "—"} sub={t("portal.hod.roundsSub")} />
+          <Stat testid="hxp-hod-adm" label={t("portal.hod.admToday", "Admissions today")} value={flowToday?.admissions ?? 0} sub={t("portal.today")} />
+          <Stat testid="hxp-hod-dis" label={t("portal.hod.disToday", "Discharges today")} value={flowToday?.discharges ?? 0} sub={t("portal.today")} />
+          <Card onClick={() => { window.location.href = "/hospital/lab"; }} testid="hxp-hod-lab" label={t("portal.hod.labPending", "Lab pending")} value={labPending.length} kind={oldestLabH > 24 ? "crit" : undefined} sub={labPending.length ? ti("portal.hod.oldestH", { h: oldestLabH }) : t("portal.ot.none")} />
+          <Stat testid="hxp-hod-ref" label={t("portal.hod.referrals", "Referrals in motion")} value={referrals.length} sub={t("portal.hod.multiDoc", "multi-doctor cases")} />
+        </div>
+
+        {sevenPlus.length > 0 && (
+          <div className="hxp-panel">
+            <div className="hxp-panel-h"><Siren className="h-4 w-4" style={{ color: "var(--hxp-crit)" }} />{t("portal.hod.ewsTitle")}</div>
+            <div className="hxp-panel-b" data-testid="hxp-hod-ewslist">
+              {sevenPlus.map((f) => (
+                <Link key={f.pid} to={`/hospital/journey?patient=${f.pid}`} className="hxp-row" style={{ textDecoration: "none", color: "inherit" }}>
+                  <span className="hxp-mono crit">{f.score} · {f.band}</span>
+                  <span>{names?.get(f.pid) || "…"}</span>
+                  <span className="hxp-time">{f.trend || ""}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="hxp-panel">
-          <div className="hxp-panel-h"><Siren className="h-4 w-4" style={{ color: "var(--hxp-crit)" }} />{t("portal.hod.ewsTitle")}</div>
-          <div className="hxp-panel-b" data-testid="hxp-hod-ewslist">
-            {sevenPlus.map((f) => (
-              <Link key={f.pid} to={`/hospital/journey?patient=${f.pid}`} className="hxp-row" style={{ textDecoration: "none", color: "inherit" }}>
-                <span className="hxp-mono crit">{f.score} · {f.band}</span>
-                <span>{names?.get(f.pid) || "…"}</span>
-                <span className="hxp-time">{f.trend || ""}</span>
+          <div className="hxp-panel-h"><Gauge className="h-4 w-4" style={{ color: "var(--hxp-teal)" }} />{t("portal.hod.queueLoads", "Doctor queue loads")}</div>
+          <div className="hxp-panel-b" data-testid="hxp-hod-queues">
+            {byDoctor.length === 0 && <div className="hxp-row" style={{ color: "var(--hxp-dim)" }}>{t("portal.fd.noQueues")}</div>}
+            {byDoctor.map(([doc, n]) => (
+              <div className="hxp-row" key={doc}><span className="hxp-mono">{n}</span><span>{doc}</span></div>
+            ))}
+          </div>
+        </div>
+      </>)}
+
+      {tab === "wards" && (
+        <div className="hxp-panel">
+          <div className="hxp-panel-h"><Gauge className="h-4 w-4" style={{ color: "var(--hxp-teal)" }} />{t("portal.hod.wardsTitle")}</div>
+          <div className="hxp-panel-b" data-testid="hxp-hod-wards">
+            {wards.map((w) => (
+              <Link to="/hospital/beds" className="hxp-row" key={w.ward} style={{ textDecoration: "none", color: "inherit" }}>
+                <span className="hxp-mono">{w.occupancyPct}%</span>
+                <span>{w.ward}</span>
+                <span className="hxp-time">{w.occupied}/{w.total}</span>
               </Link>
             ))}
           </div>
         </div>
       )}
 
-      <div className="hxp-panel">
-        <div className="hxp-panel-h"><Gauge className="h-4 w-4" style={{ color: "var(--hxp-teal)" }} />{t("portal.hod.wardsTitle")}</div>
-        <div className="hxp-panel-b" data-testid="hxp-hod-wards">
-          {wards.map((w) => (
-            <div className="hxp-row" key={w.ward}>
-              <span className="hxp-mono">{w.occupancyPct}%</span>
-              <span>{w.ward}</span>
-              <span className="hxp-time">{w.occupied}/{w.total}</span>
-            </div>
-          ))}
+      {tab === "theatre" && (
+        <div className="hxp-panel">
+          <div className="hxp-panel-h"><Slice className="h-4 w-4" style={{ color: "var(--hxp-teal)" }} />{t("portal.hod.tabTheatre", "Theatre")}</div>
+          <div className="hxp-panel-b" data-testid="hxp-hod-theatre">
+            {otToday.list.length === 0 && <div className="hxp-row" style={{ color: "var(--hxp-dim)" }}>{t("portal.ot.railEmpty")}</div>}
+            {otToday.list.map((c) => (
+              <Link to="/hospital/ot" className="hxp-row" key={c.id} style={{ textDecoration: "none", color: "inherit" }}>
+                <span className={`hxp-mono${c.status === "in_theatre" ? " crit" : ""}`}>{t(`ot.status.${c.status}`, c.status)}</span>
+                <span>{c.procedure_name}</span>
+                <span style={{ color: "var(--hxp-dim)", fontSize: "0.78rem" }}>{names?.get(c.patient_id) || ""}{c.surgeon_id && byId[c.surgeon_id] ? ` · ${byId[c.surgeon_id].name}` : ""}</span>
+                <span className="hxp-time">{c.scheduled_at ? hhmm(c.scheduled_at) : "—"}</span>
+              </Link>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="hxp-links">
-        <Link className="hxp-link" to="/hospital/beds"><BedDouble className="h-4 w-4" />{t("portal.tab.beds")}</Link>
-        <Link className="hxp-link" to="/hospital/ot"><ClipboardList className="h-4 w-4" />{t("portal.tab.theatre")}</Link>
-      </div>
+      {tab === "finance" && (
+        <div className="hxp-panel">
+          <div className="hxp-panel-h"><Gauge className="h-4 w-4" style={{ color: "var(--hxp-money)" }} />{t("portal.hod.tabFinance", "Finance")}</div>
+          <div className="hxp-panel-b" data-testid="hxp-hod-finance">
+            <div className="hxp-row"><span className="hxp-mono money">৳{(sales?.pharmacy ?? 0).toLocaleString()}</span><span>{t("pos.ctx.pharmacy")}</span></div>
+            <div className="hxp-row"><span className="hxp-mono money">৳{(sales?.discharge ?? 0).toLocaleString()}</span><span>{t("pos.ctx.discharge")}</span></div>
+            {(sales?.rows || []).map((r) => (
+              <div className="hxp-row" key={r.id}>
+                <span className="hxp-mono money">৳{Number(r.total).toLocaleString()}</span>
+                <span>{t(`pos.ctx.${r.context}`, r.context)} · {r.patient_id ? names?.get(r.patient_id) || "…" : t("pos.walkIn")}</span>
+                <span className="hxp-time">{hhmm(r.billed_at)}</span>
+              </div>
+            ))}
+            <p style={{ color: "var(--hxp-faint)", fontSize: "0.74rem", marginTop: "0.6rem" }}>{t("portal.hod.financeNote", "Collections = recorded POS receipts. Billed-vs-collected needs a billing ledger the thin POS does not carry — omitted rather than faked.")}</p>
+          </div>
+        </div>
+      )}
     </PortalShell>
   );
 }
