@@ -8,8 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { useTenant } from "@/contexts/TenantContext";
 import { useDrawingPages } from "@/hooks/useDrawingPages";
 import DrawingPageCard from "./DrawingPageCard";
-import { dissectPdf, syncToV1, applyFinishes } from "@/lib/api/estimationApi";
-import { Loader2, Sparkles, Send, PackageCheck } from "lucide-react";
+import { dissectPdf, syncToV1, applyFinishes, getMaterialCatalog } from "@/lib/api/estimationApi";
+import { Loader2, Sparkles, Send, PackageCheck, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
@@ -27,6 +27,30 @@ export default function DrawingsTab({ projectId }: Props) {
   const [applyPlan, setApplyPlan] = useState<any>(null);
 
   const { pages, isLoading, refetch } = useDrawingPages(projectId, { poll: polling });
+
+  // Global material catalog -> tag→name map, for annotating the Apply dialog (matched vs
+  // unmatched). A drawing tag with no catalog entry is the estimator's mapping to-do.
+  const { data: catalog = [] } = useQuery({
+    queryKey: ["estimation_materials_catalog"],
+    queryFn: getMaterialCatalog,
+    staleTime: 5 * 60 * 1000,
+  });
+  const catalogByTag = new Map(
+    (catalog as any[]).map((m) => [String(m.material_tag).toUpperCase(), m.material_name as string | null]),
+  );
+  const catalogName = (tag?: string) =>
+    tag ? catalogByTag.get(String(tag).toUpperCase()) ?? null : null;
+  /** Distinct uncatalogued tags across the apply plan's skipped reasons (the mapping to-do). */
+  const unmatchedTagsInPlan = (plan: any): string[] => {
+    const out = new Set<string>();
+    for (const e of plan?.plan || []) {
+      for (const s of e.skipped || []) {
+        const m = /^(\w+):\s*([A-Z]{1,4}-\d{1,3}[A-Z]?)\s+not in catalog/i.exec(s);
+        if (m) out.add(m[2].toUpperCase());
+      }
+    }
+    return Array.from(out).sort();
+  };
 
   // Per-page polygon sync state: how many detected rooms exist / are not yet in Takeoff.
   const { data: polySync = [] } = useQuery({
@@ -267,15 +291,36 @@ export default function DrawingsTab({ projectId }: Props) {
                 <strong>{(applyPlan.plan || []).reduce((n: number, e: any) => n + (e.items?.length || 0), 0)}</strong> items to create ·{" "}
                 <strong>{(applyPlan.unmatched_rooms || []).length}</strong> schedule rows unmatched
               </p>
+              {(() => {
+                const unm = unmatchedTagsInPlan(applyPlan);
+                return unm.length > 0 ? (
+                  <div className="flex items-start gap-1.5 rounded border border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-800"
+                       data-testid="unmatched-summary">
+                    <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                    <span><strong>Unmatched materials ({unm.length}):</strong> {unm.join(", ")} — add these to the catalog to include them in takeoff.</span>
+                  </div>
+                ) : null;
+              })()}
               {(applyPlan.plan || []).filter((e: any) => e.items?.length || e.skipped?.length).slice(0, 30).map((e: any, i: number) => (
                 <div key={i} className="border rounded px-2 py-1">
                   <div className="font-medium">{e.room} <span className="text-xs text-muted-foreground">({e.matched_by})</span></div>
                   {(e.items || []).map((it: any, j: number) => (
-                    <div key={j} className="text-xs">+ {it.surface}: {it.tag} ({it.trade}) — {it.qty} {it.unit}</div>
+                    <div key={j} className="text-xs">
+                      + {it.surface}: {it.tag}
+                      {catalogName(it.tag) ? <span className="text-muted-foreground"> — {catalogName(it.tag)}</span> : null}
+                      {" "}({it.trade}) — {it.qty} {it.unit}
+                    </div>
                   ))}
-                  {(e.skipped || []).map((s: string, j: number) => (
-                    <div key={j} className="text-xs text-muted-foreground">– {s}</div>
-                  ))}
+                  {(e.skipped || []).map((s: string, j: number) => {
+                    const m = /^(\w+):\s*([A-Z]{1,4}-\d{1,3}[A-Z]?)\s+not in catalog/i.exec(s);
+                    return m ? (
+                      <div key={j} className="text-xs text-amber-700 flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3 shrink-0" /> {m[1]}: {m[2]} — not in catalog
+                      </div>
+                    ) : (
+                      <div key={j} className="text-xs text-muted-foreground">– {s}</div>
+                    );
+                  })}
                 </div>
               ))}
             </div>

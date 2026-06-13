@@ -412,6 +412,21 @@ export async function dissectPdf(
   }, tenantId);
 }
 
+/**
+ * Global material catalog (estimation_materials, tenant_id='global'): tag -> name/trade.
+ * Used to annotate the Apply-Materials dialog so the estimator sees which drawing tags
+ * resolve to a catalog product and which are unmatched (their mapping to-do).
+ */
+export async function getMaterialCatalog() {
+  const { data, error } = await supabase
+    .from("estimation_materials" as any)
+    .select("material_tag,material_name,trade")
+    .eq("tenant_id", "global")
+    .not("material_tag", "is", null);
+  if (error) throw error;
+  return (data || []) as unknown as { material_tag: string; material_name: string | null; trade: string | null }[];
+}
+
 export async function getDissectedPages(projectId: string) {
   const { data, error } = await supabase
     .from("estimation_drawing_pages" as any)
