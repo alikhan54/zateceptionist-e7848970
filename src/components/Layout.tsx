@@ -67,7 +67,7 @@ class MobileErrorBoundary extends Component<
 
 export default function Layout() {
   const { user, isLoading: authLoading, isMasterAdmin } = useAuth();
-  const { isLoading: tenantLoading, tenantConfig, brandBackgroundColor, isAccountingPracticeUK } = useTenant();
+  const { isLoading: tenantLoading, tenantConfig, brandBackgroundColor, isAccountingPracticeUK, isHospital } = useTenant();
   const branding = useTenantBranding();
   const location = useLocation();
   // HOSPITAL-RBAC [8] — resolves to 'admin' synchronously for non-hospital tenants + platform admins
@@ -144,7 +144,7 @@ export default function Layout() {
       <>
         <SidebarProvider>
           <SkipLink />
-          <div className="min-h-screen flex w-full overflow-x-hidden max-w-[100vw]" style={tenantStyle}>
+          <div className={`min-h-screen flex w-full overflow-x-hidden max-w-[100vw]${isHospital ? " hospital-shell" : ""}`} style={tenantStyle}>
             <NavigationSidebar />
             <main id="main-content" className="flex-1 flex flex-col min-w-0">
               <Header />

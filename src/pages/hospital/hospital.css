@@ -345,3 +345,150 @@
 .hx-stagetab--locked .hx-stagedot { background: var(--hx-crit); opacity: 0.5; }
 .hx-stagetab--done { color: var(--hx-accent2); }
 .hx-stageview { max-width: 1160px; }
+
+/* ============================================================================
+   [FIX-LIGHT] The BSH hospital portal is a DARK surface BY DESIGN. In global light
+   mode the LIGHTMODE block above re-points the .hx vars to light, but the portal
+   (.hxp) keeps fixed dark vars → a broken half-light/half-dark split on Hospital
+   Home + the chart. Decision: force every hospital surface dark REGARDLESS of the
+   global toggle. Scoped override (higher specificity than `.light .hx`, appended
+   last); the global theme / theme-fixes.css are untouched.
+   ========================================================================== */
+html.light .hx, html.light .hx-dialog {
+  --hx-bg: #070b12; --hx-bg2: #0b1322;
+  --hx-panel: rgba(15, 24, 40, 0.72); --hx-panel-solid: #0e1726;
+  --hx-border: rgba(56, 189, 248, 0.14); --hx-border-strong: rgba(56, 189, 248, 0.32);
+  --hx-text: #e6edf6; --hx-dim: #8da2bd; --hx-faint: #5b6b85;
+  --hx-accent: #22d3ee; --hx-accent2: #2dd4bf;
+  --hx-ok: #34d399; --hx-warn: #fbbf24; --hx-crit: #fb7185;
+  --hx-strong: #ffffff; --hx-skeleton: rgba(255,255,255,0.06);
+  --hx-dialog-bg: #0b1322; --hx-dialog-border: rgba(56,189,248,0.22);
+}
+html.light .hx {
+  background:
+    radial-gradient(1200px 600px at 12% -10%, rgba(34, 211, 238, 0.10), transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, rgba(45, 212, 191, 0.08), transparent 55%),
+    linear-gradient(180deg, var(--hx-bg2), var(--hx-bg));
+}
+html.light .hx::before {
+  background-image:
+    linear-gradient(rgba(94, 234, 212, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(94, 234, 212, 0.04) 1px, transparent 1px);
+}
+html.light .hx-panel { box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 18px 40px -24px rgba(0,0,0,0.8); }
+html.light .hx-panel--accent { box-shadow: 0 0 0 1px rgba(34,211,238,0.06), 0 24px 60px -30px rgba(34,211,238,0.25); }
+html.light .hx-chip { background: rgba(255,255,255,0.02); }
+html.light .hx-vital { background: rgba(255,255,255,0.015); }
+/* the portal (.hxp) already carries fixed dark vars — explicit guard so a future global
+   light rule can never bleed into it either */
+html.light .hxp { color: var(--hxp-text); background: var(--hxp-bg); }
+/* [FIX-LIGHT] form controls inside the dark hospital surface — a global light-mode rule paints
+   inputs/selects/textareas white; re-assert the dark field background (scoped, !important like the
+   h1 paint fix). */
+html.light .hx .hx-input, html.light .hx .hx-select, html.light .hx .hx-textarea,
+html.light .hx input.hx-input, html.light .hx textarea.hx-input {
+  background: rgba(2, 6, 14, 0.55) !important; color: var(--hx-text) !important;
+  -webkit-text-fill-color: var(--hx-text);
+}
+html.light .hx .hx-select option { background: var(--hx-panel-solid); color: var(--hx-text); }
+/* [FIX-LIGHT] the global theme-fixes paints ALL buttons + inputs + selects white !important in
+   light mode — inside the always-dark hospital surface that breaks the design. Scoped !important
+   counters restore the hospital control backgrounds (global theme file untouched). */
+html.light .hx button, html.light .hxp button {
+  background-color: transparent !important; color: inherit !important; border-color: var(--hx-border) !important;
+}
+html.light .hx .hx-btn--primary, html.light .hxp .hx-btn--primary {
+  background: linear-gradient(135deg, var(--hx-accent), var(--hx-accent2)) !important; color: #021018 !important; border-color: transparent !important;
+}
+html.light .hx .hx-input, html.light .hx .hx-select, html.light .hx .hx-textarea,
+html.light .hx input, html.light .hx textarea, html.light .hx select {
+  background-color: rgba(2, 6, 14, 0.55) !important; color: var(--hx-text) !important; border-color: var(--hx-border) !important;
+}
+html.light .hxp-switch { background-color: var(--hxp-teal-dim) !important; color: var(--hxp-teal) !important; border-color: rgba(46,230,200,0.35) !important; }
+html.light .hx-stagetab.active { background-color: rgba(34, 211, 238, 0.10) !important; }
+html.light .hxp-tab.active { background-color: rgba(46, 230, 200, 0.07) !important; }
+html.light .hxp-link { background-color: var(--hxp-teal-dim) !important; color: var(--hxp-teal) !important; }
+/* portal containers: force their own dark backgrounds in case a global light container rule bleeds */
+html.light .hxp-main, html.light .hxp-body, html.light .hxp-top, html.light .hxp-tabs { background-color: transparent !important; }
+html.light .hxp-panel, html.light .hxp-stat, html.light .hxp-row { background-color: var(--hxp-panel) !important; }
+html.light .hxp-rail { background-color: #061523 !important; }
+/* [FIX-LIGHT] the sticky chart bar had a light-mode white background (.light .hx-chartbar); force
+   the dark panel. (The translucent dark-tint light rules — hx-chip/hx-vital/hx-entry/hx-stat — render
+   correctly on the dark surface, so only the white surfaces need overriding.) */
+html.light .hx-chartbar { background: var(--hx-panel) !important; }
+html.light .hx-drawer { background: var(--hx-panel-solid) !important; }
+html.light .hx-chartbar-tabs, html.light .hx-chartbar-id { background-color: transparent !important; }
+/* The global theme paints `html.light [role="tablist"]` gray-100 with a light border (same specificity
+   as a single scoped class, so it wins on source order). Out-specify it with `.hx [role]`/`.hxp [role]`
+   (0,3,1 > 0,2,1) so EVERY tablist inside the hospital surface stays dark — chart stage tabs, portal
+   tabs, the chart-bar tabs. Restore the dark border so the light-gray seam disappears too. */
+html.light .hx [role="tablist"], html.light .hxp [role="tablist"] {
+  background-color: transparent !important;
+  border-color: var(--hx-border) !important;
+}
+
+/* ============================================================================
+   [FIX-LIGHT · shell] The hospital is a DARK product by design. In global LIGHT
+   mode the surrounding APP CHROME (the NavigationSidebar + Header) was still
+   painted white by theme-fixes.css / marketing-power.css `!important` rules,
+   producing the "half-dark / half-white" split. Force the chrome dark, scoped to
+   the `.hospital-shell` wrapper Layout adds ONLY when isHospital — additive, no
+   global theme file touched, every other tenant unaffected. Prefixing
+   `.hospital-shell` lifts each rule one class above the global (0,2,1)/(0,1,2)
+   rules, so the scoped dark wins on specificity regardless of source order.
+   (1) Re-declare the dark token set so variable-driven chrome flips dark; then
+   (2) counter the hardcoded-hex `!important` rules the globals apply directly. */
+html.light .hospital-shell {
+  --background: 240 10% 3.9%;
+  --foreground: 0 0% 98%;
+  --card: 240 10% 6%;
+  --card-foreground: 0 0% 98%;
+  --popover: 240 10% 6%;
+  --popover-foreground: 0 0% 98%;
+  --muted: 240 3.7% 15.9%;
+  --muted-foreground: 240 5% 64.9%;
+  --secondary: 240 3.7% 15.9%;
+  --secondary-foreground: 0 0% 98%;
+  --border: 240 3.7% 20%;
+  --input: 240 3.7% 20%;
+  --sidebar-background: 240 10% 5%;
+  --sidebar-foreground: 240 4.8% 95.9%;
+  --sidebar-border: 240 3.7% 15.9%;
+}
+/* sidebar surface + nav text (out-specify theme-fixes + marketing-power greys) */
+html.light .hospital-shell [data-sidebar] {
+  background-color: hsl(240 10% 5%) !important;
+  border-color: hsl(240 3.7% 15.9%) !important;
+}
+html.light .hospital-shell [data-sidebar] a,
+html.light .hospital-shell [data-sidebar] button {
+  color: hsl(240 4.8% 95.9%) !important;
+}
+html.light .hospital-shell [data-sidebar] a:hover,
+html.light .hospital-shell [data-sidebar] button:hover {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+}
+html.light .hospital-shell [data-sidebar] [data-active="true"],
+html.light .hospital-shell [data-sidebar] [class*="active"] {
+  background-color: rgba(255, 255, 255, 0.09) !important;
+  color: #ffffff !important;
+}
+/* header (top bar) surface + its hardcoded-painted text */
+html.light .hospital-shell header {
+  background-color: hsl(240 10% 3.9%) !important;
+  border-bottom-color: hsl(240 3.7% 20%) !important;
+}
+html.light .hospital-shell header h1,
+html.light .hospital-shell header h2,
+html.light .hospital-shell header h3,
+html.light .hospital-shell header h4,
+html.light .hospital-shell header p,
+html.light .hospital-shell header .text-foreground,
+html.light .hospital-shell header .text-muted-foreground {
+  color: hsl(240 4.8% 95.9%) !important;
+}
+/* the main content frame behind the hospital surface (no light gap at the edges) */
+html.light .hospital-shell main,
+html.light .hospital-shell #main-content {
+  background-color: hsl(240 10% 3.9%) !important;
+}
