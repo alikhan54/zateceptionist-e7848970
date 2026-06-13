@@ -14,7 +14,7 @@ export const EN: Record<string, string> = {
 
   // ---- hospital nav section (shared sidebar; hospital-gated) ----
   "nav.section": "Hospital",
-  "nav.journey": "Patient Profile",
+  "nav.journey": "Patient Chart",
   "nav.admissions": "Admissions & Beds",
   "nav.nurse": "Nurse Station",
   "nav.pharmacy": "Pharmacy",
@@ -28,7 +28,7 @@ export const EN: Record<string, string> = {
   "surface.loading": "Loading clinical surface…",
 
   // ---- patient journey ----
-  "journey.eyebrow": "Hospital · Patient Profile",
+  "journey.eyebrow": "Hospital · Patient Chart",
   "journey.emptyTitle": "No patients admitted yet",
   "journey.emptySub": "Admit the first patient to begin the cardio pathway.",
   "journey.admitPatient": "Admit a Patient",
@@ -607,7 +607,7 @@ export const EN: Record<string, string> = {
   "portal.tab.beds": "Bed Board",
   "portal.tab.pharmacy": "Pharmacy",
   "portal.tab.patients": "Patients",
-  "portal.tab.journey": "Patient Profile",
+  "portal.tab.journey": "Patient Chart",
   "portal.tab.lab": "Laboratory",
   "portal.tab.routines": "Care Routines",
   "portal.fd.identity": "Front Desk · OPD",
@@ -638,7 +638,7 @@ export const EN: Record<string, string> = {
   "portal.dr.signedRx": "Signed Rx",
   "portal.dr.consults": "Consults",
   "portal.dr.queueTitle": "My queue",
-  "portal.dr.goJourney": "Open Patient Profile",
+  "portal.dr.goJourney": "Open Patient Chart",
   "portal.name.ward": "Ward",
   "portal.name.pharmacy": "Pharmacy",
   "portal.name.lab": "Laboratory",
@@ -755,7 +755,7 @@ export const EN: Record<string, string> = {
   "patients.thMrn": "MRN",
   "patients.thAgeSex": "Age / Sex",
   "patients.thPhone": "Phone",
-  "patients.journey": "Profile",
+  "patients.journey": "Chart",
 
   // ---- order queue (pharmacy/lab/diagnostics worklist) ----
   "page.pharmacy.title": "Pharmacy",
@@ -981,4 +981,17 @@ export const EN: Record<string, string> = {
   "adm.bed": "Ward · Bed",
   "adm.admitted": "Admitted",
   "postop.title": "Post-op Monitoring",
+  "stage.registration": "Registration",
+  "stage.triage": "Triage",
+  "stage.consultation": "Consultation",
+  "stage.orders": "Orders",
+  "stage.pharmacy": "Pharmacy",
+  "stage.labs": "Labs & Imaging",
+  "stage.admission": "Admission & Bed",
+  "stage.theatre": "Theatre",
+  "stage.discharge": "Discharge",
+  "stage.lockedTitle": "Handed to the receiving specialist",
+  "stage.lockedSub": "This patient was referred onward — Theatre & Discharge belong to the receiving doctor.",
+  "chart.pageEyebrow": "Hospital · Patient Chart",
+  "adm.none": "Not admitted yet — admit from Registration.",
 };

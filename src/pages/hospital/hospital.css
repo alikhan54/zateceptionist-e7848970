@@ -328,3 +328,20 @@
 .hx-drawer-b { font-size: 1rem; }
 .hx-panel-h .font-semibold, .hx-panel-h > span.font-semibold { font-size: 1.05rem; }
 .hx-stage-row { font-size: 1rem; }
+
+/* [CHART-HZ CP-1] horizontal stage bar — one stage on screen at a time */
+.hx-stagebar { display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.5rem; border: 1px solid var(--hx-border);
+  border-radius: 14px; background: var(--hx-panel); }
+.hx-stagetab { display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.5rem 0.85rem; border-radius: 10px;
+  border: 1px solid transparent; background: transparent; color: var(--hx-dim); cursor: pointer; font-size: 0.92rem;
+  font-weight: 600; white-space: nowrap; transition: color .15s, border-color .15s, background .15s; }
+.hx-stagetab:hover:not(:disabled) { color: var(--hx-text); border-color: var(--hx-border); }
+.hx-stagetab.active { color: var(--hx-text); background: rgba(34,211,238,0.10); border-color: var(--hx-border-strong); }
+.hx-stagetab:disabled { cursor: not-allowed; opacity: 0.6; }
+.hx-stagedot { width: 8px; height: 8px; border-radius: 999px; background: var(--hx-faint); flex-shrink: 0; }
+.hx-stagetab--done .hx-stagedot { background: var(--hx-accent2); }
+.hx-stagetab--current .hx-stagedot { background: var(--hx-accent); box-shadow: 0 0 0 3px rgba(34,211,238,0.20), 0 0 12px rgba(34,211,238,0.8); }
+.hx-stagetab--future .hx-stagedot { background: var(--hx-faint); }
+.hx-stagetab--locked .hx-stagedot { background: var(--hx-crit); opacity: 0.5; }
+.hx-stagetab--done { color: var(--hx-accent2); }
+.hx-stageview { max-width: 1160px; }

@@ -15,7 +15,7 @@ export const BN: Record<string, string> = {
 
   // ---- hospital nav section ----
   "nav.section": "হাসপাতাল",
-  "nav.journey": "রোগীর প্রোফাইল",
+  "nav.journey": "রোগীর চার্ট",
   "nav.admissions": "ভর্তি ও বেড",
   "nav.nurse": "নার্স স্টেশন",
   "nav.pharmacy": "ফার্মেসি",
@@ -29,7 +29,7 @@ export const BN: Record<string, string> = {
   "surface.loading": "ক্লিনিক্যাল সারফেস লোড হচ্ছে…",
 
   // ---- patient journey ----
-  "journey.eyebrow": "হাসপাতাল · রোগীর প্রোফাইল",
+  "journey.eyebrow": "হাসপাতাল · রোগীর চার্ট",
   "journey.emptyTitle": "এখনও কোনো রোগী ভর্তি হয়নি",
   "journey.emptySub": "কার্ডিও পথ শুরু করতে প্রথম রোগীকে ভর্তি করুন।",
   "journey.admitPatient": "রোগী ভর্তি করুন",
@@ -385,7 +385,7 @@ export const BN: Record<string, string> = {
   "patients.thMrn": "এমআরএন",
   "patients.thAgeSex": "বয়স / লিঙ্গ",
   "patients.thPhone": "ফোন",
-  "patients.journey": "প্রোফাইল",
+  "patients.journey": "চার্ট",
 
   // ---- order queue ----
   "page.pharmacy.title": "ফার্মেসি",
@@ -851,7 +851,7 @@ export const BN: Record<string, string> = {
   "portal.tab.beds": "বেড বোর্ড",
   "portal.tab.pharmacy": "ফার্মেসি",
   "portal.tab.patients": "রোগীরা",
-  "portal.tab.journey": "রোগীর প্রোফাইল",
+  "portal.tab.journey": "রোগীর চার্ট",
   "portal.tab.lab": "ল্যাবরেটরি",
   "portal.tab.routines": "কেয়ার রুটিন",
   "portal.fd.identity": "ফ্রন্ট ডেস্ক · ওপিডি",
@@ -882,7 +882,7 @@ export const BN: Record<string, string> = {
   "portal.dr.signedRx": "স্বাক্ষরিত প্রেসক্রিপশন",
   "portal.dr.consults": "কনসালটেশন",
   "portal.dr.queueTitle": "আমার সারি",
-  "portal.dr.goJourney": "রোগীর প্রোফাইল খুলুন",
+  "portal.dr.goJourney": "রোগীর চার্ট খুলুন",
   "portal.name.ward": "ওয়ার্ড",
   "portal.name.pharmacy": "ফার্মেসি",
   "portal.name.lab": "ল্যাবরেটরি",
@@ -976,4 +976,17 @@ export const BN: Record<string, string> = {
   "adm.bed": "ওয়ার্ড · বেড",
   "adm.admitted": "ভর্তি",
   "postop.title": "পোস্ট-অপ মনিটরিং",
+  "stage.registration": "নিবন্ধন",
+  "stage.triage": "ট্রায়াজ",
+  "stage.consultation": "কনসালটেশন",
+  "stage.orders": "অর্ডার",
+  "stage.pharmacy": "ফার্মেসি",
+  "stage.labs": "ল্যাব ও ইমেজিং",
+  "stage.admission": "ভর্তি ও বেড",
+  "stage.theatre": "থিয়েটার",
+  "stage.discharge": "ছাড়পত্র",
+  "stage.lockedTitle": "গ্রহণকারী বিশেষজ্ঞের কাছে হস্তান্তরিত",
+  "stage.lockedSub": "এই রোগীকে রেফার করা হয়েছে — থিয়েটার ও ছাড়পত্র গ্রহণকারী চিকিৎসকের।",
+  "chart.pageEyebrow": "হাসপাতাল · রোগীর চার্ট",
+  "adm.none": "এখনো ভর্তি নয় — নিবন্ধন থেকে ভর্তি করুন।",
 };
