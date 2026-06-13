@@ -440,7 +440,12 @@ function PatientJourneyInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, stageIndex, otCase?.status, latestVisit?.vitals_completed]);
   const [stage, setStage] = useState<string>(defaultStage);
-  useEffect(() => { setStage(defaultStage); }, [defaultStage]);
+  // [CHART-HZ] auto-pick the clinically-current stage ONLY when the patient changes — never override
+  // the user's manual stage navigation on a background data refetch.
+  const stagePatientRef = useRef<string>(selectedId);
+  useEffect(() => {
+    if (stagePatientRef.current !== selectedId) { stagePatientRef.current = selectedId; setStage(defaultStage); }
+  }, [selectedId, defaultStage]);
 
   if (!patient) {
     // Selected patient still resolving (list refreshing or the direct single-patient fetch in flight)
