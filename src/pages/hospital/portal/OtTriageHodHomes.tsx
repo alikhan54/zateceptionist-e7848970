@@ -160,7 +160,7 @@ export function HodHome({ switcher }: { switcher?: React.ReactNode }) {
   const { data: waiting = [] } = useWaitingAll();
   const { orders: labOrders } = useHospitalOrders({ orderType: "lab" });
   const { tenantId } = useTenant();
-  const [tab, setTab] = useState<"overview" | "wards" | "theatre" | "finance">("overview");
+  const [tab, setTab] = useState<"overview" | "wards" | "theatre" | "finance" | "doctors">("overview");
 
   // admissions + discharges TODAY (real rows; read-only)
   const { data: flowToday } = useQuery({
@@ -204,6 +204,13 @@ export function HodHome({ switcher }: { switcher?: React.ReactNode }) {
     return Array.from(m.entries()).sort((a, b) => b[1] - a[1]);
   }, [waiting]);
   const referrals = waiting.filter((w) => w.source === "referral");
+  // [CHART-HZ CP-3] all-doctors overview (admin/HOD only): each doctor + current waiting/patients
+  const docList = useMemo(() => {
+    const m = new Map<string, { name: string; dept: string | null; waiting: number }>();
+    Object.values(byId).forEach((d: any) => { if ((d.job_title || d.position || "").toLowerCase().includes("doctor") || (d.department || "").toLowerCase().includes("cardio")) m.set(d.id, { name: d.name, dept: d.department || null, waiting: 0 }); });
+    waiting.forEach((w) => { const e = Array.from(m.values()).find((x) => x.name === w.doctor_name); if (e) e.waiting += 1; else if (w.doctor_name) m.set(w.doctor_id, { name: w.doctor_name, dept: w.department_name, waiting: 1 }); });
+    return Array.from(m.values()).sort((a, b) => b.waiting - a.waiting);
+  }, [byId, waiting]);
 
   const rail: RailItem[] = wards.map((w) => ({
     key: w.ward, title: w.ward, sub: `${w.occupied}/${w.total} · ${w.occupancyPct}%`, to: "/hospital/beds",
@@ -238,6 +245,7 @@ export function HodHome({ switcher }: { switcher?: React.ReactNode }) {
         <TabBtn k="wards" label={t("portal.hod.tabWards", "Wards")} />
         <TabBtn k="theatre" label={t("portal.hod.tabTheatre", "Theatre")} />
         <TabBtn k="finance" label={t("portal.hod.tabFinance", "Finance")} />
+        <TabBtn k="doctors" label={t("portal.hod.tabDoctors", "Doctors")} />
       </div>
 
       {tab === "overview" && (<>
@@ -324,6 +332,22 @@ export function HodHome({ switcher }: { switcher?: React.ReactNode }) {
               </div>
             ))}
             <p style={{ color: "var(--hxp-faint)", fontSize: "0.74rem", marginTop: "0.6rem" }}>{t("portal.hod.financeNote", "Collections = recorded POS receipts. Billed-vs-collected needs a billing ledger the thin POS does not carry — omitted rather than faked.")}</p>
+          </div>
+        </div>
+      )}
+
+      {tab === "doctors" && (
+        <div className="hxp-panel">
+          <div className="hxp-panel-h"><Gauge className="h-4 w-4" style={{ color: "var(--hxp-teal)" }} />{t("portal.hod.tabDoctors", "Doctors")}</div>
+          <div className="hxp-panel-b" data-testid="hxp-hod-doctors">
+            {docList.length === 0 && <div className="hxp-row" style={{ color: "var(--hxp-dim)" }}>{t("portal.hod.noDoctors", "No doctors on the roster")}</div>}
+            {docList.map((d) => (
+              <div className="hxp-row" key={d.name}>
+                <span className="hxp-mono">{d.waiting}</span>
+                <span>{d.name}</span>
+                <span className="hxp-time">{d.dept || ""}</span>
+              </div>
+            ))}
           </div>
         </div>
       )}

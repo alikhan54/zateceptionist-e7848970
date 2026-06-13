@@ -29,8 +29,10 @@ function BedBoardInner() {
     [wards],
   );
   const { data: readyMap } = useDischargeReadyMap(occupiedIds);
+  const readyIds = occupiedIds.filter((id) => readyMap?.get(id));
   const [assignSel, setAssignSel] = useState<Record<string, string>>({});
   const [transferFor, setTransferFor] = useState<string | null>(null);
+  const [bedTab, setBedTab] = useState<"queue" | "assigned" | "discharge">("assigned");
 
   const doAssign = async (admissionId: string, patientId: string) => {
     const bedId = assignSel[admissionId];
@@ -80,10 +82,40 @@ function BedBoardInner() {
         </div>
       </div>
 
-      {/* unassigned inpatients — shared strip (also mounted on Admissions & Beds, FIX-C) */}
-      <AwaitingBedStrip />
-      {/* ward grids */}
-      {isLoading ? <p className="hx-dim text-sm mt-4">{t("common.loading")}</p> : wards.map((w, wi) => (
+      {/* [CHART-HZ CP-3] horizontal tabs: In Queue · Assigned · Discharge */}
+      <div className="hx-stagebar mt-4" data-testid="hx-bed-tabs">
+        {([["queue", t("beds.tabQueue", "In Queue"), unassigned.length], ["assigned", t("beds.tabAssigned", "Assigned"), kpis.occupied], ["discharge", t("beds.tabDischarge", "Discharge"), readyIds.length]] as const).map(([k, label, n]) => (
+          <button key={k} type="button" className={`hx-stagetab ${bedTab === k ? "active" : ""}`} onClick={() => setBedTab(k as any)} data-testid={`hx-bed-tab-${k}`}>
+            <span>{label}</span><span className="hx-chip" style={{ padding: "0 0.4rem" }}>{n}</span>
+          </button>
+        ))}
+      </div>
+
+      {bedTab === "queue" && <div className="mt-4"><AwaitingBedStrip />{unassigned.length === 0 && <p className="hx-dim text-sm" data-testid="hx-bed-queue-empty">{t("beds.queueEmpty", "No inpatients awaiting a bed.")}</p>}</div>}
+
+      {bedTab === "discharge" && (
+        <div className="hx-panel hx-rise mt-4" data-testid="hx-bed-discharge-tab">
+          <div className="hx-panel-h"><LogOut className="h-4 w-4" style={{ color: "var(--hx-accent2)" }} /><span className="font-semibold">{t("beds.tabDischarge", "Discharge")}</span></div>
+          <div className="hx-panel-b" style={{ display: "grid", gap: "0.5rem" }}>
+            {readyIds.length === 0 && <p className="hx-dim text-sm" data-testid="hx-bed-discharge-empty">{t("beds.dischargeEmpty", "No patients ready for discharge.")}</p>}
+            {wards.flatMap((w) => w.beds).filter((b) => b.patient_id && readyMap?.get(b.patient_id)).map((b) => (
+              <div key={b.id} className="flex items-center gap-2 flex-wrap" data-testid="hx-bed-discharge-row">
+                <CheckCircle2 className="h-4 w-4" style={{ color: "var(--hx-ok)" }} />
+                <span className="font-medium text-sm">{displayName(b.patient_name)}</span>
+                <span className="hx-dim text-xs">· {b.ward} · {b.bed_label}</span>
+                <span className="hx-chip hx-chip--ok text-xs">{t("discharge.ready")}</span>
+                <button className="hx-btn hx-btn--ghost ml-auto" style={{ padding: "0.3rem 0.7rem", fontSize: "0.78rem" }}
+                  onClick={() => navigate(`/hospital/journey?patient=${b.patient_id}#discharge`)} data-testid="hx-bed-discharge-link">
+                  {t("discharge.title")} <ArrowRight className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ward grids (Assigned tab) */}
+      {bedTab === "assigned" && (isLoading ? <p className="hx-dim text-sm mt-4">{t("common.loading")}</p> : wards.map((w, wi) => (
         <div key={w.ward} className="hx-panel hx-rise mt-4" style={{ animationDelay: `${100 + wi * 50}ms` }} data-testid="hx-ward-section">
           <div className="hx-panel-h">
             <span className="hx-eyebrow">{w.ward}</span>
@@ -166,7 +198,7 @@ function BedBoardInner() {
             </div>
           </div>
         </div>
-      ))}
+      )))}
     </div>
   );
 }

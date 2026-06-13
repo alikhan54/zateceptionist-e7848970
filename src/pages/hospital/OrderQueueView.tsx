@@ -87,6 +87,9 @@ export function OrderQueueInner({ type, title, eyebrow, icon: Icon, actionLabel,
   const fulfilled = orders.filter((o) => FULFILLED.includes(o.status));
   // [ZATEOS C1] pending GROUPED BY PATIENT, collapsed by default -- one expanded at a time
   const [openPatient, setOpenPatient] = useState<string | null>(null);
+  // [CHART-HZ CP-3] pharmacy (non-embedded) tabs: Pending · Completed · History
+  const [qTab, setQTab] = useState<"pending" | "completed" | "history">("pending");
+  const allOrders = [...pending, ...fulfilled].sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
   const groups = useMemo(() => {
     const m = new Map<string, any[]>();
     pending.forEach((o) => { const k = o.patient_id || "walkin"; if (!m.has(k)) m.set(k, []); m.get(k)!.push(o); });
@@ -147,8 +150,25 @@ export function OrderQueueInner({ type, title, eyebrow, icon: Icon, actionLabel,
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
-        <div className="hx-panel hx-rise" style={{ animationDelay: "80ms" }}>
+      {!embedded && (
+        <div className="hx-stagebar mt-4" data-testid="hx-pharmacy-tabs">
+          {([["pending", t("queue.pending"), pending.length], ["completed", t("queue.completed"), fulfilled.length], ["history", t("queue.history", "History"), allOrders.length]] as const).map(([k, label, n]) => (
+            <button key={k} type="button" className={`hx-stagetab ${qTab === k ? "active" : ""}`} onClick={() => setQTab(k as any)} data-testid={`hx-pharmacy-tab-${k}`}>
+              <span>{label}</span><span className="hx-chip" style={{ padding: "0 0.4rem" }}>{n}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {!embedded && qTab === "history" && (
+        <div className="hx-panel hx-rise mt-4" data-testid="hx-pharmacy-history">
+          <div className="hx-panel-h"><Clock className="h-4 w-4" style={{ color: "var(--hx-accent2)" }} /><span className="font-semibold">{t("queue.history", "History")}</span></div>
+          <div className="hx-panel-b">
+            {allOrders.length === 0 ? <p className="hx-faint text-sm py-4">{t("queue.nothingDone")}</p> : <ul>{allOrders.map((o) => <Row key={o.id} o={o} done={["resulted", "dispensed", "reviewed"].includes(o.status)} />)}</ul>}
+          </div>
+        </div>
+      )}
+      <div className={`grid grid-cols-1 ${embedded ? "lg:grid-cols-2" : ""} gap-4 mt-4`}>
+        <div className="hx-panel hx-rise" style={{ animationDelay: "80ms", display: !embedded && qTab !== "pending" ? "none" : undefined }}>
           <div className="hx-panel-h"><Clock className="h-4 w-4" style={{ color: "var(--hx-warn)" }} /><span className="font-semibold">{t("queue.pending")}</span></div>
           <div className="hx-panel-b">
             {pending.length === 0 ? (
@@ -200,7 +220,7 @@ export function OrderQueueInner({ type, title, eyebrow, icon: Icon, actionLabel,
             )}
           </div>
         </div>
-        <div className="hx-panel hx-rise" style={{ animationDelay: "140ms" }}>
+        <div className="hx-panel hx-rise" style={{ animationDelay: "140ms", display: !embedded && qTab !== "completed" ? "none" : undefined }}>
           <div className="hx-panel-h"><CheckCircle2 className="h-4 w-4" style={{ color: "var(--hx-ok)" }} /><span className="font-semibold">{t("queue.completed")}</span></div>
           <div className="hx-panel-b">
             {fulfilled.length === 0 ? <p className="hx-faint text-sm py-4">{t("queue.nothingDone")}</p>

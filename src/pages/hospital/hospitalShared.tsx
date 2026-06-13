@@ -317,19 +317,42 @@ export async function fetchPrescriptionDraft(
  * `body *` hidden + its own block visible — which multi-prints once a second paper exists).
  * No attribute (manual Ctrl+P) → none of these rules fire → the page prints normally.
  */
-export const hxPrintCss = (id: string) =>
-  `@media print { body[data-hx-print] * { visibility: hidden !important; } ` +
-  `body[data-hx-print="${id}"] #${id}, body[data-hx-print="${id}"] #${id} * { visibility: visible !important; } ` +
-  `body[data-hx-print="${id}"] #${id} { position: absolute; left: 0; top: 0; width: 100%; } }`;
+// [CHART-HZ CP-3] PRINT FIX — the old `visibility:hidden` approach left every hidden element
+// occupying its page height → the PDF printed several blank pages before the content. The robust
+// fix: on print, MOVE the paper to be a direct <body> child (`.hx-print-root`) and `display:none`
+// every other body child, so only the paper contributes height and it paginates cleanly. The
+// per-paper inline <style> just carries these id-agnostic rules (id kept for the call signature).
+export const hxPrintCss = (_id?: string) =>
+  `@media print {
+    html.hx-printing body > *:not(.hx-print-root) { display: none !important; }
+    html.hx-printing .hx-print-root { display: block !important; position: static !important;
+      left: auto !important; top: auto !important; width: 100% !important; visibility: visible !important; }
+    html.hx-printing .hx-print-root * { visibility: visible !important; }
+    @page { margin: 14mm; }
+  }`;
 
-/** Print exactly one mounted paper block (sets the body discriminator, prints, then clears it). */
+/** Print exactly one mounted paper block. Moves it to <body> root for a clean, blank-page-free PDF. */
 export function printHxBlock(id: string): void {
+  const el = document.getElementById(id);
+  if (!el) { window.print(); return; }
+  const parent = el.parentNode;
+  const next = el.nextSibling;
+  const prevStyle = el.getAttribute("style") || "";
   try {
-    document.body.setAttribute("data-hx-print", id);
+    document.documentElement.classList.add("hx-printing");
+    el.classList.add("hx-print-root");
+    el.setAttribute("style", `${prevStyle};position:static;left:auto;top:auto;width:100%`);
+    document.body.appendChild(el);
     window.print();
   } finally {
-    // window.print() blocks in most browsers; the timeout also covers async print dialogs
-    setTimeout(() => document.body.removeAttribute("data-hx-print"), 500);
+    // restore the paper to its original position + styles (print() blocks; timeout covers async dialogs)
+    const restore = () => {
+      el.classList.remove("hx-print-root");
+      el.setAttribute("style", prevStyle);
+      document.documentElement.classList.remove("hx-printing");
+      if (parent) { if (next) parent.insertBefore(el, next); else parent.appendChild(el); }
+    };
+    setTimeout(restore, 600);
   }
 }
 

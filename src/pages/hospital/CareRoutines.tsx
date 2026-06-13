@@ -21,6 +21,7 @@ import {
   type RoutineBlock, type RoutineItem,
 } from "@/hooks/useHospitalRoutines";
 import { HospitalGate, EcgLine, displayName } from "./hospitalShared";
+import { VitalsCaptureDialog } from "@/components/hospital/VitalsCaptureDialog";
 import { useHospitalNurseTasks } from "@/hooks/useHospitalNurseTasks";
 import { useHospitalT } from "./i18n";
 
@@ -61,6 +62,7 @@ function CareRoutinesInner() {
   });
 
   const [selected, setSelected] = useState(urlPatient);
+  const [vitalsOpen, setVitalsOpen] = useState(false);
   useEffect(() => { if (urlPatient && urlPatient !== selected) setSelected(urlPatient); }, [urlPatient]);
   const patient = inpatients.find((p) => p.id === selected);
   const hasActiveAdmission = !!patient;
@@ -184,7 +186,14 @@ function CareRoutinesInner() {
 
       {!patient ? null : (
         <>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4" data-testid="hx-routine-blocks">
+          {/* [CHART-HZ CP-3] capture vitals directly inside the expanded routine */}
+          <div className="flex items-center gap-2 mt-4" data-testid="hx-routine-vitals-bar">
+            <span className="hx-eyebrow">{displayName(patient.full_name)}</span>
+            <button type="button" className="hx-btn hx-btn--ghost ml-auto" style={{ padding: "0.3rem 0.7rem" }} onClick={() => setVitalsOpen(true)} data-testid="hx-routine-capture-vitals">
+              <Activity className="h-3.5 w-3.5" /> {t("vitals.capture")}
+            </button>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-2" data-testid="hx-routine-blocks">
             {BLOCKS.map(({ key, icon: Icon, labelKey }, bi) => (
               <div key={key} className="hx-panel hx-rise" style={{ animationDelay: `${60 + bi * 60}ms` }} data-testid={`hx-routine-block-${key}`}>
                 <div className="hx-panel-h">
@@ -291,6 +300,7 @@ function CareRoutinesInner() {
           </div>
         </>
       )}
+      <VitalsCaptureDialog open={vitalsOpen} onOpenChange={setVitalsOpen} patientId={selected || undefined} patientName={patient?.full_name} visitId={undefined} />
     </div>
   );
 }

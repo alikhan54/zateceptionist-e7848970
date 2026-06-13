@@ -1010,4 +1010,12 @@ export const EN: Record<string, string> = {
   "admit.allergies": "Known allergies",
   "admit.allergiesPh": "e.g. Penicillin, none known",
   "admit.consent": "Consent to admission & treatment recorded",
+  "beds.tabQueue": "In Queue",
+  "beds.tabAssigned": "Assigned",
+  "beds.tabDischarge": "Discharge",
+  "beds.queueEmpty": "No inpatients awaiting a bed.",
+  "beds.dischargeEmpty": "No patients ready for discharge.",
+  "queue.history": "History",
+  "portal.hod.tabDoctors": "Doctors",
+  "portal.hod.noDoctors": "No doctors on the roster",
 };

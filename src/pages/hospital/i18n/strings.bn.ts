@@ -1005,4 +1005,12 @@ export const BN: Record<string, string> = {
   "admit.allergies": "পরিচিত অ্যালার্জি",
   "admit.allergiesPh": "যেমন পেনিসিলিন, জানা নেই",
   "admit.consent": "ভর্তি ও চিকিৎসায় সম্মতি রেকর্ড করা হয়েছে",
+  "beds.tabQueue": "সারিতে",
+  "beds.tabAssigned": "বরাদ্দকৃত",
+  "beds.tabDischarge": "ছাড়পত্র",
+  "beds.queueEmpty": "বেডের অপেক্ষায় কোনো ইনপেশেন্ট নেই।",
+  "beds.dischargeEmpty": "ছাড়পত্রের জন্য প্রস্তুত কোনো রোগী নেই।",
+  "queue.history": "ইতিহাস",
+  "portal.hod.tabDoctors": "ডাক্তারগণ",
+  "portal.hod.noDoctors": "রোস্টারে কোনো ডাক্তার নেই",
 };
