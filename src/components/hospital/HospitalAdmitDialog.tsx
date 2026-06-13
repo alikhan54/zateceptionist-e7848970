@@ -12,6 +12,7 @@ import { useHospitalDepartments } from "@/hooks/useHospitalOrders";
 import { useHospitalStaff } from "@/hooks/useHospitalStaff";
 import { useHospitalAdmissions, type AdmitInput } from "@/hooks/useHospitalAdmissions";
 import { useHospitalBeds } from "@/hooks/useHospitalBeds";
+import { supabase } from "@/integrations/supabase/client";
 import { useHospitalT } from "@/pages/hospital/i18n";
 
 type F = AdmitInput & { existing_patient_id?: string | null };
@@ -40,6 +41,9 @@ export function HospitalAdmitDialog({
   const { admit, findByPhone } = useHospitalAdmissions();
   const { availableBeds, assign } = useHospitalBeds();   // HOSPITAL-BEDS: optional bed-pick on admit
   const [f, setF] = useState<F>(EMPTY);
+  // [CHART-HZ CP-2] admission forms: Known allergies + admission consent (existing clinic_patients cols)
+  const [admAllergies, setAdmAllergies] = useState("");
+  const [admConsent, setAdmConsent] = useState(false);
   const [bedId, setBedId] = useState("");
   const [returning, setReturning] = useState<{ id: string; full_name: string; date_of_birth: string | null; gender: string | null } | null>(null);
   const set = (patch: Partial<F>) => setF((s) => ({ ...s, ...patch }));
@@ -90,6 +94,13 @@ export function HospitalAdmitDialog({
       }
       toast({ title: f.existing_patient_id ? t("admit.readmitted") : t("admit.admitted"),
               description: `${f.full_name.trim()} · ${t("journey.mrn")} ${r.mrn}${attName ? ` · ${attName}` : ""}` });
+      // [CHART-HZ CP-2] persist the admission allergies + consent onto the patient (existing columns)
+      try {
+        await supabase.from("clinic_patients" as any).update({
+          medical_allergy_details: admAllergies.trim() || null,
+          consent_forms: admConsent ? { admission_consent: { recorded_at: new Date().toISOString() } } : null,
+        }).eq("id", r.patient_id);
+      } catch { /* best-effort; admit already succeeded */ }
       onAdmitted?.({ patient_id: r.patient_id, visit_id: r.visit_id, mrn: r.mrn });
       onOpenChange(false);
     } catch (e: any) {
@@ -197,6 +208,12 @@ export function HospitalAdmitDialog({
               <div><L>{t("admit.relationship")}</L>
                 <select className="hx-select" value={f.next_of_kin_relationship} onChange={(e) => set({ next_of_kin_relationship: e.target.value })}>
                   <option value="">{t("admit.select")}</option>{["Spouse", "Parent", "Sibling", "Child", "Guardian", "Friend", "Other"].map((r) => <option key={r} value={r}>{t(`rel.${r}`, r)}</option>)}</select></div>
+              <div className="sm:col-span-2"><L>{t("admit.allergies", "Known allergies")}</L>
+                <input className="hx-input" value={admAllergies} onChange={(e) => setAdmAllergies(e.target.value)} placeholder={t("admit.allergiesPh", "e.g. Penicillin, none known")} data-testid="hx-admit-allergies" /></div>
+              <label className="sm:col-span-2 flex items-center gap-2 text-sm" data-testid="hx-admit-consent">
+                <input type="checkbox" checked={admConsent} onChange={(e) => setAdmConsent(e.target.checked)} />
+                <span>{t("admit.consent", "Consent to admission & treatment recorded")}</span>
+              </label>
             </div>
           </Section>
 

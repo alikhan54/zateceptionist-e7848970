@@ -311,7 +311,7 @@ function PatientJourneyInner() {
   // Queue another medication (as a chip) without leaving the form.
   function addMed() {
     const v = orderDetail.trim();
-    if (orderType !== "medication" || !v) return;
+    if (!v) return;   // [CHART-HZ CP-2] "+ Add another" works for medication, lab AND imaging
     setMeds((prev) => [...prev, v]);
     setOrderDetail("");
   }
@@ -319,9 +319,7 @@ function PatientJourneyInner() {
   async function placeOrder() {
     if (!patient) return;
     // medication: queued chips + whatever is still in the box → ONE order each; lab/imaging: single.
-    const items = orderType === "medication"
-      ? [...meds, orderDetail].map((s) => s.trim()).filter(Boolean)
-      : (orderDetail.trim() ? [orderDetail.trim()] : []);
+    const items = [...meds, orderDetail].map((s) => s.trim()).filter(Boolean);
     if (items.length === 0) return;
     try {
       for (const item of items) {
@@ -693,7 +691,7 @@ function PatientJourneyInner() {
             )}
           </div>
 
-          <ConsultationSummaryBox patientId={selectedId} patientName={patient.full_name} visitId={latestVisit?.id ?? null} onAdmitPatient={() => setAdmitOpen(true)} />
+          <ConsultationSummaryBox patientId={selectedId} patientName={patient.full_name} visitId={latestVisit?.id ?? null} onAdmitPatient={() => setAdmitOpen(true)} startOpen />
 
           <StageSection title={t("rec.title")} open={false} testid="hx-stage-medrec" icon={Pill}
             actions={
@@ -788,22 +786,20 @@ function PatientJourneyInner() {
                     onEnter={placeOrder} testid="hx-order-detail" />
                 </div>
                 <div className="sm:col-span-2">
-                  <button className="hx-btn hx-btn--primary w-full" onClick={placeOrder} disabled={(orderType === "medication" ? (meds.length === 0 && !orderDetail.trim()) : !orderDetail.trim()) || createOrder.isPending} data-testid="hx-place-order">
+                  <button className="hx-btn hx-btn--primary w-full" onClick={placeOrder} disabled={(meds.length === 0 && !orderDetail.trim()) || createOrder.isPending} data-testid="hx-place-order">
                     {createOrder.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="h-4 w-4" /> {t("order.place")}{orderType === "medication" && (meds.length + (orderDetail.trim() ? 1 : 0)) > 1 ? ` ${meds.length + (orderDetail.trim() ? 1 : 0)}` : ""}</>}
                   </button>
                 </div>
               </div>
-              {orderType === "medication" && (
-                <div className="mt-2.5 flex items-center gap-2 flex-wrap" data-testid="hx-med-queue">
+              <div className="mt-2.5 flex items-center gap-2 flex-wrap" data-testid="hx-med-queue">
                   <button type="button" className="hx-btn hx-btn--ghost" style={{ padding: "0.3rem 0.7rem" }} onClick={addMed} disabled={!orderDetail.trim()} data-testid="hx-order-add-med">
-                    <Plus className="h-3.5 w-3.5" /> {t("order.addMed")}
+                    <Plus className="h-3.5 w-3.5" /> {t("order.addAnother", "Add another")}
                   </button>
                   {meds.map((m, i) => (
                     <span key={`${m}-${i}`} className="hx-chip hx-chip--accent" style={{ padding: "0.15rem 0.5rem" }} data-testid="hx-med-chip">{m}<button type="button" className="ml-1" style={{ opacity: 0.7 }} onClick={() => setMeds((prev) => prev.filter((_, j) => j !== i))} aria-label={`remove ${m}`}>×</button></span>
                   ))}
                   {meds.length > 0 && <span className="hx-faint text-xs">{ti("order.queuedHint", { n: meds.length })}</span>}
                 </div>
-              )}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-3">{queues.map(queueCard)}</div>
             </div>
           </div>
@@ -887,7 +883,8 @@ function DoctorWaitingStrip({ queue, patients, onOpen }: {
                       {t(`flow.src.${q.source}`)}
                     </span>
                     {q.referred_by_name ? `${t("flow.by")} ${q.referred_by_name} · ` : ""}
-                    {new Date(q.queued_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                    {t("queue.inQueue", "in queue")} {new Date(q.queued_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                    {q.seen_at ? ` → ${t("queue.seen", "seen")} ${new Date(q.seen_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}` : ""}
                     {q.reason ? ` · ${q.reason}` : ""}
                   </div>
                 </div>

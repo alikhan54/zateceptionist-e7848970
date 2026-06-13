@@ -85,7 +85,9 @@ function NurseStationInner() {
     return { p, v, worst };
   }), [patients, latestByPatient]);
 
-  const waiting = rows.filter((r) => r.v && r.v.current_status !== "completed");
+  // [CHART-HZ CP-2] OPD queue sorted by ARRIVAL TIME (earliest first)
+  const waiting = rows.filter((r) => r.v && r.v.current_status !== "completed")
+    .sort((a, b) => +new Date(a.v.visit_date || a.v.created_at) - +new Date(b.v.visit_date || b.v.created_at));
 
   const { hospitalRole } = useHospitalRole();
   const [tab, setTab] = useState<NurseTab>(hospitalRole === "ward_nurse" ? "ward" : "opd");
@@ -170,6 +172,7 @@ function NurseStationInner() {
                       </span>
                     )}
                     {v && STATUS_CHIP[v.current_status] && <span className={`hx-chip ${STATUS_CHIP[v.current_status].cls}`} style={{ padding: "0.1rem 0.5rem" }}>{v.current_status === "completed" ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}{t(`nstatus.${v.current_status}`, STATUS_CHIP[v.current_status].label)}</span>}
+                    {v && <span className="hx-faint text-xs" data-testid="hx-nurse-arrival">{t("queue.inQueue", "in queue")} {new Date(v.visit_date || v.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}{v.completed_date ? ` → ${t("queue.seen", "seen")} ${new Date(v.completed_date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : ""}</span>}
                     {worst === "critical" && <span className="hx-chip hx-chip--crit" style={{ padding: "0.1rem 0.5rem" }} data-testid="hx-nurse-flag-crit"><AlertTriangle className="h-3 w-3" /> {t("nflag.critical")}</span>}
                     {worst === "warning" && <span className="hx-chip hx-chip--warn" style={{ padding: "0.1rem 0.5rem" }}><AlertTriangle className="h-3 w-3" /> {t("nflag.watch")}</span>}
                     {worst === "normal" && <span className="hx-chip hx-chip--ok" style={{ padding: "0.1rem 0.5rem" }}><CheckCircle2 className="h-3 w-3" /> {t("nflag.stable")}</span>}

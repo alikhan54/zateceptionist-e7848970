@@ -14,6 +14,8 @@
 //     doctor + REQUIRED reason → a hospital_doctor_queue row, source='referral') · Other (manual).
 // Additive, hospital-scoped; reuses only `hx-*` classes (light/dark + i18n automatic).
 import { useEffect, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { FileText, Sparkles, Loader2, AlertTriangle, CheckCircle2, Brain, ClipboardList, BedDouble, Send } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
@@ -23,13 +25,13 @@ import { useHospitalConsultIntake, buildIntakeBlock, type IntakeAnswers, type Di
 import { useForwardToDoctor } from "@/hooks/useHospitalDoctorQueue";
 import { useHospitalStaff } from "@/hooks/useHospitalStaff";
 import { useHospitalRole } from "@/hooks/useHospitalRole";
+import { CARDIAC_MEDS } from "@/lib/hospital/pickLists";
 import { useHospitalT } from "./i18n";
 import { useHospitalMode, HospitalModeToggle } from "./hospitalMode";
 import {
   fetchConsultationSummary, captureStyleDeltas, useDoctorStyleCount,
   useHxCollapse, HxCollapseToggle,
-  type ConsultationSummary as Summary, type StyleDelta,
-} from "./hospitalShared";
+  type ConsultationSummary as Summary, type StyleDelta, HxPickInput } from "./hospitalShared";
 
 const SECTIONS: { key: keyof Summary; labelKey: string }[] = [
   { key: "chief_complaint", labelKey: "consult.chiefComplaint" },
@@ -59,6 +61,7 @@ export function ConsultationSummaryBox({
 }: { patientId?: string; patientName?: string; visitId?: string | null; onAdmitPatient?: () => void; startOpen?: boolean }) {
   const { t, ti, lang } = useHospitalT();
   const { toast } = useToast();
+  const qc = useQueryClient();
   const { isAssisted } = useHospitalMode();
   const { note, save } = useHospitalConsultation(visitId, patientId);
   const { intake, save: saveIntake } = useHospitalConsultIntake(visitId, patientId);
@@ -151,6 +154,27 @@ export function ConsultationSummaryBox({
     }
   }
 
+  // [CHART-HZ CP-2] patient-level Known allergies + Current medications (existing clinic_patients
+  // columns — zero DDL). Loaded once per patient; persisted alongside the consult save.
+  const { data: pmeta } = useQuery({
+    queryKey: ["hx-consult-pmeta", patientId],
+    queryFn: async () => {
+      const { data } = await supabase.from("clinic_patients" as any)
+        .select("medical_allergy_details,current_medications").eq("id", patientId).maybeSingle();
+      return (data as any) || null;
+    },
+    enabled: !!patientId,
+  });
+  const [allergies, setAllergies] = useState("");
+  const [curMeds, setCurMeds] = useState<string[]>([]);
+  const [curMedInput, setCurMedInput] = useState("");
+  useEffect(() => {
+    setAllergies(pmeta?.medical_allergy_details || "");
+    setCurMeds(String(pmeta?.current_medications || "").split(",").map((x: string) => x.trim()).filter(Boolean));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pmeta?.medical_allergy_details, pmeta?.current_medications, patientId]);
+  const addCurMed = (v: string) => { const m = v.trim(); if (m && !curMeds.includes(m)) { setCurMeds((p) => [...p, m]); setDirty(true); } setCurMedInput(""); };
+
   async function onSave() {
     if (!visitId || !patientId) return;
     try {
@@ -174,6 +198,13 @@ export function ConsultationSummaryBox({
         captureStyleDeltas({ tenantId, doctorId, context: "consult", visitId, deltas });
         aiDraftRef.current = { ...sum };   // the saved state is the new baseline (no double-capture on re-save)
       }
+      // [CHART-HZ CP-2] persist patient-level allergies + current meds (existing columns)
+      try {
+        await supabase.from("clinic_patients" as any)
+          .update({ medical_allergy_details: allergies.trim() || null, current_medications: curMeds.join(", ") || null })
+          .eq("id", patientId);
+        qc.invalidateQueries({ queryKey: ["hx-consult-pmeta", patientId] });
+      } catch { /* best-effort; never blocks the consult save */ }
       setDirty(false);
       toast({ title: t("consult.saved") });
     } catch (e: any) {
@@ -296,6 +327,30 @@ export function ConsultationSummaryBox({
               )}
             </div>
 
+            {/* [CHART-HZ CP-2] Known allergies + Current medications (patient-level; free text allowed) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5" data-testid="hx-consult-pmeta">
+              <div>
+                <label className="hx-label">{t("consult.allergies", "Known allergies")}</label>
+                <input className="hx-input" value={allergies} onChange={(e) => { setAllergies(e.target.value); setDirty(true); }}
+                  placeholder={t("consult.allergiesPh", "e.g. Penicillin, none known")} data-testid="hx-consult-allergies" />
+              </div>
+              <div>
+                <label className="hx-label">{t("consult.curMeds", "Current medications")}</label>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {curMeds.map((m, i) => (
+                    <span key={`${m}-${i}`} className="hx-chip hx-chip--accent" style={{ padding: "0.15rem 0.5rem" }} data-testid="hx-consult-curmed-chip">
+                      {m}<button type="button" className="ml-1" style={{ opacity: 0.7 }} onClick={() => { setCurMeds((p) => p.filter((_, j) => j !== i)); setDirty(true); }} aria-label={`remove ${m}`}>×</button>
+                    </span>
+                  ))}
+                </div>
+                <div className="flex items-center gap-1.5 mt-1.5">
+                  <HxPickInput value={curMedInput} onChange={setCurMedInput} options={CARDIAC_MEDS}
+                    placeholder={t("consult.curMedsPh", "add a medication…")} onEnter={() => addCurMed(curMedInput)} testid="hx-consult-curmed" />
+                  <button type="button" className="hx-btn hx-btn--ghost" style={{ padding: "0.4rem 0.7rem" }} onClick={() => addCurMed(curMedInput)} disabled={!curMedInput.trim()} data-testid="hx-consult-curmed-add">+</button>
+                </div>
+              </div>
+            </div>
+
             {/* the doctor's raw consultation notes — input for Assisted, the record for Manual */}
             <div>
               <label className="hx-label">{t("consult.notes")}</label>
@@ -328,14 +383,34 @@ export function ConsultationSummaryBox({
 
             {/* the 5 structured sections — editable in BOTH modes (doctor approves/edits before save) */}
             <div className="grid grid-cols-1 gap-2.5" data-testid="hx-consult-sections">
-              {SECTIONS.map(({ key, labelKey }) => (
-                <div key={key}>
-                  <label className="hx-label">{t(labelKey)}</label>
-                  <textarea className="hx-input" rows={2} value={sum[key]}
-                    onChange={(e) => setField(key, e.target.value)}
-                    placeholder={t("consult.sectionPh")} data-testid={`hx-consult-${key}`} />
-                </div>
-              ))}
+              {SECTIONS.map(({ key, labelKey }) => {
+                if (key === "plan") {
+                  // [CHART-HZ CP-2] PLAN — two columns: MEDICA suggestion (read-only) vs Doctor (final, editable)
+                  return (
+                    <div key={key} className="grid grid-cols-1 sm:grid-cols-2 gap-2.5" data-testid="hx-consult-plan-2col">
+                      <div>
+                        <label className="hx-label">{t("consult.planMedica", "Plan by MEDICA")}</label>
+                        <textarea className="hx-input" rows={3} readOnly value={aiDraftRef.current?.plan || ""}
+                          placeholder={t("consult.planMedicaPh", "MEDICA's suggestion appears after a draft")} data-testid="hx-consult-plan-medica" style={{ opacity: 0.85 }} />
+                      </div>
+                      <div>
+                        <label className="hx-label">{t("consult.planDoctor", "Plan by Doctor")}</label>
+                        <textarea className="hx-input" rows={3} value={sum[key]}
+                          onChange={(e) => setField(key, e.target.value)}
+                          placeholder={t("consult.sectionPh")} data-testid="hx-consult-plan" />
+                      </div>
+                    </div>
+                  );
+                }
+                return (
+                  <div key={key}>
+                    <label className="hx-label">{t(labelKey)}</label>
+                    <textarea className="hx-input" rows={key === "history" ? 4 : 2} value={sum[key]}
+                      onChange={(e) => setField(key, e.target.value)}
+                      placeholder={t("consult.sectionPh")} data-testid={`hx-consult-${key}`} />
+                  </div>
+                );
+              })}
             </div>
 
             {/* PLAN DISPOSITION [Brief 9] — deterministic; Admit reuses the existing flow; Refer

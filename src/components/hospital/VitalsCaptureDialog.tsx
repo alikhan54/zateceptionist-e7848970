@@ -22,6 +22,7 @@ const FIELDS: { key: keyof VitalsPayload; label: string; unit: string; step?: st
   { key: "temperature", label: "Temperature", unit: "°C", step: "0.1", lk: "vc.temp" },
   { key: "sugar", label: "Blood sugar", unit: "mg/dL", step: "0.1", lk: "vc.sugar" },
   { key: "weight_kg", label: "Weight", unit: "kg", step: "0.1", lk: "vc.weight" },
+  { key: "height_cm", label: "Height", unit: "cm", step: "0.1", lk: "vc.height" },
 ];
 
 export function VitalsCaptureDialog({
@@ -36,6 +37,13 @@ export function VitalsCaptureDialog({
   const qc = useQueryClient();
   const { visits, saveVitals, createVisit } = useClinicVisits();
   const [vals, setVals] = useState<Record<string, string>>({});
+  // [CHART-HZ CP-2] auto BMI from height + weight (display only; no new column)
+  const bmi = (() => {
+    const w = parseFloat(vals.weight_kg || ""); const h = parseFloat(vals.height_cm || "");
+    if (!w || !h) return null;
+    const v = w / Math.pow(h / 100, 2);
+    return isFinite(v) ? v.toFixed(1) : null;
+  })();
 
   useEffect(() => { if (open) setVals({}); }, [open, patientId]);
 
@@ -125,6 +133,12 @@ export function VitalsCaptureDialog({
               );
             })}
           </div>
+          {bmi && (
+            <div className="mt-3 flex items-center gap-2" data-testid="hx-vc-bmi">
+              <span className="hx-chip hx-chip--accent" style={{ padding: "0.15rem 0.6rem" }}>{t("vc.bmi", "BMI")}: {bmi}</span>
+              <span className="hx-faint text-xs">{t("vc.bmiAuto", "auto from height + weight")}</span>
+            </div>
+          )}
 
           <div className="flex items-center justify-between gap-2 mt-5">
             <span className="hx-faint text-xs">{targetVisit ? t("vc.updating") : t("vc.newEncounter")}</span>
