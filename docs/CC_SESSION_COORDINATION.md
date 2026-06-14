@@ -4,6 +4,21 @@
 
 ---
 
+## 🩺 HOSPITAL LIGHT/DARK THEMING — CONSOLIDATED branch, awaiting Adeel merge+Publish (2026-06-14)
+
+**Session:** HOSPITAL-THEME. Branch **`fix/hospital-light-dark`** pushed to origin. **This is the ONE hospital branch to merge — it supersedes both `fix/hospital-chart-unify` (built on top of it) and `fix/hospital-light-native` (whose always-dark approach is REPLACED and whose FIX-NATIVE is re-applied here).** Corrects the prior wrong "force always-dark" instruction: the hospital portal now renders **fully LIGHT in light mode and fully DARK in dark mode** — a complete theme either way, no half-light/half-dark split.
+
+- **Root cause of the original split:** `.hx` (chart + nav pages) already had a complete `.light .hx` theme, but the portal `.hxp` (Home + portal pages) had **only dark vars and no `.light .hxp` block** → in light mode the portal stayed dark while the global sidebar + `.hx` pages were light. The fix adds a complete `.light .hxp` re-point.
+- **`portal/portal.css`** — new `.light .hxp` block re-points every `--hxp-*` var to light values (bg `#eaf1f8`, panels `#fff`, text `#0f1e33`, teal `#0d9488`, money amber-700, crit rose-600) + `.light .hxp-rail` `#f2f7fc` + softened the hardcoded bright-teal rgba accents (switch/link/medica/mono). Scoped to `.hxp`; **no global theme file edited**. Dark default unchanged (byte-identical).
+- **`PatientSummaryPaper.tsx`** — FIX-NATIVE re-applied (strip trailing `(…)` on the printed title).
+- Inherits all CHART-UNIFY changes (one unified bar, width 1400, type 17) — those `.hx` classes are var-driven so they theme light/dark automatically.
+
+**Verified (live, bsh-hospital admin, both modes):** tsc 0 · vite clean · Playwright **9/9** luminance — light-mode panels lum 247–255 (light), dark-mode 21–28 (dark) across `.hxp` portal + `.hx` chart + `.hx` Bed Board. **Visually self-checked both modes:** Home, Patient Chart, Bed Board all render fully light in light / fully dark in dark — zero split, full contrast. Screens: `work/zateos/evidence/themefix/{home,chart,beds}-{light,dark}.png`. Console clean.
+
+**Ship:** `git -C frontend fetch && git -C frontend merge origin/fix/hospital-light-dark && git -C frontend push` + Lovable Publish. **Do NOT also merge chart-unify / light-native — they are contained/superseded by this branch.**
+
+---
+
 ## 🩺 HOSPITAL CHART-UNIFY — branch pushed, awaiting Adeel merge+Publish (2026-06-14)
 
 **Session:** CHART-UNIFY. Branch **`fix/hospital-chart-unify`** pushed to origin (NOT merged — autonomous main-push policy-denied; Adeel ships). Merged the Patient Chart's THREE header rows into ONE unified bar + a width/type polish. 5 files, **reformat/additive, zero DDL, zero flow change, role-lock preserved**:

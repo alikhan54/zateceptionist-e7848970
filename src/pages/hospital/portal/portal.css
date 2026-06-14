@@ -119,3 +119,39 @@
   border: 1px solid rgba(46, 230, 200, 0.35); color: var(--hxp-teal); background: var(--hxp-teal-dim);
   font-size: 0.86rem; font-weight: 600; text-decoration: none; }
 .hxp-link:hover { background: rgba(46, 230, 200, 0.18); }
+
+/* ============================================================================
+   LIGHT MODE [HOSPITAL-PORTAL-LIGHTMODE] — the portal is a properly THEMED surface,
+   not a forced-dark one: dark is the default (the `.hxp` vars above), and under the
+   global toggle (`html.light` → `.light` ancestor) the SAME surface re-points to a
+   clean LIGHT palette so the portal (Home + every portal page) renders fully light
+   in light mode and fully dark in dark mode — no half-light/half-dark split. Scoped
+   entirely to `.hxp`; the global theme files are untouched. Money stays amber, crit
+   stays red, teal stays the brand accent — at light-readable shades.
+   ========================================================================== */
+.light .hxp {
+  --hxp-bg: #eaf1f8;
+  --hxp-panel: #ffffff;
+  --hxp-panel2: #f1f6fb;
+  --hxp-border: rgba(15, 23, 42, 0.12);
+  --hxp-border-teal: rgba(13, 148, 136, 0.32);
+  --hxp-teal: #0d9488;       /* teal-600 — readable accent/text on light */
+  --hxp-teal-dim: rgba(13, 148, 136, 0.10);
+  --hxp-money: #b45309;      /* amber-700 — clearly readable money on light */
+  --hxp-crit: #e11d48;       /* rose-600 — clearly RED on light */
+  --hxp-text: #0f1e33;
+  --hxp-dim: #475569;
+  --hxp-faint: #76869c;
+}
+.light .hxp-rail { background: #f2f7fc; }
+/* the hardcoded bright-teal rgba accents read too neon on a light ground — soften them */
+.light .hxp-switch { border-color: rgba(13, 148, 136, 0.35); }
+.light .hxp-rail-row::before { background: var(--hxp-teal); }
+.light .hxp-rail-row:hover { background: rgba(15, 23, 42, 0.05); }
+.light .hxp-medica { background: linear-gradient(90deg, rgba(13, 148, 136, 0.07), transparent 70%); }
+.light .hxp-link { border-color: rgba(13, 148, 136, 0.35); }
+.light .hxp-link:hover { background: rgba(13, 148, 136, 0.16); }
+.light .hxp-mono.money { background: rgba(180, 83, 9, 0.10); border-color: rgba(180, 83, 9, 0.40); }
+.light .hxp-mono.crit { background: rgba(225, 29, 72, 0.10); border-color: rgba(225, 29, 72, 0.40); }
+/* the portal sits INSIDE `.hx`; in light mode `.hx` paints a light ground too, so the
+   portal's own light bg reads as one continuous light surface (no dark seam at the edges) */

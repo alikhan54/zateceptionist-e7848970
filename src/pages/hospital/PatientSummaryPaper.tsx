@@ -82,7 +82,7 @@ function SummaryPaper({ patient, chart }: { patient: any; chart: ChartData }) {
         style={{ position: "absolute", left: -10000, top: 0, width: 720, background: "#fff", color: "#111827", padding: "22px 26px", fontFamily: "ui-sans-serif, system-ui", lineHeight: 1.5 }}>
         <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "2px solid #111827", paddingBottom: 8 }}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 16 }}>{(tenantConfig as any)?.company_name || "Hospital"}</div>
+            <div style={{ fontWeight: 700, fontSize: 16 }}>{(((tenantConfig as any)?.company_name as string) || "Hospital").replace(/\s*\(.*\)\s*$/, "")}</div>
             <div style={{ fontSize: 11, color: "#6b7280" }}>{t("summary.title")}</div>
           </div>
           <div style={{ textAlign: "right", fontSize: 11, color: "#6b7280" }}>{d(new Date().toISOString())}</div>
