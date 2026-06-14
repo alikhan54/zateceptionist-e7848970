@@ -45,8 +45,11 @@
    page — no edge-to-edge sprawl. The portal (.hxp) manages its own grid; print papers are
    absolutely positioned offscreen and keep their fixed widths. */
 /* [FIX-B] comfortable reading scale per the reference */
-.hx { font-size: 16px; }
-.hx > :not(.hxp) { max-width: 1160px; margin-left: auto; margin-right: auto; }
+/* [CHART-UNIFY] base up a notch (16→17) + the content law widened 1160→1400 so wide monitors
+   are used (comfortable gutters kept by the centering). Cascades to every .hx page — Patient
+   Chart, Bed Board, Nurse Station, Pharmacy, Lab, Home — for one consistent product width. */
+.hx { font-size: 17px; }
+.hx > :not(.hxp) { max-width: 1400px; margin-left: auto; margin-right: auto; }
 
 .hx-h1 { font-size: clamp(1.4rem, 2.4vw, 2rem); font-weight: 650; letter-spacing: -0.02em; }
 .hx-mono { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
@@ -208,8 +211,8 @@
 .hx-chartbar { position: sticky; top: 3.9rem; z-index: 30; padding: 0.55rem 0.9rem; backdrop-filter: blur(14px); }
 .hx-chartbar-id { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; padding-bottom: 0.45rem; }
 .hx-chartbar-tabs { display: flex; align-items: center; gap: 0.3rem; flex-wrap: wrap; border-top: 1px solid var(--hx-border); padding-top: 0.45rem; }
-.hx-tab { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.3rem 0.6rem; border-radius: 9px;
-  font-size: 0.74rem; font-weight: 600; color: var(--hx-dim); border: 1px solid transparent; background: transparent;
+.hx-tab { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.42rem 0.75rem; border-radius: 9px;
+  font-size: 0.86rem; font-weight: 600; color: var(--hx-dim); border: 1px solid transparent; background: transparent;
   cursor: pointer; transition: color .12s, border-color .12s, background .12s; white-space: nowrap; }
 .hx-tab:hover { color: var(--hx-text); border-color: var(--hx-border); }
 .hx-tab.active { color: var(--hx-accent); border-color: var(--hx-border-strong); background: rgba(34,211,238,0.08); }
@@ -315,10 +318,10 @@
 .hx-stage-strip:hover { color: var(--hx-text); }
 /* [FIX-2] chart tabs = TRUE full-screen views; inner content centered at the 1160 law */
 .hx-drawer { left: 0; width: 100%; border-left: none; }
-.hx-drawer-h > * { max-width: 1160px; }
+.hx-drawer-h > * { max-width: 1400px; }
 .hx-drawer-h { justify-content: center; gap: 2rem; }
-.hx-drawer-h > .min-w-0 { flex: 1; max-width: 1020px; }
-.hx-drawer-b > * { max-width: 1160px; margin-left: auto; margin-right: auto; }
+.hx-drawer-h > .min-w-0 { flex: 1; max-width: 1240px; }
+.hx-drawer-b > * { max-width: 1400px; margin-left: auto; margin-right: auto; }
 .hx-tab-empty { display: flex; flex-direction: column; align-items: center; justify-content: center;
   text-align: center; padding: 3.5rem 1rem; border: 1px dashed var(--hx-border); border-radius: 14px; }
 /* [FIX-3] portaled pick menu (fixed positioning set inline) */
@@ -329,11 +332,16 @@
 .hx-panel-h .font-semibold, .hx-panel-h > span.font-semibold { font-size: 1.05rem; }
 .hx-stage-row { font-size: 1rem; }
 
-/* [CHART-HZ CP-1] horizontal stage bar — one stage on screen at a time */
-.hx-stagebar { display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.5rem; border: 1px solid var(--hx-border);
+/* [CHART-HZ CP-1] horizontal stage bar — one stage on screen at a time
+   [CHART-UNIFY] this is now THE single header bar: the old ECG status-stepper row and the
+   standalone record-tabs row are folded in. A leading "Records" segment (Overview/records view)
+   sits before the journey stages, divided by a hairline; the stages carry their own done/current/
+   future/locked status (progress baked into the chips). A thin ECG hairline rides UNDER the bar
+   as the one subtle progress visual (replaces the full stepper row of words). */
+.hx-stagebar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem; padding: 0.5rem; border: 1px solid var(--hx-border);
   border-radius: 14px; background: var(--hx-panel); }
-.hx-stagetab { display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.5rem 0.85rem; border-radius: 10px;
-  border: 1px solid transparent; background: transparent; color: var(--hx-dim); cursor: pointer; font-size: 0.92rem;
+.hx-stagetab { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 0.72rem; border-radius: 10px;
+  border: 1px solid transparent; background: transparent; color: var(--hx-dim); cursor: pointer; font-size: 1rem;
   font-weight: 600; white-space: nowrap; transition: color .15s, border-color .15s, background .15s; }
 .hx-stagetab:hover:not(:disabled) { color: var(--hx-text); border-color: var(--hx-border); }
 .hx-stagetab.active { color: var(--hx-text); background: rgba(34,211,238,0.10); border-color: var(--hx-border-strong); }
@@ -344,4 +352,18 @@
 .hx-stagetab--future .hx-stagedot { background: var(--hx-faint); }
 .hx-stagetab--locked .hx-stagedot { background: var(--hx-crit); opacity: 0.5; }
 .hx-stagetab--done { color: var(--hx-accent2); }
-.hx-stageview { max-width: 1160px; }
+.hx-stageview { max-width: 1400px; }
+
+/* [CHART-UNIFY] leading "Records / Overview" segment — visually distinct (teal-tinted) from the
+   journey stages, and its active state mirrors the records view being open. */
+.hx-stagetab--records { color: var(--hx-accent2); }
+.hx-stagetab--records.active { color: var(--hx-accent); background: rgba(45,212,191,0.12); border-color: var(--hx-border-strong); }
+.hx-stage-sep { width: 1px; align-self: stretch; margin: 0.1rem 0.35rem; background: var(--hx-border); flex-shrink: 0; }
+/* the one subtle progress visual: a thin ECG hairline under the unified bar (not a 2nd row of words) */
+.hx-stage-ecg { height: 14px; margin: -0.1rem 0.4rem 0; opacity: 0.7; }
+
+/* [CHART-UNIFY] the records view sub-bar (the Brief-8 record tabs, now reached from the unified
+   bar — only mounted when Records is active). Same chip language as the chart tabs, standalone. */
+.hx-record-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; padding: 0.5rem;
+  border: 1px solid var(--hx-border); border-radius: 14px; background: var(--hx-panel); }
+.hx-record-view { max-width: 1400px; }

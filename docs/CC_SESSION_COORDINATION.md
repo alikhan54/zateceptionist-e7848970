@@ -4,6 +4,33 @@
 
 ---
 
+## 🩺 HOSPITAL CHART-UNIFY — branch pushed, awaiting Adeel merge+Publish (2026-06-14)
+
+**Session:** CHART-UNIFY. Branch **`fix/hospital-chart-unify`** pushed to origin (NOT merged — autonomous main-push policy-denied; Adeel ships). Merged the Patient Chart's THREE header rows into ONE unified bar + a width/type polish. 5 files, **reformat/additive, zero DDL, zero flow change, role-lock preserved**:
+- `PatientJourney.tsx` — removed Row A (the `hx-path` status stepper; its done/current meaning now lives on the stage chips). The `hx-stagebar` is now THE single bar: leading **Records** segment (LayoutGrid) + divider + the 9 journey stages; a thin `EcgLine` hairline rides under it (the one subtle progress visual). The standalone record-tabs row is gone — record view mounts only when the Records segment is active.
+- `PatientChartBar.tsx` — split into `mode="strip"` (persistent allergy/alerts + Summary/Send context strip — identity stays in the header, no dup) and `mode="records"` (the Brief-8 record tabs + the selected tab rendered INLINE as a full-screen record view; was a slide-over drawer — same tab bodies, same live panels/actions, just relocated). Drawer/portal removed.
+- `hospital.css` — content law 1160→1400, base font 16→17 (cascades to Chart/Bed Board/Nurse/Pharmacy/Lab — Home is the `.hxp` portal, own layout); unified-bar styles (`hx-stagetab--records`, `hx-stage-sep`, `hx-stage-ecg` hairline, `hx-record-tabs`); stage chips font 1rem + tightened padding so the 10-item bar stays ONE line at 100% AND 75%.
+- `i18n/strings.{en,bn}.ts` — `stage.records` (EN Records / BN রেকর্ড DRAFT); shortened `stage.labs`→Labs, `stage.admission`→Admission (chip-only; stage panels keep full titles).
+
+**Verified (live, bsh-hospital admin, vite preview):** tsc 0 · vite clean · Playwright **16/16** — ONE stagebar (old stepper count 0, record-tabs hidden until Records, ECG hairline present, bar 1392px); every spot-checked stage (triage/orders/consultation) + record tab (overview/consultations/vitals) opens; console clean. **Visual self-checked at 100% AND 75% zoom** (chart + Home + Bed Board + Pharmacy) — one-line bar both zooms, width fills, larger comfortable type. Screens: `work/zateos/evidence/chartunify/`. **NOT done: the two-login GP-locked/specialist-unlocked referral re-walk** — only the admin login was available; the lock code (`STAGES[].locked` · `lockReceiving` · `isReferringGp` · `lockedCard`) is **untouched** in the diff (admin sees all stages, correct), and prior session CP-1 proved the two-login behaviour.
+
+**Owns:** PatientJourney.tsx, PatientChartBar.tsx, hospital.css, i18n strings (en/bn). **Ship:** `git -C frontend fetch && git -C frontend merge origin/fix/hospital-chart-unify && git -C frontend push` + Lovable Publish.
+
+---
+
+## 🩺 HOSPITAL FIX-LIGHT + FIX-NATIVE — branch pushed, awaiting Adeel merge+Publish (2026-06-13)
+
+**Session:** ZATEOS FIX-LIGHT/NATIVE. Branch **`fix/hospital-light-native` @ `a370334`** pushed to origin (NOT merged — autonomous main-push policy-denied; Adeel ships). 3 files, **additive only, ZERO global-theme-file edits, zero DDL**:
+- `src/components/Layout.tsx` — +`isHospital` from useTenant; outer shell `div` gets `hospital-shell` class when isHospital (one conditional, byte-identical otherwise). Consistent with the "shared/additive-only" discipline for this file.
+- `src/pages/hospital/hospital.css` — +147 lines appended (pure additive). FIX-LIGHT scoped overrides: (1) `.hx`/`.hxp` surfaces forced dark in `html.light`; (2) `html.light [role=tablist]` global gray-100 out-specified for hospital tablists; (3) **`.hospital-shell` block** re-declares the dark token set + out-specifies the global theme-fixes/marketing-power hardcoded greys on the **NavigationSidebar (`[data-sidebar]`) + Header + main** — the actual "half-dark/half-white" fix (the white left nav). Prefixing `.hospital-shell` lifts each rule one class above the global (0,2,1)/(0,1,2) so dark wins on specificity.
+- `src/pages/hospital/PatientSummaryPaper.tsx` — FIX-NATIVE: strip trailing `(...)` suffix on the printed summary title (matches the existing chart-header strip).
+
+**Verified:** `tsc --noEmit` **0 errors**; `vite build` clean. CSS proven against the **real built bundles** via a static harness (loads `index-*.css` + `hospitalShared-*.css` over the real chrome DOM): sidebar `rgb(11,11,14)`, header/main `rgb(9,9,11)`, nav+header text light, tablist transparent — 0 visible white (harness: `work/zateos/lightfix-harness/`, screenshot `work/zateos/evidence/lightfix/shell-css-harness-light.png`). `(Native)` strip confirmed on the exact title. **NOT** re-verified by a fresh live BSH login — the BSH passwords were env-only in the prior shell and are gone this session; minting an admin token was (correctly) policy-blocked. Prior live screenshots `home-light-{BEFORE-reproduced,AFTER}.png` predate the shell fix (still show the white nav). **Adeel: after Publish, eyeball Hospital Home in light mode — left nav should now be dark navy, not white.**
+
+**Owns:** hospital.css, PatientSummaryPaper.tsx; additive block in Layout.tsx. **Ship:** `git -C frontend fetch && git -C frontend merge origin/fix/hospital-light-native && git -C frontend push` (clean — disjoint from other lanes) + Lovable Publish.
+
+---
+
 ## 🚢 Organization Brain — Phase F (/brain 3D living system map) — MERGED 2026-06-11
 
 **Session:** ORG-BRAIN-F. Rebased `feat/org-brain` onto `origin/main` (`03d3217`) in an **isolated temp worktree** (`frontend-brain-merge`, removed); 4 feature commits + this docs commit, ff-merged to main. **Files vs base: 3 allowed edits (App.tsx — ONE `/brain` lazy route; NavRail.tsx — 3rd rail icon, `shortcut` made optional; sectionsRegistry.ts — 13th Pulse card + Spotlight row) + package.json/lock (+`react-force-graph-3d@1.24.0` +`three-spritetext@1.10.0` + overrides `3d-force-graph@1.73.0`/`three-render-objects@1.29.5` — `three` STAYS 0.160.0, `npm ls three` = single dedupe; 1.30.0 imports `three/webgpu` → build break, 1.31+ peer ≥0.168 — do NOT bump without the matrix in docs/ORGANIZATION_BRAIN.md) + 4 new files (`src/pages/OrganizationBrain.tsx`, `src/components/brain/{BrainGraph.tsx,brainManifest.ts,useBrainData.ts}`).** Backups: `*.backup-pre-brain`. Bundle: own lazy chunk 238KB (71KB gz); main +0.35KB; shared lazy three chunk 459→667KB (examples/jsm hoist — documented).

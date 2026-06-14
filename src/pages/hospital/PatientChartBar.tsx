@@ -4,10 +4,9 @@
 // new tables, zero mutations. Rides the journey's RBAC (mounted inside the doctor/admin-gated
 // page) and the tenant scoping of every query. Light/dark + EN/BN via the hx theme + i18n.
 import { useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
 import {
   Activity, AlertTriangle, BedDouble, FileText, FlaskConical, Folder, HeartPulse,
-  LayoutGrid, Pill, ScanLine, ShieldAlert, Slice, Stethoscope, X,
+  LayoutGrid, Pill, ScanLine, ShieldAlert, Slice, Stethoscope,
 } from "lucide-react";
 import { useHospitalT } from "./i18n";
 import { useHospitalStaff } from "@/hooks/useHospitalStaff";
@@ -52,28 +51,28 @@ function patientAllergies(patient: any): string[] {
   return out;
 }
 
-export function PatientChartBar({ patient, currentBed }: { patient: any; currentBed?: { ward: string; bed_label: string } | null }) {
-  const { t, ti } = useHospitalT();
+/** [CHART-UNIFY] PatientChartBar now renders in two modes (zero new behaviour — the same record
+ *  tabs and the same live working panels, just relocated so the chart shows ONE primary bar):
+ *   • mode="strip"   — the persistent patient-CONTEXT banner (name · admitted · allergies · watch
+ *                      flags · Print summary · Send). Always visible; NOT a tab row.
+ *   • mode="records" — the Brief-8 RECORD view, reached from the unified stage bar's leading
+ *                      "Records" segment: the 8 record tabs + the selected tab rendered INLINE as a
+ *                      full-screen record view (was a slide-over drawer — identical content/actions). */
+export function PatientChartBar({ patient, currentBed, mode = "strip" }:
+  { patient: any; currentBed?: { ward: string; bed_label: string } | null; mode?: "strip" | "records" }) {
+  const { t } = useHospitalT();
   const { chart, refetch } = useHospitalChart(patient?.id);
-  const [openTab, setOpenTab] = useState<TabKey | null>(null);
+  // records view: which tab is open (defaults to overview — the records "home"); strip mode ignores it
+  const [openTab, setOpenTab] = useState<TabKey>("overview");
+  const [vitalsOpen, setVitalsOpen] = useState(false);
 
-  // patient switch → close any open drawer + the data re-keys (no stale bleed by construction)
-  useEffect(() => { setOpenTab(null); }, [patient?.id]);
-
-  // ESC closes the drawer
-  useEffect(() => {
-    if (!openTab) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpenTab(null); };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [openTab]);
+  // patient switch → re-default to overview; the data re-keys (no stale bleed by construction)
+  useEffect(() => { setOpenTab("overview"); }, [patient?.id]);
 
   const counts = useMemo(() => (chart ? chartCounts(chart) : null), [chart]);
   const flags = useMemo(() => (chart ? watchFlags(chart, DEFAULT_THRESHOLDS) : []), [chart]);
   const allergies = useMemo(() => patientAllergies(patient), [patient]);
   const activeAdmission = chart?.admissions.find((a) => a.status === "admitted") || null;
-
-  if (!patient) return null;
   // [FIX-B] the LIVE working panels mount inside the tabs — same shared components as the profile
   const latestVisit = useMemo(() => {
     const vs = (chart?.visits || []) as any[];
@@ -82,130 +81,126 @@ export function PatientChartBar({ patient, currentBed }: { patient: any; current
   const placedMeds = useMemo(() => ((chart?.orders || []) as any[])
     .filter((o) => o.order_type === "medication" && (!latestVisit?.id || o.visit_id === latestVisit.id || !o.visit_id))
     .map((o) => (o.details as any)?.item).filter(Boolean) as string[], [chart, latestVisit?.id]);
-  const [vitalsOpen, setVitalsOpen] = useState(false);
+
+  if (!patient) return null;
 
   const badge = (k: TabKey): number | null => (!counts || k === "overview" ? null : (counts as any)[k === "labs" ? "labs" : k] ?? null);
 
-  return (
-    <div data-testid="hx-chart">
-      {/* ---------- the persistent chart bar ---------- */}
-      <div className="hx-panel hx-chartbar hx-rise" style={{ animationDelay: "40ms" }} data-testid="hx-chart-bar">
-        <div className="hx-chartbar-id">
-          <span className="hx-eyebrow" style={{ whiteSpace: "nowrap" }}>{t("chart.eyebrow")}</span>
-          <span className="font-semibold text-sm" data-testid="hx-chart-name">{displayName(patient.full_name)}</span>
-          {activeAdmission && (
-            <span className="hx-chip hx-chip--accent" style={{ padding: "0.05rem 0.5rem" }} data-testid="hx-chart-admitted">
-              <BedDouble className="h-3 w-3" />
-              {t("chart.admitted")} {fmtDate(activeAdmission.created_at)}
-              {currentBed ? ` · ${currentBed.ward} ${currentBed.bed_label}` : activeAdmission.ward ? ` · ${activeAdmission.ward}` : ""}
-            </span>
-          )}
-          {allergies.length === 0 ? (
-            <span className="hx-chip hx-chip--muted" style={{ padding: "0.05rem 0.5rem" }} data-testid="hx-chart-nka">{t("chart.nka")}</span>
-          ) : (
-            allergies.slice(0, 2).map((a) => (
-              <span key={a} className="hx-chip hx-chip--crit" style={{ padding: "0.05rem 0.5rem" }} data-testid="hx-chart-allergy">
-                <ShieldAlert className="h-3 w-3" /> {a}
+  // ---------- strip mode: the persistent patient-context banner ----------
+  if (mode === "strip") {
+    return (
+      <div data-testid="hx-chart">
+        <div className="hx-panel hx-chartbar hx-rise" style={{ animationDelay: "40ms" }} data-testid="hx-chart-bar">
+          {/* [CHART-UNIFY] patient-SAFETY + actions strip — allergies/watch always visible, plus
+              Summary/Send. Identity (name·MRN·age) lives in the header above; not repeated here. */}
+          <div className="hx-chartbar-id" style={{ paddingBottom: 0, borderTop: "none" }}>
+            <span className="hx-eyebrow" style={{ whiteSpace: "nowrap" }} data-testid="hx-chart-name">{t("chart.safety", "Allergies & alerts")}</span>
+            {activeAdmission && (
+              <span className="hx-chip hx-chip--accent" style={{ padding: "0.05rem 0.5rem" }} data-testid="hx-chart-admitted">
+                <BedDouble className="h-3 w-3" />
+                {t("chart.admitted")} {fmtDate(activeAdmission.created_at)}
+                {currentBed ? ` · ${currentBed.ward} ${currentBed.bed_label}` : activeAdmission.ward ? ` · ${activeAdmission.ward}` : ""}
               </span>
-            ))
-          )}
-          {flags.slice(0, 2).map((f) => (
-            <span key={`${f.label}`} className={`hx-chip ${f.status === "critical" ? "hx-chip--crit" : "hx-chip--warn"}`}
-              style={{ padding: "0.05rem 0.5rem" }} data-testid="hx-chart-watch">
-              <AlertTriangle className="h-3 w-3" /> {f.label} {f.value}
-            </span>
-          ))}
-          {flags.length > 2 && <span className="hx-chip hx-chip--warn" style={{ padding: "0.05rem 0.5rem" }}>+{flags.length - 2}</span>}
-          {/* [Brief 11 · B/C] the Full Journey Summary paper + Send-to-patient delivery */}
-          <span className="ml-auto inline-flex items-center gap-1.5">
-            <SummaryPrintButton patient={patient} chart={chart} />
-            {chart && (
-              <SendDocControl testid="hx-send-summary"
-                defaultPhone={patient.phone} defaultEmail={patient.email}
-                subject="Bangladesh Specialized Hospital — your journey summary"
-                composeText={() => composeSummaryText(patient, chart)} />
             )}
-          </span>
-        </div>
-        <div className="hx-chartbar-tabs" role="tablist">
-          {TABS.map(({ key, labelKey, icon: Icon }) => (
-            <button key={key} type="button" role="tab" aria-selected={openTab === key}
-              className={`hx-tab ${openTab === key ? "active" : ""}`}
-              onClick={() => { setOpenTab(key); refetch(); }}
-              data-testid={`hx-chart-tab-${key}`}>
-              <Icon className="h-3.5 w-3.5" />
-              <span>{t(labelKey)}</span>
-              {badge(key) != null && <span className="hx-tab-badge" data-testid={`hx-chart-count-${key}`}>{badge(key)}</span>}
-            </button>
-          ))}
+            {allergies.length === 0 ? (
+              <span className="hx-chip hx-chip--muted" style={{ padding: "0.05rem 0.5rem" }} data-testid="hx-chart-nka">{t("chart.nka")}</span>
+            ) : (
+              allergies.slice(0, 2).map((a) => (
+                <span key={a} className="hx-chip hx-chip--crit" style={{ padding: "0.05rem 0.5rem" }} data-testid="hx-chart-allergy">
+                  <ShieldAlert className="h-3 w-3" /> {a}
+                </span>
+              ))
+            )}
+            {flags.slice(0, 2).map((f) => (
+              <span key={`${f.label}`} className={`hx-chip ${f.status === "critical" ? "hx-chip--crit" : "hx-chip--warn"}`}
+                style={{ padding: "0.05rem 0.5rem" }} data-testid="hx-chart-watch">
+                <AlertTriangle className="h-3 w-3" /> {f.label} {f.value}
+              </span>
+            ))}
+            {flags.length > 2 && <span className="hx-chip hx-chip--warn" style={{ padding: "0.05rem 0.5rem" }}>+{flags.length - 2}</span>}
+            {/* [Brief 11 · B/C] the Full Journey Summary paper + Send-to-patient delivery */}
+            <span className="ml-auto inline-flex items-center gap-1.5">
+              <SummaryPrintButton patient={patient} chart={chart} />
+              {chart && (
+                <SendDocControl testid="hx-send-summary"
+                  defaultPhone={patient.phone} defaultEmail={patient.email}
+                  subject="Bangladesh Specialized Hospital — your journey summary"
+                  composeText={() => composeSummaryText(patient, chart)} />
+              )}
+            </span>
+          </div>
         </div>
       </div>
+    );
+  }
 
-      {/* ---------- slide-over drawer (never a route change) ----------
-          PORTALED to <body>: the journey lives inside the `.hx > *` stacking context (z-index 1),
-          so the global app header would otherwise sit above any in-tree overlay. `.hx-portal`
-          carries the hx theme vars for portaled content (same pattern as `.hx-dialog`). */}
-      {openTab && createPortal(
-        <div className="hx-portal">
-          <div className="hx-drawer-backdrop" onClick={() => setOpenTab(null)} data-testid="hx-chart-backdrop" />
-          <aside className="hx-drawer" role="dialog" aria-label={t(`chart.tab.${openTab}`)} data-testid="hx-chart-drawer" data-tab={openTab}>
-            <div className="hx-drawer-h">
-              <div className="min-w-0">
-                <div className="hx-eyebrow">{t("chart.eyebrow")}</div>
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold" style={{ fontSize: "1.05rem" }} data-testid="hx-chart-drawer-title">{t(`chart.tab.${openTab}`)}</span>
-                  {badge(openTab) != null && <span className="hx-chip hx-chip--accent" style={{ padding: "0.05rem 0.5rem" }}>{badge(openTab)}</span>}
-                </div>
-                <div className="hx-dim text-xs mt-0.5" data-testid="hx-chart-drawer-patient">
-                  {patient.full_name}{patient.file_number ? ` · ${patient.file_number}` : ""}
-                </div>
+  // ---------- records mode: the full-screen record view (reached from the unified bar) ----------
+  return (
+    <div className="hx-record-view space-y-4" data-testid="hx-record-view">
+      <div className="hx-record-tabs hx-rise" role="tablist" data-testid="hx-chart-bar">
+        {TABS.map(({ key, labelKey, icon: Icon }) => (
+          <button key={key} type="button" role="tab" aria-selected={openTab === key}
+            className={`hx-tab ${openTab === key ? "active" : ""}`}
+            onClick={() => { setOpenTab(key); refetch(); }}
+            data-testid={`hx-chart-tab-${key}`}>
+            <Icon className="h-3.5 w-3.5" />
+            <span>{t(labelKey)}</span>
+            {badge(key) != null && <span className="hx-tab-badge" data-testid={`hx-chart-count-${key}`}>{badge(key)}</span>}
+          </button>
+        ))}
+      </div>
+
+      <div className="hx-panel hx-rise" data-testid="hx-chart-content" data-tab={openTab}>
+        <div className="hx-drawer-h" style={{ position: "static", padding: "0.9rem 1.1rem" }}>
+          <div className="min-w-0">
+            <div className="hx-eyebrow">{t("chart.eyebrow")}</div>
+            <div className="flex items-center gap-2">
+              <span className="font-semibold" style={{ fontSize: "1.1rem" }} data-testid="hx-chart-drawer-title">{t(`chart.tab.${openTab}`)}</span>
+              {badge(openTab) != null && <span className="hx-chip hx-chip--accent" style={{ padding: "0.05rem 0.5rem" }}>{badge(openTab)}</span>}
+            </div>
+            <div className="hx-dim text-xs mt-0.5" data-testid="hx-chart-drawer-patient">
+              {patient.full_name}{patient.file_number ? ` · ${patient.file_number}` : ""}
+            </div>
+          </div>
+        </div>
+        <div className="hx-drawer-b" data-testid="hx-chart-tabbody" style={{ overflow: "visible", padding: "0 1.1rem 1.2rem" }}>
+          {!chart ? (
+            <p className="hx-dim text-sm">{t("common.loading")}</p>
+          ) : openTab === "overview" ? <OverviewTab chart={chart} allergies={allergies} flags={flags} />
+            : openTab === "consultations" ? (
+              <div className="space-y-4" data-testid="hx-tab-live-consult">
+                <ConsultationSummaryBox patientId={patient.id} patientName={patient.full_name} visitId={latestVisit?.id ?? null} startOpen />
+                <div className="hx-eyebrow">{t("chart.history", "History")}</div>
+                <ConsultationsTab chart={chart} />
               </div>
-              <button type="button" className="hx-btn hx-btn--ghost" style={{ padding: "0.35rem 0.8rem" }}
-                onClick={() => setOpenTab(null)} data-testid="hx-chart-close" aria-label={t("common.back")}>
-                <X className="h-4 w-4" /> {t("common.back")}
-              </button>
-            </div>
-            <div className="hx-drawer-b">
-              {!chart ? (
-                <p className="hx-dim text-sm">{t("common.loading")}</p>
-              ) : openTab === "overview" ? <OverviewTab chart={chart} allergies={allergies} flags={flags} />
-                : openTab === "consultations" ? (
-                  <div className="space-y-4" data-testid="hx-tab-live-consult">
-                    <ConsultationSummaryBox patientId={patient.id} patientName={patient.full_name} visitId={latestVisit?.id ?? null} startOpen />
-                    <div className="hx-eyebrow">{t("chart.history", "History")}</div>
-                    <ConsultationsTab chart={chart} />
-                  </div>
-                )
-                : openTab === "labs" ? <LabsTab chart={chart} />
-                : openTab === "reports" ? <ReportsTab chart={chart} />
-                : openTab === "medications" ? (
-                  <div className="space-y-4" data-testid="hx-tab-live-rx">
-                    <PrescriptionPanel patient={patient} visitId={latestVisit?.id ?? null} placedMeds={placedMeds} />
-                    <div className="hx-eyebrow">{t("chart.history", "History")}</div>
-                    <MedicationsTab chart={chart} />
-                  </div>
-                )
-                : openTab === "surgery" ? (
-                  <div className="space-y-4" data-testid="hx-tab-live-ot">
-                    <OperationTheatrePanel patient={patient} visitId={latestVisit?.id ?? null} />
-                    <div className="hx-eyebrow">{t("chart.history", "History")}</div>
-                    <SurgeryTab chart={chart} />
-                  </div>
-                )
-                : openTab === "vitals" ? (
-                  <div className="space-y-4" data-testid="hx-tab-live-vitals">
-                    <button className="hx-btn hx-btn--primary" style={{ padding: "0.4rem 0.9rem" }} onClick={() => setVitalsOpen(true)} data-testid="hx-tab-capture-vitals">
-                      <HeartPulseIcon className="h-4 w-4" /> {t("vitals.capture")}
-                    </button>
-                    <VitalsTab chart={chart} />
-                  </div>
-                )
-                : <DocumentsTab chart={chart} />}
-            </div>
-          </aside>
-        </div>,
-        document.body,
-      )}
+            )
+            : openTab === "labs" ? <LabsTab chart={chart} />
+            : openTab === "reports" ? <ReportsTab chart={chart} />
+            : openTab === "medications" ? (
+              <div className="space-y-4" data-testid="hx-tab-live-rx">
+                <PrescriptionPanel patient={patient} visitId={latestVisit?.id ?? null} placedMeds={placedMeds} />
+                <div className="hx-eyebrow">{t("chart.history", "History")}</div>
+                <MedicationsTab chart={chart} />
+              </div>
+            )
+            : openTab === "surgery" ? (
+              <div className="space-y-4" data-testid="hx-tab-live-ot">
+                <OperationTheatrePanel patient={patient} visitId={latestVisit?.id ?? null} />
+                <div className="hx-eyebrow">{t("chart.history", "History")}</div>
+                <SurgeryTab chart={chart} />
+              </div>
+            )
+            : openTab === "vitals" ? (
+              <div className="space-y-4" data-testid="hx-tab-live-vitals">
+                <button className="hx-btn hx-btn--primary" style={{ padding: "0.4rem 0.9rem" }} onClick={() => setVitalsOpen(true)} data-testid="hx-tab-capture-vitals">
+                  <HeartPulseIcon className="h-4 w-4" /> {t("vitals.capture")}
+                </button>
+                <VitalsTab chart={chart} />
+              </div>
+            )
+            : <DocumentsTab chart={chart} />}
+        </div>
+      </div>
       <VitalsCaptureDialog open={vitalsOpen} onOpenChange={setVitalsOpen} patientId={patient?.id} patientName={patient?.full_name} visitId={latestVisit?.id} />
     </div>
   );

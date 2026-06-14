@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Activity, HeartPulse, Stethoscope, FlaskConical, Pill, ScanLine, Sparkles, Plus, Slice, LogOut,
-  ClipboardList, CheckCircle2, Clock, Loader2, UserPlus, AlertTriangle, BedDouble, Lock,
+  ClipboardList, CheckCircle2, Clock, Loader2, UserPlus, AlertTriangle, BedDouble, Lock, LayoutGrid,
 } from "lucide-react";
 import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -34,8 +34,6 @@ import { usePostopEpisode } from "@/hooks/useHospitalPostop";
 import { DischargePanel } from "./DischargePanel";
 import { useHospitalOT } from "@/hooks/useHospitalOT";
 import { useHospitalT } from "./i18n";
-
-const PATHWAY_KEYS = ["pathway.registered", "pathway.triaged", "pathway.inConsult", "pathway.ordersPlaced", "pathway.inTreatment", "pathway.resultsReady", "pathway.discharged"];
 
 // Key vitals to surface on the command surface (subset of the clinic floor vitals).
 const KEY_VITALS = ["temperature", "heart_rate", "spo2", "respiratory_rate", "sugar"] as const;
@@ -526,7 +524,9 @@ function PatientJourneyInner() {
 
   return (
     <div data-testid="hx-patient-journey">
-      {/* ---------- HEADER (8-step stepper stays; ECG toggle/line removed) ---------- */}
+      {/* ---------- HEADER (patient identity only) ----------
+          [CHART-UNIFY] the old "pathway" status-stepper row was REMOVED here — its done/current
+          meaning now lives on the unified stage bar's chips below (one bar, no triplication). */}
       <div className="hx-panel hx-panel--accent hx-rise" style={{ animationDelay: "0ms" }}>
         <div className="hx-panel-b">
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -559,18 +559,6 @@ function PatientJourneyInner() {
               </button>
             </div>
           </div>
-
-          {/* pathway stepper (kept) */}
-          <div className="hx-path mt-5">
-            {PATHWAY_KEYS.map((sk, i) => (
-              <span key={sk} className="flex items-center gap-2">
-                <span className={`hx-path-step ${i < stageIndex ? "done" : i === stageIndex ? "active" : ""}`}>
-                  <span className="dot" /> {t(sk)}
-                </span>
-                {i < PATHWAY_KEYS.length - 1 && <span className="hx-path-sep">›</span>}
-              </span>
-            ))}
-          </div>
         </div>
       </div>
 
@@ -579,13 +567,25 @@ function PatientJourneyInner() {
           onOpen={(row) => { setSelectedId(row.patient_id); if (row.status === "waiting") markSeen.mutate(row.id); }} />
       )}
 
-      {/* PATIENT RECORDS chart bar [Brief 8] — the record view (full-screen tabs) */}
+      {/* [CHART-UNIFY] persistent patient-CONTEXT strip — identity · allergies · Print · Send
+          (the record TABS moved off this strip into the unified bar's "Records" segment below). */}
       <div className="mt-4">
-        <PatientChartBar patient={patient} currentBed={currentBed as any} />
+        <PatientChartBar patient={patient} currentBed={currentBed as any} mode="strip" />
       </div>
 
-      {/* ---------- HORIZONTAL STAGE BAR ---------- */}
+      {/* ---------- UNIFIED STAGE BAR ---------- [CHART-UNIFY] the single header bar: a leading
+          "Records" segment (the Brief-8 record view) + the journey stages (each chip carries its
+          own done/current/future/locked status). A thin ECG hairline under it is the one subtle
+          progress visual — no separate stepper row. */}
       <div className="hx-stagebar mt-4" data-testid="hx-stagebar">
+        <button type="button"
+          className={`hx-stagetab hx-stagetab--records ${stage === "records" ? "active" : ""}`}
+          onClick={() => setStage("records")} aria-selected={stage === "records"}
+          data-testid="hx-stagetab-records">
+          <LayoutGrid className="h-4 w-4" />
+          <span>{t("stage.records", "Records")}</span>
+        </button>
+        <span className="hx-stage-sep" aria-hidden="true" />
         {STAGES.map((st) => {
           const status = stageStatus(st.key);
           const Icon = st.icon;
@@ -602,9 +602,13 @@ function PatientJourneyInner() {
           );
         })}
       </div>
+      <EcgLine className="hx-stage-ecg" />
 
       {/* ---------- STAGE CONTENT (one stage at a time; existing panels re-mounted) ---------- */}
-      <div className="hx-stageview mt-4 space-y-4" data-testid={`hx-stageview-${stage}`}>
+      <div className="hx-stageview mt-3 space-y-4" data-testid={`hx-stageview-${stage}`}>
+
+        {/* [CHART-UNIFY] Records view — the Brief-8 record tabs as a full-screen record view */}
+        {stage === "records" && <PatientChartBar patient={patient} currentBed={currentBed as any} mode="records" />}
 
         {stage === "registration" && (
           <div className="hx-panel hx-rise" data-testid="hx-stagev-registration">
